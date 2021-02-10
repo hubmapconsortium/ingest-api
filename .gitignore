@@ -2,8 +2,13 @@
 src/instance/app.cfg
 *~
 
-# Ignore copied over folders
-docker/entity-api/src
+# Ignore docker copied stuff
+docker/ingest-api-localhost/src
+docker/ingest-api-dev/src
+docker/ingest-api-test/src
+docker/ingest-api-stage/src
+docker/ingest-api-prod/src
+docker/ingest-api-refactor/src
 
 BUILD
 
