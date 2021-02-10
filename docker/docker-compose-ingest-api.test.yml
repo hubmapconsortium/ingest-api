@@ -55,7 +55,7 @@ services:
       - GENOMIC_DATA_FILE_GROUP_GID=${GENOMIC_DATA_FILE_GROUP_GID:-24358}
     volumes:
       # Mount the app config to container in order to keep it outside of the image
-      - "../src/ingest-api/instance:/usr/src/app/src/instance"
+      - "../src/instance:/usr/src/app/src/instance"
       # Mount the logging to container
       - "../log:/usr/src/app/log"
       # Mount ssl certificates from host to container

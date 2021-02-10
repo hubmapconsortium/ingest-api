@@ -31,7 +31,7 @@ services:
       - "../VERSION:/usr/src/app/VERSION"
       - "../BUILD:/usr/src/app/BUILD"
       # Mount the source code to container
-      - "../src/ingest-api:/usr/src/app/src"
+      - "../src:/usr/src/app/src"
       # Mount the logging to container
       - "../log:/usr/src/app/log"
       # Mount Globus data
