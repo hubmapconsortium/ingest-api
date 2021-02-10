@@ -94,7 +94,7 @@ else
 
             # Create docker copy of the source code
             mkdir ingest-api-$1/src
-            cp -r ../src/ingest-api/* ingest-api-$1/src
+            cp -r ../src/* ingest-api-$1/src
 
             # Only mount the VERSION file and BUILD file for localhost and dev
             # On test/stage/prod, copy the VERSION file and BUILD file to image
