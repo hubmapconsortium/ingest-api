@@ -431,12 +431,7 @@ def create_derived_dataset():
     if not isinstance(json_data['derived_dataset_types'], list):
         abort(400, jsonify( { 'error': "The 'derived_dataset_types' values must be an json array" } ))
 
-    # Create a new derived dataset based on this parent dataset ID
-    conn = None
-
     try:
-        conn = Neo4jConnection(app.config['NEO4J_SERVER'], app.config['NEO4J_USERNAME'], app.config['NEO4J_PASSWORD'])
-        driver = conn.get_driver()
         dataset = Dataset(app.config)
 
         # Note: the user who can create the derived dataset doesn't have to be the same person who created the source dataset
@@ -448,24 +443,13 @@ def create_derived_dataset():
             raise ValueError("Unable to parse globus token from request header")
 
         new_record = dataset.create_derived_datastage(nexus_token, json_data)
-        conn.close()
-
-        try:
-            #reindex this node in elasticsearch
-            rspn = requests.put(app.config['SEARCH_WEBSERVICE_URL'] + "/reindex/" + new_record['derived_dataset_uuid'], headers={'Authorization': request.headers["AUTHORIZATION"]})
-        except:
-            print("Error happened when calling reindex web service")
 
         return jsonify( new_record ), 201
-    except:
-        msg = 'An error occurred: '
-        for x in sys.exc_info():
-            msg += str(x)
-        abort(400, msg)
-    finally:
-        if conn != None:
-            if conn.get_driver().closed() == False:
-                conn.close()
+    except HTTPException as hte:
+        return Response(hte.get_description(), hte.get_status_code())
+    except Exception as e:
+        logger.error(e, exc_info=True)
+        return Response("Unexpected error while creating derived dataset: " + str(e), 500)        
 
 
 @app.route('/datasets', methods=['POST'])
@@ -661,6 +645,15 @@ def update_dataset_status(uuid, new_status):
         dataset = Dataset(app.config)
         status_obj = dataset.set_status(driver, uuid, new_status)
         conn.close()
+
+        print('Before reindex call in update_dataset_status')
+        try:
+            auth_headers = {'Authorization': request.headers["AUTHORIZATION"]}
+            #reindex this node in elasticsearch
+            rspn = requests.put(app.config['SEARCH_WEBSERVICE_URL'] + "/reindex/" + uuid, headers=auth_headers)
+        except:
+            print('Error occurred when call the reindex web service')
+
         return jsonify( { 'result' : status_obj } ), 200
     
     except ValueError as ve:
@@ -696,14 +689,6 @@ def update_ingest_status():
         
         response = requests.put(update_url, json = updated_ds, headers = auth_headers, verify = False)
 
-
-        print('Before reindex calls')
-        if response.status_code == 200:
-            try:
-                #reindex this node in elasticsearch
-                rspn = requests.put(app.config['SEARCH_WEBSERVICE_URL'] + "/reindex/" + entity_uuid, headers=auth_headers)
-            except:
-                print('Error occurred when call the reindex web service')
         return jsonify( { 'result' : response.json() } ), response.status_code
     
     except HTTPException as hte:
