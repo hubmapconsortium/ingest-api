@@ -685,7 +685,7 @@ def update_ingest_status():
 
         auth_headers = {'Authorization': request.headers["AUTHORIZATION"]}
         entity_uuid = request.json['dataset_id']
-        update_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_API_URL']) + '/entities/' + entity_uuid
+        update_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + '/entities/' + entity_uuid
         
         response = requests.put(update_url, json = updated_ds, headers = auth_headers, verify = False)
 
