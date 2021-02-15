@@ -4,7 +4,7 @@ Created on Apr 18, 2019
 @author: chb69
 '''
 import requests
-from neo4j import TransactionError, CypherError
+from neo4j.exceptions import TransactionError
 import sys
 import os
 import configparser
@@ -33,6 +33,8 @@ from hubmap_commons.metadata import Metadata
 from hubmap_commons.activity import Activity
 from hubmap_commons.provenance import Provenance
 from hubmap_commons.file_helper import linkDir, unlinkDir, mkDir
+from hubmap_commons import file_helper
+from hubmap_commons.exceptions import HTTPException
 
 class Dataset(object):
     '''
@@ -150,9 +152,6 @@ class Dataset(object):
                                             if record['score'] > ret_record['score']:
                                                 ret_record['score'] = record['score']
                         
-                except CypherError as cse:
-                    print ('A Cypher error was encountered: '+ cse.message)
-                    raise
                 except:
                     print ('A general error occurred: ')
                     traceback.print_exc()
@@ -215,9 +214,6 @@ class Dataset(object):
                 if there_can_be_only_one == True:
                     return return_list[0]
                 return return_list                    
-            except CypherError as cse:
-                print ('A Cypher error was encountered: '+ cse.message)
-                raise
             except:
                 print ('A general error occurred: ')
                 for x in sys.exc_info():
@@ -266,9 +262,6 @@ class Dataset(object):
                     return_list.append(activity_record)
                     #print (str(activity_record))
                 return return_list                  
-            except CypherError as cse:
-                print ('A Cypher error was encountered: '+ cse.message)
-                raise
             except:
                 print ('A general error occurred: ')
                 for x in sys.exc_info():
@@ -278,7 +271,7 @@ class Dataset(object):
 
     # Create derived dataset
     @classmethod
-    def create_derived_datastage(self, driver, nexus_token, json_data):
+    def create_derived_datastage(self, nexus_token, json_data):
         global logger
         conn = Neo4jConnection(self.confdata['NEO4J_SERVER'], self.confdata['NEO4J_USERNAME'], self.confdata['NEO4J_PASSWORD'])
         driver = conn.get_driver()
@@ -289,189 +282,62 @@ class Dataset(object):
         if incoming_sourceUUID_string == None or len(incoming_sourceUUID_string) == 0:
             raise ValueError('Error: sourceUUID must be set to create a derived dataset')
         
-        # In this derived dataset case, only one source uuid in the list
-        source_UUID_Data = []
-        ug = UUID_Generator(self.confdata['UUID_WEBSERVICE_URL'])
+        bearer_header = 'Bearer ' + nexus_token
+        auth_header = {'Authorization': bearer_header}
+        get_url = file_helper.ensureTrailingSlashURL(self.confdata['ENTITY_API_URL']) + '/entities/' + incoming_sourceUUID_string        
+        response = requests.get(get_url, headers = auth_header, verify = False)
+        if response.status_code != 200:
+            return HTTPException("Error retrieving source dataset " + incoming_sourceUUID_string, response.status_code)
+        source_ds = response.json()
+        
+
+        # Create the Entity Metadata node
+        # Don't use None, it'll throw TypeError: 'NoneType' object does not support item assignment
+        new_ds = {}
+
+        # Use the dataset name from input json
+        # Need to use constant instead of hardcoding later
+        new_ds['title'] = json_data['derived_dataset_name']
+        # Also use the dataset data types array from input json and store as string in metadata attribute
+        new_ds['data_types'] = json_data['derived_dataset_types']
+        new_ds['direct_ancestor_uuids'] = ['incoming_sourceUUID_string']
+        new_ds['group_uuid'] = source_ds['group_uuid']
+        new_ds['group_name'] = source_ds['group_name']
+
+        
+        # Set the 'phi' attribute with default value as "no"
+        new_ds['contains_human_genetic_sequences'] = False
+        # Set the default status to New
+        new_ds['status'] = 'New'
+        new_ds['data_access_level'] = 'consortium'
+
+        post_url = file_helper.ensureTrailingSlashURL(self.confdata['ENTITY_API_URL']) + '/entities/' + incoming_sourceUUID_string        
+        response = requests.get(post_url, json=new_ds, headers = auth_header, verify = False)
+        if response.status_code != 200:
+            return HTTPException("Error creating derived dataset", response.status_code)
+
+        ds = response.json()
+         
+        sym_path = os.path.join(str(self.confdata['HUBMAP_WEBSERVICE_FILEPATH']),ds['uuid'])
+        new_directory_path = self.get_dataset_directory(ds['uuid'], ds['group_name'], 'consortium')   
+        new_path = make_new_dataset_directory(new_directory_path, sym_path)
+
         try:
-            incoming_sourceUUID_list = []
-            if str(incoming_sourceUUID_string).startswith('['):
-                incoming_sourceUUID_list = eval(incoming_sourceUUID_string)
-            else:
-                incoming_sourceUUID_list.append(incoming_sourceUUID_string)
-            for sourceID in incoming_sourceUUID_list:
-                hmuuid_data = ug.getUUID(nexus_token, sourceID)
-                if len(hmuuid_data) != 1:
-                    raise ValueError("Could not find information for identifier" + sourceID)
-                source_UUID_Data.append(hmuuid_data)
-        except:
-            raise ValueError('Unable to resolve UUID for: ' + incoming_sourceUUID_string)
-        
-        # Get information of the source dataset from the first item in the list
-        # See if provenance_group_uuid of the source dataset exists in the list of group uuids from the user info.
-        # If so, use the provenance_group_uuid for the derived dataset. If not, throw an error.
-        dataset = Dataset(self.confdata) 
-        dataset_record = dataset.get_dataset(driver, source_UUID_Data[0][0]['hm_uuid'])
-
-        source_dataset_provenance_group_uuid = None
-        if 'provenance_group_uuid' in dataset_record:
-            source_dataset_provenance_group_uuid = dataset_record['provenance_group_uuid']
-
-        # Note: the user who can create the derived dataset doesn't have to be the same person who created the source dataset
-        # That's why we need to parase the userinfo again here
-        authcache = None
-        if AuthHelper.isInitialized() == False:
-            authcache = AuthHelper.create(self.confdata['APP_CLIENT_ID'], self.confdata['APP_CLIENT_SECRET'])
-        else:
-            authcache = AuthHelper.instance()
-
-        userinfo = None
-        userinfo = authcache.getUserInfo(nexus_token, True)
-        if userinfo is Response:
-            raise ValueError('Cannot authenticate current token via Globus.')
-
-        # Decide the provenance group UUID
-        provenance_group = None
-
-        metadata = Metadata(self.confdata['APP_CLIENT_ID'], self.confdata['APP_CLIENT_SECRET'], self.confdata['UUID_WEBSERVICE_URL'])
-        provenance_group = metadata.get_group_by_identifier(source_dataset_provenance_group_uuid)
-
-        metadata_userinfo = {}
-
-        if 'sub' in userinfo.keys():
-            metadata_userinfo[HubmapConst.PROVENANCE_SUB_ATTRIBUTE] = userinfo['sub']
-        if 'username' in userinfo.keys():
-            metadata_userinfo[HubmapConst.PROVENANCE_USER_EMAIL_ATTRIBUTE] = userinfo['username']
-        if 'name' in userinfo.keys():
-            metadata_userinfo[HubmapConst.PROVENANCE_USER_DISPLAYNAME_ATTRIBUTE] = userinfo['name']
-    
-    
-        activity_type = HubmapConst.DATASET_CREATE_ACTIVITY_TYPE_CODE
-        entity_type = HubmapConst.DATASET_TYPE_CODE
-        
-        with driver.session() as session:
-            # First create a new uuid for this derived dataset
-            datastage_uuid_record_list = None
-            datastage_uuid = None
-            try: 
-                datastage_uuid_record_list = ug.getNewUUID(nexus_token, entity_type)
-                if (datastage_uuid_record_list == None) or (len(datastage_uuid_record_list) == 0):
-                    raise ValueError("UUID service did not return a value")
-                datastage_uuid = datastage_uuid_record_list[0]
-            except requests.exceptions.ConnectionError as ce:
-                raise ConnectionError("Unable to connect to the UUID service: " + str(ce.args[0]))
-
-            tx = None
-            
-            try:
-                tx = session.begin_transaction()
-                # create the data stage
-                dataset_entity_record = {HubmapConst.UUID_ATTRIBUTE : datastage_uuid[HubmapConst.UUID_ATTRIBUTE],
-                                         HubmapConst.DOI_ATTRIBUTE : datastage_uuid[HubmapConst.DOI_ATTRIBUTE],
-                                         HubmapConst.DISPLAY_DOI_ATTRIBUTE : datastage_uuid['displayDoi'],
-                                         HubmapConst.ENTITY_TYPE_ATTRIBUTE : entity_type}
-                
-                stmt = Neo4jConnection.get_create_statement(dataset_entity_record, HubmapConst.ENTITY_NODE_NAME, entity_type, True)
-                tx.run(stmt)
-                
-                # Create directory on file system for for this new derived dataset
-                # setup initial Landing Zone directory for the new datastage
-                group_display_name = provenance_group['displayname']
+            x = threading.Thread(target=self.set_dir_permissions, args=['consortium', new_path])
+            x.start()
+        except Exception as e:
+            logger = logging.getLogger('ingest.service')
+            logger.error(e, exc_info=True)
 
 
-                # Create the Entity Metadata node
-                # Don't use None, it'll throw TypeError: 'NoneType' object does not support item assignment
-                metadata_record = {}
+        response_data = {
+            'derived_dataset_uuid': ds['uuid'],
+            'group_uuid': ds['group_uuid'],
+            'group_display_name': ds['group_name'],
+            'full_path': new_path
+        }
 
-                # Use the dataset name from input json
-                # Need to use constant instead of hardcoding later
-                metadata_record['name'] = json_data['derived_dataset_name']
-                # Also use the dataset data types array from input json and store as string in metadata attribute
-                metadata_record[HubmapConst.DATA_TYPES_ATTRIBUTE] = json.dumps(json_data['derived_dataset_types'])
-                source_uuid_list_string = []
-                for identifier in source_UUID_Data:
-                    source_uuid_list_string.append(identifier[0]['doiSuffix'])
-                metadata_record[HubmapConst.SOURCE_UUID_ATTRIBUTE] = str(source_uuid_list_string)
-
-
-                
-                # Set the 'phi' attribute with default value as "no"
-                metadata_record[HubmapConst.HAS_PHI_ATTRIBUTE] = "no"
-                
-                # Set the default status to New
-                metadata_record[HubmapConst.DATASET_STATUS_ATTRIBUTE] = convert_dataset_status("New")
-
-                metadata_uuid_record_list = None
-                metadata_uuid_record = None
-                try: 
-                    metadata_uuid_record_list = ug.getNewUUID(nexus_token, HubmapConst.METADATA_TYPE_CODE)
-                    if (metadata_uuid_record_list == None) or (len(metadata_uuid_record_list) != 1):
-                        raise ValueError("UUID service did not return a value")
-                    metadata_uuid_record = metadata_uuid_record_list[0]
-                except requests.exceptions.ConnectionError as ce:
-                    raise ConnectionError("Unable to connect to the UUID service: " + str(ce.args[0]))
-
-                metadata_record[HubmapConst.UUID_ATTRIBUTE] = metadata_uuid_record[HubmapConst.UUID_ATTRIBUTE]
-
-                access_level = self.get_access_level(nexus_token, driver, metadata_record)
-                metadata_record[HubmapConst.DATA_ACCESS_LEVEL] = access_level
-                webservice_file_path = str(self.confdata['HUBMAP_WEBSERVICE_FILEPATH'])
-                if access_level == HubmapConst.ACCESS_LEVEL_PROTECTED:
-                    webservice_file_path = None
-                 
-                sym_path = os.path.join(str(self.confdata['HUBMAP_WEBSERVICE_FILEPATH']),dataset_entity_record[HubmapConst.UUID_ATTRIBUTE])
-                new_directory_path = self.get_dataset_directory(dataset_entity_record[HubmapConst.UUID_ATTRIBUTE], group_display_name, access_level)   
-                new_path = make_new_dataset_directory(new_directory_path, sym_path)
-                new_globus_path = build_globus_url_for_directory(self.confdata['GLOBUS_PROTECTED_ENDPOINT_FILEPATH'], new_path)
-
-                try:
-                    x = threading.Thread(target=self.set_dir_permissions, args=[access_level, new_path])
-                    x.start()
-                except Exception as e:
-                    logger = logging.getLogger('ingest.service')
-                    logger.error(e, exc_info=True)
-
-                metadata_record[HubmapConst.DATASET_GLOBUS_DIRECTORY_PATH_ATTRIBUTE] = new_globus_path
-                metadata_record[HubmapConst.DATASET_LOCAL_DIRECTORY_PATH_ATTRIBUTE] = new_path
-
-                stmt = Dataset.get_create_metadata_statement(metadata_record, nexus_token, datastage_uuid[HubmapConst.UUID_ATTRIBUTE], metadata_userinfo, provenance_group)
-                tx.run(stmt)
-
-                # Create the associated Activity node in neo4j
-                activity = Activity(self.confdata['UUID_WEBSERVICE_URL'])
-                sourceUUID_list = []
-                for source_uuid in source_UUID_Data:
-                    sourceUUID_list.append(source_uuid[0]['hm_uuid'])
-                
-                activity_object = activity.get_create_activity_statements(nexus_token, activity_type, sourceUUID_list, datastage_uuid[HubmapConst.UUID_ATTRIBUTE], metadata_userinfo, provenance_group)
-                activity_uuid = activity_object['activity_uuid']
-                for stmt in activity_object['statements']: 
-                    tx.run(stmt)                
-                
-                # Create all relationships
-                stmt = Neo4jConnection.create_relationship_statement(datastage_uuid[HubmapConst.UUID_ATTRIBUTE], HubmapConst.HAS_METADATA_REL, metadata_record[HubmapConst.UUID_ATTRIBUTE])
-                tx.run(stmt)
-
-                tx.commit()
-
-                response_data = {
-                    'derived_dataset_uuid': datastage_uuid['uuid'],
-                    'group_uuid': source_dataset_provenance_group_uuid,
-                    'group_display_name': group_display_name,
-                    'full_path': new_path
-                }
-
-                return response_data
-            except TransactionError as te: 
-                print ('A transaction error occurred: ', te.value)
-                tx.rollback()
-            except CypherError as cse:
-                print ('A Cypher error was encountered: ', cse.message)
-                tx.rollback()                
-            except:
-                print ('A general error occurred: ')
-                for x in sys.exc_info():
-                    print (x)
-                tx.rollback()
+        return response_data
 
 
 
@@ -705,9 +571,6 @@ class Dataset(object):
             except TransactionError as te: 
                 print ('A transaction error occurred: ', te.value)
                 tx.rollback()
-            except CypherError as cse:
-                print ('A Cypher error was encountered: ', cse.message)
-                tx.rollback()                
             except:
                 print ('A general error occurred: ')
                 for x in sys.exc_info():
@@ -890,9 +753,6 @@ class Dataset(object):
             except TransactionError as te: 
                 print ('A transaction error occurred: ', te.value)
                 tx.rollback()
-            except CypherError as cse:
-                print ('A Cypher error was encountered: ', cse.message)
-                tx.rollback()                
             except:
                 print ('A general error occurred: ')
                 for x in sys.exc_info():
@@ -1038,7 +898,7 @@ class Dataset(object):
                 raise
             finally:
                 pass                
-
+    '''
     @classmethod
     def update_filepath_dataset(self, driver, uuid, filepath): 
         if Entity.does_identifier_exist(driver, uuid) != True:
@@ -1066,7 +926,7 @@ class Dataset(object):
                 for x in sys.exc_info():
                     print (x)
                 tx.rollback()
-
+    '''
 
     @classmethod
     def change_status(self, driver, headers, uuid, oldstatus, newstatus, formdata, group_uuid):
@@ -1081,7 +941,7 @@ class Dataset(object):
      
 
     @classmethod
-    def set_ingest_status(self, driver, json_data):
+    def get_dataset_ingest_update_record(self, json_data):
         """ expect something like this:
         #{'dataset_id' : '4d3eb2a87cda705bde38495bb564c8dc', 'status': '<status>', 'message': 'the process ran', 'metadata': [maybe some metadata stuff]} 
         files: [{ "relativePath" : "/path/to/file/example.txt",
@@ -1115,15 +975,12 @@ class Dataset(object):
          
         if 'dataset_id' not in json_data:
             raise ValueError('cannot find dataset_id')
-        dataset_id = json_data['dataset_id']
-        uuid = None
         update_record = {}
-        try:
-            metadata_node = Entity.get_entity_metadata(driver, dataset_id)
-            uuid = metadata_node['uuid']
-        except:
-            raise ValueError('cannot find metadata for dataset_id: ' + dataset_id)
-        update_record['uuid'] = uuid
+#        try:
+#            metadata_node = Entity.get_entity_metadata(driver, dataset_id)
+#            uuid = metadata_node['uuid']
+#        except:
+#            raise ValueError('cannot find metadata for dataset_id: ' + dataset_id)
         if 'status' not in json_data:
             raise ValueError('cannot find status')
         if json_data['status'] not in HubmapConst.DATASET_STATUS_OPTIONS:
@@ -1134,56 +991,80 @@ class Dataset(object):
         #    update_record[HubmapConst.DATASET_INGEST_FILE_LIST_ATTRIBUTE] = file_data
         if 'message' not in json_data:
             raise ValueError('cannot find "message" parameter')                  
-        message_string = json_data['message']
-        update_record['message'] = message_string
+        update_record['message'] = json_data['message']
         metadata = None
         if 'metadata' in json_data:
             metadata = json_data['metadata']
             if 'files_info_alt_path' in metadata:
                 metadata['files'] = self.get_file_list(metadata['files_info_alt_path'])
             update_record[HubmapConst.DATASET_INGEST_METADATA_ATTRIBUTE] = metadata
-        overwrite_metadata_flag = True
-        if 'overwrite_metadata' in json_data:
-            overwrite_metadata_flag = json_data['overwrite_metadata']
-        # if the overwite_metadata_flag is true then the current metadata will be replaced by
-        # the new metadata found in the json
-        # if the overwrite_metadata_flag is set to false, then merge the current metadata plus 
-        # the incoming metadata.   
-        if overwrite_metadata_flag == False:
-            current_metadata = metadata_node[HubmapConst.DATASET_INGEST_METADATA_ATTRIBUTE]
-            if isinstance(current_metadata, str):
-                current_metadata = eval(current_metadata)
-            # loop through the json metadata keys
-            # this code will either:
-            # a) add missing keys to the current_metadata
-            # or b) overwrite the current metadata key with the new data from the json object
-            for key in metadata.keys():
-                current_metadata[key] = metadata[key]
-            # swap the metadata variable with the modified current_metadata
-            metadata = current_metadata
+        else:
+            raise ValueError('top level metadata field required')
+
+        if 'overwrite_metadata' in json_data and json_data['overwrite_metadata'] == False:
+            raise ValueError("overwrite_metadata set to False, merging of metadata is not supported on update")
         
-        update_record[HubmapConst.DATASET_INGEST_METADATA_ATTRIBUTE] = metadata
-    
-        tx = None
-        with driver.session() as session:
-            try:
-                tx = session.begin_transaction()
-                stmt = Neo4jConnection.get_update_statement(update_record, True)
-                print ("EXECUTING DATASET UPDATE: " + stmt)
-                tx.run(stmt)
-                tx.commit()
-                return update_record
-            except TransactionError as te: 
-                print ('A transaction error occurred: ', te.value)
-                tx.rollback()
-            except CypherError as cse:
-                print ('A Cypher error was encountered: ', cse.message)
-                tx.rollback()                
-            except:
-                print ('A general error occurred: ')
-                for x in sys.exc_info():
-                    print (x)
-                tx.rollback()
+        antibodies = None
+        contributors = None
+        if 'antibodies' in json_data:
+            antibodies = json_data['antibodies']
+        if 'contributors' in json_data:
+            contributors = json_data['contributors']
+        
+        if 'metadata' in metadata:
+            meta_lvl2 = metadata['metadata']
+            if 'antibodies' in meta_lvl2:
+                if not antibodies is None:
+                    antibodies = meta_lvl2['antibodies']
+                    meta_lvl2.pop('antibodies')
+                else:
+                    raise ValueError('antibodies array included twice in request data')
+            if 'contributors' in meta_lvl2:
+                if not contributors is None:
+                    contributors = meta_lvl2['contributors']
+                    meta_lvl2.pop('contributors')
+                else:
+                    raise ValueError('contributors array included twice in request data')
+            if 'metadata' in meta_lvl2:
+                meta_lvl3 = meta_lvl2['metadata']
+                if 'antibodies' in meta_lvl3:
+                    if not antibodies is None:
+                        antibodies = meta_lvl3['antibodies']
+                        meta_lvl3.pop('antibodies')
+                    else:
+                        raise ValueError('antibodies array included twice in request data')
+                if 'contributors' in meta_lvl3:
+                    if not contributors is None:
+                        contributors = meta_lvl3['contributors']
+                        meta_lvl3.pop('contributors')
+                    else:
+                        raise ValueError('contributors array included twice in request data')
+        
+        if not antibodies is None:
+            update_record['antibodies'] = antibodies
+        if not contributors is None:
+            update_record['contributors'] = contributors
+     
+#        tx = None
+#        with driver.session() as session:
+#            try:
+#                tx = session.begin_transaction()
+#                stmt = Neo4jConnection.get_update_statement(update_record, True)
+#                print ("EXECUTING DATASET UPDATE: " + stmt)
+#                tx.run(stmt)
+#                tx.commit()
+#               return update_record
+#            except TransactionError as te: 
+#                print ('A transaction error occurred: ', te.value)
+#                tx.rollback()
+#            except CypherError as cse:
+#                print ('A Cypher error was encountered: ', cse.message)
+#                tx.rollback()                
+#            except:
+#                print ('A general error occurred: ')
+#                for x in sys.exc_info():
+#                    print (x)
+#                tx.rollback()
 
     @classmethod
     def get_file_list(self, orig_file_path):
@@ -1221,12 +1102,7 @@ class Dataset(object):
             tx = None
             try:
                 tx = session.begin_transaction()
-                metadata_node = Entity.get_entity_metadata(driver, uuid)
-                #construct a small record consisting of the uuid and new status
-                update_record = { "{uuid_attr}".format(uuid_attr=HubmapConst.UUID_ATTRIBUTE) : "{uuid}".format(uuid=metadata_node['uuid']), 
-                                 "{status_attr}".format(status_attr=HubmapConst.STATUS_ATTRIBUTE): "{new_status}".format(new_status=new_status)}
-                #{"entityType" : "{uuid_datatype}".format(uuid_datatype=uuid_datatype), "generateDOI" : "true", "hubmap-ids" : hubmap_identifier}
-                stmt = Neo4jConnection.get_update_statement(update_record, True)
+                stmt = f"match (e:Entity {{uuid:'{uuid}'}}) set e.status = '{new_status}'"
                 print ("EXECUTING DATASET UPDATE: " + stmt)
                 tx.run(stmt)
                 tx.commit()
@@ -1234,9 +1110,6 @@ class Dataset(object):
             except TransactionError as te: 
                 print ('A transaction error occurred: ', te.value)
                 tx.rollback()
-            except CypherError as cse:
-                print ('A Cypher error was encountered: ', cse.message)
-                tx.rollback()                
             except:
                 print ('A general error occurred: ')
                 for x in sys.exc_info():
@@ -1447,9 +1320,6 @@ class Dataset(object):
             except TransactionError as te: 
                 print ('A transaction error occurred: ', te.value)
                 tx.rollback()
-            except CypherError as cse:
-                print ('A Cypher error was encountered: ', cse.message)
-                tx.rollback()                
             except:
                 print ('A general error occurred: ')
                 traceback.print_exc(file=sys.stdout)
@@ -1485,9 +1355,6 @@ class Dataset(object):
             except TransactionError as te: 
                 print ('A transaction error occurred: ', te.value)
                 raise
-            except CypherError as cse:
-                print ('A Cypher error was encountered: ', cse.message)
-                raise               
             except:
                 print ('A general error occurred: ', sys.exc_info()[0])
                 raise
@@ -1505,9 +1372,6 @@ class Dataset(object):
             except TransactionError as te: 
                 print ('A transaction error occurred: ', te.value)
                 raise
-            except CypherError as cse:
-                print ('A Cypher error was encountered: ', cse.message)
-                raise               
             except:
                 print ('A general error occurred: ', sys.exc_info()[0])
                 raise
@@ -1676,9 +1540,6 @@ class Dataset(object):
             except TransactionError as te: 
                 print ('A transaction error occurred: ', te.value)
                 tx.rollback()
-            except CypherError as cse:
-                print ('A Cypher error was encountered: ', cse.message)
-                tx.rollback()                
             except:
                 print ('A general error occurred: ')
                 for x in sys.exc_info():
@@ -1813,9 +1674,6 @@ class Dataset(object):
             except ValueError as ve:
                 print('A value error occurred: ', ve.value)
                 raise ve
-            except CypherError as cse:
-                print('A Cypher error was encountered: ', cse.message)
-                raise cse
             except:
                 print('A general error occurred: ')
                 traceback.print_exc()
@@ -1843,9 +1701,6 @@ class Dataset(object):
         except ValueError as ve:
             print('A value error occurred: ', ve.value)
             raise ve
-        except CypherError as cse:
-            print('A Cypher error was encountered: ', cse.message)
-            raise cse
         except:
             print('A general error occurred: ')
             traceback.print_exc()
@@ -1862,9 +1717,6 @@ class Dataset(object):
         except ValueError as ve:
             print('A value error occurred: ', ve.value)
             raise ve
-        except CypherError as cse:
-            print('A Cypher error was encountered: ', cse.message)
-            raise cse
         except:
             print('A general error occurred: ')
             traceback.print_exc()
@@ -1907,9 +1759,6 @@ class Dataset(object):
         except ValueError as ve:
             print('A value error occurred: ', ve.value)
             raise ve
-        except CypherError as cse:
-            print('A Cypher error was encountered: ', cse.message)
-            raise cse
         except:
             print('A general error occurred: ')
             traceback.print_exc()
@@ -1945,9 +1794,6 @@ class Dataset(object):
             except ValueError as ve:
                 print('A value error occurred: ', ve.value)
                 raise ve
-            except CypherError as cse:
-                print('A Cypher error was encountered: ', cse.message)
-                raise cse
             except:
                 print('A general error occurred: ')
                 traceback.print_exc()
@@ -1978,7 +1824,7 @@ def make_new_dataset_directory(new_file_path, symbolic_file_path=None):
         if e.code == "ExternalError.MkdirFailed.Exists":
             pass
         elif e.code == "ExternalError.MkdirFailed.PermissionDenied":
-            raise OSError('User not authorized to create new directory: ' + new_path)
+            raise OSError('User not authorized to create new directory: ' + new_file_path)
     except:
         raise
 
