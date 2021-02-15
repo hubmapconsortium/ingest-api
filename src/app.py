@@ -692,18 +692,10 @@ def update_ingest_status():
 
         auth_headers = {'Authorization': request.headers["AUTHORIZATION"]}
         entity_uuid = request.json['dataset_id']
-        update_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_API_URL']) + '/entities/' + entity_uuid
+        update_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + '/entities/' + entity_uuid
         
         response = requests.put(update_url, json = updated_ds, headers = auth_headers, verify = False)
 
-
-        print('Before reindex calls')
-        if response.status_code == 200:
-            try:
-                #reindex this node in elasticsearch
-                rspn = requests.put(app.config['SEARCH_WEBSERVICE_URL'] + "/reindex/" + entity_uuid, headers=auth_headers)
-            except:
-                print('Error occurred when call the reindex web service')
         return jsonify( { 'result' : response.json() } ), response.status_code
     
     except HTTPException as hte:
