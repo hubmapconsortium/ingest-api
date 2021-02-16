@@ -5,7 +5,7 @@ Created on May 15, 2019
 import os
 import sys
 import re
-from neo4j import TransactionError, CypherError
+from neo4j import TransactionError
 import requests
 import configparser
 from pprint import pprint
@@ -259,10 +259,6 @@ class Specimen:
                 print('A transaction error occurred: ', te.value)
                 if tx.closed() == False:
                     tx.rollback()
-            except CypherError as cse:
-                print('A Cypher error was encountered: ', cse.message)
-                if tx.closed() == False:
-                    tx.rollback()
             except:
                 print('A general error occurred: ')
                 traceback.print_exc()
@@ -310,10 +306,6 @@ class Specimen:
                 return True
             except TransactionError as te:
                 print('A transaction error occurred: ', te.value)
-                if tx.closed() == False:
-                    tx.rollback()
-            except CypherError as cse:
-                print('A Cypher error was encountered: ', cse.message)
                 if tx.closed() == False:
                     tx.rollback()
             except:
@@ -558,10 +550,6 @@ class Specimen:
                 print('A transaction error occurred: ', te.value)
                 if tx.closed() == False:
                     tx.rollback()
-            except CypherError as cse:
-                print('A Cypher error was encountered: ', cse.message)
-                if tx.closed() == False:
-                    tx.rollback()
             except HubmapError as he:
                 print('A Hubmap error was encountered: ', str(he))
                 if tx.closed() == False:
@@ -649,9 +637,6 @@ class Specimen:
             except TransactionError as te:
                 print('A transaction error occurred: ', te.value)
                 raise te
-            except CypherError as cse:
-                print('A Cypher error was encountered: ', cse.message)
-                raise cse
             except HubmapError as he:
                 print('A Hubmap error was encountered: ', str(he))
                 raise he
@@ -682,9 +667,6 @@ class Specimen:
             except TransactionError as te:
                 print('A transaction error occurred: ', te.value)
                 raise te
-            except CypherError as cse:
-                print('A Cypher error was encountered: ', cse.message)
-                raise cse
         
         
     """    
@@ -786,9 +768,6 @@ class Specimen:
         except ValueError as ve:
             print('A value error occurred: ', ve.value)
             raise ve
-        except CypherError as cse:
-            print('A Cypher error was encountered: ', cse.message)
-            raise cse
         except:
             print('A general error occurred: ')
             traceback.print_exc()
@@ -971,12 +950,12 @@ class Specimen:
             try:
                 stmt = "MATCH (e:{ENTITY_NODE_NAME} {{ {UUID_ATTRIBUTE}: '{uuid}' }})<-[:{ACTIVITY_OUTPUT_REL}]-(a:{ACTIVITY_NODE_NAME}) OPTIONAL MATCH (a:{ACTIVITY_NODE_NAME})-[:{ACTIVITY_OUTPUT_REL}]->(sibling:{ENTITY_NODE_NAME}) RETURN sibling.{UUID_ATTRIBUTE} AS sibling_uuid, sibling.{LAB_IDENTIFIER_ATTRIBUTE} AS sibling_hubmap_identifier, sibling.{LAB_TISSUE_ID} AS sibling_lab_tissue_id, sibling.{RUI_LOCATION_ATTR} AS sibling_rui_location".format(
                     UUID_ATTRIBUTE=HubmapConst.UUID_ATTRIBUTE, ENTITY_NODE_NAME=HubmapConst.ENTITY_NODE_NAME, 
-                    uuid=uuid, ACTIVITY_NODE_NAME=HubmapConst.ACTIVITY_NODE_NAME, LAB_IDENTIFIER_ATTRIBUTE=HubmapConst.LAB_IDENTIFIER_ATTRIBUTE,
+                    uuid=uuid, ACTIVITY_NODE_NAME=HubmapConst.ACTIVITY_NODE_NAME, LAB_IDENTIFIER_ATTRIBUTE='submission_id',
                     ACTIVITY_OUTPUT_REL=HubmapConst.ACTIVITY_OUTPUT_REL, LAB_TISSUE_ID =HubmapConst.LAB_SAMPLE_ID_ATTRIBUTE, RUI_LOCATION_ATTR=HubmapConst.RUI_LOCATION_ATTRIBUTE)    
                 for record in session.run(stmt):
                     sibling_record = {}
                     sibling_record['uuid'] = record.get('sibling_uuid')
-                    sibling_record['hubmap_identifier'] = record.get('sibling_hubmap_identifier')
+                    sibling_record['submission_id'] = record.get('sibling_hubmap_identifier')
                     if record.get('sibling_lab_tissue_id') != None:
                         sibling_record['lab_tissue_id'] = record.get('sibling_lab_tissue_id')
                     if record.get('sibling_rui_location') != None:
@@ -989,9 +968,30 @@ class Specimen:
             except ValueError as ve:
                 print('A value error occurred: ', ve.value)
                 raise ve
-            except CypherError as cse:
-                print('A Cypher error was encountered: ', cse.message)
-                raise cse
+            except:
+                print('A general error occurred: ')
+                traceback.print_exc()
+
+    @staticmethod
+    def get_sibling_count(driver, uuid):
+        sibling_return_list = []
+        with driver.session() as session:
+            try:
+                stmt = "MATCH (e:{ENTITY_NODE_NAME} {{ {UUID_ATTRIBUTE}: '{uuid}' }})<-[:{ACTIVITY_OUTPUT_REL}]-(a:{ACTIVITY_NODE_NAME}) OPTIONAL MATCH (a:{ACTIVITY_NODE_NAME})-[:{ACTIVITY_OUTPUT_REL}]->(sibling:{ENTITY_NODE_NAME}) RETURN count(sibling) AS sibling_count".format(
+                    UUID_ATTRIBUTE=HubmapConst.UUID_ATTRIBUTE, ENTITY_NODE_NAME=HubmapConst.ENTITY_NODE_NAME, 
+                    uuid=uuid, ACTIVITY_NODE_NAME=HubmapConst.ACTIVITY_NODE_NAME, LAB_IDENTIFIER_ATTRIBUTE='submission_id',
+                    ACTIVITY_OUTPUT_REL=HubmapConst.ACTIVITY_OUTPUT_REL)    
+                result = session.run(stmt)
+                for val in result:
+                    sib_count = val['sibling_count'] - 1
+                    break
+                return sib_count
+            except ConnectionError as ce:
+                print('A connection error occurred: ', str(ce.args[0]))
+                raise ce
+            except ValueError as ve:
+                print('A value error occurred: ', ve.value)
+                raise ve
             except:
                 print('A general error occurred: ')
                 traceback.print_exc()
@@ -1019,9 +1019,6 @@ class Specimen:
             except ValueError as ve:
                 print('A value error occurred: ', ve.value)
                 raise ve
-            except CypherError as cse:
-                print('A Cypher error was encountered: ', cse.message)
-                raise cse
             except:
                 print('A general error occurred: ')
                 traceback.print_exc()
@@ -1167,9 +1164,6 @@ class Specimen:
                                             if record['score'] > ret_record['score']:
                                                 ret_record['score'] = record['score']
                         
-                except CypherError as cse:
-                    print ('A Cypher error was encountered: '+ cse.message)
-                    raise
                 except:
                     print ('A general error occurred: ')
                     traceback.print_exc()
@@ -1268,9 +1262,6 @@ class Specimen:
             except ValueError as ve:
                 print('A value error occurred: ', ve.value)
                 raise ve
-            except CypherError as cse:
-                print('A Cypher error was encountered: ', cse.message)
-                raise cse
             except:
                 print('A general error occurred: ')
                 traceback.print_exc()    
@@ -1325,10 +1316,6 @@ def initialize_lab_identifiers(driver):
             raise ve
         except TransactionError as te:
             print('A transaction error occurred: ', te.value)
-            if tx.closed() == False:
-                tx.rollback()
-        except CypherError as cse:
-            print('A Cypher error was encountered: ', cse.message)
             if tx.closed() == False:
                 tx.rollback()
         except:

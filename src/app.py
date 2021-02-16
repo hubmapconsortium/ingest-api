@@ -1498,7 +1498,7 @@ def get_specimen_siblings(identifier):
         r = requests.get(app.config['UUID_WEBSERVICE_URL'] + "/" + identifier, headers={'Authorization': 'Bearer ' + token })
         if r.ok == False:
             raise ValueError("Cannot find specimen with identifier: " + identifier)
-        uuid = json.loads(r.text)[0]['hm_uuid']
+        uuid = json.loads(r.text)['hm_uuid']
         conn = Neo4jConnection(app.config['NEO4J_SERVER'], app.config['NEO4J_USERNAME'], app.config['NEO4J_PASSWORD'])
         driver = conn.get_driver()
         siblingid_list = Specimen.get_siblingid_list(driver, uuid)
@@ -1516,6 +1516,40 @@ def get_specimen_siblings(identifier):
         if conn != None:
             if conn.get_driver().closed() == False:
                 conn.close()
+
+@app.route('/specimens/<identifier>/sibling-count', methods=['GET'])
+@secured(groups="HuBMAP-read")
+def get_specimen_count(identifier):
+    if identifier == None:
+        abort(400)
+    if len(identifier) == 0:
+        abort(400)
+
+    conn = None
+    try:
+        token = str(request.headers["AUTHORIZATION"])[7:]
+        r = requests.get(app.config['UUID_WEBSERVICE_URL'] + "/" + identifier, headers={'Authorization': 'Bearer ' + token })
+        if r.ok == False:
+            raise ValueError("Cannot find specimen with identifier: " + identifier)
+        uuid = json.loads(r.text)['hm_uuid']
+        conn = Neo4jConnection(app.config['NEO4J_SERVER'], app.config['NEO4J_USERNAME'], app.config['NEO4J_PASSWORD'])
+        driver = conn.get_driver()
+        sibling_count = Specimen.get_sibling_count(driver, uuid)
+        return jsonify({'sibling_count': sibling_count}), 200 
+
+    except AuthError as e:
+        print(e)
+        return Response('token is invalid', 401)
+    except:
+        msg = 'An error occurred: '
+        for x in sys.exc_info():
+            msg += str(x)
+        abort(400, msg)
+    finally:
+        if conn != None:
+            if conn.get_driver().closed() == False:
+                conn.close()
+
 
 @app.route('/specimens/<identifier>', methods=['GET'])
 @secured(groups="HuBMAP-read")
