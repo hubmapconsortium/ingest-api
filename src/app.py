@@ -1502,7 +1502,7 @@ def get_specimen_ingest_group_ids(identifier):
         conn = Neo4jConnection(app.config['NEO4J_SERVER'], app.config['NEO4J_USERNAME'], app.config['NEO4J_PASSWORD'])
         driver = conn.get_driver()
         siblingid_list = Specimen.get_ingest_group_list(driver, uuid)
-        return jsonify({'siblingid_list': siblingid_list}), 200 
+        return jsonify({'ingest_group_ids': siblingid_list}), 200 
 
     except AuthError as e:
         print(e)
@@ -1535,7 +1535,7 @@ def get_ingest_group_count(identifier):
         conn = Neo4jConnection(app.config['NEO4J_SERVER'], app.config['NEO4J_USERNAME'], app.config['NEO4J_PASSWORD'])
         driver = conn.get_driver()
         sibling_count = Specimen.get_ingest_group_count(driver, uuid)
-        return jsonify({'sibling_count': sibling_count}), 200 
+        return jsonify({'ingest_group_count': sibling_count}), 200 
 
     except AuthError as e:
         print(e)
