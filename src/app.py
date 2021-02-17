@@ -1484,9 +1484,9 @@ def does_specimen_exist(uuid):
             msg += str(x)
         abort(400, msg)
 
-@app.route('/specimens/<identifier>/siblingids', methods=['GET'])
+@app.route('/specimens/<identifier>/ingest-group-ids', methods=['GET'])
 @secured(groups="HuBMAP-read")
-def get_specimen_siblings(identifier):
+def get_specimen_ingest_group_ids(identifier):
     if identifier == None:
         abort(400)
     if len(identifier) == 0:
@@ -1501,7 +1501,7 @@ def get_specimen_siblings(identifier):
         uuid = json.loads(r.text)['hm_uuid']
         conn = Neo4jConnection(app.config['NEO4J_SERVER'], app.config['NEO4J_USERNAME'], app.config['NEO4J_PASSWORD'])
         driver = conn.get_driver()
-        siblingid_list = Specimen.get_siblingid_list(driver, uuid)
+        siblingid_list = Specimen.get_ingest_group_list(driver, uuid)
         return jsonify({'siblingid_list': siblingid_list}), 200 
 
     except AuthError as e:
@@ -1517,9 +1517,9 @@ def get_specimen_siblings(identifier):
             if conn.get_driver().closed() == False:
                 conn.close()
 
-@app.route('/specimens/<identifier>/sibling-count', methods=['GET'])
+@app.route('/specimens/<identifier>/ingest-group-count', methods=['GET'])
 @secured(groups="HuBMAP-read")
-def get_specimen_count(identifier):
+def get_ingest_group_count(identifier):
     if identifier == None:
         abort(400)
     if len(identifier) == 0:
@@ -1534,7 +1534,7 @@ def get_specimen_count(identifier):
         uuid = json.loads(r.text)['hm_uuid']
         conn = Neo4jConnection(app.config['NEO4J_SERVER'], app.config['NEO4J_USERNAME'], app.config['NEO4J_PASSWORD'])
         driver = conn.get_driver()
-        sibling_count = Specimen.get_sibling_count(driver, uuid)
+        sibling_count = Specimen.get_ingest_group_count(driver, uuid)
         return jsonify({'sibling_count': sibling_count}), 200 
 
     except AuthError as e:

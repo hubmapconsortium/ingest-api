@@ -944,7 +944,7 @@ class Specimen:
         return return_string
 
     @staticmethod
-    def get_siblingid_list(driver, uuid):
+    def get_ingest_group_list(driver, uuid):
         sibling_return_list = []
         with driver.session() as session:
             try:
@@ -973,8 +973,7 @@ class Specimen:
                 traceback.print_exc()
 
     @staticmethod
-    def get_sibling_count(driver, uuid):
-        sibling_return_list = []
+    def get_ingest_group_count(driver, uuid):
         with driver.session() as session:
             try:
                 stmt = "MATCH (e:{ENTITY_NODE_NAME} {{ {UUID_ATTRIBUTE}: '{uuid}' }})<-[:{ACTIVITY_OUTPUT_REL}]-(a:{ACTIVITY_NODE_NAME}) OPTIONAL MATCH (a:{ACTIVITY_NODE_NAME})-[:{ACTIVITY_OUTPUT_REL}]->(sibling:{ENTITY_NODE_NAME}) RETURN count(sibling) AS sibling_count".format(
@@ -983,7 +982,7 @@ class Specimen:
                     ACTIVITY_OUTPUT_REL=HubmapConst.ACTIVITY_OUTPUT_REL)    
                 result = session.run(stmt)
                 for val in result:
-                    sib_count = val['sibling_count'] - 1
+                    sib_count = val['ingest_group_count']
                     break
                 return sib_count
             except ConnectionError as ce:
