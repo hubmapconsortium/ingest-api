@@ -17,7 +17,8 @@ import uuid
 from dataset import Dataset
 from collection import Collection
 from specimen import Specimen
-from file_helper import FileHelper
+from ingest_file_helper import IngestFileHelper
+#from file_helper import FileHelper
 
 from hubmap_commons.hubmap_const import HubmapConst 
 from hubmap_commons.neo4j_connection import Neo4jConnection
@@ -457,71 +458,44 @@ def create_derived_dataset():
 # NOTE: The first step in the process is to create a "data stage" entity
 # A data stage entity is the entity before a dataset entity.
 def create_datastage():
-    if not request.form:
-        abort(400)
-    if 'data' not in request.form:
-        abort(400)
-    
-    #build a dataset from the json
-    new_datastage = {}
-    conn = None
-    new_record = None
+    if not request.is_json:
+        return Response("json request required", 400)    
     try:
-        conn = Neo4jConnection(app.config['NEO4J_SERVER'], app.config['NEO4J_USERNAME'], app.config['NEO4J_PASSWORD'])
-        driver = conn.get_driver()
-        dataset = Dataset(app.config)
-        current_token = None
-        try:
-            current_token = AuthHelper.parseAuthorizationTokens(request.headers)
-        except:
-            raise ValueError("Unable to parse token")
-        nexus_token = current_token['nexus_token']
-        # determine the group UUID to use when creating the dataset
-        group_uuid = None
-        form_data = json.loads(request.form['data'])
-        if 'user_group_uuid' in form_data:
-            if is_user_in_group(nexus_token, form_data['user_group_uuid']):
-                group_uuid = form_data['user_group_uuid']
-                entity = Entity(app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'], app.config['UUID_WEBSERVICE_URL'])
-                grp_info = None
-                try:
-                    grp_info = entity.get_group_by_identifier(group_uuid)
-                except ValueError as ve:
-                    return Response('Unauthorized: Cannot find information on group: ' + str(group_uuid), 401)
-                if grp_info['generateuuid'] == False:
-                    return Response('Unauthorized: This group {grp_info} is not a group with write privileges.'.format(grp_info=grp_info), 401)
-            else:
-                return Response('Unauthorized: Current user is not a member of group: ' + str(group_uuid), 401) 
+        dataset_request = request.json
+        helper = AuthHelper.configured_instance(app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'])
+        auth_tokens = helper.getAuthorizationTokens(request.headers)
+        if isinstance(auth_tokens, Response):
+            return(auth_tokens)
+        elif isinstance(auth_tokens, str):
+            token = auth_tokens
+        elif 'nexus_token' in auth_tokens:
+            token = auth_tokens['nexus_token']
         else:
-            #manually find the group id given the current user:
-            entity = Entity(app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'], app.config['UUID_WEBSERVICE_URL'])
-            group_list = entity.get_user_groups(nexus_token)
-            for grp in group_list:
-                if grp['generateuuid'] == True:
-                    group_uuid = grp['uuid']
-                    break
+            return(Response("Valid nexus auth token required", 401))
+        
+        requested_group_uuid = None
+        if 'group_uuid' in dataset_request:
+            requested_group_uuid = dataset_request['group_uuid']
+        
+        #this method is called only to ensure that the user has the proper
+        #write privileges.  If not an HTTPException will be thrown and handled below
+        ingest_helper = IngestFileHelper(app.config)
+        helper.get_write_group_uuid(token, requested_group_uuid)
+                    
+        post_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + '/entities/dataset'
+        response = requests.post(post_url, json = dataset_request, headers = {'Authorization': 'Bearer ' + token }, verify = False)
+        if response.status_code != 200:
+            return Response(response.text, response.status_code)
+        new_dataset = response.json()
+        
+        ingest_helper.create_dataset_directory(new_dataset)
 
-            if group_uuid == None:
-                return Response('Unauthorized: Current user is not a member of a group allowed to create new specimens', 401)
-        new_record = dataset.create_datastage(driver, request.headers, form_data, group_uuid)
-        conn.close()
-        try:
-            #reindex this node in elasticsearch
-            rspn = requests.put(app.config['SEARCH_WEBSERVICE_URL'] + "/reindex/" + new_record['uuid'], headers={'Authorization': request.headers["AUTHORIZATION"]})
-        except:
-            print("Error happened when calling reindex web service")
-
-        return jsonify( new_record ), 201
-    
-    except:
-        msg = 'An error occurred: '
-        for x in sys.exc_info():
-            msg += str(x)
-        abort(400, msg)
-    finally:
-        if conn != None:
-            if conn.get_driver().closed() == False:
-                conn.close()
+        return jsonify(new_dataset)
+    except HTTPException as hte:
+        return Response(hte.get_description(), hte.get_status_code())
+    except Exception as e:
+        logger.error(e, exc_info=True)
+        return Response("Unexpected error while creating a dataset: " + str(e) + "  Check the logs", 500)        
 
 @app.route('/datasets/<uuid>/validate', methods = ['PUT'])
 @secured(groups="HuBMAP-read")
@@ -1674,30 +1648,30 @@ def search_specimen():
                 conn.close()
 
 
-@app.route('/files', methods=['POST'])
-@secured(groups="HuBMAP-read")
-def create_file():
-    try:
-        token = str(request.headers["AUTHORIZATION"])[7:]
-        userinfo = authcache.getUserInfo(token, True)
+#@app.route('/files', methods=['POST'])
+#@secured(groups="HuBMAP-read")
+#def create_file():
+#    try:
+#        token = str(request.headers["AUTHORIZATION"])[7:]
+#        userinfo = authcache.getUserInfo(token, True)
 
-        globus_id = userinfo.get('sub')
-        form_id = request.form.get('form_id')
-        if form_id is None:
-            abort(400, "form_id is missing.")
+#        globus_id = userinfo.get('sub')
+#        form_id = request.form.get('form_id')
+#        if form_id is None:
+#            abort(400, "form_id is missing.")
         
-        directory_path = f'{globus_id}/{form_id}'
+#        directory_path = f'{globus_id}/{form_id}'
         # save file
-        FileHelper.save_file(request.files['file'],
-                           directory_path, 
-                           create_folder=True)
+#        FileHelper.save_file(request.files['file'],
+#                           directory_path, 
+#                           create_folder=True)
 
-        return "file uploaded.", 201 
-    except:
-        msg = 'An error occurred: '
-        for x in sys.exc_info():
-            msg += str(x)
-        abort(400, msg)
+#        return "file uploaded.", 201 
+#    except:
+#        msg = 'An error occurred: '
+#        for x in sys.exc_info():
+#            msg += str(x)
+#        abort(400, msg)
 
 @app.route('/donor', methods=['POST'])
 @secured(groups="HuBMAP-read")
