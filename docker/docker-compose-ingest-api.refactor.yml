@@ -35,7 +35,7 @@ services:
       # Mount the logging to container
       - "../log:/usr/src/app/log"
       # Mount Globus data
-      - "/hubmap-data:/hubmap-data"
+      - "/hive:/hive"
     networks:
       - gateway_hubmap
 
