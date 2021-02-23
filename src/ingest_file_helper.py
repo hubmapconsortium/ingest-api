@@ -4,7 +4,6 @@ import threading
 import subprocess
 from hubmap_commons.hubmap_const import HubmapConst
 from hubmap_commons.hm_auth import AuthHelper
-from hubmap_commons import file_helper as commons_file_helper
 
 class IngestFileHelper:
 #    @staticmethod
@@ -34,7 +33,16 @@ class IngestFileHelper:
         return new_file_path
 
     def create_dataset_directory(self, dataset_record):
-        new_directory_path = str(os.path.join(self.appconfig['GLOBUS_PUBLIC_ENDPOINT_FILEPATH'], dataset_record['local_directory_rel_path']))
+        grp_name = AuthHelper.getGroupDisplayName(dataset_record['group_uuid'])
+        if dataset_record['contains_human_genetic_sequences']:
+            access_level = 'protected'
+            base_dir = self.appconfig['GLOBUS_PROTECTED_ENDPOINT_FILEPATH']
+        else:
+            access_level = 'consortium'
+            base_dir = self.appconfig['GLOBUS_CONSORTIUM_ENDPOINT_FILEPATH']
+            
+        new_directory_path = str(os.path.join(base_dir, grp_name, dataset_record['uuid']))
+        print("+++++++CREATING " + new_directory_path )
         IngestFileHelper.make_directory(new_directory_path, None)
         try:
             if dataset_record['contains_human_genetic_sequences']:
