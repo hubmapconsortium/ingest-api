@@ -57,6 +57,8 @@ if AuthHelper.isInitialized() == False:
 else:
     authcache = AuthHelper.instance()
 
+data_admin_group = '89a69625-99d7-11ea-9366-0e98982705c1'
+
 @app.before_first_request
 def init():
     global logger
@@ -777,11 +779,14 @@ def submit_dataset(uuid):
         else:
             return(Response("Valid nexus auth token required", 401))
  
+        if not 'group_uuid' in dataset_request:
+            return Response("Valid group_uuid required", 400)
+ 
         user_info = AuthHelper.getUserInfo(token, getGroups=True)
         if isinstance(user_info, Response): return user_info
         if not 'hmgroupids' in user_info:
             return Response("user not authorized to submit data, unable to retrieve any group information", 403)
-        if not '89a69625-99d7-11ea-9366-0e98982705c' in user_info['hmgroupids']:
+        if not data_admin_group in user_info['hmgroupids']:
             return Response("user not authorized to submit data, must be a member of the HuBMAP-Data-Admin group", 403)
 
         pipeline_url = commons_file_helper.ensureTrailingSlashURL(app.config['INGEST_PIPELINE_URL']) + 'request_ingest'
@@ -1996,7 +2001,8 @@ def update_sample(uuid):
                 conn.close()
 
 #given a hubmap uuid and a valid Globus token returns, as json the attribute has_write with
-#value true if the user has write access to the entity
+#value true if the user has write access to the entity.  Additionally, for datasets when a user
+#is in the HuBMAP-Data-Admins group, it will return a "has_submit" property == true.
 # returns
 #      200 json with attribute has_write with true value if user has write access to the entity
 #      200 json with attribute has_write with false value if user does not have write access to the entity
@@ -2006,7 +2012,8 @@ def update_sample(uuid):
 #
 # Example json response: 
 #                  {
-#                      "has_write": true
+#                      "has_write": true,
+#                      "has_submit": false
 #                  }
 
 @app.route('/entities/<hmuuid>/has-write', methods = ['GET'])
@@ -2024,31 +2031,58 @@ def has_write(hmuuid):
         driver = conn.get_driver()
         with driver.session() as session:
             #query Neo4j db to find the entity
-            stmt = "match (e:Entity {uuid:'" + hmuuid.strip() + "'}) return e.group_uuid"
+            stmt = "match (e:Entity {uuid:'" + hmuuid.strip() + "'}) return e.group_uuid, e.entity_type, e.data_access_level, e.status"
             recds = session.run(stmt)
             #this assumes there is only one result returned, but we use the for loop
             #here because standard list (len, [idx]) operators don't work with
             #the neo4j record list object
+            count = 0
+            r_val = {"has_write":False, "has_submit":False }
             for record in recds:
+                count = count + 1
                 if record.get('e.group_uuid', None) != None:
                     #get user info, make sure it has group information associated
                     user_info = authcache.getUserInfo(token, True)
                     if user_info is None:
                         return Response("Unable to obtain user information for auth token", 401)
                     if not 'hmgroupids' in user_info:
-                        return Response('{"has_write":false}', 200, mimetype='application/json')
+                        return Response(json.dumps(r_val), 200, mimetype='application/json')
+                    group_uuid = record.get('e.group_uuid', '').strip()
+                    data_access_level = record.get('e.data_access_level', '').strip().lower()
+                    status = record.get('e.status', '').strip().lower()
+                    entity_type = record.get('e.entity_type', '').strip().lower()
                     
-                    #compare the group_uuid in the entity to the users list of groups
-                    #if in the users list of groups return true otherwise false
-                    if record['e.group_uuid'] in user_info['hmgroupids']:
-                        return Response('{"has_write":true}', 200, mimetype='application/json')
+                    #if it is published, no write allowed
+                    if entity_type == 'dataset':
+                        if status == 'published':
+                            return Response(json.dumps(r_val), 200, mimetype='application/json')
+                    #if the entity is public, no write allowed
+                    elif entity_type in ['sample', 'donor']:
+                        if data_access_level == 'public':
+                            return Response(json.dumps(r_val), 200, mimetype='application/json')
                     else:
-                        return Response('{"has_write":false}', 200, mimetype='application/json')
-                #the entity didn't have a group_uuid for some reason
+                        return Response("Invalid data type " + entity_type + ".", 400)
+
+                    #compare the group_uuid in the entity to the users list of groups
+                    #if the user is a member of the HuBMAP-Data-Admin group,
+                    #they have write access to everything and the ability to submit datasets
+                    if data_admin_group in user_info['hmgroupids']:
+                        r_val['has_write'] = True
+                        r_val['has_submit'] = True
+                    #if in the users list of groups return true otherwise false
+                    elif group_uuid in user_info['hmgroupids']:
+                        r_val['has_write'] = True
+                    else:
+                        r_val['has_write'] = False
                 else:
                     return Response("Entity group uuid not found", 400)
-            #if we fall through to here the entity was not found
-            return Response("Entity not found", 404)
+                
+            #if we fall through to here without entering the loop the entity was not found
+            if count == 0:
+                return Response("Entity not found", 404)
+            else:
+                return Response(json.dumps(r_val), 200, mimetype='application/json')
+            
     except AuthError as e:
         print(e)
         return Response('token is invalid', 401)
