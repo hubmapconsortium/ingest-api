@@ -758,7 +758,63 @@ def get_group_uuid_from_request(request):
         for x in sys.exc_info():
             msg += x
         abort(400, msg)
+        
+@app.route('/datasets/<uuid>/submit', methods = ['PUT'])
+def submit_dataset(uuid):
+    if not request.is_json:
+        return Response("json request required", 400)
+    try:
+        dataset_request = request.json
+        auth_helper = AuthHelper.configured_instance(app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'])
+        ingest_helper = IngestFileHelper(app.config)
+        auth_tokens = auth_helper.getAuthorizationTokens(request.headers)
+        if isinstance(auth_tokens, Response):
+            return(auth_tokens)
+        elif isinstance(auth_tokens, str):
+            token = auth_tokens
+        elif 'nexus_token' in auth_tokens:
+            token = auth_tokens['nexus_token']
+        else:
+            return(Response("Valid nexus auth token required", 401))
+ 
+        user_info = AuthHelper.getUserInfo(token, getGroups=True)
+        if isinstance(user_info, Response): return user_info
+        if not 'hmgroupids' in user_info:
+            return Response("user not authorized to submit data, unable to retrieve any group information", 403)
+        if not '89a69625-99d7-11ea-9366-0e98982705c' in user_info['hmgroupids']:
+            return Response("user not authorized to submit data, must be a member of the HuBMAP-Data-Admin group", 403)
 
+        pipeline_url = commons_file_helper.ensureTrailingSlashURL(app.config['INGEST_PIPELINE_URL']) + 'request_ingest'
+        r = requests.post(pipeline_url, json={"submission_id" : "{uuid}".format(uuid=uuid),
+                                     "process" : app.config['INGEST_PIPELINE_DEFAULT_PROCESS'],
+                                     "full_path": ingest_helper.get_dataset_directory_absolute_path(dataset_request),
+                                     "provider": "{group_name}".format(group_name=AuthHelper.getGroupDisplayName(dataset_request['group_uuid']))}, 
+                                          headers={'Content-Type':'application/json', 'Authorization': 'Bearer {token}'.format(token=AuthHelper.instance().getProcessSecret() )})
+        if r.ok == True:
+            """expect data like this:
+            {"ingest_id": "abc123", "run_id": "run_657-xyz", "overall_file_count": "99", "top_folder_contents": "["IMS", "processed_microscopy","raw_microscopy","VAN0001-RK-1-spatial_meta.txt"]"}
+            """
+            data = json.loads(r.content.decode())
+            submission_data = data['response']
+            dataset_request[HubmapConst.DATASET_INGEST_ID_ATTRIBUTE] = submission_data['ingest_id']
+            dataset_request[HubmapConst.DATASET_RUN_ID] = submission_data['run_id']
+        else:
+            logger.error('Failed call to AirFlow HTTP Response: ' + str(r.status_code) + ' msg: ' + str(r.text)) 
+            return Response("Ingest pipeline failed: " + str(r.text), r.status_code)
+        
+        dataset_request['status'] = 'Processing'
+        put_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + '/entities/dataset/' + uuid
+        response = requests.post(put_url, json = dataset_request, headers = {'Authorization': 'Bearer ' + token }, verify = False)
+        if response.status_code != 200:
+            return Response(response.text, response.status_code)
+        updated_dataset = response.json()
+        return jsonify(updated_dataset)
+    except HTTPException as hte:
+        return Response(hte.get_description(), hte.get_status_code())
+    except Exception as e:
+        logger.error(e, exc_info=True)
+        return Response("Unexpected error while creating a dataset: " + str(e) + "  Check the logs", 500)        
+                
 @app.route('/datasets/<uuid>', methods = ['PUT'])
 @secured(groups="HuBMAP-read")
 def modify_dataset(uuid):

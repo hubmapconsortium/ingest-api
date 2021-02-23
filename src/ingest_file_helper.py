@@ -32,17 +32,25 @@ class IngestFileHelper:
             os.symlink(new_file_path, symbolic_file_path, True)
         return new_file_path
 
-    def create_dataset_directory(self, dataset_record):
+    def get_dataset_directory_absolute_path(self, dataset_record):
         grp_name = AuthHelper.getGroupDisplayName(dataset_record['group_uuid'])
         if dataset_record['contains_human_genetic_sequences']:
-            access_level = 'protected'
             base_dir = self.appconfig['GLOBUS_PROTECTED_ENDPOINT_FILEPATH']
+        elif dataset_record['status'] == 'Published':
+            base_dir = self.appconfig['GLOBUS_PUBLIC_ENDPOINT_FILEPATH']
         else:
-            access_level = 'consortium'
             base_dir = self.appconfig['GLOBUS_CONSORTIUM_ENDPOINT_FILEPATH']
             
-        new_directory_path = str(os.path.join(base_dir, grp_name, dataset_record['uuid']))
-        print("+++++++CREATING " + new_directory_path )
+        abs_path = str(os.path.join(base_dir, grp_name, dataset_record['uuid']))
+        return abs_path
+
+    def create_dataset_directory(self, dataset_record):
+        if dataset_record['contains_human_genetic_sequences']:
+            access_level = 'protected'
+        else:
+            access_level = 'consortium'
+            
+        new_directory_path = self.get_dataset_directory_absolute_path(dataset_record)
         IngestFileHelper.make_directory(new_directory_path, None)
         try:
             if dataset_record['contains_human_genetic_sequences']:
