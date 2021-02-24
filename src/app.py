@@ -420,6 +420,8 @@ def create_derived_dataset():
         abort(400, jsonify( { 'error': 'This request requries a json in the body' } ))
     
     json_data = request.get_json()
+    logger.info("++++++++++Calling /datasets/derived")
+    logger.info("++++++++++Request:" + json.dumps(json_data))
 
     if 'source_dataset_uuid' not in json_data:
         abort(400, jsonify( { 'error': "The 'source_dataset_uuid' property is requried in the json data from the request" } ))
@@ -616,6 +618,7 @@ def update_dataset_status(uuid, new_status):
     conn = None
     new_uuid = None
     try:
+        logger.info(f"++++++++++Called /datasets/{uuid}/{new_status}")
         conn = Neo4jConnection(app.config['NEO4J_SERVER'], app.config['NEO4J_USERNAME'], app.config['NEO4J_PASSWORD'])
         driver = conn.get_driver()
         dataset = Dataset(app.config)
@@ -655,12 +658,15 @@ def update_ingest_status():
     
     try:
         dataset = Dataset(app.config)
+        ds_request = request.json
+        logger.info("++++++++++Calling /datasets/status")
+        logger.info("++++++++++Request:" + json.dumps(ds_request))
         # expecting something like this:
         #{'dataset_id' : '287d61b60b806fdf54916e3b7795ad5a', 'status': '<', 'message': 'the process ran', 'metadata': [maybe some metadata stuff]}
-        updated_ds = dataset.get_dataset_ingest_update_record(request.json)
+        updated_ds = dataset.get_dataset_ingest_update_record(ds_request)
 
         auth_headers = {'Authorization': request.headers["AUTHORIZATION"]}
-        entity_uuid = request.json['dataset_id']
+        entity_uuid = ds_request['dataset_id']
         update_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + '/entities/' + entity_uuid
         
         response = requests.put(update_url, json = updated_ds, headers = auth_headers, verify = False)
