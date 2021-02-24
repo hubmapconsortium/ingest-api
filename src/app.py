@@ -634,19 +634,23 @@ def update_ingest_status():
         #{'dataset_id' : '287d61b60b806fdf54916e3b7795ad5a', 'status': '<', 'message': 'the process ran', 'metadata': [maybe some metadata stuff]}
         updated_ds = dataset.get_dataset_ingest_update_record(ds_request)
 
-        auth_headers = {'Authorization': request.headers["AUTHORIZATION"]}
+        headers = {'Authorization': request.headers["AUTHORIZATION"], 'Content-Type': 'application/json'}
         entity_uuid = ds_request['dataset_id']
-        update_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + '/entities/' + entity_uuid
+        update_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/' + entity_uuid
         
-        response = requests.put(update_url, json = updated_ds, headers = auth_headers, verify = False)
-
+        response = requests.put(update_url, json = updated_ds, headers = headers, verify = False)
+        if response.status_code != 200:
+            err_msg = f"Error while calling {update_url} status code:{response.status_code}  message:{response.text}"
+            logger.error(err_msg)
+            logger.error("Sent: " + json.dumps(updated_ds))
+            return Response(response.text, response.status_code)
         return jsonify( { 'result' : response.json() } ), response.status_code
     
     except HTTPException as hte:
         return Response(hte.get_description(), hte.get_status_code())
     
     except ValueError as ve:
-        print('ERROR: ' + str(ve))
+        logger.error(str(ve))
         return jsonify({'error' : str(ve)}), 400
         
     except Exception as e:

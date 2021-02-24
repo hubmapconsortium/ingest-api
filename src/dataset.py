@@ -995,7 +995,7 @@ class Dataset(object):
         #    update_record[HubmapConst.DATASET_INGEST_FILE_LIST_ATTRIBUTE] = file_data
         if 'message' not in json_data:
             raise ValueError('cannot find "message" parameter')                  
-        update_record['message'] = json_data['message']
+        update_record['pipeline_message'] = json_data['message']
         metadata = None
         if 'metadata' in json_data:
             metadata = json_data['metadata']
@@ -1048,27 +1048,8 @@ class Dataset(object):
             update_record['antibodies'] = antibodies
         if not contributors is None:
             update_record['contributors'] = contributors
-     
-#        tx = None
-#        with driver.session() as session:
-#            try:
-#                tx = session.begin_transaction()
-#                stmt = Neo4jConnection.get_update_statement(update_record, True)
-#                print ("EXECUTING DATASET UPDATE: " + stmt)
-#                tx.run(stmt)
-#                tx.commit()
-#               return update_record
-#            except TransactionError as te: 
-#                print ('A transaction error occurred: ', te.value)
-#                tx.rollback()
-#            except CypherError as cse:
-#                print ('A Cypher error was encountered: ', cse.message)
-#                tx.rollback()                
-#            except:
-#                print ('A general error occurred: ')
-#                for x in sys.exc_info():
-#                    print (x)
-#                tx.rollback()
+            
+        return update_record
 
     @classmethod
     def get_file_list(self, orig_file_path):
