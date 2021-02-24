@@ -2037,7 +2037,7 @@ def has_write(hmuuid):
             #here because standard list (len, [idx]) operators don't work with
             #the neo4j record list object
             count = 0
-            r_val = {"has_write":False, "has_submit":False }
+            r_val = {"has_write":False, "has_submit":False, "has_publish":False }
             for record in recds:
                 count = count + 1
                 if record.get('e.group_uuid', None) != None:
@@ -2068,7 +2068,11 @@ def has_write(hmuuid):
                     #they have write access to everything and the ability to submit datasets
                     if data_admin_group in user_info['hmgroupids']:
                         r_val['has_write'] = True
-                        r_val['has_submit'] = True
+                        if entity_type == 'dataset':
+                            if status == 'new':
+                                r_val['has_submit'] = True
+                            elif status == 'publish':
+                                r_val['has_publish'] = True
                     #if in the users list of groups return true otherwise false
                     elif group_uuid in user_info['hmgroupids']:
                         r_val['has_write'] = True
