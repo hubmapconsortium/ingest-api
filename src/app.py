@@ -57,7 +57,7 @@ if AuthHelper.isInitialized() == False:
 else:
     authcache = AuthHelper.instance()
 
-data_admin_group = '89a69625-99d7-11ea-9366-0e98982705c1'
+data_admin_group_uuid = '89a69625-99d7-11ea-9366-0e98982705c1'
 
 @app.before_first_request
 def init():
@@ -252,7 +252,7 @@ def get_user_info(token):
 ####################################################################################################
 ## Ingest API Endpoints
 ####################################################################################################
-
+'''
 @app.route('/datasets', methods = ['GET'])
 @secured(groups="HuBMAP-read")
 def get_datasets():
@@ -395,7 +395,7 @@ def ingest_dataset():
         if conn != None:
             if conn.get_driver().closed() == False:
                 conn.close()
-
+'''
 
 # Create derived dataset
 """
@@ -417,20 +417,20 @@ Output JSON example:
 #@secured(groups="HuBMAP-read")
 def create_derived_dataset():
     if not request.is_json:
-        abort(400, jsonify( { 'error': 'This request requries a json in the body' } ))
+        abort(400, jsonify( { 'error': 'This request requires json in the body' } ))
     
     json_data = request.get_json()
     logger.info("++++++++++Calling /datasets/derived")
     logger.info("++++++++++Request:" + json.dumps(json_data))
 
     if 'source_dataset_uuid' not in json_data:
-        abort(400, jsonify( { 'error': "The 'source_dataset_uuid' property is requried in the json data from the request" } ))
+        abort(400, jsonify( { 'error': "The 'source_dataset_uuid' property is required." } ))
     
     if 'derived_dataset_name' not in json_data:
-        abort(400, jsonify( { 'error': "The 'derived_dataset_name' property is requried in the json data from the request" } ))
+        abort(400, jsonify( { 'error': "The 'derived_dataset_name' property is required." } ))
 
     if 'derived_dataset_types' not in json_data:
-        abort(400, jsonify( { 'error': "The 'derived_dataset_types' property is requried in the json data from the request" } ))
+        abort(400, jsonify( { 'error': "The 'derived_dataset_types' property is required." } ))
 
     # Ensure the data types is an array
     if not isinstance(json_data['derived_dataset_types'], list):
@@ -458,16 +458,13 @@ def create_derived_dataset():
 
 
 @app.route('/datasets', methods=['POST'])
-#@secured(groups="HuBMAP-read")
-# NOTE: The first step in the process is to create a "data stage" entity
-# A data stage entity is the entity before a dataset entity.
 def create_datastage():
     if not request.is_json:
         return Response("json request required", 400)    
     try:
         dataset_request = request.json
-        helper = AuthHelper.configured_instance(app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'])
-        auth_tokens = helper.getAuthorizationTokens(request.headers)
+        auth_helper = AuthHelper.configured_instance(app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'])
+        auth_tokens = auth_helper.getAuthorizationTokens(request.headers)
         if isinstance(auth_tokens, Response):
             return(auth_tokens)
         elif isinstance(auth_tokens, str):
@@ -484,7 +481,7 @@ def create_datastage():
         #this method is called only to ensure that the user has the proper
         #write privileges.  If not an HTTPException will be thrown and handled below
         ingest_helper = IngestFileHelper(app.config)
-        helper.get_write_group_uuid(token, requested_group_uuid)
+        auth_helper.get_write_group_uuid(token, requested_group_uuid)
                     
         post_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + '/entities/dataset'
         response = requests.post(post_url, json = dataset_request, headers = {'Authorization': 'Bearer ' + token }, verify = False)
@@ -500,7 +497,7 @@ def create_datastage():
     except Exception as e:
         logger.error(e, exc_info=True)
         return Response("Unexpected error while creating a dataset: " + str(e) + "  Check the logs", 500)        
-
+'''
 @app.route('/datasets/<uuid>/validate', methods = ['PUT'])
 @secured(groups="HuBMAP-read")
 def validate_dataset(uuid):
@@ -533,7 +530,7 @@ def validate_dataset(uuid):
         if conn != None:
             if conn.get_driver().closed() == False:
                 conn.close()
-
+'''
 @app.route('/datasets/<uuid>/publish', methods = ['PUT'])
 @secured(groups="HuBMAP-read")
 def publish_datastage(uuid):
@@ -572,7 +569,7 @@ def publish_datastage(uuid):
         if conn != None:
             if conn.get_driver().closed() == False:
                 conn.close()
-
+'''
 @app.route('/datasets/<uuid>/unpublish', methods = ['PUT'])
 @secured(groups="HuBMAP-read")
 def unpublish_datastage(uuid):
@@ -609,7 +606,7 @@ def unpublish_datastage(uuid):
         if conn != None:
             if conn.get_driver().closed() == False:
                 conn.close()
-                
+'''                
 @app.route('/datasets/<uuid>/status/<new_status>', methods = ['PUT'])
 #@secured(groups="HuBMAP-read")
 def update_dataset_status(uuid, new_status):
@@ -618,7 +615,6 @@ def update_dataset_status(uuid, new_status):
     if str(new_status) not in HubmapConst.DATASET_STATUS_OPTIONS:
         abort(400, jsonify( { 'error': 'dataset status: ' + str(new_status) + ' is not a valid status.' } ))
     conn = None
-    new_uuid = None
     try:
         logger.info(f"++++++++++Called /datasets/{uuid}/{new_status}")
         conn = Neo4jConnection(app.config['NEO4J_SERVER'], app.config['NEO4J_USERNAME'], app.config['NEO4J_PASSWORD'])
@@ -686,7 +682,7 @@ def update_ingest_status():
         logger.error(e, exc_info=True)
         return Response("Unexpected error while saving dataset: " + str(e), 500)        
 
-
+'''
 @app.route('/datasets/submissions/request_ingest', methods = ['POST'])
 # @secured(groups="HuBMAP-read")
 def temp_request_ingest_call():
@@ -696,7 +692,6 @@ def temp_request_ingest_call():
         abort(400, jsonify( { 'error': 'no data found cannot process request_ingest' } ))
     
     conn = None
-    new_uuid = None
     try:
 
         # for now just return some dummy data
@@ -768,6 +763,7 @@ def get_group_uuid_from_request(request):
         for x in sys.exc_info():
             msg += x
         abort(400, msg)
+'''
         
 @app.route('/datasets/<uuid>/submit', methods = ['PUT'])
 def submit_dataset(uuid):
@@ -794,7 +790,7 @@ def submit_dataset(uuid):
         if isinstance(user_info, Response): return user_info
         if not 'hmgroupids' in user_info:
             return Response("user not authorized to submit data, unable to retrieve any group information", 403)
-        if not data_admin_group in user_info['hmgroupids']:
+        if not data_admin_group_uuid in user_info['hmgroupids']:
             return Response("user not authorized to submit data, must be a member of the HuBMAP-Data-Admin group", 403)
 
         pipeline_url = commons_file_helper.ensureTrailingSlashURL(app.config['INGEST_PIPELINE_URL']) + 'request_ingest'
@@ -827,7 +823,9 @@ def submit_dataset(uuid):
     except Exception as e:
         logger.error(e, exc_info=True)
         return Response("Unexpected error while creating a dataset: " + str(e) + "  Check the logs", 500)        
-                
+ 
+ 
+'''              
 @app.route('/datasets/<uuid>', methods = ['PUT'])
 @secured(groups="HuBMAP-read")
 def modify_dataset(uuid):
@@ -879,6 +877,8 @@ def modify_dataset(uuid):
         if conn != None:
             if conn.get_driver().closed() == False:
                 conn.close()
+'''
+                    
 """
 @app.route('/datasets/<uuid>/lock', methods = ['PUT'])
 @secured(groups="HuBMAP-read")
@@ -931,7 +931,7 @@ def reopen_dataset(uuid):
         if conn != None:
             if conn.get_driver().closed() == False:
                 conn.close()
-"""
+
 @app.route('/collections', methods = ['GET'])
 @secured(groups="HuBMAP-read")
 def get_collections():
@@ -1072,7 +1072,7 @@ def get_collection(identifier):
         if conn != None:
             if conn.get_driver().closed() == False:
                 conn.close()
-    
+"""
 
 
 
@@ -1118,6 +1118,7 @@ def user_role_list():
             msg += str(x)
         abort(400, msg)
 
+'''
 # this method returns a JSON list of the UUIDs for the entities the current user can edit.  The entitytype is an optional parameter.  If it is not set,
 # the method returns all the editable entities available to the user. 
 @app.route('/metadata/usercanedit/type', methods = ['GET'])
@@ -1186,7 +1187,8 @@ def get_group_by_identifier(identifier):
         return jsonify( { 'error': 'cannot find a Hubmap group matching: [' + identifier + ']' } ), 404
         
 
-    
+'''
+
 @app.route('/metadata/source/type/<type_code>', methods = ['GET'])
 @secured(groups="HuBMAP-read")
 def get_metadata_by_source_type(type_code):
@@ -1214,6 +1216,7 @@ def get_metadata_by_source_type(type_code):
     finally:
         conn.close()
 
+'''
 @app.route('/metadata/source/<uuid>', methods = ['GET'])
 @secured(groups="HuBMAP-read")
 def get_metadata_by_source(uuid):
@@ -1457,14 +1460,14 @@ def update_specimen(identifier):
 @app.route('/specimens', methods=['PUT'])
 @secured(groups="HuBMAP-read")
 def update_specimen_lab_ids():
-    '''
-    Batch update specimen lab ids
-    request payload: request.data
-    example: 
-    [{'TEST0001': '123456', 'TEST0002': '234567'}]
-    return: 200 OK
-            400 Bad Request
-    '''
+    
+    #Batch update specimen lab ids
+    #request payload: request.data
+    #example: 
+    #[{'TEST0001': '123456', 'TEST0002': '234567'}]
+    #return: 200 OK
+    #        400 Bad Request
+
     if not request.data:
         abort(400)
     
@@ -1762,21 +1765,17 @@ def create_donor():
             try:
                 grp_info = entity.get_group_by_identifier(group_uuid)
             except ValueError as ve:
-                return Response('''Unauthorized: Cannot find information on 
-                                group: ''' + str(group_uuid), 401)
+                return Response("Unauthorized: Cannot find information on group:" + str(group_uuid), 401)
             if grp_info['generateuuid'] == False:
-                return Response(f'''Unauthorized: This group {grp_info} is not
-                                 a group with write privileges.''', 401)
+                return Response(f"Unauthorized: This group {grp_info} is not a group with write privileges.", 401)
         else:
-            return Response('''Unauthorized: Current user is not a member of 
-                            group: ''' + str(group_uuid), 401)
+            return Response("Unauthorized: Current user is not a member of group: " + str(group_uuid), 401)
     group_uuid = (next(g for g in entity.get_user_groups(token) 
                       if g['generateuuid']) 
                  if group_uuid is None 
                  else group_uuid)
     if group_uuid is None:
-        return Response('''Unauthorized: Current user is not a member of a 
-                        group allowed to create new specimens''', 401)
+        return Response("Unauthorized: Current user is not a member of a group allowed to create new specimens", 401)
     data['group_uuid'] = group_uuid
     # 3. create donor
     file_list = []
@@ -1895,21 +1894,17 @@ def create_sample():
             try:
                 grp_info = entity.get_group_by_identifier(group_uuid)
             except ValueError as ve:
-                return Response('''Unauthorized: Cannot find information on 
-                                group: ''' + str(group_uuid), 401)
+                return Response("Unauthorized: Cannot find information on group: " + str(group_uuid), 401)
             if grp_info['generateuuid'] == False:
-                return Response(f'''Unauthorized: This group {grp_info} is not
-                                 a group with write privileges.''', 401)
+                return Response(f"Unauthorized: This group {grp_info} is not a group with write privileges.", 401)
         else:
-            return Response('''Unauthorized: Current user is not a member of 
-                            group: ''' + str(group_uuid), 401)
+            return Response("Unauthorized: Current user is not a member of group: " + str(group_uuid), 401)
     group_uuid = (next(g for g in entity.get_user_groups(token) 
                       if g['generateuuid']) 
                  if group_uuid is None 
                  else group_uuid)
     if group_uuid is None:
-        return Response('''Unauthorized: Current user is not a member of a 
-                        group allowed to create new specimens''', 401)
+        return Response("Unauthorized: Current user is not a member of a group allowed to create new specimens", 401)
     data['group_uuid'] = group_uuid
     # 3. create sample
     file_list = []
@@ -2007,6 +2002,7 @@ def update_sample(uuid):
         if conn != None:
             if conn.get_driver().closed() == False:
                 conn.close()
+'''
 
 #given a hubmap uuid and a valid Globus token returns, as json the attribute has_write with
 #value true if the user has write access to the entity.  Additionally, for datasets when a user
@@ -2074,7 +2070,7 @@ def has_write(hmuuid):
                     #compare the group_uuid in the entity to the users list of groups
                     #if the user is a member of the HuBMAP-Data-Admin group,
                     #they have write access to everything and the ability to submit datasets
-                    if data_admin_group in user_info['hmgroupids']:
+                    if data_admin_group_uuid in user_info['hmgroupids']:
                         r_val['has_write'] = True
                         if entity_type == 'dataset':
                             if status == 'new':
