@@ -757,7 +757,7 @@ def submit_dataset(uuid):
         if not 'group_uuid' in dataset_request:
             return Response("Valid group_uuid required", 400)
  
-        user_info = AuthHelper.getUserInfo(token, getGroups=True)
+        user_info = auth_helper.getUserInfo(token, getGroups=True)
         if isinstance(user_info, Response): return user_info
         if not 'hmgroupids' in user_info:
             return Response("user not authorized to submit data, unable to retrieve any group information", 403)
