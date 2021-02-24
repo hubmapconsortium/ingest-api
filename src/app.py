@@ -1976,11 +1976,26 @@ def update_sample(uuid):
 '''
 
 #given a hubmap uuid and a valid Globus token returns, as json the attribute has_write with
-#value true if the user has write access to the entity.  Additionally, for datasets when a user
-#is in the HuBMAP-Data-Admins group, it will return a "has_submit" property == true.
+#value true if the user has write access to the entity.
+#   has_write- denotes if user has write permission for a given entity
+#              true if a user is a member of the group that the entity is a member of or
+#              the user is a member of the Data Admin group, except in the case where
+#              the entity is public or has been published, in which case no one can write
+#  has_submit- denotes if a user has permission to submit a dataset.
+#              true only if the Dataset is in the New state and the user is a member of the
+#              Data Admin group
+# has_publish- denotes if a user has permission to publish a Dataset
+#              true only if the Dataset is in the QA state and the user is a member of the
+#              Data Admin group
+#
+# example url:  https://my.endpoint.server/entities/a5659553c04f6ccbe54ff073b071f349/hsa-write
+# inputs:
+#      - The uuid of a HuBMAP entity (Donor, Sample or Dataset) as a URL path parameter
+#      - A valid nexus token in a authorization bearer header
+#
 # returns
-#      200 json with attribute has_write with true value if user has write access to the entity
-#      200 json with attribute has_write with false value if user does not have write access to the entity
+#      200 json with attributes for has_write, has_submit and has_publish each true if the user
+#          can perform the specific function for the provided entity id
 #      400 if invalid hubmap uuid provided or no group_uuid found for the entity
 #      401 if user does not have hubmap read access or the token is invalid
 #      404 if the uuid is not found
@@ -1988,7 +2003,8 @@ def update_sample(uuid):
 # Example json response: 
 #                  {
 #                      "has_write": true,
-#                      "has_submit": false
+#                      "has_submit": false,
+#                      "has_publish": false
 #                  }
 
 @app.route('/entities/<hmuuid>/has-write', methods = ['GET'])
