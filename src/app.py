@@ -2062,7 +2062,7 @@ def has_write(hmuuid):
                         if entity_type == 'dataset':
                             if status == 'new':
                                 r_val['has_submit'] = True
-                            elif status == 'publish':
+                            elif status == 'qa':
                                 r_val['has_publish'] = True
                     #if in the users list of groups return true otherwise false
                     elif group_uuid in user_info['hmgroupids']:
