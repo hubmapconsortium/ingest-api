@@ -804,6 +804,7 @@ def submit_dataset(uuid):
         dataset_request['status'] = 'Processing'
         put_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/' + uuid
         response = requests.put(put_url, json = dataset_request, headers = {'Authorization': 'Bearer ' + token }, verify = False)
+        if not response.status_code == 200:
             logger.error(f"call to {put_url} failed with code:{response.status_code} message:" + response.text)
             return Response(response.text, response.status_code)
         updated_dataset = response.json()
