@@ -786,9 +786,9 @@ def submit_dataset(uuid):
         pipeline_url = commons_file_helper.ensureTrailingSlashURL(app.config['INGEST_PIPELINE_URL']) + 'request_ingest'
         r = requests.post(pipeline_url, json={"submission_id" : "{uuid}".format(uuid=uuid),
                                      "process" : app.config['INGEST_PIPELINE_DEFAULT_PROCESS'],
-                                     "full_path": ingest_helper.get_dataset_directory_absolute_path(dataset_request, group_uuid),
+                                              "full_path": ingest_helper.get_dataset_directory_absolute_path(dataset_request, group_uuid, uuid),
                                      "provider": "{group_name}".format(group_name=AuthHelper.getGroupDisplayName(group_uuid))}, 
-                                          headers={'Content-Type':'application/json', 'Authorization': 'Bearer {token}'.format(token=AuthHelper.instance().getProcessSecret() )})
+                                          headers={'Content-Type':'application/json', 'Authorization': 'Bearer {token}'.format(token=AuthHelper.instance().getProcessSecret() )}, verify=False)
         if r.ok == True:
             """expect data like this:
             {"ingest_id": "abc123", "run_id": "run_657-xyz", "overall_file_count": "99", "top_folder_contents": "["IMS", "processed_microscopy","raw_microscopy","VAN0001-RK-1-spatial_meta.txt"]"}
@@ -802,9 +802,9 @@ def submit_dataset(uuid):
             return Response("Ingest pipeline failed: " + str(r.text), r.status_code)
         
         dataset_request['status'] = 'Processing'
-        put_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + '/entities/dataset/' + uuid
-        response = requests.post(put_url, json = dataset_request, headers = {'Authorization': 'Bearer ' + token }, verify = False)
-        if response.status_code != 200:
+        put_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/' + uuid
+        response = requests.put(put_url, json = dataset_request, headers = {'Authorization': 'Bearer ' + token }, verify = False)
+            logger.error(f"call to {put_url} failed with code:{response.status_code} message:" + response.text)
             return Response(response.text, response.status_code)
         updated_dataset = response.json()
         return jsonify(updated_dataset)
