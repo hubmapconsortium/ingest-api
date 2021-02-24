@@ -538,37 +538,8 @@ def publish_datastage(uuid):
         abort(400, jsonify( { 'error': 'uuid parameter is required to publish a dataset' } ))
     
     return Response("This method is not implemented. Use manual publication script", 501)
-    
-    conn = None
-    new_uuid = None
-    try:
-        conn = Neo4jConnection(app.config['NEO4J_SERVER'], app.config['NEO4J_USERNAME'], app.config['NEO4J_PASSWORD'])
-        driver = conn.get_driver()
-        dataset = Dataset(app.config)        
-        group_uuid = get_group_uuid_from_request(request)        
-        new_uuid = dataset.publishing_process(driver, request.headers, uuid, group_uuid, True)
-        conn.close()
-        try:
-            #reindex this node in elasticsearch
-            rspn = requests.put(app.config['SEARCH_WEBSERVICE_URL'] + "/reindex/" + new_uuid, headers={'Authorization': request.headers["AUTHORIZATION"]})
-        except:
-            print("Error happened when calling reindex web service")
 
-        return jsonify( { 'uuid': new_uuid } ), 204
-    
-    except ValueError:
-        abort(404, jsonify( { 'error': 'dataset {uuid} not found'.format(uuid=uuid) } ))
-        
-    except:
-        msg = 'An error occurred: '
-        for x in sys.exc_info():
-            msg += str(x)
-        print (msg)
-        abort(400, msg)
-    finally:
-        if conn != None:
-            if conn.get_driver().closed() == False:
-                conn.close()
+
 '''
 @app.route('/datasets/<uuid>/unpublish', methods = ['PUT'])
 @secured(groups="HuBMAP-read")
