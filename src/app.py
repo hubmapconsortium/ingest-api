@@ -448,7 +448,6 @@ def create_derived_dataset():
             raise ValueError("Unable to parse globus token from request header")
 
         new_record = dataset.create_derived_datastage(nexus_token, json_data)
-
         return jsonify( new_record ), 201
     except HTTPException as hte:
         return Response(hte.get_description(), hte.get_status_code())

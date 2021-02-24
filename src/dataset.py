@@ -7,20 +7,15 @@ import requests
 from neo4j import TransactionError
 import sys
 import os
-import configparser
-import globus_sdk
-from globus_sdk import AccessTokenAuthorizer, TransferClient, AuthClient 
-import base64
-from globus_sdk.exc import TransferAPIError
 import urllib.parse
-from flask import Response
 from pprint import pprint
 import shutil
 import json
 import traceback
-import subprocess
 import logging
 import threading
+
+from ingest_file_helper import IngestFileHelper
 
 # Suppress InsecureRequestWarning warning when requesting status on https with ssl cert verify disabled
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
@@ -51,6 +46,7 @@ class Dataset(object):
     def __init__(self, config): 
         self.confdata = config
 
+    '''
     @classmethod
     def search_datasets(self, driver, token, search_term, readonly_uuid_list, writeable_uuid_list, group_uuid_list):
         return_list = []
@@ -271,27 +267,28 @@ class Dataset(object):
                 for x in sys.exc_info():
                     print (x)
                 raise
-
+    '''
 
     # Create derived dataset
     @classmethod
     def create_derived_datastage(self, nexus_token, json_data):
         global logger
-        conn = Neo4jConnection(self.confdata['NEO4J_SERVER'], self.confdata['NEO4J_USERNAME'], self.confdata['NEO4J_PASSWORD'])
-        driver = conn.get_driver()
         
         # check the incoming UUID to make sure they exist
-        incoming_sourceUUID_string = str(json_data['source_dataset_uuid']).strip()
-
-        if incoming_sourceUUID_string == None or len(incoming_sourceUUID_string) == 0:
-            raise ValueError('Error: sourceUUID must be set to create a derived dataset')
+        source_datasets = json_data['source_dataset_uuid']
+        if isinstance(source_datasets, list):
+            source_uuid = source_datasets[0].strip()
+        else:
+            source_uuid = source_datasets.strip()
+        if source_uuid == None or len(source_uuid) == 0:
+            raise ValueError('Error: source_dataset_uuid must be set to create a derived dataset')
         
         bearer_header = 'Bearer ' + nexus_token
         auth_header = {'Authorization': bearer_header}
-        get_url = file_helper.ensureTrailingSlashURL(self.confdata['ENTITY_API_URL']) + '/entities/' + incoming_sourceUUID_string        
+        get_url = file_helper.ensureTrailingSlashURL(self.confdata['ENTITY_WEBSERVICE_URL']) + 'entities/' + source_uuid.strip()        
         response = requests.get(get_url, headers = auth_header, verify = False)
         if response.status_code != 200:
-            return HTTPException("Error retrieving source dataset " + incoming_sourceUUID_string, response.status_code)
+            raise HTTPException("Error retrieving source dataset " + source_uuid, response.status_code)
         source_ds = response.json()
         
 
@@ -304,30 +301,31 @@ class Dataset(object):
         new_ds['title'] = json_data['derived_dataset_name']
         # Also use the dataset data types array from input json and store as string in metadata attribute
         new_ds['data_types'] = json_data['derived_dataset_types']
-        new_ds['direct_ancestor_uuids'] = ['incoming_sourceUUID_string']
+        new_ds['direct_ancestor_uuids'] = [source_uuid]
         new_ds['group_uuid'] = source_ds['group_uuid']
-        new_ds['group_name'] = source_ds['group_name']
+        #new_ds['group_name'] = source_ds['group_name']
 
         
         # Set the 'phi' attribute with default value as "no"
         new_ds['contains_human_genetic_sequences'] = False
         # Set the default status to New
-        new_ds['status'] = 'New'
-        new_ds['data_access_level'] = 'consortium'
+        #new_ds['status'] = 'New'
+        #new_ds['data_access_level'] = 'consortium'
 
-        post_url = file_helper.ensureTrailingSlashURL(self.confdata['ENTITY_API_URL']) + '/entities/' + incoming_sourceUUID_string        
-        response = requests.get(post_url, json=new_ds, headers = auth_header, verify = False)
+        post_url = file_helper.ensureTrailingSlashURL(self.confdata['ENTITY_WEBSERVICE_URL']) + 'entities/dataset'
+        response = requests.post(post_url, json=new_ds, headers = auth_header, verify = False)
         if response.status_code != 200:
-            return HTTPException("Error creating derived dataset", response.status_code)
+            raise HTTPException("Error creating derived dataset: " + response.text, response.status_code)
 
         ds = response.json()
-         
+        file_help = IngestFileHelper(self.confdata)
         sym_path = os.path.join(str(self.confdata['HUBMAP_WEBSERVICE_FILEPATH']),ds['uuid'])
-        new_directory_path = self.get_dataset_directory(ds['uuid'], ds['group_name'], 'consortium')   
-        new_path = make_new_dataset_directory(new_directory_path, sym_path)
+
+        new_directory_path = file_help.get_dataset_directory_absolute_path(new_ds, new_ds['group_uuid'], ds['uuid'])   
+        new_path = IngestFileHelper.make_directory(new_directory_path, sym_path)
 
         try:
-            x = threading.Thread(target=self.set_dir_permissions, args=['consortium', new_path])
+            x = threading.Thread(target=file_help.set_dir_permissions, args=['consortium', new_path])
             x.start()
         except Exception as e:
             logger = logging.getLogger('ingest.service')
@@ -381,7 +379,7 @@ class Dataset(object):
         
             
         #print(str(userinfo) + ' is curator: ' + str(is_data_curator))
-
+    '''
     @classmethod
     def ingest_datastage(self, driver, headers, incoming_record, nexus_token):
         global logger
@@ -472,12 +470,10 @@ class Dataset(object):
                 # use the remaining attributes to create the Entity Metadata node
                 metadata_record = incoming_record
 
-
                 access_level = self.get_access_level(nexus_token, driver, metadata_record)
                 metadata_record[HubmapConst.DATA_ACCESS_LEVEL] = access_level
-
                 new_directory_path = self.get_dataset_directory(datastage_uuid[HubmapConst.UUID_ATTRIBUTE], group_display_name, access_level)   
-                new_path = make_new_dataset_directory(new_directory_path, None)
+                new_path = IngestFileHelper.make_directory(new_directory_path, None)
                 new_globus_path = build_globus_url_for_directory(transfer_endpoint, new_path)
                 
                 metadata_record[HubmapConst.DATASET_GLOBUS_DIRECTORY_PATH_ATTRIBUTE] = new_globus_path
@@ -580,8 +576,8 @@ class Dataset(object):
                 for x in sys.exc_info():
                     print (x)
                 tx.rollback()
-        
-    
+    '''        
+    '''
     @classmethod
     def create_datastage(self, driver, headers, incoming_record, groupUUID):
         global logger
@@ -712,7 +708,7 @@ class Dataset(object):
                 metadata_record[HubmapConst.DATA_ACCESS_LEVEL] = access_level
 
                 new_directory_path = self.get_dataset_directory(datastage_uuid[HubmapConst.UUID_ATTRIBUTE], group_display_name, access_level)   
-                new_path = make_new_dataset_directory(new_directory_path, None)
+                new_path = IngestFileHelper.make_directory(new_directory_path, None)
                 new_globus_path = build_globus_url_for_directory(transfer_endpoint, new_path)
 
                 
@@ -763,7 +759,9 @@ class Dataset(object):
                     print (x)
                 tx.rollback()
 
-
+    '''
+    
+    '''
     @classmethod
     def publishing_process(self, driver, headers, uuid, group_uuid, status_flag):
         global logger
@@ -806,7 +804,7 @@ class Dataset(object):
                     # make the public directory
                     new_directory_path = self.get_dataset_directory(uuid, group_info['displayname'], access_level)
                     if access_level == HubmapConst.ACCESS_LEVEL_PUBLIC:   
-                        new_path = make_new_dataset_directory(new_directory_path, None)
+                        new_path = IngestFileHelper.make_directory(new_directory_path, None)
 
                     try:
                         x = threading.Thread(target=self.set_dir_permissions, args=[access_level, new_path])
@@ -843,7 +841,7 @@ class Dataset(object):
                             if access_level == HubmapConst.ACCESS_LEVEL_CONSORTIUM:
                                 new_path = self.get_dataset_directory(uuid, group_info['displayname'], HubmapConst.ACCESS_LEVEL_CONSORTIUM)
                                 
-                            make_new_dataset_directory(new_path, None)
+                            IngestFileHelper.make_directory(new_path, None)
                                 
                             x= threading.Thread(target=self.move_directory, args=[old_path, new_path])
     
@@ -902,6 +900,8 @@ class Dataset(object):
                 raise
             finally:
                 pass                
+    '''
+    
     '''
     @classmethod
     def update_filepath_dataset(self, driver, uuid, filepath): 
@@ -1101,7 +1101,7 @@ class Dataset(object):
                     print (x)
                 tx.rollback()
     
-   
+    '''   
     @classmethod
     def modify_dataset(self, driver, headers, uuid, formdata, group_uuid):
         # added this import statement to avoid a circular reference in import statements
@@ -1309,8 +1309,8 @@ class Dataset(object):
                 print ('A general error occurred: ')
                 traceback.print_exc(file=sys.stdout)
                 tx.rollback()
-    
-    
+    '''
+    '''
     @classmethod
     def process_update_request(self, driver, headers, uuid, old_status, new_status, form_data, group_uuid): 
         if Entity.does_identifier_exist(driver, uuid) != True:
@@ -1530,7 +1530,7 @@ class Dataset(object):
                 for x in sys.exc_info():
                     print (x)
                 tx.rollback()
-
+    '''
 
     @classmethod
     def get_globus_file_path(self, group_name, dataset_uuid):
@@ -1604,7 +1604,8 @@ class Dataset(object):
         
         # this is the default access level
         return HubmapConst.ACCESS_LEVEL_PROTECTED
-
+    
+    '''
     @classmethod
     def set_dir_permissions(self, access_level, file_path):
         try:
@@ -1633,7 +1634,7 @@ class Dataset(object):
             raise oserr        
         except Exception as e:
             raise e
-        
+    '''        
 
 
     @staticmethod
@@ -1794,7 +1795,7 @@ class Dataset(object):
             raise 
         return ret_path
 
-        
+'''        
 #NOTE: the file_path_symbolic_dir needs to be optional.  If it is None, do not add the symbolic link
 # somewhere else in the code, check the access level.  If the level is protected there is no symbolic link
 #def make_new_dataset_directory(file_path_root_dir, file_path_symbolic_dir, groupDisplayname, newDirUUID):
@@ -1812,7 +1813,7 @@ def make_new_dataset_directory(new_file_path, symbolic_file_path=None):
             raise OSError('User not authorized to create new directory: ' + new_file_path)
     except:
         raise
-
+'''
 
 def build_globus_url_for_directory(transfer_endpoint_uuid,new_directory):
     encoded_path = urllib.parse.quote(str(new_directory))
