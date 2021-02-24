@@ -540,6 +540,8 @@ def publish_datastage(uuid):
     if uuid == None or len(uuid) == 0:
         abort(400, jsonify( { 'error': 'uuid parameter is required to publish a dataset' } ))
     
+    return Response("This method is not implemented. Use manual publication script", 501)
+    
     conn = None
     new_uuid = None
     try:
