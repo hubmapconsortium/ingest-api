@@ -754,8 +754,27 @@ def submit_dataset(uuid):
         else:
             return(Response("Valid nexus auth token required", 401))
  
-        if not 'group_uuid' in dataset_request:
-            return Response("Valid group_uuid required", 400)
+        if 'group_uuid' in dataset_request:
+            return Response("Cannot specify group_uuid.  The group ownership cannot be changed after an entity has been created.", 400)
+        
+        conn = Neo4jConnection(app.config['NEO4J_SERVER'], app.config['NEO4J_USERNAME'], app.config['NEO4J_PASSWORD'])
+        driver = conn.get_driver()
+        
+        with driver.session() as session:
+            #query Neo4j db to get the group_uuid
+            stmt = "match (d:Dataset {uuid:'" + uuid.strip() + "'}) return d.group_uuid as group_uuid"
+            recds = session.run(stmt)
+            #this assumes there is only one result returned, but we use the for loop
+            #here because standard list (len, [idx]) operators don't work with
+            #the neo4j record list object
+            count = 0
+            group_uuid = None
+            for record in recds:
+                count = count + 1
+                group_uuid = record.get('group_uuid', None) 
+                if group_uuid == None:
+                    return Response(f"Unable to process submit.  group_uuid not found on entity:{uuid}", 400)
+            if count == 0: return Response(f"Dataset with uuid:{uuid} not found.", 404) 
  
         user_info = auth_helper.getUserInfo(token, getGroups=True)
         if isinstance(user_info, Response): return user_info
@@ -1988,7 +2007,7 @@ def update_sample(uuid):
 #                   true only if the Dataset is in the QA state and the user is a member of the
 #                   Data Admin group
 #
-# example url:  https://my.endpoint.server/entities/a5659553c04f6ccbe54ff073b071f349/hsa-write
+# example url:  https://my.endpoint.server/entities/a5659553c04f6ccbe54ff073b071f349/allowable-edit-states
 # inputs:
 #      - The uuid of a HuBMAP entity (Donor, Sample or Dataset) as a URL path parameter
 #      - A valid nexus token in a authorization bearer header
