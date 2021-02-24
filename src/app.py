@@ -786,8 +786,8 @@ def submit_dataset(uuid):
         pipeline_url = commons_file_helper.ensureTrailingSlashURL(app.config['INGEST_PIPELINE_URL']) + 'request_ingest'
         r = requests.post(pipeline_url, json={"submission_id" : "{uuid}".format(uuid=uuid),
                                      "process" : app.config['INGEST_PIPELINE_DEFAULT_PROCESS'],
-                                     "full_path": ingest_helper.get_dataset_directory_absolute_path(dataset_request),
-                                     "provider": "{group_name}".format(group_name=AuthHelper.getGroupDisplayName(dataset_request['group_uuid']))}, 
+                                     "full_path": ingest_helper.get_dataset_directory_absolute_path(dataset_request, group_uuid),
+                                     "provider": "{group_name}".format(group_name=AuthHelper.getGroupDisplayName(group_uuid))}, 
                                           headers={'Content-Type':'application/json', 'Authorization': 'Bearer {token}'.format(token=AuthHelper.instance().getProcessSecret() )})
         if r.ok == True:
             """expect data like this:

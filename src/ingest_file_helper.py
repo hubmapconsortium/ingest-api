@@ -32,8 +32,8 @@ class IngestFileHelper:
             os.symlink(new_file_path, symbolic_file_path, True)
         return new_file_path
 
-    def get_dataset_directory_absolute_path(self, dataset_record):
-        grp_name = AuthHelper.getGroupDisplayName(dataset_record['group_uuid'])
+    def get_dataset_directory_absolute_path(self, dataset_record, group_uuid):
+        grp_name = AuthHelper.getGroupDisplayName(group_uuid)
         if dataset_record['contains_human_genetic_sequences']:
             base_dir = self.appconfig['GLOBUS_PROTECTED_ENDPOINT_FILEPATH']
         elif dataset_record['status'] == 'Published':
