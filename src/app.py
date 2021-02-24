@@ -1975,18 +1975,18 @@ def update_sample(uuid):
                 conn.close()
 '''
 
-#given a hubmap uuid and a valid Globus token returns, as json the attribute has_write with
+#given a hubmap uuid and a valid Globus token returns, as json the attribute has_write_priv with
 #value true if the user has write access to the entity.
-#   has_write- denotes if user has write permission for a given entity
-#              true if a user is a member of the group that the entity is a member of or
-#              the user is a member of the Data Admin group, except in the case where
-#              the entity is public or has been published, in which case no one can write
-#  has_submit- denotes if a user has permission to submit a dataset.
-#              true only if the Dataset is in the New state and the user is a member of the
-#              Data Admin group
-# has_publish- denotes if a user has permission to publish a Dataset
-#              true only if the Dataset is in the QA state and the user is a member of the
-#              Data Admin group
+#   has_write_priv- denotes if user has write permission for a given entity
+#                   true if a user is a member of the group that the entity is a member of or
+#                   the user is a member of the Data Admin group, except in the case where
+#                   the entity is public or has been published, in which case no one can write
+#  has_submit_priv- denotes if a user has permission to submit a dataset.
+#                   true only if the Dataset is in the New state and the user is a member of the
+#                   Data Admin group
+# has_publish_priv- denotes if a user has permission to publish a Dataset
+#                   true only if the Dataset is in the QA state and the user is a member of the
+#                   Data Admin group
 #
 # example url:  https://my.endpoint.server/entities/a5659553c04f6ccbe54ff073b071f349/hsa-write
 # inputs:
@@ -1994,22 +1994,22 @@ def update_sample(uuid):
 #      - A valid nexus token in a authorization bearer header
 #
 # returns
-#      200 json with attributes for has_write, has_submit and has_publish each true if the user
-#          can perform the specific function for the provided entity id
+#      200 json with attributes for has_write_priv, has_submit_priv and has_publish_priv each true
+#          if the user can perform the specific function for the provided entity id
 #      400 if invalid hubmap uuid provided or no group_uuid found for the entity
 #      401 if user does not have hubmap read access or the token is invalid
 #      404 if the uuid is not found
 #
 # Example json response: 
 #                  {
-#                      "has_write": true,
-#                      "has_submit": false,
-#                      "has_publish": false
+#                      "has_write_priv": true,
+#                      "has_submit_priv": false,
+#                      "has_publish_priv": false
 #                  }
 
-@app.route('/entities/<hmuuid>/has-write', methods = ['GET'])
+@app.route('/entities/<hmuuid>/allowable-edit-states', methods = ['GET'])
 @secured(groups="HuBMAP-read")
-def has_write(hmuuid):
+def allowable_edit_states(hmuuid):
     #if no uuid provided send back a 400
     if hmuuid == None or len(hmuuid) == 0:
         abort(400, jsonify( { 'error': 'hmuuid (HuBMAP UUID) parameter is required.' } ))
@@ -2028,7 +2028,7 @@ def has_write(hmuuid):
             #here because standard list (len, [idx]) operators don't work with
             #the neo4j record list object
             count = 0
-            r_val = {"has_write":False, "has_submit":False, "has_publish":False }
+            r_val = {"has_write_priv":False, "has_submit_priv":False, "has_publish_priv":False }
             for record in recds:
                 count = count + 1
                 if record.get('e.group_uuid', None) != None:
@@ -2058,17 +2058,17 @@ def has_write(hmuuid):
                     #if the user is a member of the HuBMAP-Data-Admin group,
                     #they have write access to everything and the ability to submit datasets
                     if data_admin_group_uuid in user_info['hmgroupids']:
-                        r_val['has_write'] = True
+                        r_val['has_write_priv'] = True
                         if entity_type == 'dataset':
                             if status == 'new':
-                                r_val['has_submit'] = True
+                                r_val['has_submit_priv'] = True
                             elif status == 'qa':
-                                r_val['has_publish'] = True
+                                r_val['has_publish_priv'] = True
                     #if in the users list of groups return true otherwise false
                     elif group_uuid in user_info['hmgroupids']:
-                        r_val['has_write'] = True
+                        r_val['has_write_priv'] = True
                     else:
-                        r_val['has_write'] = False
+                        r_val['has_write_priv'] = False
                 else:
                     return Response("Entity group uuid not found", 400)
                 
