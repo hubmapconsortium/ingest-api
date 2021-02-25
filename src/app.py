@@ -2063,11 +2063,10 @@ def allowable_edit_states(hmuuid):
                         return Response(json.dumps(r_val), 200, mimetype='application/json')
                     group_uuid = record.get('e.group_uuid', '').strip()
                     data_access_level = record.get('e.data_access_level', '').strip().lower()
-                    status = record.get('e.status', '').strip().lower()
-                    entity_type = record.get('e.entity_type', '').strip().lower()
-                    
+                    entity_type = record.get('e.entity_type', '').strip().lower()  
                     #if it is published, no write allowed
                     if entity_type == 'dataset':
+                        status = record.get('e.status', '')                        
                         if status == 'published':
                             return Response(json.dumps(r_val), 200, mimetype='application/json')
                     #if the entity is public, no write allowed
