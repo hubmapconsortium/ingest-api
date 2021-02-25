@@ -66,16 +66,16 @@ class IngestFileHelper:
         acl_text = None
         if access_level == HubmapConst.ACCESS_LEVEL_PROTECTED:
             acl_text = 'u::rwx,g::r-x,o::---,m::rwx,u:{hive_user}:rwx,u:{admin_user}:rwx,g:{seq_group}:r-x,d:user::rwx,d:user:{hive_user}:rwx,d:user:{admin_user}:rwx,d:group:{seq_group}:r-x,d:group::r-x,d:mask::rwx,d:other:---'.format(
-                hive_user=self.appconfig['GLOBUS_BASE_FILE_USER_NAME'],admin_user=self.confdata['GLOBUS_ADMIN_FILE_USER_NAME'],
+                hive_user=self.appconfig['GLOBUS_BASE_FILE_USER_NAME'],admin_user=self.appconfig['GLOBUS_ADMIN_FILE_USER_NAME'],
                 seq_group=self.appconfig['GLOBUS_GENOMIC_DATA_FILE_GROUP_NAME'])
         if access_level == HubmapConst.ACCESS_LEVEL_CONSORTIUM:
             acl_text = 'u::rwx,g::r-x,o::---,m::rwx,u:{hive_user}:rwx,u:{admin_user}:rwx,g:{consortium_group}:r-x,d:user::rwx,d:user:{hive_user}:rwx,d:user:{admin_user}:rwx,d:group:{consortium_group}:r-x,d:group::r-x,d:mask::rwx,d:other:---'.format(
-                hive_user=self.appconfig['GLOBUS_BASE_FILE_USER_NAME'],admin_user=self.confdata['GLOBUS_ADMIN_FILE_USER_NAME'],
+                hive_user=self.appconfig['GLOBUS_BASE_FILE_USER_NAME'],admin_user=self.appconfig['GLOBUS_ADMIN_FILE_USER_NAME'],
                 seq_group=self.appconfig['GLOBUS_GENOMIC_DATA_FILE_GROUP_NAME'],
-                consortium_group=self.confdata['GLOBUS_CONSORTIUM_FILE_GROUP_NAME'])
+                consortium_group=self.appconfig['GLOBUS_CONSORTIUM_FILE_GROUP_NAME'])
         if access_level == HubmapConst.ACCESS_LEVEL_PUBLIC:
             acl_text = 'u::rwx,g::r-x,o::r-x,m::rwx,u:{hive_user}:rwx,u:{admin_user}:rwx,d:user::rwx,d:user:{hive_user}:rwx,d:user:{admin_user}:rwx,d:group::r-x,d:mask::rwx,d:other:r-x'.format(
-                hive_user=self.appconfig['GLOBUS_BASE_FILE_USER_NAME'],admin_user=self.confdata['GLOBUS_ADMIN_FILE_USER_NAME'],
+                hive_user=self.appconfig['GLOBUS_BASE_FILE_USER_NAME'],admin_user=self.appconfig['GLOBUS_ADMIN_FILE_USER_NAME'],
                 seq_group=self.appconfig['GLOBUS_GENOMIC_DATA_FILE_GROUP_NAME'],
                 consortium_group=self.appconfig['GLOBUS_CONSORTIUM_FILE_GROUP_NAME'])
         # apply the permissions
