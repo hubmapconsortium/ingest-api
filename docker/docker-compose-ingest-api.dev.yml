@@ -1,8 +1,10 @@
 version: "3.7"
+
 # Will use the hostname when talking between services on the same network
 services:
+  
   ingest-api:
-    build:
+    build: 
       context: ./ingest-api-dev
       args:
         # The commons github branch to be used during image build (default to master if not set or null)
@@ -53,10 +55,10 @@ services:
       - GENOMIC_DATA_FILE_GROUP_GID=${GENOMIC_DATA_FILE_GROUP_GID:-24358}
     volumes:
       # Mount the VERSION file and BUILD file
-      - "../VERSION:/usr/src/app/src/VERSION"
-      - "../BUILD:/usr/src/app/src/BUILD"
+      - "../VERSION:/usr/src/app/VERSION"
+      - "../BUILD:/usr/src/app/BUILD"
       # Mount the source code to container
-      - "../src/ingest-api:/usr/src/app/src"
+      - "../src:/usr/src/app/src"
       # Mount the logging to container
       - "../log:/usr/src/app/log"
       # Mount ssl certificates from host to container
@@ -71,5 +73,6 @@ services:
       - "/hive/hubmap-dev:/hive/hubmap-dev"
     networks:
       - hubmap
+
 networks:
   hubmap:
