@@ -12,6 +12,7 @@ from flask_cors import CORS
 from globus_sdk import AccessTokenAuthorizer, AuthClient, ConfidentialAppAuthClient
 
 from dataset import Dataset
+from specimen import Specimen
 from ingest_file_helper import IngestFileHelper
 #from file_helper import FileHelper
 
@@ -1516,6 +1517,7 @@ def does_specimen_exist(uuid):
         for x in sys.exc_info():
             msg += str(x)
         abort(400, msg)
+'''
 
 @app.route('/specimens/<identifier>/ingest-group-ids', methods=['GET'])
 @secured(groups="HuBMAP-read")
@@ -1583,6 +1585,7 @@ def get_ingest_group_count(identifier):
             if conn.get_driver().closed() == False:
                 conn.close()
 
+'''
 
 @app.route('/specimens/<identifier>', methods=['GET'])
 @secured(groups="HuBMAP-read")
