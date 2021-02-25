@@ -472,18 +472,16 @@ def create_datastage():
         if 'group_uuid' in dataset_request:
             requested_group_uuid = dataset_request['group_uuid']
         
-        #this method is called only to ensure that the user has the proper
-        #write privileges.  If not an HTTPException will be thrown and handled below
         ingest_helper = IngestFileHelper(app.config)
-        auth_helper.get_write_group_uuid(token, requested_group_uuid)
-                    
+        requested_group_uuid = auth_helper.get_write_group_uuid(token, requested_group_uuid)
+        dataset_request['group_uuid'] = requested_group_uuid            
         post_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + '/entities/dataset'
         response = requests.post(post_url, json = dataset_request, headers = {'Authorization': 'Bearer ' + token }, verify = False)
         if response.status_code != 200:
             return Response(response.text, response.status_code)
         new_dataset = response.json()
         
-        ingest_helper.create_dataset_directory(new_dataset)
+        ingest_helper.create_dataset_directory(new_dataset, requested_group_uuid, new_dataset['uuid'])
 
         return jsonify(new_dataset)
     except HTTPException as hte:

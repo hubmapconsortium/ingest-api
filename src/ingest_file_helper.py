@@ -44,13 +44,13 @@ class IngestFileHelper:
         abs_path = str(os.path.join(base_dir, grp_name, dataset_uuid))
         return abs_path
 
-    def create_dataset_directory(self, dataset_record):
+    def create_dataset_directory(self, dataset_record, group_uuid, dataset_uuid):
         if dataset_record['contains_human_genetic_sequences']:
             access_level = 'protected'
         else:
             access_level = 'consortium'
             
-        new_directory_path = self.get_dataset_directory_absolute_path(dataset_record)
+        new_directory_path = self.get_dataset_directory_absolute_path(dataset_record, group_uuid, dataset_uuid)
         IngestFileHelper.make_directory(new_directory_path, None)
         try:
             if dataset_record['contains_human_genetic_sequences']:
