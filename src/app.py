@@ -5,18 +5,13 @@ Created on Apr 23, 2019
 '''
 import sys
 import os
-import pathlib
 import requests
 import argparse
-import shutil
 from flask import Flask, jsonify, abort, request, session, redirect, json, Response
 from flask_cors import CORS
 from globus_sdk import AccessTokenAuthorizer, AuthClient, ConfidentialAppAuthClient
-import uuid
 
 from dataset import Dataset
-from collection import Collection
-from specimen import Specimen
 from ingest_file_helper import IngestFileHelper
 #from file_helper import FileHelper
 
@@ -26,9 +21,9 @@ from hubmap_commons.hm_auth import AuthHelper, secured
 from hubmap_commons.entity import Entity
 from hubmap_commons.autherror import AuthError
 from hubmap_commons.metadata import Metadata
-from hubmap_commons.hubmap_error import HubmapError
 from hubmap_commons.exceptions import HTTPException
 from hubmap_commons import string_helper
+from hubmap_commons.string_helper import isBlank
 from hubmap_commons import net_helper
 from hubmap_commons import file_helper as commons_file_helper
 
@@ -2061,12 +2056,26 @@ def allowable_edit_states(hmuuid):
                         return Response("Unable to obtain user information for auth token", 401)
                     if not 'hmgroupids' in user_info:
                         return Response(json.dumps(r_val), 200, mimetype='application/json')
-                    group_uuid = record.get('e.group_uuid', '').strip()
-                    data_access_level = record.get('e.data_access_level', '').strip().lower()
-                    entity_type = record.get('e.entity_type', '').strip().lower()  
+                    group_uuid = record.get('e.group_uuid', None)
+                    data_access_level = record.get('e.data_access_level', None)
+                    entity_type = record.get('e.entity_type', None)
+                    status = record.get('e.status', None)
+                                        
+                    if isBlank(group_uuid) or isBlank(data_access_level) or isBlank(entity_type):
+                        msg = f"ERROR: unable to obtain a group_uuid, data_access_level or entity_type from database for entity uuid:{hmuuid} during a call to allowable-edit-states"
+                        logger.error(msg)
+                        return Response(msg, 500)
+                    
+
+                    data_access_level = data_access_level.lower().strip()
+                    entity_type = entity_type.lower().strip()                          
                     #if it is published, no write allowed
                     if entity_type == 'dataset':
-                        status = record.get('e.status', '')                        
+                        if isBlank(status):
+                            msg = f"ERROR: unable to obtain status field from db for dataset with uuid:{hmuuid} during a call to allowable-edit-states"
+                            logger.error(msg)
+                            return Response(msg, 500)
+                        status = status.lower().strip()
                         if status == 'published':
                             return Response(json.dumps(r_val), 200, mimetype='application/json')
                     #if the entity is public, no write allowed
