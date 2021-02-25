@@ -30,7 +30,6 @@ services:
       - "443:4430"
       # ingest-pipeline
       - "5555:5555"
-      - "5556:5556"
       # ingest-api on http 7777 to be used by airflow
       - "7777:7777"
     environment:
@@ -67,6 +66,8 @@ services:
       - "./ingest-api-dev/nginx/conf.d:/etc/nginx/conf.d"
       # favicon.ico
       - "./ingest-api-dev/nginx/html:/usr/share/nginx/html"
+      # Airflow static files
+      - "/hive/users/hive/hubmap/hivevm191-dev/venv/lib/python3.6/site-packages/airflow/www:/airflow-static"
       # Mount Globus data
       - "/hive/hubmap-dev:/hive/hubmap-dev"
     networks:
