@@ -2133,6 +2133,6 @@ if __name__ == '__main__':
         port = 5000
         if args.port:
             port = int(args.port)
-        app.run(port=port)
+        app.run(port=port, host='0.0.0.0')
     finally:
         pass
