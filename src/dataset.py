@@ -998,7 +998,7 @@ class Dataset(object):
             raise ValueError('cannot find "message" parameter')                  
         update_record['pipeline_message'] = json_data['message']
         update_status = update_record['status'].lower.strip()
-        if update_status == 'error' or update_status == 'invalid':
+        if update_status == 'error' or update_status == 'invalid' or update_status == 'new':
             return update_record
         metadata = None
         if 'metadata' in json_data:
