@@ -248,6 +248,43 @@ def get_user_info(token):
 ####################################################################################################
 ## Ingest API Endpoints
 ####################################################################################################
+
+
+#passthrough method to call mirror method on entity-api
+#this is need by ingest-pipeline that can only call 
+#methods via http (running on the same machine for security reasons)
+#and ingest-api will for the foreseeable future run on the same 
+#machine
+@app.route('/entities/<entity_uuid>', methods = ['GET'])
+#@secured(groups="HuBMAP-read")
+def get_entity(entity_uuid):
+    try:
+        auth_header = request.headers.get("AUTHORIZATION")
+        if auth_header is None:
+            headers = None
+        else:
+            headers = {'Authorization': auth_header, 'Accept': 'application/json', 'Content-Type': 'application/json'}
+        get_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/' + entity_uuid
+
+        response = requests.get(get_url, headers = headers, verify = False)
+        if response.status_code != 200:
+            err_msg = f"Error while calling {get_url} status code:{response.status_code}  message:{response.text}"
+            logger.error(err_msg)
+            return Response(response.text, response.status_code)
+        return jsonify (response.json()), response.status_code
+
+    except HTTPException as hte:
+        return Response(hte.get_description(), hte.get_status_code())
+
+    except ValueError as ve:
+        logger.error(str(ve))
+        return jsonify({'error' : str(ve)}), 400
+
+    except Exception as e:
+        logger.error(e, exc_info=True)
+        return Response(f"Unexpected error while retrieving entity {entity_uuid}: " + str(e), 500)
+
+
 '''
 @app.route('/datasets', methods = ['GET'])
 @secured(groups="HuBMAP-read")
