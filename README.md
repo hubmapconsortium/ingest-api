@@ -1,10 +1,39 @@
-# HuBMAP Data Ingest Portal
+# HuBMAP Data Ingest API
 
-The HuBMAP Data Ingest Portal UI is a web application built with [React](https://reactjs.org/). It contians the web UIs for both the ID System and the Data Ingest tool. The source code is located in this reposiory at `src/ingest-ui`.   
+A restful web service exposing calls needed for the [Ingest UI](https://github.com/hubmapconsortium/ingest-ui) React application. The API is documented [here](https://smart-api.info/registry?q=5a6bea1158d2652743c7a201fdb1c44d).
 
-And the backend ingest API is located in this repository at `src/ingest-api`, this is a restful web service exposing calls needed for the ingest UI React application.  The API is documented [here](https://smart-api.info/registry?q=5a6bea1158d2652743c7a201fdb1c44d).
+## Flask app configuration
 
-## Development and deployment environments
+This application is written in Flask and it includes an **app.cfg.example** file in the `instance` directory.  Copy the file and rename it **app.cfg** and modify  with the appropriate information.
+
+## Standalone local development
+
+This assumes you are developing the code with the Flask development server and you have access to the remote neo4j database.
+
+### Install dependencies
+
+````
+sudo pip3 install -r requirements.txt
+````
+
+Note: if you need to use a modified version of the [HuBMAP commons] dependency, download the code and make changes, then install the dependency using `src/requirements_dev.txt` and make sure the local file system path is specified correctly.
+
+### Start Flask development server
+
+````
+cd src
+export FLASK_APP=app.py
+export FLASK_ENV=development
+flask run
+````
+
+This code runs by default on port 5000. You can change the port using a `-p` or `--port` switch at command line. For instance:
+
+````
+flask run -p 5001
+````
+
+## Docker development and deployment environments
 
 We have the following 5 development and deployment environments:
 
@@ -18,7 +47,7 @@ We have the following 5 development and deployment environments:
 
 This option allows you to setup all the pieces in a containerized environment with docker and docker-compose. This requires to have the [HuBMAP Gateway](https://github.com/hubmapconsortium/gateway) running locally before starting building this docker compose project. Please follow the [instructions](https://github.com/hubmapconsortium/gateway#workflow-of-setting-up-multiple-hubmap-docker-compose-projects). It also requires the Gateway project to be configured accordingly.
 
-### Remote deployment of ingest API individually
+### Remote deployment
 
 In localhost mode, all the docker containers are running on the same host machine. However, the ingest-api will be deployed on a separare host machine for dev, test, stage, and prod mode due to different deployment requirements. 
 
@@ -88,12 +117,4 @@ You can also stop the running container and remove it by:
 
 ### Updating API Documentation
 
-The documentation for the API calls is hosted on SmartAPI.  Modifying the `ingest-api-spec.yaml` file and commititng the changes to github should update the API shown on SmartAPI.  SmartAPI allows users to register API documents.  The documentation is associated with this github account: api-developers@hubmapconsortium.org. Please contact Chuck Borromeo (chb69@pitt.edu) if you want to register a new API on SmartAPI.
-
-### Remote deployment of ingest UI individually
-
-Similar to the ingest-api, just use the `ingest-ui-docker.sh`
-
-````
-Usage: ./ingest-ui-docker.sh [localhost|dev|test|stage|prod] [check|config|build|start|stop|down]
-````
+The documentation for the API calls is hosted on SmartAPI.  Modifying the `ingest-api-spec.yaml` file and commititng the changes to github should update the API shown on SmartAPI.  SmartAPI allows users to register API documents.  The documentation is associated with this github account: api-developers@hubmapconsortium.org. 
