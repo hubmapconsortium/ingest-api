@@ -1029,7 +1029,7 @@ class Dataset(object):
                 else:
                     raise ValueError('antibodies array included twice in request data')
             if 'contributors' in meta_lvl2:
-                if not contributors is None:
+                if contributors is None:
                     contributors = meta_lvl2['contributors']
                     meta_lvl2.pop('contributors')
                 else:
@@ -1037,13 +1037,13 @@ class Dataset(object):
             if 'metadata' in meta_lvl2:
                 meta_lvl3 = meta_lvl2['metadata']
                 if 'antibodies' in meta_lvl3:
-                    if not antibodies is None:
+                    if antibodies is None:
                         antibodies = meta_lvl3['antibodies']
                         meta_lvl3.pop('antibodies')
                     else:
                         raise ValueError('antibodies array included twice in request data')
                 if 'contributors' in meta_lvl3:
-                    if not contributors is None:
+                    if contributors is None:
                         contributors = meta_lvl3['contributors']
                         meta_lvl3.pop('contributors')
                     else:
