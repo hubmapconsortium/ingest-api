@@ -249,6 +249,27 @@ def get_user_info(token):
 ## Ingest API Endpoints
 ####################################################################################################
 
+@app.route('/datasets/<ds_uuid>/file-system-abs-path', methods = ['GET'])
+def get_file_system_absolute_path(ds_uuid):
+    try:
+        dset = __get_entity(ds_uuid, auth_header = request.headers.get("AUTHORIZATION"))
+        ent_type = __get_dict_prop(dset, 'entity_type')
+        group_uuid = __get_dict_prop(dset, 'group_uuid')
+        is_phi = __get_dict_prop(dset, 'contains_human_genetic_sequences')
+        if ent_type is None or not ent_type.lower().strip() == 'dataset':
+            return Response(f"Entity with uuid:{ds_uuid} is not a Dataset", 400)
+        if group_uuid is None:
+            return Response(f"Error: Unable to find group uuid on dataset {ds_uuid}", 400)
+        if is_phi is None:
+            return Response(f"Error: contains_human_genetic_sequences is not set on dataset {ds_uuid}", 400)
+        ingest_helper = IngestFileHelper(app.config)
+        path = ingest_helper.get_dataset_directory_absolute_path(dset, group_uuid, ds_uuid)
+        return jsonify ({'path': path}), 200    
+    except HTTPException as hte:
+        return Response(f"Error while getting file-system-abs-path for {ds_uuid}: " + hte.get_description(), hte.get_status_code())
+    except Exception as e:
+        logger.error(e, exc_info=True)
+        return Response(f"Unexpected error while retrieving entity {ds_uuid}: " + str(e), 500)
 
 #passthrough method to call mirror method on entity-api
 #this is need by ingest-pipeline that can only call 
@@ -259,30 +280,34 @@ def get_user_info(token):
 #@secured(groups="HuBMAP-read")
 def get_entity(entity_uuid):
     try:
-        auth_header = request.headers.get("AUTHORIZATION")
-        if auth_header is None:
-            headers = None
-        else:
-            headers = {'Authorization': auth_header, 'Accept': 'application/json', 'Content-Type': 'application/json'}
-        get_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/' + entity_uuid
-
-        response = requests.get(get_url, headers = headers, verify = False)
-        if response.status_code != 200:
-            err_msg = f"Error while calling {get_url} status code:{response.status_code}  message:{response.text}"
-            logger.error(err_msg)
-            return Response(response.text, response.status_code)
-        return jsonify (response.json()), response.status_code
-
+        entity = __get_entity(entity_uuid, auth_header = request.headers.get("AUTHORIZATION"))
+        return jsonify (entity), 200    
     except HTTPException as hte:
         return Response(hte.get_description(), hte.get_status_code())
-
-    except ValueError as ve:
-        logger.error(str(ve))
-        return jsonify({'error' : str(ve)}), 400
-
     except Exception as e:
         logger.error(e, exc_info=True)
         return Response(f"Unexpected error while retrieving entity {entity_uuid}: " + str(e), 500)
+
+def __get_dict_prop(dic, prop_name):
+    if not prop_name in dic: return None
+    val = dic[prop_name]
+    if isinstance(val, str) and val.strip() == '': return None
+    return val
+
+def __get_entity(entity_uuid, auth_header = None):
+    if auth_header is None:
+        headers = None
+    else:
+        headers = {'Authorization': auth_header, 'Accept': 'application/json', 'Content-Type': 'application/json'}
+    get_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/' + entity_uuid
+
+    response = requests.get(get_url, headers = headers, verify = False)
+    if response.status_code != 200:
+        err_msg = f"Error while calling {get_url} status code:{response.status_code}  message:{response.text}"
+        logger.error(err_msg)
+        raise HTTPException(err_msg, response.status_code)
+
+    return response.json()
 
 
 '''
@@ -648,7 +673,7 @@ def update_dataset_status(uuid, new_status):
         if conn != None:
             if conn.get_driver().closed() == False:
                 conn.close()
-
+    
 @app.route('/datasets/status', methods = ['PUT'])
 # @secured(groups="HuBMAP-read")
 def update_ingest_status():
