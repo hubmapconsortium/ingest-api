@@ -21,17 +21,25 @@ from ingest_file_helper import IngestFileHelper
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
 from hubmap_commons.uuid_generator import UUID_Generator
-from hubmap_commons.hubmap_const import HubmapConst 
-from hubmap_commons.neo4j_connection import Neo4jConnection
 from hubmap_commons.hm_auth import AuthHelper, AuthCache
 from hubmap_commons.entity import Entity
 from hubmap_commons.autherror import AuthError
-from hubmap_commons.metadata import Metadata
-from hubmap_commons.activity import Activity
-from hubmap_commons.provenance import Provenance
 from hubmap_commons.file_helper import linkDir, unlinkDir, mkDir
 from hubmap_commons import file_helper
 from hubmap_commons.exceptions import HTTPException
+
+# Deprecated
+#from hubmap_commons.neo4j_connection import Neo4jConnection
+#from hubmap_commons.metadata import Metadata
+#from hubmap_commons.activity import Activity
+#from hubmap_commons.provenance import Provenance
+
+# Should be deprecated but still in use
+from hubmap_commons.hubmap_const import HubmapConst 
+
+# The new neo4j_driver module from commons
+from hubmap_commons import neo4j_driver
+
 
 requests.packages.urllib3.disable_warnings(category = InsecureRequestWarning)
 
@@ -45,6 +53,20 @@ class Dataset(object):
     
     def __init__(self, config): 
         self.confdata = config
+
+        # The new neo4j_driver (from commons package) is a singleton module
+        # This neo4j_driver_instance will be used for application-specifc neo4j queries
+        # as well as being passed to the schema_manager
+        try:
+            self.neo4j_driver_instance = neo4j_driver.instance(config['NEO4J_SERVER'], 
+                                                          config['NEO4J_USERNAME'], 
+                                                          config['NEO4J_PASSWORD'])
+
+            logger.info("Initialized neo4j_driver module successfully :)")
+        except Exception:
+            msg = "Failed to initialize the neo4j_driver module"
+            # Log the full stack trace, prepend a line with our message
+            logger.exception(msg)
 
     '''
     @classmethod
@@ -1728,9 +1750,11 @@ class Dataset(object):
         driver = None
         try:
             if group_display_name == None and data_access_level == None:
-                conn = Neo4jConnection(self.confdata['NEO4J_SERVER'], self.confdata['NEO4J_USERNAME'], self.confdata['NEO4J_PASSWORD'])
-                driver = conn.get_driver()
-                dataset = Dataset.get_dataset(driver, dataset_uuid)
+                # Deprecated
+                # conn = Neo4jConnection(self.confdata['NEO4J_SERVER'], self.confdata['NEO4J_USERNAME'], self.confdata['NEO4J_PASSWORD'])
+                # driver = conn.get_driver()
+
+                dataset = Dataset.get_dataset(self.neo4j_driver_instance, dataset_uuid)
                 data_access_level = dataset[HubmapConst.DATA_ACCESS_LEVEL]
                 group_display_name = dataset[HubmapConst.PROVENANCE_GROUP_NAME_ATTRIBUTE]
 
@@ -1868,9 +1892,12 @@ if __name__ == "__main__":
     NEO4J_SERVER = 'bolt://localhost:7687'
     NEO4J_USERNAME = 'neo4j'
     NEO4J_PASSWORD = '123'
-    conn = Neo4jConnection(NEO4J_SERVER, NEO4J_USERNAME, NEO4J_PASSWORD)
+    
+    #conn = Neo4jConnection(NEO4J_SERVER, NEO4J_USERNAME, NEO4J_PASSWORD)
+    
     nexus_token = 'AgNkroqO86BbgjPxYk9Md20r8lKJ04WxzJnqrm7xWvDKg1lvgbtgCwnxdYBNYw85OkGmoo1wxPb4GMfjO8dakf24g7'
-    driver = conn.get_driver()
+    
+    #driver = conn.get_driver()
     
     UUID_WEBSERVICE_URL = 'http://localhost:5001/hmuuid'
 
