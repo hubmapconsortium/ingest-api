@@ -4,7 +4,7 @@ Created on Apr 18, 2019
 @author: chb69
 '''
 import requests
-from neo4j import TransactionError
+from neo4j.exceptions import TransactionError
 import sys
 import os
 import urllib.parse
