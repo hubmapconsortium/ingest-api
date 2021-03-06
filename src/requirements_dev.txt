@@ -1,7 +1,7 @@
 requests>=2.25.1
 Flask>=1.1.2
 flask_cors>=3.0.10
-globus_sdk==2.0.1
+globus_sdk>=2.0.1
 jsonref>=0.2
 jsonschema>=3.2.0
 libs>=0.0.9
