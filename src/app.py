@@ -43,8 +43,9 @@ import time
 import logging
 from pathlib import Path
 
-LOG_FILE_NAME = "../log/ingest-api-" + time.strftime("%d-%m-%Y-%H-%M-%S") + ".log" 
-logger = None
+# Commented out by Zhou - 3/5/2021
+# LOG_FILE_NAME = "../log/ingest-api-" + time.strftime("%d-%m-%Y-%H-%M-%S") + ".log" 
+# logger = None
 
 # Specify the absolute path of the instance folder and use the config file relative to the instance path
 app = Flask(__name__, instance_path=os.path.join(os.path.abspath(os.path.dirname(__file__)), 'instance'), instance_relative_config=True)
@@ -66,20 +67,27 @@ else:
 
 data_admin_group_uuid = '89a69625-99d7-11ea-9366-0e98982705c1'
 
-@app.before_first_request
-def init():
-    global logger
-    try:
-        logger = logging.getLogger('ingest.service')
-        logger.setLevel(logging.INFO)
-        logFH = logging.FileHandler(LOG_FILE_NAME)
-        logger.addHandler(logFH)
-        logger.info("started")
-    except Exception as e:
-        print("Error opening log file during startup")
-        print(str(e))
+# Commented out by Zhou - 3/5/2021
+# @app.before_first_request
+# def init():
+#     global logger
+#     try:
+#         logger = logging.getLogger('ingest.service')
+#         logger.setLevel(logging.INFO)
+#         logFH = logging.FileHandler(LOG_FILE_NAME)
+#         logger.addHandler(logFH)
+#         logger.info("started")
+#     except Exception as e:
+#         print("Error opening log file during startup")
+#         print(str(e))
 
 
+# Set logging fromat and level (default is warning)
+# All the API logging is forwarded to the uWSGI server and gets written into the log file `uwsgo-entity-api.log`
+# Log rotation is handled via logrotate on the host system with a configuration file
+# Do NOT handle log file and rotation via the Python logging to avoid issues with multi-worker processes
+logging.basicConfig(format='[%(asctime)s] %(levelname)s in %(module)s: %(message)s', level=logging.DEBUG, datefmt='%Y-%m-%d %H:%M:%S')
+logger = logging.getLogger(__name__)
 
 
 ####################################################################################################
