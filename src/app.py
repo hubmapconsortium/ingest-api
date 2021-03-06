@@ -157,9 +157,15 @@ def status():
         
         #check the neo4j connection
         try:
-            # conn = Neo4jConnection(app.config['NEO4J_SERVER'], app.config['NEO4J_USERNAME'], app.config['NEO4J_PASSWORD'])
-            # driver = conn.get_driver()
-            is_connected = conn.check_connection(neo4j_driver_instance)
+            with neo4j_driver_instance.session() as session:
+                recds = session.run("Match () Return 1 Limit 1")
+                for recd in recds:
+                    if recd[0] == 1:
+                        is_connected = True
+                    else:
+                        is_connected = False
+
+                is_connected = True
         #the neo4j connection will often fail via exception so
         #catch it here, flag as failure and track the returned error message
         except Exception as e:
@@ -1177,38 +1183,33 @@ def get_collection(identifier):
 def user_group_list():
     token = str(request.headers["AUTHORIZATION"])[7:]
     try:
-        entity = Entity(app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'], app.config['UUID_WEBSERVICE_URL'])
-        group_list = entity.get_user_groups(token)
+        auth_helper = AuthHelper.configured_instance(app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'])        
+        group_list = auth_helper.get_user_groups_deprecated(token)
         return jsonify( {'groups' : group_list}), 200
-    except AuthError as e:
-        print(e)
-        return Response('token is invalid', 401)
-    except:
-        msg = 'An error occurred: '
-        for x in sys.exc_info():
-            msg += str(x)
-        abort(400, msg)
+    except HTTPException as hte:
+        return Response(hte.get_description(), hte.get_status_code())
+    except Exception as e:
+        logger.error(e, exc_info=True)
+        return Response("Unexpected error while creating a dataset: " + str(e) + "  Check the logs", 500)        
 
 @app.route('/metadata/userroles', methods = ['GET'])
 @secured(groups="HuBMAP-read")
 def user_role_list():
     token = str(request.headers["AUTHORIZATION"])[7:]
     try:
-        entity = Entity(app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'], app.config['UUID_WEBSERVICE_URL'])
-        role_list = entity.get_user_roles(token)
+        auth_helper = AuthHelper.configured_instance(app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'])                
+        role_list = auth_helper.get_user_roles_deprecated(token)
         
         #temp code!!
         #role_list = []
         
         return jsonify( {'roles' : role_list}), 200
-    except AuthError as e:
-        print(e)
-        return Response('token is invalid', 401)
-    except:
-        msg = 'An error occurred: '
-        for x in sys.exc_info():
-            msg += str(x)
-        abort(400, msg)
+    except HTTPException as hte:
+        return Response(hte.get_description(), hte.get_status_code())
+    except Exception as e:
+        logger.error(e, exc_info=True)
+        return Response("Unexpected error while creating a dataset: " + str(e) + "  Check the logs", 500)        
+
 
 '''
 # this method returns a JSON list of the UUIDs for the entities the current user can edit.  The entitytype is an optional parameter.  If it is not set,
@@ -2228,10 +2229,10 @@ def allowable_edit_states(hmuuid):
         for x in sys.exc_info():
             msg += str(x)
         abort(400, msg)
-    finally:
-        if conn != None:
-            if conn.get_driver().closed() == False:
-                conn.close()
+ #   finally:
+ #       if conn != None:
+ #           if conn.get_driver().closed() == False:
+ #               conn.close()
 
 
 # This is for development only
