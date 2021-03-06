@@ -22,7 +22,6 @@ from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
 from hubmap_commons.uuid_generator import UUID_Generator
 from hubmap_commons.hm_auth import AuthHelper, AuthCache
-from hubmap_commons.entity import Entity
 from hubmap_commons.autherror import AuthError
 from hubmap_commons.file_helper import linkDir, unlinkDir, mkDir
 from hubmap_commons import file_helper
@@ -33,6 +32,7 @@ from hubmap_commons.exceptions import HTTPException
 #from hubmap_commons.metadata import Metadata
 #from hubmap_commons.activity import Activity
 #from hubmap_commons.provenance import Provenance
+#from hubmap_commons.entity import Entity
 
 # Should be deprecated but still in use
 from hubmap_commons.hubmap_const import HubmapConst 
@@ -1663,44 +1663,45 @@ class Dataset(object):
             raise e
     '''        
 
+# Commented out by Zhou - 3/5/2021
+    # @staticmethod
+    # def get_donor_by_specimen_list(driver, uuid_list):
+    #     donor_return_list = []
+    #     with driver.session() as session:
+    #         try:
+    #             for uuid in uuid_list:
+    #                 stmt = "MATCH (donor)-[:{ACTIVITY_INPUT_REL}*]->(activity)-[:{ACTIVITY_INPUT_REL}|:{ACTIVITY_OUTPUT_REL}*]->(e) WHERE e.{UUID_ATTRIBUTE} = '{uuid}' and donor.{ENTITY_TYPE_ATTRIBUTE} = 'Donor' RETURN donor.{UUID_ATTRIBUTE} AS donor_uuid".format(
+    #                     UUID_ATTRIBUTE=HubmapConst.UUID_ATTRIBUTE, ENTITY_TYPE_ATTRIBUTE=HubmapConst.ENTITY_TYPE_ATTRIBUTE, 
+    #                     uuid=uuid, ACTIVITY_OUTPUT_REL=HubmapConst.ACTIVITY_OUTPUT_REL, ACTIVITY_INPUT_REL=HubmapConst.ACTIVITY_INPUT_REL)    
+    #                 for record in session.run(stmt):
+    #                     donor_record = {}
+    #                     donor_uuid = record['donor_uuid']
+    #                     donor_record = Entity.get_entity(driver, donor_uuid)
+    #                     #donor_metadata = Entity.get_entity_metadata(driver, donor_uuid)
+    #                     #donor_record['metadata'] = donor_metadata
+    #                     donor_return_list.append(donor_record)
+    #             return donor_return_list
+    #         except ConnectionError as ce:
+    #             print('A connection error occurred: ', str(ce.args[0]))
+    #             raise ce
+    #         except ValueError as ve:
+    #             print('A value error occurred: ', ve.value)
+    #             raise ve
+    #         except:
+    #             print('A general error occurred: ')
+    #             traceback.print_exc()
 
-    @staticmethod
-    def get_donor_by_specimen_list(driver, uuid_list):
-        donor_return_list = []
-        with driver.session() as session:
-            try:
-                for uuid in uuid_list:
-                    stmt = "MATCH (donor)-[:{ACTIVITY_INPUT_REL}*]->(activity)-[:{ACTIVITY_INPUT_REL}|:{ACTIVITY_OUTPUT_REL}*]->(e) WHERE e.{UUID_ATTRIBUTE} = '{uuid}' and donor.{ENTITY_TYPE_ATTRIBUTE} = 'Donor' RETURN donor.{UUID_ATTRIBUTE} AS donor_uuid".format(
-                        UUID_ATTRIBUTE=HubmapConst.UUID_ATTRIBUTE, ENTITY_TYPE_ATTRIBUTE=HubmapConst.ENTITY_TYPE_ATTRIBUTE, 
-                        uuid=uuid, ACTIVITY_OUTPUT_REL=HubmapConst.ACTIVITY_OUTPUT_REL, ACTIVITY_INPUT_REL=HubmapConst.ACTIVITY_INPUT_REL)    
-                    for record in session.run(stmt):
-                        donor_record = {}
-                        donor_uuid = record['donor_uuid']
-                        donor_record = Entity.get_entity(driver, donor_uuid)
-                        #donor_metadata = Entity.get_entity_metadata(driver, donor_uuid)
-                        #donor_record['metadata'] = donor_metadata
-                        donor_return_list.append(donor_record)
-                return donor_return_list
-            except ConnectionError as ce:
-                print('A connection error occurred: ', str(ce.args[0]))
-                raise ce
-            except ValueError as ve:
-                print('A value error occurred: ', ve.value)
-                raise ve
-            except:
-                print('A general error occurred: ')
-                traceback.print_exc()
-
-    @staticmethod
-    def get_datasets_by_collection(driver, collection_uuid):
-        try:
-            entity_and_children = Entity.get_entities_and_children_by_relationship(driver, collection_uuid, HubmapConst.IN_COLLECTION_REL)
-            if entity_and_children != None:
-                if 'items' in entity_and_children:
-                    return  entity_and_children['items']
-            return []
-        except Exception as e:
-            raise e
+# Commented out by Zhou - 3/5/2021
+    # @staticmethod
+    # def get_datasets_by_collection(driver, collection_uuid):
+    #     try:
+    #         entity_and_children = Entity.get_entities_and_children_by_relationship(driver, collection_uuid, HubmapConst.IN_COLLECTION_REL)
+    #         if entity_and_children != None:
+    #             if 'items' in entity_and_children:
+    #                 return  entity_and_children['items']
+    #         return []
+    #     except Exception as e:
+    #         raise e
     
     @staticmethod
     def get_datasets_by_donor(driver, donor_uuid_list):
@@ -1734,15 +1735,16 @@ class Dataset(object):
             print('A general error occurred: ')
             traceback.print_exc()
 
-    @classmethod
-    def is_derived_dataset(self, driver, nexus_token, source_uuid_list):
-        ret_value = True
-        uuid_list = Entity.get_uuid_list(self.confdata['UUID_WEBSERVICE_URL'], nexus_token, source_uuid_list)
-        for uuid in uuid_list:
-            source_entity = Entity.get_entity_metadata(driver, uuid)
-            if source_entity['entitytype'] != 'Dataset':
-                return False
-        return ret_value
+# Commented out by Zhou - 3/5/2021
+    # @classmethod
+    # def is_derived_dataset(self, driver, nexus_token, source_uuid_list):
+    #     ret_value = True
+    #     uuid_list = Entity.get_uuid_list(self.confdata['UUID_WEBSERVICE_URL'], nexus_token, source_uuid_list)
+    #     for uuid in uuid_list:
+    #         source_entity = Entity.get_entity_metadata(driver, uuid)
+    #         if source_entity['entitytype'] != 'Dataset':
+    #             return False
+    #     return ret_value
 
     @classmethod
     def get_dataset_directory(self, dataset_uuid, group_display_name = None, data_access_level = None):
@@ -1783,46 +1785,47 @@ class Dataset(object):
             if driver != None:
                 if driver.closed() == False:
                     driver.close()
-    
-    @staticmethod
-    def get_datasets_by_type(driver, type_string, identifier_uuid_list):
-        donor_return_list = []
-        with driver.session() as session:
-            try:
-                for uuid in identifier_uuid_list:
-                    stmt = "MATCH (donor)-[:{ACTIVITY_INPUT_REL}*]->(activity)-[:{ACTIVITY_INPUT_REL}|:{ACTIVITY_OUTPUT_REL}*]->(dataset) WHERE donor.{UUID_ATTRIBUTE} = '{uuid}' and donor.{ENTITY_TYPE_ATTRIBUTE} = '{type_string}' and dataset.{ENTITY_TYPE_ATTRIBUTE} = 'Dataset' RETURN DISTINCT dataset.{UUID_ATTRIBUTE} AS dataset_uuid".format(
-                        UUID_ATTRIBUTE=HubmapConst.UUID_ATTRIBUTE, ENTITY_TYPE_ATTRIBUTE=HubmapConst.ENTITY_TYPE_ATTRIBUTE, 
-                        uuid=uuid, ACTIVITY_OUTPUT_REL=HubmapConst.ACTIVITY_OUTPUT_REL, ACTIVITY_INPUT_REL=HubmapConst.ACTIVITY_INPUT_REL, type_string=type_string)    
-                    for record in session.run(stmt):
-                        dataset_record = {}
-                        dataset_uuid = record['dataset_uuid']
-                        dataset_record = Entity.get_entity(driver, dataset_uuid)
-                        metadata_record = Entity.get_entity_metadata(driver, dataset_uuid)
-                        dataset_record['properties'] = metadata_record
-                        donor_return_list.append(dataset_record)
-                # NOTE: in the future we might need to convert this to a set to ensure uniqueness
-                # across multiple donors.  But this is not a case right now.
-                return donor_return_list
-            except ConnectionError as ce:
-                print('A connection error occurred: ', str(ce.args[0]))
-                raise ce
-            except ValueError as ve:
-                print('A value error occurred: ', ve.value)
-                raise ve
-            except:
-                print('A general error occurred: ')
-                traceback.print_exc()
+
+# Commented out by Zhou - 3/5/2021
+    # @staticmethod
+    # def get_datasets_by_type(driver, type_string, identifier_uuid_list):
+    #     donor_return_list = []
+    #     with driver.session() as session:
+    #         try:
+    #             for uuid in identifier_uuid_list:
+    #                 stmt = "MATCH (donor)-[:{ACTIVITY_INPUT_REL}*]->(activity)-[:{ACTIVITY_INPUT_REL}|:{ACTIVITY_OUTPUT_REL}*]->(dataset) WHERE donor.{UUID_ATTRIBUTE} = '{uuid}' and donor.{ENTITY_TYPE_ATTRIBUTE} = '{type_string}' and dataset.{ENTITY_TYPE_ATTRIBUTE} = 'Dataset' RETURN DISTINCT dataset.{UUID_ATTRIBUTE} AS dataset_uuid".format(
+    #                     UUID_ATTRIBUTE=HubmapConst.UUID_ATTRIBUTE, ENTITY_TYPE_ATTRIBUTE=HubmapConst.ENTITY_TYPE_ATTRIBUTE, 
+    #                     uuid=uuid, ACTIVITY_OUTPUT_REL=HubmapConst.ACTIVITY_OUTPUT_REL, ACTIVITY_INPUT_REL=HubmapConst.ACTIVITY_INPUT_REL, type_string=type_string)    
+    #                 for record in session.run(stmt):
+    #                     dataset_record = {}
+    #                     dataset_uuid = record['dataset_uuid']
+    #                     dataset_record = Entity.get_entity(driver, dataset_uuid)
+    #                     metadata_record = Entity.get_entity_metadata(driver, dataset_uuid)
+    #                     dataset_record['properties'] = metadata_record
+    #                     donor_return_list.append(dataset_record)
+    #             # NOTE: in the future we might need to convert this to a set to ensure uniqueness
+    #             # across multiple donors.  But this is not a case right now.
+    #             return donor_return_list
+    #         except ConnectionError as ce:
+    #             print('A connection error occurred: ', str(ce.args[0]))
+    #             raise ce
+    #         except ValueError as ve:
+    #             print('A value error occurred: ', ve.value)
+    #             raise ve
+    #         except:
+    #             print('A general error occurred: ')
+    #             traceback.print_exc()
                 
-    @classmethod
-    def move_directory(self, oldpath, newpath):
-        """it may seem like overkill to use a define a method just to move files, but we might need to move these
-        files across globus endpoints in the future"""
-        try:
-            #os.makedirs(newpath)
-            ret_path = shutil.move(oldpath, newpath)
-        except: 
-            raise 
-        return ret_path
+    # @classmethod
+    # def move_directory(self, oldpath, newpath):
+    #     """it may seem like overkill to use a define a method just to move files, but we might need to move these
+    #     files across globus endpoints in the future"""
+    #     try:
+    #         #os.makedirs(newpath)
+    #         ret_path = shutil.move(oldpath, newpath)
+    #     except: 
+    #         raise 
+    #     return ret_path
 
 '''        
 #NOTE: the file_path_symbolic_dir needs to be optional.  If it is None, do not add the symbolic link
