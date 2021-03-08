@@ -983,28 +983,6 @@ class Dataset(object):
            "checksum":"file-checksum"
          }]
          """
-          
-        """
-        #validate the incoming json
-        schema_file = '/Users/chb69/git/ingest-pipeline/src/ingest-pipeline/schemata/dataset_metadata.schema.json'
-        schema_data = None
-    
-    
-        try:
-            #with open(sample_json) as json_sample_file:
-            #    json_data = json.load(json_sample_file)
-            new_json_data = json.load(json_data)
-            with open(schema_file) as json_schema_file:
-                schema_data = json.load(json_schema_file)
-            
-            validate(instance=new_json_data, schema=schema_data)
-        except ValidationError as ve:
-            print(ve)
-        except SchemaError as se:
-            print(se)
-        except Exception as e:
-            print(e)
-        """
          
         if 'dataset_id' not in json_data:
             raise ValueError('cannot find dataset_id')
@@ -1030,18 +1008,19 @@ class Dataset(object):
         if update_status == 'error' or update_status == 'invalid' or update_status == 'new':
             return update_record
         metadata = None
-        if 'metadata' in json_data:
-            metadata = json_data['metadata']
-            if len(metadata) > 0:
-                if 'files_info_alt_path' in metadata:
-                    metadata['files'] = self.get_file_list(metadata['files_info_alt_path'])
-                update_record[HubmapConst.DATASET_INGEST_METADATA_ATTRIBUTE] = metadata
-        else:
+        if not 'metadata' in json_data:
             raise ValueError('top level metadata field required')
+
+        metadata = json_data['metadata']
+        if 'files_info_alt_path' in metadata:
+            metadata['files'] = self.get_file_list(metadata['files_info_alt_path'])
+            
 
         if 'overwrite_metadata' in json_data and json_data['overwrite_metadata'] == False:
             raise ValueError("overwrite_metadata set to False, merging of metadata is not supported on update")
         
+        #we can get the antibodies or contributors fields at multiple levels
+        #find them and move them to the top
         antibodies = None
         contributors = None
         if 'antibodies' in json_data:
@@ -1052,7 +1031,7 @@ class Dataset(object):
         if 'metadata' in metadata:
             meta_lvl2 = metadata['metadata']
             if 'antibodies' in meta_lvl2:
-                if not antibodies is None:
+                if antibodies is None:
                     antibodies = meta_lvl2['antibodies']
                     meta_lvl2.pop('antibodies')
                 else:
@@ -1077,7 +1056,21 @@ class Dataset(object):
                         meta_lvl3.pop('contributors')
                     else:
                         raise ValueError('contributors array included twice in request data')
-        
+                
+                #while we're here if we have that second level of metadata, move it up one level
+                #but first save anything else at the same level an put it in 
+                #an attribute named 'extra_metadata"
+                extra_meta = {}
+                for key in meta_lvl2.keys():
+                    if not key == 'metadata':
+                        extra_meta[key] = meta_lvl2[key]
+                if extra_meta:
+                    metadata['extra_metadata'] = extra_meta
+
+                metadata['metadata'] = meta_lvl3
+                
+        update_record[HubmapConst.DATASET_INGEST_METADATA_ATTRIBUTE] = metadata
+
         if not antibodies is None:
             update_record['antibodies'] = antibodies
         if not contributors is None:
