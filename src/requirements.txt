@@ -1,17 +1,17 @@
-Flask>=1.1.2
-flask_cors>=3.0.10
-globus_sdk>=2.0.1
-jsonref>=0.2
-jsonschema>=3.2.0
-libs>=0.0.9
-neo4j>=4.2.1
-py2neo>=2021.0.1
-selenium>=3.141.0
-Werkzeug>=1.0.1
+Flask==1.1.2
+flask_cors==3.0.10
+globus_sdk==2.0.1
+jsonref==0.2
+jsonschema==3.2.0
+neo4j==4.2.1
+py2neo==2021.0.1
+selenium==3.141.0
+Werkzeug==1.0.1
 
-# It's an agreement with other collaborators to use the beblow version for requests
-requests>=2.22.0
+# The commons package requires requests>=2.22.0
+requests==2.25.1
 
 # The branch name of commons to be used during image build
 # Default is master branch specified in docker-compose.yml if not set
 git+git://github.com/hubmapconsortium/commons.git@${COMMONS_BRANCH}#egg=hubmap-commons
+
