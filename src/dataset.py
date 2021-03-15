@@ -4,7 +4,7 @@ Created on Apr 18, 2019
 @author: chb69
 '''
 import requests
-from neo4j import TransactionError
+from neo4j.exceptions import TransactionError
 import sys
 import os
 import urllib.parse
@@ -21,19 +21,34 @@ from ingest_file_helper import IngestFileHelper
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
 from hubmap_commons.uuid_generator import UUID_Generator
-from hubmap_commons.hubmap_const import HubmapConst 
-from hubmap_commons.neo4j_connection import Neo4jConnection
 from hubmap_commons.hm_auth import AuthHelper, AuthCache
-from hubmap_commons.entity import Entity
 from hubmap_commons.autherror import AuthError
-from hubmap_commons.metadata import Metadata
-from hubmap_commons.activity import Activity
-from hubmap_commons.provenance import Provenance
 from hubmap_commons.file_helper import linkDir, unlinkDir, mkDir
 from hubmap_commons import file_helper
 from hubmap_commons.exceptions import HTTPException
 
+# Deprecated
+#from hubmap_commons.neo4j_connection import Neo4jConnection
+#from hubmap_commons.metadata import Metadata
+#from hubmap_commons.activity import Activity
+#from hubmap_commons.provenance import Provenance
+#from hubmap_commons.entity import Entity
+
+# Should be deprecated but still in use
+from hubmap_commons.hubmap_const import HubmapConst 
+
+# The new neo4j_driver module from commons
+from hubmap_commons import neo4j_driver
+
+
 requests.packages.urllib3.disable_warnings(category = InsecureRequestWarning)
+
+# Set logging fromat and level (default is warning)
+# All the API logging is forwarded to the uWSGI server and gets written into the log file `uwsgo-entity-api.log`
+# Log rotation is handled via logrotate on the host system with a configuration file
+# Do NOT handle log file and rotation via the Python logging to avoid issues with multi-worker processes
+logging.basicConfig(format='[%(asctime)s] %(levelname)s in %(module)s: %(message)s', level=logging.DEBUG, datefmt='%Y-%m-%d %H:%M:%S')
+logger = logging.getLogger(__name__)
 
 class Dataset(object):
     '''
@@ -45,6 +60,20 @@ class Dataset(object):
     
     def __init__(self, config): 
         self.confdata = config
+
+        # The new neo4j_driver (from commons package) is a singleton module
+        # This neo4j_driver_instance will be used for application-specifc neo4j queries
+        # as well as being passed to the schema_manager
+        try:
+            self.neo4j_driver_instance = neo4j_driver.instance(config['NEO4J_SERVER'], 
+                                                          config['NEO4J_USERNAME'], 
+                                                          config['NEO4J_PASSWORD'])
+
+            logger.info("Initialized neo4j_driver module successfully :)")
+        except Exception:
+            msg = "Failed to initialize the neo4j_driver module"
+            # Log the full stack trace, prepend a line with our message
+            logger.exception(msg)
 
     '''
     @classmethod
@@ -954,28 +983,6 @@ class Dataset(object):
            "checksum":"file-checksum"
          }]
          """
-          
-        """
-        #validate the incoming json
-        schema_file = '/Users/chb69/git/ingest-pipeline/src/ingest-pipeline/schemata/dataset_metadata.schema.json'
-        schema_data = None
-    
-    
-        try:
-            #with open(sample_json) as json_sample_file:
-            #    json_data = json.load(json_sample_file)
-            new_json_data = json.load(json_data)
-            with open(schema_file) as json_schema_file:
-                schema_data = json.load(json_schema_file)
-            
-            validate(instance=new_json_data, schema=schema_data)
-        except ValidationError as ve:
-            print(ve)
-        except SchemaError as se:
-            print(se)
-        except Exception as e:
-            print(e)
-        """
          
         if 'dataset_id' not in json_data:
             raise ValueError('cannot find dataset_id')
@@ -1001,18 +1008,19 @@ class Dataset(object):
         if update_status == 'error' or update_status == 'invalid' or update_status == 'new':
             return update_record
         metadata = None
-        if 'metadata' in json_data:
-            metadata = json_data['metadata']
-            if len(metadata) > 0:
-                if 'files_info_alt_path' in metadata:
-                    metadata['files'] = self.get_file_list(metadata['files_info_alt_path'])
-                update_record[HubmapConst.DATASET_INGEST_METADATA_ATTRIBUTE] = metadata
-        else:
+        if not 'metadata' in json_data:
             raise ValueError('top level metadata field required')
+
+        metadata = json_data['metadata']
+        if 'files_info_alt_path' in metadata:
+            metadata['files'] = self.get_file_list(metadata['files_info_alt_path'])
+            
 
         if 'overwrite_metadata' in json_data and json_data['overwrite_metadata'] == False:
             raise ValueError("overwrite_metadata set to False, merging of metadata is not supported on update")
         
+        #we can get the antibodies or contributors fields at multiple levels
+        #find them and move them to the top
         antibodies = None
         contributors = None
         if 'antibodies' in json_data:
@@ -1023,7 +1031,7 @@ class Dataset(object):
         if 'metadata' in metadata:
             meta_lvl2 = metadata['metadata']
             if 'antibodies' in meta_lvl2:
-                if not antibodies is None:
+                if antibodies is None:
                     antibodies = meta_lvl2['antibodies']
                     meta_lvl2.pop('antibodies')
                 else:
@@ -1048,7 +1056,21 @@ class Dataset(object):
                         meta_lvl3.pop('contributors')
                     else:
                         raise ValueError('contributors array included twice in request data')
-        
+                
+                #while we're here if we have that second level of metadata, move it up one level
+                #but first save anything else at the same level an put it in 
+                #an attribute named 'extra_metadata"
+                extra_meta = {}
+                for key in meta_lvl2.keys():
+                    if not key == 'metadata':
+                        extra_meta[key] = meta_lvl2[key]
+                if extra_meta:
+                    metadata['extra_metadata'] = extra_meta
+
+                metadata['metadata'] = meta_lvl3
+                
+        update_record[HubmapConst.DATASET_INGEST_METADATA_ATTRIBUTE] = metadata
+
         if not antibodies is None:
             update_record['antibodies'] = antibodies
         if not contributors is None:
@@ -1641,44 +1663,45 @@ class Dataset(object):
             raise e
     '''        
 
+# Commented out by Zhou - 3/5/2021
+    # @staticmethod
+    # def get_donor_by_specimen_list(driver, uuid_list):
+    #     donor_return_list = []
+    #     with driver.session() as session:
+    #         try:
+    #             for uuid in uuid_list:
+    #                 stmt = "MATCH (donor)-[:{ACTIVITY_INPUT_REL}*]->(activity)-[:{ACTIVITY_INPUT_REL}|:{ACTIVITY_OUTPUT_REL}*]->(e) WHERE e.{UUID_ATTRIBUTE} = '{uuid}' and donor.{ENTITY_TYPE_ATTRIBUTE} = 'Donor' RETURN donor.{UUID_ATTRIBUTE} AS donor_uuid".format(
+    #                     UUID_ATTRIBUTE=HubmapConst.UUID_ATTRIBUTE, ENTITY_TYPE_ATTRIBUTE=HubmapConst.ENTITY_TYPE_ATTRIBUTE, 
+    #                     uuid=uuid, ACTIVITY_OUTPUT_REL=HubmapConst.ACTIVITY_OUTPUT_REL, ACTIVITY_INPUT_REL=HubmapConst.ACTIVITY_INPUT_REL)    
+    #                 for record in session.run(stmt):
+    #                     donor_record = {}
+    #                     donor_uuid = record['donor_uuid']
+    #                     donor_record = Entity.get_entity(driver, donor_uuid)
+    #                     #donor_metadata = Entity.get_entity_metadata(driver, donor_uuid)
+    #                     #donor_record['metadata'] = donor_metadata
+    #                     donor_return_list.append(donor_record)
+    #             return donor_return_list
+    #         except ConnectionError as ce:
+    #             print('A connection error occurred: ', str(ce.args[0]))
+    #             raise ce
+    #         except ValueError as ve:
+    #             print('A value error occurred: ', ve.value)
+    #             raise ve
+    #         except:
+    #             print('A general error occurred: ')
+    #             traceback.print_exc()
 
-    @staticmethod
-    def get_donor_by_specimen_list(driver, uuid_list):
-        donor_return_list = []
-        with driver.session() as session:
-            try:
-                for uuid in uuid_list:
-                    stmt = "MATCH (donor)-[:{ACTIVITY_INPUT_REL}*]->(activity)-[:{ACTIVITY_INPUT_REL}|:{ACTIVITY_OUTPUT_REL}*]->(e) WHERE e.{UUID_ATTRIBUTE} = '{uuid}' and donor.{ENTITY_TYPE_ATTRIBUTE} = 'Donor' RETURN donor.{UUID_ATTRIBUTE} AS donor_uuid".format(
-                        UUID_ATTRIBUTE=HubmapConst.UUID_ATTRIBUTE, ENTITY_TYPE_ATTRIBUTE=HubmapConst.ENTITY_TYPE_ATTRIBUTE, 
-                        uuid=uuid, ACTIVITY_OUTPUT_REL=HubmapConst.ACTIVITY_OUTPUT_REL, ACTIVITY_INPUT_REL=HubmapConst.ACTIVITY_INPUT_REL)    
-                    for record in session.run(stmt):
-                        donor_record = {}
-                        donor_uuid = record['donor_uuid']
-                        donor_record = Entity.get_entity(driver, donor_uuid)
-                        #donor_metadata = Entity.get_entity_metadata(driver, donor_uuid)
-                        #donor_record['metadata'] = donor_metadata
-                        donor_return_list.append(donor_record)
-                return donor_return_list
-            except ConnectionError as ce:
-                print('A connection error occurred: ', str(ce.args[0]))
-                raise ce
-            except ValueError as ve:
-                print('A value error occurred: ', ve.value)
-                raise ve
-            except:
-                print('A general error occurred: ')
-                traceback.print_exc()
-
-    @staticmethod
-    def get_datasets_by_collection(driver, collection_uuid):
-        try:
-            entity_and_children = Entity.get_entities_and_children_by_relationship(driver, collection_uuid, HubmapConst.IN_COLLECTION_REL)
-            if entity_and_children != None:
-                if 'items' in entity_and_children:
-                    return  entity_and_children['items']
-            return []
-        except Exception as e:
-            raise e
+# Commented out by Zhou - 3/5/2021
+    # @staticmethod
+    # def get_datasets_by_collection(driver, collection_uuid):
+    #     try:
+    #         entity_and_children = Entity.get_entities_and_children_by_relationship(driver, collection_uuid, HubmapConst.IN_COLLECTION_REL)
+    #         if entity_and_children != None:
+    #             if 'items' in entity_and_children:
+    #                 return  entity_and_children['items']
+    #         return []
+    #     except Exception as e:
+    #         raise e
     
     @staticmethod
     def get_datasets_by_donor(driver, donor_uuid_list):
@@ -1712,15 +1735,16 @@ class Dataset(object):
             print('A general error occurred: ')
             traceback.print_exc()
 
-    @classmethod
-    def is_derived_dataset(self, driver, nexus_token, source_uuid_list):
-        ret_value = True
-        uuid_list = Entity.get_uuid_list(self.confdata['UUID_WEBSERVICE_URL'], nexus_token, source_uuid_list)
-        for uuid in uuid_list:
-            source_entity = Entity.get_entity_metadata(driver, uuid)
-            if source_entity['entitytype'] != 'Dataset':
-                return False
-        return ret_value
+# Commented out by Zhou - 3/5/2021
+    # @classmethod
+    # def is_derived_dataset(self, driver, nexus_token, source_uuid_list):
+    #     ret_value = True
+    #     uuid_list = Entity.get_uuid_list(self.confdata['UUID_WEBSERVICE_URL'], nexus_token, source_uuid_list)
+    #     for uuid in uuid_list:
+    #         source_entity = Entity.get_entity_metadata(driver, uuid)
+    #         if source_entity['entitytype'] != 'Dataset':
+    #             return False
+    #     return ret_value
 
     @classmethod
     def get_dataset_directory(self, dataset_uuid, group_display_name = None, data_access_level = None):
@@ -1728,9 +1752,11 @@ class Dataset(object):
         driver = None
         try:
             if group_display_name == None and data_access_level == None:
-                conn = Neo4jConnection(self.confdata['NEO4J_SERVER'], self.confdata['NEO4J_USERNAME'], self.confdata['NEO4J_PASSWORD'])
-                driver = conn.get_driver()
-                dataset = Dataset.get_dataset(driver, dataset_uuid)
+                # Deprecated
+                # conn = Neo4jConnection(self.confdata['NEO4J_SERVER'], self.confdata['NEO4J_USERNAME'], self.confdata['NEO4J_PASSWORD'])
+                # driver = conn.get_driver()
+
+                dataset = Dataset.get_dataset(self.neo4j_driver_instance, dataset_uuid)
                 data_access_level = dataset[HubmapConst.DATA_ACCESS_LEVEL]
                 group_display_name = dataset[HubmapConst.PROVENANCE_GROUP_NAME_ATTRIBUTE]
 
@@ -1759,46 +1785,47 @@ class Dataset(object):
             if driver != None:
                 if driver.closed() == False:
                     driver.close()
-    
-    @staticmethod
-    def get_datasets_by_type(driver, type_string, identifier_uuid_list):
-        donor_return_list = []
-        with driver.session() as session:
-            try:
-                for uuid in identifier_uuid_list:
-                    stmt = "MATCH (donor)-[:{ACTIVITY_INPUT_REL}*]->(activity)-[:{ACTIVITY_INPUT_REL}|:{ACTIVITY_OUTPUT_REL}*]->(dataset) WHERE donor.{UUID_ATTRIBUTE} = '{uuid}' and donor.{ENTITY_TYPE_ATTRIBUTE} = '{type_string}' and dataset.{ENTITY_TYPE_ATTRIBUTE} = 'Dataset' RETURN DISTINCT dataset.{UUID_ATTRIBUTE} AS dataset_uuid".format(
-                        UUID_ATTRIBUTE=HubmapConst.UUID_ATTRIBUTE, ENTITY_TYPE_ATTRIBUTE=HubmapConst.ENTITY_TYPE_ATTRIBUTE, 
-                        uuid=uuid, ACTIVITY_OUTPUT_REL=HubmapConst.ACTIVITY_OUTPUT_REL, ACTIVITY_INPUT_REL=HubmapConst.ACTIVITY_INPUT_REL, type_string=type_string)    
-                    for record in session.run(stmt):
-                        dataset_record = {}
-                        dataset_uuid = record['dataset_uuid']
-                        dataset_record = Entity.get_entity(driver, dataset_uuid)
-                        metadata_record = Entity.get_entity_metadata(driver, dataset_uuid)
-                        dataset_record['properties'] = metadata_record
-                        donor_return_list.append(dataset_record)
-                # NOTE: in the future we might need to convert this to a set to ensure uniqueness
-                # across multiple donors.  But this is not a case right now.
-                return donor_return_list
-            except ConnectionError as ce:
-                print('A connection error occurred: ', str(ce.args[0]))
-                raise ce
-            except ValueError as ve:
-                print('A value error occurred: ', ve.value)
-                raise ve
-            except:
-                print('A general error occurred: ')
-                traceback.print_exc()
+
+# Commented out by Zhou - 3/5/2021
+    # @staticmethod
+    # def get_datasets_by_type(driver, type_string, identifier_uuid_list):
+    #     donor_return_list = []
+    #     with driver.session() as session:
+    #         try:
+    #             for uuid in identifier_uuid_list:
+    #                 stmt = "MATCH (donor)-[:{ACTIVITY_INPUT_REL}*]->(activity)-[:{ACTIVITY_INPUT_REL}|:{ACTIVITY_OUTPUT_REL}*]->(dataset) WHERE donor.{UUID_ATTRIBUTE} = '{uuid}' and donor.{ENTITY_TYPE_ATTRIBUTE} = '{type_string}' and dataset.{ENTITY_TYPE_ATTRIBUTE} = 'Dataset' RETURN DISTINCT dataset.{UUID_ATTRIBUTE} AS dataset_uuid".format(
+    #                     UUID_ATTRIBUTE=HubmapConst.UUID_ATTRIBUTE, ENTITY_TYPE_ATTRIBUTE=HubmapConst.ENTITY_TYPE_ATTRIBUTE, 
+    #                     uuid=uuid, ACTIVITY_OUTPUT_REL=HubmapConst.ACTIVITY_OUTPUT_REL, ACTIVITY_INPUT_REL=HubmapConst.ACTIVITY_INPUT_REL, type_string=type_string)    
+    #                 for record in session.run(stmt):
+    #                     dataset_record = {}
+    #                     dataset_uuid = record['dataset_uuid']
+    #                     dataset_record = Entity.get_entity(driver, dataset_uuid)
+    #                     metadata_record = Entity.get_entity_metadata(driver, dataset_uuid)
+    #                     dataset_record['properties'] = metadata_record
+    #                     donor_return_list.append(dataset_record)
+    #             # NOTE: in the future we might need to convert this to a set to ensure uniqueness
+    #             # across multiple donors.  But this is not a case right now.
+    #             return donor_return_list
+    #         except ConnectionError as ce:
+    #             print('A connection error occurred: ', str(ce.args[0]))
+    #             raise ce
+    #         except ValueError as ve:
+    #             print('A value error occurred: ', ve.value)
+    #             raise ve
+    #         except:
+    #             print('A general error occurred: ')
+    #             traceback.print_exc()
                 
-    @classmethod
-    def move_directory(self, oldpath, newpath):
-        """it may seem like overkill to use a define a method just to move files, but we might need to move these
-        files across globus endpoints in the future"""
-        try:
-            #os.makedirs(newpath)
-            ret_path = shutil.move(oldpath, newpath)
-        except: 
-            raise 
-        return ret_path
+    # @classmethod
+    # def move_directory(self, oldpath, newpath):
+    #     """it may seem like overkill to use a define a method just to move files, but we might need to move these
+    #     files across globus endpoints in the future"""
+    #     try:
+    #         #os.makedirs(newpath)
+    #         ret_path = shutil.move(oldpath, newpath)
+    #     except: 
+    #         raise 
+    #     return ret_path
 
 '''        
 #NOTE: the file_path_symbolic_dir needs to be optional.  If it is None, do not add the symbolic link
@@ -1868,9 +1895,12 @@ if __name__ == "__main__":
     NEO4J_SERVER = 'bolt://localhost:7687'
     NEO4J_USERNAME = 'neo4j'
     NEO4J_PASSWORD = '123'
-    conn = Neo4jConnection(NEO4J_SERVER, NEO4J_USERNAME, NEO4J_PASSWORD)
+    
+    #conn = Neo4jConnection(NEO4J_SERVER, NEO4J_USERNAME, NEO4J_PASSWORD)
+    
     nexus_token = 'AgNkroqO86BbgjPxYk9Md20r8lKJ04WxzJnqrm7xWvDKg1lvgbtgCwnxdYBNYw85OkGmoo1wxPb4GMfjO8dakf24g7'
-    driver = conn.get_driver()
+    
+    #driver = conn.get_driver()
     
     UUID_WEBSERVICE_URL = 'http://localhost:5001/hmuuid'
 

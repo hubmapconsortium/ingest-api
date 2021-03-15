@@ -12,28 +12,40 @@ from flask_cors import CORS
 from globus_sdk import AccessTokenAuthorizer, AuthClient, ConfidentialAppAuthClient
 
 from dataset import Dataset
-from specimen import Specimen
+#from specimen import Specimen
 from ingest_file_helper import IngestFileHelper
 #from file_helper import FileHelper
 
 from hubmap_commons.hubmap_const import HubmapConst 
-from hubmap_commons.neo4j_connection import Neo4jConnection
+
 from hubmap_commons.hm_auth import AuthHelper, secured
-from hubmap_commons.entity import Entity
+
 from hubmap_commons.autherror import AuthError
-from hubmap_commons.metadata import Metadata
+
 from hubmap_commons.exceptions import HTTPException
 from hubmap_commons import string_helper
 from hubmap_commons.string_helper import isBlank
 from hubmap_commons import net_helper
 from hubmap_commons import file_helper as commons_file_helper
 
+# Deprecated
+#from hubmap_commons.metadata import Metadata
+#from hubmap_commons.entity import Entity
+#from hubmap_commons.neo4j_connection import Neo4jConnection
+
+# Should be deprecated but still in use
+from hubmap_commons.hubmap_const import HubmapConst 
+
+# The new neo4j_driver module from commons
+from hubmap_commons import neo4j_driver
+
 import time
 import logging
 from pathlib import Path
 
-LOG_FILE_NAME = "../log/ingest-api-" + time.strftime("%d-%m-%Y-%H-%M-%S") + ".log" 
-logger = None
+# Commented out by Zhou - 3/5/2021
+# LOG_FILE_NAME = "../log/ingest-api-" + time.strftime("%d-%m-%Y-%H-%M-%S") + ".log" 
+# logger = None
 
 # Specify the absolute path of the instance folder and use the config file relative to the instance path
 app = Flask(__name__, instance_path=os.path.join(os.path.abspath(os.path.dirname(__file__)), 'instance'), instance_relative_config=True)
@@ -55,18 +67,48 @@ else:
 
 data_admin_group_uuid = '89a69625-99d7-11ea-9366-0e98982705c1'
 
-@app.before_first_request
-def init():
-    global logger
-    try:
-        logger = logging.getLogger('ingest.service')
-        logger.setLevel(logging.INFO)
-        logFH = logging.FileHandler(LOG_FILE_NAME)
-        logger.addHandler(logFH)
-        logger.info("started")
-    except Exception as e:
-        print("Error opening log file during startup")
-        print(str(e))
+# Commented out by Zhou - 3/5/2021
+# @app.before_first_request
+# def init():
+#     global logger
+#     try:
+#         logger = logging.getLogger('ingest.service')
+#         logger.setLevel(logging.INFO)
+#         logFH = logging.FileHandler(LOG_FILE_NAME)
+#         logger.addHandler(logFH)
+#         logger.info("started")
+#     except Exception as e:
+#         print("Error opening log file during startup")
+#         print(str(e))
+
+
+# Set logging fromat and level (default is warning)
+# All the API logging is forwarded to the uWSGI server and gets written into the log file `uwsgo-entity-api.log`
+# Log rotation is handled via logrotate on the host system with a configuration file
+# Do NOT handle log file and rotation via the Python logging to avoid issues with multi-worker processes
+logging.basicConfig(format='[%(asctime)s] %(levelname)s in %(module)s: %(message)s', level=logging.DEBUG, datefmt='%Y-%m-%d %H:%M:%S')
+logger = logging.getLogger(__name__)
+
+
+####################################################################################################
+## Neo4j connection initialization
+####################################################################################################
+
+# The neo4j_driver (from commons package) is a singleton module
+# This neo4j_driver_instance will be used for application-specifc neo4j queries
+# as well as being passed to the schema_manager
+try:
+    neo4j_driver_instance = neo4j_driver.instance(app.config['NEO4J_SERVER'], 
+                                                  app.config['NEO4J_USERNAME'], 
+                                                  app.config['NEO4J_PASSWORD'])
+
+    logger.info("Initialized neo4j_driver module successfully :)")
+except Exception:
+    msg = "Failed to initialize the neo4j_driver module"
+    # Log the full stack trace, prepend a line with our message
+    logger.exception(msg)
+
+
 
 
 ####################################################################################################
@@ -115,9 +157,15 @@ def status():
         
         #check the neo4j connection
         try:
-            conn = Neo4jConnection(app.config['NEO4J_SERVER'], app.config['NEO4J_USERNAME'], app.config['NEO4J_PASSWORD'])
-            driver = conn.get_driver()
-            is_connected = conn.check_connection(driver)
+            with neo4j_driver_instance.session() as session:
+                recds = session.run("Match () Return 1 Limit 1")
+                for recd in recds:
+                    if recd[0] == 1:
+                        is_connected = True
+                    else:
+                        is_connected = False
+
+                is_connected = True
         #the neo4j connection will often fail via exception so
         #catch it here, flag as failure and track the returned error message
         except Exception as e:
@@ -643,10 +691,10 @@ def update_dataset_status(uuid, new_status):
     conn = None
     try:
         logger.info(f"++++++++++Called /datasets/{uuid}/{new_status}")
-        conn = Neo4jConnection(app.config['NEO4J_SERVER'], app.config['NEO4J_USERNAME'], app.config['NEO4J_PASSWORD'])
-        driver = conn.get_driver()
+        # conn = Neo4jConnection(app.config['NEO4J_SERVER'], app.config['NEO4J_USERNAME'], app.config['NEO4J_PASSWORD'])
+        # driver = conn.get_driver()
         dataset = Dataset(app.config)
-        status_obj = dataset.set_status(driver, uuid, new_status)
+        status_obj = dataset.set_status(neo4j_driver_instance, uuid, new_status)
         conn.close()
 
         print('Before reindex call in update_dataset_status')
@@ -816,10 +864,10 @@ def submit_dataset(uuid):
         if 'group_uuid' in dataset_request:
             return Response("Cannot specify group_uuid.  The group ownership cannot be changed after an entity has been created.", 400)
         
-        conn = Neo4jConnection(app.config['NEO4J_SERVER'], app.config['NEO4J_USERNAME'], app.config['NEO4J_PASSWORD'])
-        driver = conn.get_driver()
+        # conn = Neo4jConnection(app.config['NEO4J_SERVER'], app.config['NEO4J_USERNAME'], app.config['NEO4J_PASSWORD'])
+        # driver = conn.get_driver()
         
-        with driver.session() as session:
+        with neo4j_driver_instance.session() as session:
             #query Neo4j db to get the group_uuid
             stmt = "match (d:Dataset {uuid:'" + uuid.strip() + "'}) return d.group_uuid as group_uuid"
             recds = session.run(stmt)
@@ -1135,38 +1183,33 @@ def get_collection(identifier):
 def user_group_list():
     token = str(request.headers["AUTHORIZATION"])[7:]
     try:
-        entity = Entity(app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'], app.config['UUID_WEBSERVICE_URL'])
-        group_list = entity.get_user_groups(token)
+        auth_helper = AuthHelper.configured_instance(app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'])        
+        group_list = auth_helper.get_user_groups_deprecated(token)
         return jsonify( {'groups' : group_list}), 200
-    except AuthError as e:
-        print(e)
-        return Response('token is invalid', 401)
-    except:
-        msg = 'An error occurred: '
-        for x in sys.exc_info():
-            msg += str(x)
-        abort(400, msg)
+    except HTTPException as hte:
+        return Response(hte.get_description(), hte.get_status_code())
+    except Exception as e:
+        logger.error(e, exc_info=True)
+        return Response("Unexpected error while creating a dataset: " + str(e) + "  Check the logs", 500)        
 
 @app.route('/metadata/userroles', methods = ['GET'])
 @secured(groups="HuBMAP-read")
 def user_role_list():
     token = str(request.headers["AUTHORIZATION"])[7:]
     try:
-        entity = Entity(app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'], app.config['UUID_WEBSERVICE_URL'])
-        role_list = entity.get_user_roles(token)
+        auth_helper = AuthHelper.configured_instance(app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'])                
+        role_list = auth_helper.get_user_roles_deprecated(token)
         
         #temp code!!
         #role_list = []
         
         return jsonify( {'roles' : role_list}), 200
-    except AuthError as e:
-        print(e)
-        return Response('token is invalid', 401)
-    except:
-        msg = 'An error occurred: '
-        for x in sys.exc_info():
-            msg += str(x)
-        abort(400, msg)
+    except HTTPException as hte:
+        return Response(hte.get_description(), hte.get_status_code())
+    except Exception as e:
+        logger.error(e, exc_info=True)
+        return Response("Unexpected error while creating a dataset: " + str(e) + "  Check the logs", 500)        
+
 
 '''
 # this method returns a JSON list of the UUIDs for the entities the current user can edit.  The entitytype is an optional parameter.  If it is not set,
@@ -1239,32 +1282,34 @@ def get_group_by_identifier(identifier):
 
 '''
 
-@app.route('/metadata/source/type/<type_code>', methods = ['GET'])
-@secured(groups="HuBMAP-read")
-def get_metadata_by_source_type(type_code):
-    if type_code == None or len(type_code) == 0:
-        abort(400, jsonify( { 'error': 'type_code parameter is required to get a metadata instance' } ))
+
+# Commented out by Zhou - 3/5/2021
+# @app.route('/metadata/source/type/<type_code>', methods = ['GET'])
+# @secured(groups="HuBMAP-read")
+# def get_metadata_by_source_type(type_code):
+#     if type_code == None or len(type_code) == 0:
+#         abort(400, jsonify( { 'error': 'type_code parameter is required to get a metadata instance' } ))
     
-    conn = None
-    try:
-        conn = Neo4jConnection(app.config['NEO4J_SERVER'], app.config['NEO4J_USERNAME'], app.config['NEO4J_PASSWORD'])
-        driver = conn.get_driver()
-        metadata = Metadata(app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'], app.config['UUID_WEBSERVICE_URL'])
-        general_type_attr = HubmapConst.get_general_node_type_attribute(type_code)
-        if len(general_type_attr) == 0:
-            abort(400, 'Unable to find type data for type: ' + type_code)
-        metadata_record = metadata.get_metadata_by_source_type(driver, general_type_attr, type_code)
-        conn.close()
-        #TODO: figure out how to jsonify an array
-        return jsonify( { 'metadata': metadata_record } ), 200
+#     conn = None
+#     try:
+#         conn = Neo4jConnection(app.config['NEO4J_SERVER'], app.config['NEO4J_USERNAME'], app.config['NEO4J_PASSWORD'])
+#         driver = conn.get_driver()
+#         metadata = Metadata(app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'], app.config['UUID_WEBSERVICE_URL'])
+#         general_type_attr = HubmapConst.get_general_node_type_attribute(type_code)
+#         if len(general_type_attr) == 0:
+#             abort(400, 'Unable to find type data for type: ' + type_code)
+#         metadata_record = metadata.get_metadata_by_source_type(driver, general_type_attr, type_code)
+#         conn.close()
+#         #TODO: figure out how to jsonify an array
+#         return jsonify( { 'metadata': metadata_record } ), 200
     
-    except:
-        msg = 'An error occurred: '
-        for x in sys.exc_info():
-            msg += str(x)
-        abort(400, msg)
-    finally:
-        conn.close()
+#     except:
+#         msg = 'An error occurred: '
+#         for x in sys.exc_info():
+#             msg += str(x)
+#         abort(400, msg)
+#     finally:
+#         conn.close()
 
 '''
 @app.route('/metadata/source/<uuid>', methods = ['GET'])
@@ -1581,71 +1626,75 @@ def does_specimen_exist(uuid):
         abort(400, msg)
 '''
 
-@app.route('/specimens/<identifier>/ingest-group-ids', methods=['GET'])
-@secured(groups="HuBMAP-read")
-def get_specimen_ingest_group_ids(identifier):
-    if identifier == None:
-        abort(400)
-    if len(identifier) == 0:
-        abort(400)
 
-    conn = None
-    try:
-        token = str(request.headers["AUTHORIZATION"])[7:]
-        r = requests.get(app.config['UUID_WEBSERVICE_URL'] + "/" + identifier, headers={'Authorization': 'Bearer ' + token })
-        if r.ok == False:
-            raise ValueError("Cannot find specimen with identifier: " + identifier)
-        uuid = json.loads(r.text)['hm_uuid']
-        conn = Neo4jConnection(app.config['NEO4J_SERVER'], app.config['NEO4J_USERNAME'], app.config['NEO4J_PASSWORD'])
-        driver = conn.get_driver()
-        siblingid_list = Specimen.get_ingest_group_list(driver, uuid)
-        return jsonify({'ingest_group_ids': siblingid_list}), 200 
+# Commented out by Zhou - 3/5/2021
+# @app.route('/specimens/<identifier>/ingest-group-ids', methods=['GET'])
+# @secured(groups="HuBMAP-read")
+# def get_specimen_ingest_group_ids(identifier):
+#     if identifier == None:
+#         abort(400)
+#     if len(identifier) == 0:
+#         abort(400)
 
-    except AuthError as e:
-        print(e)
-        return Response('token is invalid', 401)
-    except:
-        msg = 'An error occurred: '
-        for x in sys.exc_info():
-            msg += str(x)
-        abort(400, msg)
-    finally:
-        if conn != None:
-            if conn.get_driver().closed() == False:
-                conn.close()
+#     conn = None
+#     try:
+#         token = str(request.headers["AUTHORIZATION"])[7:]
+#         r = requests.get(app.config['UUID_WEBSERVICE_URL'] + "/" + identifier, headers={'Authorization': 'Bearer ' + token })
+#         if r.ok == False:
+#             raise ValueError("Cannot find specimen with identifier: " + identifier)
+#         uuid = json.loads(r.text)['hm_uuid']
+#         conn = Neo4jConnection(app.config['NEO4J_SERVER'], app.config['NEO4J_USERNAME'], app.config['NEO4J_PASSWORD'])
+#         driver = conn.get_driver()
+#         siblingid_list = Specimen.get_ingest_group_list(driver, uuid)
+#         return jsonify({'ingest_group_ids': siblingid_list}), 200 
 
-@app.route('/specimens/<identifier>/ingest-group-count', methods=['GET'])
-@secured(groups="HuBMAP-read")
-def get_ingest_group_count(identifier):
-    if identifier == None:
-        abort(400)
-    if len(identifier) == 0:
-        abort(400)
+#     except AuthError as e:
+#         print(e)
+#         return Response('token is invalid', 401)
+#     except:
+#         msg = 'An error occurred: '
+#         for x in sys.exc_info():
+#             msg += str(x)
+#         abort(400, msg)
+#     finally:
+#         if conn != None:
+#             if conn.get_driver().closed() == False:
+#                 conn.close()
 
-    conn = None
-    try:
-        token = str(request.headers["AUTHORIZATION"])[7:]
-        r = requests.get(app.config['UUID_WEBSERVICE_URL'] + "/" + identifier, headers={'Authorization': 'Bearer ' + token })
-        if r.ok == False:
-            raise ValueError("Cannot find specimen with identifier: " + identifier)
-        uuid = json.loads(r.text)['hm_uuid']
-        conn = Neo4jConnection(app.config['NEO4J_SERVER'], app.config['NEO4J_USERNAME'], app.config['NEO4J_PASSWORD'])
-        driver = conn.get_driver()
-        sibling_count = Specimen.get_ingest_group_count(driver, uuid)
-        return jsonify({'ingest_group_count': sibling_count}), 200 
 
-    except AuthError as e:
-        print(e)
-        return Response('token is invalid', 401)
-    except:
-        msg = 'An error occurred: '
-        for x in sys.exc_info():
-            msg += str(x)
-        abort(400, msg)
-    finally:
-        if conn != None:
-            if conn.get_driver().closed() == False:
-                conn.close()
+# Commented out by Zhou - 3/5/2021
+# @app.route('/specimens/<identifier>/ingest-group-count', methods=['GET'])
+# @secured(groups="HuBMAP-read")
+# def get_ingest_group_count(identifier):
+#     if identifier == None:
+#         abort(400)
+#     if len(identifier) == 0:
+#         abort(400)
+
+#     conn = None
+#     try:
+#         token = str(request.headers["AUTHORIZATION"])[7:]
+#         r = requests.get(app.config['UUID_WEBSERVICE_URL'] + "/" + identifier, headers={'Authorization': 'Bearer ' + token })
+#         if r.ok == False:
+#             raise ValueError("Cannot find specimen with identifier: " + identifier)
+#         uuid = json.loads(r.text)['hm_uuid']
+#         conn = Neo4jConnection(app.config['NEO4J_SERVER'], app.config['NEO4J_USERNAME'], app.config['NEO4J_PASSWORD'])
+#         driver = conn.get_driver()
+#         sibling_count = Specimen.get_ingest_group_count(driver, uuid)
+#         return jsonify({'ingest_group_count': sibling_count}), 200 
+
+#     except AuthError as e:
+#         print(e)
+#         return Response('token is invalid', 401)
+#     except:
+#         msg = 'An error occurred: '
+#         for x in sys.exc_info():
+#             msg += str(x)
+#         abort(400, msg)
+#     finally:
+#         if conn != None:
+#             if conn.get_driver().closed() == False:
+#                 conn.close()
 
 '''
 
@@ -2099,9 +2148,9 @@ def allowable_edit_states(hmuuid):
         #the Globus nexus auth token will be in the AUTHORIZATION section of the header
         token = str(request.headers["AUTHORIZATION"])[7:]
         #get a connection to Neo4j db
-        conn = Neo4jConnection(app.config['NEO4J_SERVER'], app.config['NEO4J_USERNAME'], app.config['NEO4J_PASSWORD'])
-        driver = conn.get_driver()
-        with driver.session() as session:
+        # conn = Neo4jConnection(app.config['NEO4J_SERVER'], app.config['NEO4J_USERNAME'], app.config['NEO4J_PASSWORD'])
+        # driver = conn.get_driver()
+        with neo4j_driver_instance.session() as session:
             #query Neo4j db to find the entity
             stmt = "match (e:Entity {uuid:'" + hmuuid.strip() + "'}) return e.group_uuid, e.entity_type, e.data_access_level, e.status"
             recds = session.run(stmt)
@@ -2180,10 +2229,10 @@ def allowable_edit_states(hmuuid):
         for x in sys.exc_info():
             msg += str(x)
         abort(400, msg)
-    finally:
-        if conn != None:
-            if conn.get_driver().closed() == False:
-                conn.close()
+ #   finally:
+ #       if conn != None:
+ #           if conn.get_driver().closed() == False:
+ #               conn.close()
 
 
 # This is for development only

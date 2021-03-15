@@ -1,14 +1,17 @@
-flask_cors==3.0.7
-property==2.2
-mysql-connector-python==8.0.16
-flask==1.0.2
-globus-sdk==1.7.1
-property==2.2
-urllib3==1.24.2
-neo4j==1.7.2
+Flask==1.1.2
+flask_cors==3.0.10
+globus_sdk==2.0.1
+jsonref==0.2
 jsonschema==3.2.0
-jsonref==0.1
-py2neo==4.3.0
+neo4j==4.2.1
+py2neo==2021.0.1
+selenium==3.141.0
+Werkzeug==1.0.1
+
+# The commons package requires requests>=2.22.0
+requests==2.25.1
+
 # The branch name of commons to be used during image build
 # Default is master branch specified in docker-compose.yml if not set
 git+git://github.com/hubmapconsortium/commons.git@${COMMONS_BRANCH}#egg=hubmap-commons
+

@@ -5,7 +5,7 @@ Created on May 15, 2019
 import os
 import sys
 import re
-from neo4j import TransactionError
+from neo4j.exceptions import TransactionError
 import requests
 import configparser
 from pprint import pprint

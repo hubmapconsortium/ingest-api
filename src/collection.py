@@ -1,4 +1,4 @@
-from neo4j import TransactionError, CypherError
+from neo4j.exceptions import TransactionError
 import sys
 import traceback
 import pprint
@@ -116,10 +116,6 @@ class Collection(object):
                 print('A transaction error occurred: ', te.value)
                 if tx.closed() == False:
                     tx.rollback()
-            except CypherError as cse:
-                print('A Cypher error was encountered: ', cse.message)
-                if tx.closed() == False:
-                    tx.rollback()
             except:
                 print('A general error occurred: ')
                 traceback.print_exc()
@@ -140,9 +136,6 @@ class Collection(object):
                     dataset_record = record['properties']
                     return_list.append(dataset_record)
                 return return_list                    
-            except CypherError as cse:
-                print ('A Cypher error was encountered: '+ cse.message)
-                raise
             except:
                 print ('A general error occurred: ')
                 for x in sys.exc_info():
