@@ -1,8 +1,9 @@
 #This file will include any version related update scripts
 
-from neo4j import TransactionError, CypherError
+#from neo4j import TransactionError, CypherError
 import sys
 import os
+import traceback
 
 from dataset import Dataset
 
@@ -36,14 +37,8 @@ def initialize_all_entity_access_levels(confdata):
             print ("EXECUTING UPDATE: " + stmt)
             tx.run(stmt)
             tx.commit()
-        except TransactionError as te: 
-            print ('A transaction error occurred: ', te.value)
-            tx.rollback()
-        except CypherError as cse:
-            print ('A Cypher error was encountered: ', cse.message)
-            tx.rollback()                
-        except:
-            print ('A general error occurred: ')
+        except Exception as e:
+            print ('An exception occurred while initializing entity access levels: ' + str(e))
             traceback.print_exc(file=sys.stdout)
             tx.rollback()
 
@@ -72,16 +67,8 @@ def initialize_all_dataset_access_levels(confdata, nexus_token):
                 dataset_record = {'uuid': uuid, 'source_uuid':source_uuid, 'group_uuid':group_uuid, 'phi': has_phi}
                 dataset = Dataset(conf_data)
                 dataset.modify_dataset(driver, header, uuid, dataset_record, dataset_record['group_uuid'])
-
-
-        except TransactionError as te: 
-            print ('A transaction error occurred: ', te.value)
-            tx.rollback()
-        except CypherError as cse:
-            print ('A Cypher error was encountered: ', cse.message)
-            tx.rollback()                
-        except:
-            print ('A general error occurred: ')
+        except Exception as e:
+            print ('An exception occurred: while initializing dataset access levels: ' + str(e))
             tx.rollback()
 
     

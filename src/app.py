@@ -12,7 +12,7 @@ from flask_cors import CORS
 from globus_sdk import AccessTokenAuthorizer, AuthClient, ConfidentialAppAuthClient
 
 from dataset import Dataset
-#from specimen import Specimen
+from specimen import Specimen
 from ingest_file_helper import IngestFileHelper
 #from file_helper import FileHelper
 
@@ -1627,39 +1627,38 @@ def does_specimen_exist(uuid):
 '''
 
 
-# Commented out by Zhou - 3/5/2021
-# @app.route('/specimens/<identifier>/ingest-group-ids', methods=['GET'])
-# @secured(groups="HuBMAP-read")
-# def get_specimen_ingest_group_ids(identifier):
-#     if identifier == None:
-#         abort(400)
-#     if len(identifier) == 0:
-#         abort(400)
+@app.route('/specimens/<identifier>/ingest-group-ids', methods=['GET'])
+@secured(groups="HuBMAP-read")
+def get_specimen_ingest_group_ids(identifier):
+    if identifier == None:
+        abort(400)
+    if len(identifier) == 0:
+        abort(400)
 
-#     conn = None
-#     try:
-#         token = str(request.headers["AUTHORIZATION"])[7:]
-#         r = requests.get(app.config['UUID_WEBSERVICE_URL'] + "/" + identifier, headers={'Authorization': 'Bearer ' + token })
-#         if r.ok == False:
-#             raise ValueError("Cannot find specimen with identifier: " + identifier)
-#         uuid = json.loads(r.text)['hm_uuid']
-#         conn = Neo4jConnection(app.config['NEO4J_SERVER'], app.config['NEO4J_USERNAME'], app.config['NEO4J_PASSWORD'])
-#         driver = conn.get_driver()
-#         siblingid_list = Specimen.get_ingest_group_list(driver, uuid)
-#         return jsonify({'ingest_group_ids': siblingid_list}), 200 
+    conn = None
+    try:
+        token = str(request.headers["AUTHORIZATION"])[7:]
+        r = requests.get(app.config['UUID_WEBSERVICE_URL'] + "/" + identifier, headers={'Authorization': 'Bearer ' + token })
+        if r.ok == False:
+            raise ValueError("Cannot find specimen with identifier: " + identifier)
+        uuid = json.loads(r.text)['hm_uuid']
+#        conn = Neo4jConnection(app.config['NEO4J_SERVER'], app.config['NEO4J_USERNAME'], app.config['NEO4J_PASSWORD'])
+#        driver = conn.get_driver()
+        siblingid_list = Specimen.get_ingest_group_list(neo4j_driver_instance, uuid)
+        return jsonify({'ingest_group_ids': siblingid_list}), 200 
 
-#     except AuthError as e:
-#         print(e)
-#         return Response('token is invalid', 401)
-#     except:
-#         msg = 'An error occurred: '
-#         for x in sys.exc_info():
-#             msg += str(x)
-#         abort(400, msg)
-#     finally:
-#         if conn != None:
-#             if conn.get_driver().closed() == False:
-#                 conn.close()
+    except AuthError as e:
+        print(e)
+        return Response('token is invalid', 401)
+    except:
+        msg = 'An error occurred: '
+        for x in sys.exc_info():
+            msg += str(x)
+        abort(400, msg)
+    finally:
+        if conn != None:
+            if conn.get_driver().closed() == False:
+                conn.close()
 
 
 # Commented out by Zhou - 3/5/2021
