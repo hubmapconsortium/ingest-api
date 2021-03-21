@@ -119,7 +119,14 @@ else
         elif [ "$2" = "stop" ]; then
             docker-compose -f docker-compose-ingest-api.$1.yml -p ingest-api stop
         elif [ "$2" = "down" ]; then
-            docker-compose -f docker-compose-ingest-api.$1.yml -p ingest-api down
+            # Do NOT remove the docker network on TEST/STAGE/PROD because the network IP
+            # is also defined in the firewalld rules on hivevm192/hivevm195/hivevm193
+            if [[ "$1" != "localhost" && "$1" != "dev" && "$1" != "refactor" ]]; then
+                echo 'On TEST/STAGE/PROD, no network will be removed with to avoid the update with firewalld rules'
+                docker-compose -f docker-compose-ingest-api.$1.yml -p ingest-api stop
+                docker rm ingest-api
+            else
+                docker-compose -f docker-compose-ingest-api.$1.yml -p ingest-api down
         fi
     fi
 fi
