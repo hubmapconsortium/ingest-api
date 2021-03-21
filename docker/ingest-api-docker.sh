@@ -127,6 +127,7 @@ else
                 docker rm ingest-api
             else
                 docker-compose -f docker-compose-ingest-api.$1.yml -p ingest-api down
+            fi
         fi
     fi
 fi
