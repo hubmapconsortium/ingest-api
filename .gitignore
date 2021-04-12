@@ -2,7 +2,6 @@
 src/instance/app.cfg
 *~
 
-# Ignore python virtual environment
 ingest-venv
 
 # Ignore docker copied stuff
