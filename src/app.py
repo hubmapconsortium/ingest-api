@@ -587,7 +587,7 @@ def create_datastage():
         requested_group_uuid = auth_helper.get_write_group_uuid(token, requested_group_uuid)
         dataset_request['group_uuid'] = requested_group_uuid            
         post_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + '/entities/dataset'
-        response = requests.post(post_url, json = dataset_request, headers = {'Authorization': 'Bearer ' + token }, verify = False)
+        response = requests.post(post_url, json = dataset_request, headers = {'Authorization': 'Bearer ' + token, 'X-Hubmap-Application':'ingest-api' }, verify = False)
         if response.status_code != 200:
             return Response(response.text, response.status_code)
         new_dataset = response.json()
@@ -737,7 +737,7 @@ def update_ingest_status():
         #{'dataset_id' : '287d61b60b806fdf54916e3b7795ad5a', 'status': '<', 'message': 'the process ran', 'metadata': [maybe some metadata stuff]}
         updated_ds = dataset.get_dataset_ingest_update_record(ds_request)
 
-        headers = {'Authorization': request.headers["AUTHORIZATION"], 'Content-Type': 'application/json'}
+        headers = {'Authorization': request.headers["AUTHORIZATION"], 'Content-Type': 'application/json', 'X-Hubmap-Application':'ingest-api'}
         entity_uuid = ds_request['dataset_id']
         update_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/' + entity_uuid
         
@@ -910,7 +910,7 @@ def submit_dataset(uuid):
         
         dataset_request['status'] = 'Processing'
         put_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/' + uuid
-        response = requests.put(put_url, json = dataset_request, headers = {'Authorization': 'Bearer ' + token }, verify = False)
+        response = requests.put(put_url, json = dataset_request, headers = {'Authorization': 'Bearer ' + token, 'X-Hubmap-Application':'ingest-api' }, verify = False)
         if not response.status_code == 200:
             logger.error(f"call to {put_url} failed with code:{response.status_code} message:" + response.text)
             return Response(response.text, response.status_code)
