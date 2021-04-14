@@ -17,12 +17,12 @@ logger = logging.getLogger(__name__)
 
 
 # Configurations
-DATACITE_CLIENT_ID = ''
-DATACITE_CLIENT_PASSWORD = ''
-DATACITE_API_URL = 'https://api.test.datacite.org/dois '
+DATACITE_API_URL = 'https://api.test.datacite.org/dois'
 HUBMAP_PREFIX = '10.80478'
-ENTITY_API_URL = 'https://entity-api.test.hubmapconsortium.org/'
+ENTITY_API_URL = 'https://entity-api.dev.hubmapconsortium.org/'
 
+# Remove trailing slash / from URL base to avoid "//" 
+ENTITY_API_URL = ENTITY_API_URL.strip('/')
 
 """
 Register the given dataset with DataCite 
@@ -39,50 +39,62 @@ Returns
 list
     The list of new ids dicts, the number of dicts is based on the count
 """
-def register_dataset(dataset, user_token):
+def register_dataset(dataset, user_token, datacite_repository_id, datacite_repository_password):
     if ('entity_type' in dataset) and (dataset['entity_type'] == 'Dataset'):
         json_to_post = {
-          "data": {
-            "id": dataset['hubmap_id'],
-            "type": "dois",
-            "attributes": {
-              "event": "publish",
-              "doi": f"{HUBMAP_PREFIX}/{dataset['hubmap_id']}",
-              "creators": dataset['creators'],
-              "titles": [{
-                "title": dataset['title']
+          'data': {
+            'id': dataset['hubmap_id'],
+            'type': 'dois',
+            'attributes': {
+              'event': 'publish',
+              'doi': f"{HUBMAP_PREFIX}/{dataset['hubmap_id']}",
+              # 'creators': dataset['creators'] if ('creators' in dataset) else [],
+              # 'titles': [{
+              #   'title': dataset['title'] if ('title' in dataset) else 'Default title placeholder'
+              # }],
+              'creators': [{
+                'name': "DataCite Metadata Working Group"
               }],
-              "publisher": "DataCite e.V.",
-              "publicationYear": 2016,
-              "types": {
-                "resourceTypeGeneral": "Text"
+              'titles': [{
+                'title': "DataCite Metadata Schema Documentation for the Publication and Citation of Research Data v4.0"
+              }],
+              'publisher': 'HuBMAP Consortium',
+              'publicationYear': 2021,
+              'types': {
+                'resourceTypeGeneral': 'Dataset'
               },
-              "url": "https://schema.datacite.org/meta/kernel-4.0/index.html",
-              "schemaVersion": "http://datacite.org/schema/kernel-4"
+              'url': 'https://schema.datacite.org/meta/kernel-4.0/index.html',
+              'schemaVersion': 'http://datacite.org/schema/kernel-4'
             }
           }
         }
 
+        logger.debug(json_to_post)
+
+        request_auth = HTTPBasicAuth(datacite_repository_id, datacite_repository_password)
+
+        # Specify the MIME type type of request being sent from the client to the DataCite
         request_headers = {
             'Content-Type': 'application/vnd.api+json'
         }
 
-        # Make the request using Basic Auth
+        # Send the request using Basic Auth
         # Disable ssl certificate verification
-        response = requests.post(url = DATACITE_API_URL, auth = HTTPBasicAuth(DATACITE_CLIENT_ID, DATACITE_CLIENT_PASSWORD), headers = request_headers, json = json_to_post, verify = False) 
+        response = requests.post(url = DATACITE_API_URL, auth = request_auth, headers = request_headers, json = json_to_post, verify = False) 
 
         # Invoke .raise_for_status(), an HTTPError will be raised with certain status codes
-        response.raise_for_status()
+        #response.raise_for_status()
 
         if response.status_code == 200:
             logger.info("======registered DOI via DataCite======")
 
-            # Get the response json
+            # Get the response json of resulting doi
             doi_data = response.json()
 
             dataset_uuid = dataset['uuid']
 
             try:
+                # Update the doi properties via entity-api
                 update_dataset_doi_info(dataset_uuid, doi_data, user_token)
             except requests.exceptions.RequestException as e:
                 # Bubble up the error
@@ -101,6 +113,8 @@ def register_dataset(dataset, user_token):
 
             # Also bubble up the error message from DataCite
             raise requests.exceptions.RequestException(response.text)
+    else:
+        raise KeyError('The entity_type of the given dataset is not Dataset')
 
 """
 Update the dataset's doi properties
