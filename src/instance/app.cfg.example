@@ -74,3 +74,8 @@ INGEST_PIPELINE_URL = 'http://ingest-pipeline:8789/api/hubmap'
 # Default processing type for ingest pipeline API.
 INGEST_PIPELINE_DEFAULT_PROCESS = 'SCAN.AND.BEGIN.PROCESSING'
 
+# DataCite register DOI settings
+DATACITE_REPOSITORY_ID = 'PSC.HUBMAP'
+DATACITE_REPOSITORY_PASSWORD = 'doi4HuBMAP2020'
+DATACITE_API_URL = 'https://api.test.datacite.org/'
+DATACITE_HUBMAP_PREFIX = '10.80478'

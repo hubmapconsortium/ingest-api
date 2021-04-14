@@ -16,14 +16,6 @@ logging.basicConfig(format='[%(asctime)s] %(levelname)s in %(module)s: %(message
 logger = logging.getLogger(__name__)
 
 
-# Configurations
-DATACITE_API_URL = 'https://api.test.datacite.org/dois'
-HUBMAP_PREFIX = '10.80478'
-ENTITY_API_URL = 'https://entity-api.dev.hubmapconsortium.org/'
-
-# Remove trailing slash / from URL base to avoid "//" 
-ENTITY_API_URL = ENTITY_API_URL.strip('/')
-
 """
 Register the given dataset with DataCite 
 
@@ -39,7 +31,7 @@ Returns
 list
     The list of new ids dicts, the number of dicts is based on the count
 """
-def register_dataset(dataset, user_token, datacite_repository_id, datacite_repository_password):
+def register_dataset(dataset, user_token, datacite_repository_id, datacite_repository_password, datacite_api_url, datacite_hubmap_prefix, entity_api_url):
     if ('entity_type' in dataset) and (dataset['entity_type'] == 'Dataset'):
         json_to_post = {
           'data': {
@@ -47,7 +39,7 @@ def register_dataset(dataset, user_token, datacite_repository_id, datacite_repos
             'type': 'dois',
             'attributes': {
               'event': 'publish',
-              'doi': f"{HUBMAP_PREFIX}/{dataset['hubmap_id']}",
+              'doi': f"{datacite_hubmap_prefix}/{dataset['hubmap_id']}",
               # 'creators': dataset['creators'] if ('creators' in dataset) else [],
               # 'titles': [{
               #   'title': dataset['title'] if ('title' in dataset) else 'Default title placeholder'
@@ -80,7 +72,7 @@ def register_dataset(dataset, user_token, datacite_repository_id, datacite_repos
 
         # Send the request using Basic Auth
         # Disable ssl certificate verification
-        response = requests.post(url = DATACITE_API_URL, auth = request_auth, headers = request_headers, json = json_to_post, verify = False) 
+        response = requests.post(url = datacite_api_url, auth = request_auth, headers = request_headers, json = json_to_post, verify = False) 
 
         # Invoke .raise_for_status(), an HTTPError will be raised with certain status codes
         #response.raise_for_status()
@@ -95,7 +87,7 @@ def register_dataset(dataset, user_token, datacite_repository_id, datacite_repos
 
             try:
                 # Update the doi properties via entity-api
-                update_dataset_doi_info(dataset_uuid, doi_data, user_token)
+                update_dataset_doi_info(dataset_uuid, doi_data, user_token, entity_api_url)
             except requests.exceptions.RequestException as e:
                 # Bubble up the error
                 raise requests.exceptions.RequestException(e)
@@ -128,7 +120,7 @@ doi_data: dict
 user_token: str
     The user's globus nexus token
 """
-def update_dataset_doi_info(dataset_uuid, doi_data, user_token):
+def update_dataset_doi_info(dataset_uuid, doi_data, user_token, entity_api_url):
     # Update the registered_doi, doi_url, and has_doi properties after DOI creatiion
     dataset_properties_to_update = {
         'registered_doi': doi_data['attributes']['doi'],
@@ -141,7 +133,7 @@ def update_dataset_doi_info(dataset_uuid, doi_data, user_token):
         'X-Hubmap-Application': 'ingest-api'
     }
 
-    response = requests.put(url = f"{ENTITY_API_URL}/entities/{dataset_uuid}", headers = request_headers, json = dataset_properties_to_update, verify = False) 
+    response = requests.put(url = f"{entity_api_url}/entities/{dataset_uuid}", headers = request_headers, json = dataset_properties_to_update, verify = False) 
     
     if response.status_code == 200:
         logger.info("======The target entity has been updated with DOI info======")
