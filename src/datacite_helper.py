@@ -14,7 +14,7 @@ requests.packages.urllib3.disable_warnings(category = InsecureRequestWarning)
 # All the API logging is forwarded to the uWSGI server and gets written into the log file `uwsgo-entity-api.log`
 # Log rotation is handled via logrotate on the host system with a configuration file
 # Do NOT handle log file and rotation via the Python logging to avoid issues with multi-worker processes
-logging.basicConfig(format='[%(asctime)s] %(levelname)s in %(module)s: %(message)s', level=logging.DEBUG, datefmt='%Y-%m-%d %H:%M:%S')
+logging.basicConfig(format = '[%(asctime)s] %(levelname)s in %(module)s: %(message)s', level = logging.DEBUG, datefmt='%Y-%m-%d %H:%M:%S')
 logger = logging.getLogger(__name__)
 
 
@@ -29,18 +29,13 @@ _search_api_url = None
 
 
 ####################################################################################################
-## Provenance yaml schema initialization
+## Initialization
 ####################################################################################################
 
 """
-Initialize the datacite_manager module
+Initialize the datacite_helper module
 
-Parameters
-----------
-valid_yaml_file : file
-    A valid yaml file
-neo4j_session_context : neo4j.Session object
-    The neo4j database session
+Read in the Flask configuration items
 """
 def initialize():
     # Specify as module-scope variables
@@ -50,18 +45,33 @@ def initialize():
     global _datacite_api_url
     global _entity_api_url
     global _search_api_url
+    global _portal_url
 
+    config = load_flask_instance_config()
+
+    _datacite_repository_id = config['DATACITE_REPOSITORY_ID']
+    _datacite_repository_password = config['DATACITE_REPOSITORY_PASSWORD']
+    _datacite_hubmap_prefix = config['DATACITE_HUBMAP_PREFIX']
+    _datacite_api_url = config['DATACITE_API_URL']
+    _entity_api_url = config['ENTITY_WEBSERVICE_URL']
+    _search_api_url = config['SEARCH_WEBSERVICE_URL']
+    _portal_url = config['PORTAL_URL']
+
+
+"""
+Load the Flask instance configuration
+
+Returns
+-------
+dict
+    The Flask instance config
+"""
+def load_flask_instance_config():
     # Specify the absolute path of the instance folder and use the config file relative to the instance path
     app = Flask(__name__, instance_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'instance'), instance_relative_config = True)
     app.config.from_pyfile('app.cfg')
 
-    _datacite_repository_id = app.config['DATACITE_REPOSITORY_ID']
-    _datacite_repository_password = app.config['DATACITE_REPOSITORY_PASSWORD']
-    _datacite_hubmap_prefix = app.config['DATACITE_HUBMAP_PREFIX']
-    _datacite_api_url = app.config['DATACITE_API_URL']
-    _entity_api_url = app.config['ENTITY_WEBSERVICE_URL']
-    _search_api_url = app.config['SEARCH_WEBSERVICE_URL']
-
+    return app.config
 
 """
 Publish the given dataset with DataCite 
@@ -69,14 +79,14 @@ Publish the given dataset with DataCite
 Parameters
 ----------
 dataset: dict
-    The dataset dict to be registered
+    The dataset dict to be published
 user_token: str
     The user's globus nexus token
 
 Returns
 -------
-list
-    The list of new ids dicts, the number of dicts is based on the count
+dict
+    The datset entity dict with updated DOI properties
 """
 def publish_dataset(dataset, user_token):
     global _datacite_repository_id
@@ -84,83 +94,142 @@ def publish_dataset(dataset, user_token):
     global _datacite_hubmap_prefix
     global _datacite_api_url
     global _entity_api_url
+    global _portal_url
 
     if ('entity_type' in dataset) and (dataset['entity_type'] == 'Dataset'):
-        dataset_uuid = dataset['uuid']
+        # First create the DOI via DataCite
+        try:
+            doi_data = create_doi(dataset, user_token)
+        except requests.exceptions.RequestException as e:
+            raise requests.exceptions.RequestException(e)
 
-        doi = f"{_datacite_hubmap_prefix}/{dataset['hubmap_id']}"
-        publisher = 'HuBMAP Consortium'
+        # Then update the dataset DOI properties via entity-api
+        try:
+            updated_dataset = update_dataset_after_doi_created(dataset_uuid, doi_data, user_token)
 
-        # To create a DOI in Findable state with a URL and metadata you need to include 
-        # all of the required DOI metadata fields 
-        # (DOI, creators, title, publisher, publicationYear, resourceTypeGeneral)
-        json_to_post = {
-          'data': {
-            'id': dataset['hubmap_id'],
-            'type': 'dois',
-            'attributes': {
-                'event': 'publish', # The DOI state will be 'findable'
-                'doi': doi,
-                'creators': [{
-                    'name': "HuBMAP"
-                }],
-                'titles': [{
-                    'title': generate_dataset_title(dataset, user_token)
-                }],
-                'publisher': publisher,
-                'publicationYear': 2021,
-                'types': {
-                    'resourceTypeGeneral': 'Dataset'
-                }
-            }
-          }
-        }
-
-        logger.debug(json_to_post)
-
-        request_auth = HTTPBasicAuth(_datacite_repository_id, _datacite_repository_password)
-
-        # Specify the MIME type type of request being sent from the client to the DataCite
-        request_headers = {
-            'Content-Type': 'application/vnd.api+json'
-        }
-
-        # Send the request using Basic Auth
-        # Disable ssl certificate verification
-        response = requests.post(url = _datacite_api_url, auth = request_auth, headers = request_headers, json = json_to_post, verify = False) 
-
-        # Invoke .raise_for_status(), an HTTPError will be raised with certain status codes
-        #response.raise_for_status()
-
-        # Don't forget 201
-        if response.status_code in [200, 201]:
-            logger.info("======Published dataset via DataCite======")
-   
-            # Get the response json of resulting doi
-            doi_data = response.json()['data']
-
-            logger.debug("======resulting json from DataCite======")
-            logger.debug(doi_data)
-
-            try:
-                # Update the dataset properties via entity-api
-                update_dataset_after_doi_created(dataset_uuid, doi_data, user_token, _entity_api_url)
-            except requests.exceptions.RequestException as e:
-                # Bubble up the error
-                raise requests.exceptions.RequestException(e)
-        else:
-            msg = f"Unable to publish dataset {dataset_uuid} via DataCite" 
-            
-            # Log the full stack trace, prepend a line with our message
-            logger.exception(msg)
-
-            logger.debug("======status code from DataCite======")
-            logger.debug(response.status_code)
-
-            logger.debug("======response text from DataCite======")
-            logger.debug(response.text)
+            return updated_dataset
+        except requests.exceptions.RequestException as e:
+            raise requests.exceptions.RequestException(e)
     else:
-        raise KeyError('The entity_type of the given dataset is not Dataset')
+        raise KeyError('Either the entity_type of the given Dataset is missing or the entity is not a Dataset')
+
+
+"""
+Create DOI via DataCite 
+
+Parameters
+----------
+dataset: dict
+    The dataset dict to be published
+user_token: str
+    The user's globus nexus token
+
+Returns
+-------
+dict
+    The generated DOI information
+"""
+def create_doi(dataset, user_token):
+    global _datacite_repository_id
+    global _datacite_repository_password
+    global _datacite_hubmap_prefix
+    global _datacite_api_url
+
+    dataset_uuid = dataset['uuid']
+
+    doi = f"{_datacite_hubmap_prefix}/{dataset['hubmap_id']}"
+    publisher = 'HuBMAP Consortium'
+
+    # Auto generate the dataset title
+    try:
+        generated_title = generate_dataset_title(dataset, user_token)
+    except requests.exceptions.RequestException as e:
+        raise requests.exceptions.RequestException(e)
+
+    # To create a DOI in Findable state with a URL and metadata you need to include 
+    # all of the required DOI metadata fields 
+    # (DOI, creators, title, publisher, publicationYear, resourceTypeGeneral)
+    json_to_post = {
+      'data': {
+        'id': dataset['hubmap_id'],
+        'type': 'dois',
+        'attributes': {
+            # Below are all the required attributes
+
+            # The event action determines the DOI state: Draft, Registered, Findable
+            # Possible actions:
+            # publish - Triggers a state move from Draft or Registered to Findable
+            # register - Triggers a state move from Draft to Registered
+            # hide - Triggers a state move from Findable to Registered
+            'event': 'publish', 
+            # The globally unique string that identifies the resource and can't be changed
+            'doi': doi,
+            # The main researchers or organizations involved in producing the resource, in priority order
+            # Will use Dataset.contributors as creators once available
+            'creators': [{
+                'name': "HuBMAP"
+            }],
+            # One or more names or titles by which the resource is known
+            'titles': [{
+                'title': generated_title
+            }],
+            # The name of the entity that holds, archives, publishes prints, distributes, 
+            # releases, issues, or produces the resource
+            'publisher': publisher,
+            # The year when the resource was or will be made publicly available
+            'publicationYear': 2021, # Integer
+            # The general type of the resource
+            'types': {
+                'resourceTypeGeneral': 'Dataset'
+            },
+            # The location of the landing page with more information about the resource
+            'url': f"{_portal_url}/browse/dataset/{dataset_uuid}"
+        }
+      }
+    }
+
+    logger.debug("======json_to_post======")
+    logger.debug(json_to_post)
+
+    request_auth = HTTPBasicAuth(_datacite_repository_id, _datacite_repository_password)
+
+    # Specify the MIME type type of request being sent from the client to the DataCite
+    request_headers = {
+        'Content-Type': 'application/vnd.api+json'
+    }
+
+    # Send the request using Basic Auth
+    # Disable ssl certificate verification
+    response = requests.post(url = _datacite_api_url, auth = request_auth, headers = request_headers, json = json_to_post, verify = False) 
+
+    # Invoke .raise_for_status(), an HTTPError will be raised with certain status codes
+    #response.raise_for_status()
+
+    # Don't forget 201
+    if response.status_code in [200, 201]:
+        logger.info(f"======Registered DOI for dataset {dataset_uuid} via DataCite======")
+
+        # Get the response json of resulting doi
+        doi_data = response.json()['data']
+
+        logger.debug("======resulting json from DataCite======")
+        logger.debug(doi_data)
+
+        return doi_data
+    else:
+        msg = f"Unable to create DOI for dataset {dataset_uuid} via DataCite" 
+        
+        # Log the full stack trace, prepend a line with our message
+        logger.exception(msg)
+
+        logger.debug("======status code from DataCite======")
+        logger.debug(response.status_code)
+
+        logger.debug("======response text from DataCite======")
+        logger.debug(response.text)
+
+        # Also bubble up the error message from DataCite
+        raise requests.exceptions.RequestException(response.text)
 
 """
 Update the dataset's properties after doi is created
@@ -173,6 +242,11 @@ doi_data: dict
     The DataCite generated doi information
 user_token: str
     The user's globus nexus token
+
+Returns
+-------
+dict
+    The entity dict with updated DOI properties
 """
 def update_dataset_after_doi_created(dataset_uuid, doi_data, user_token):
     global _entity_api_url
@@ -194,6 +268,13 @@ def update_dataset_after_doi_created(dataset_uuid, doi_data, user_token):
     
     if response.status_code == 200:
         logger.info("======The target entity has been updated with DOI info======")
+
+        updated_entity = response.json()
+
+        logger.debug("======updated_entity======")
+        logger.debug(updated_entity)
+
+        return updated_entity 
     else:
         msg = f"Unable to update the DOI properties of dataset {dataset_uuid}" 
         
@@ -219,8 +300,6 @@ Parameters
 ----------
 dataset_uuid: str
     The dataset uuid
-doi_data: dict
-    The DataCite generated doi information
 user_token: str
     The user's globus nexus token
 
@@ -236,7 +315,10 @@ def generate_dataset_title(dataset, user_token):
     race = '<race>'
     sex = '<sex>'
 
-    ancestors = get_dataset_ancestors(dataset['uuid'], user_token)
+    try:
+        ancestors = get_dataset_ancestors(dataset['uuid'], user_token)
+    except requests.exceptions.RequestException as e:
+        raise requests.exceptions.RequestException(e)
 
     for ancestor in ancestors:
         if (ancestor['entity_type'] == 'Sample') and (ancestor['specimen_type'].lower() == 'organ'):
@@ -252,10 +334,10 @@ def generate_dataset_title(dataset, user_token):
                             sex = data['preferred_term']
 
                         if data['grouping_concept_preferred_term'].lower() == 'race':
-                            sex = data['preferred_term']
+                            sex = data['preferred_term'].lower()
 
                         if data['grouping_concept_preferred_term'].lower() == 'sex':
-                            sex = data['preferred_term']
+                            sex = data['preferred_term'].lower()
 
     if ('ingest_metadata' in dataset) and ('metadata' in dataset['ingest_metadata']):
         metadata = dataset['ingest_metadata']['metadata']
@@ -265,12 +347,14 @@ def generate_dataset_title(dataset, user_token):
             try:
                 assay_type_desc = get_assay_type_desc(assay_type)
             except requests.exceptions.RequestException as e:
-                # Bubble up the error
                 raise requests.exceptions.RequestException(e)
 
-    title = f"{assay_type_desc} data from the {organ_name} of a {age} year old {race} {sex}"
+    generated_title = f"{assay_type_desc} data from the {organ_name} of a {age} year old {race} {sex}"
 
-    return title
+    logger.debug("===========Auto generated Title===========")
+    logger.debug(generated_title)
+
+    return generated_title
 
 
 """
@@ -313,6 +397,23 @@ def get_assay_type_desc(assay_type):
         logger.debug("======response text from search-api======")
         logger.debug(response.text)
 
+        raise requests.exceptions.RequestException(response.text)
+
+"""
+Get the ancestors list of the target dataset
+
+Parameters
+----------
+dataset_uuid: str
+    The UUID of target dataset
+user_token: str
+    The user's globus nexus token
+
+Returns
+-------
+list
+    A list of ancestors entity dicts
+"""
 def get_dataset_ancestors(dataset_uuid, user_token):
     global _entity_api_url
 
@@ -343,12 +444,12 @@ def get_dataset_ancestors(dataset_uuid, user_token):
         logger.debug("======response text from entity-api======")
         logger.debug(response.text)
 
+        raise requests.exceptions.RequestException(response.text)
+
 
 # Running this python file as a script
-# python3 datacite.py <user_token> <dataset_uuid>
+# python3 -m datacite_helper <user_token> <dataset_uuid>
 if __name__ == "__main__":
-    global _entity_api_url
-
     try:
         user_token = sys.argv[1]
 
