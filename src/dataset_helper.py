@@ -167,10 +167,7 @@ def get_assay_type_description(data_types):
         response = requests.get(url = target_url, verify = False) 
 
         if response.status_code == 200:
-
             assay_type_info = response.json()
-
-            logger.debug(assay_type_info)
 
             # Add to the list
             assay_types.append(assay_type_info['description'])
@@ -215,7 +212,6 @@ Parameters
 ----------
 organ_code: str
     The two-letter organ code defined at
-    https://raw.githubusercontent.com/hubmapconsortium/search-api/test-release/src/search-schema/data/definitions/enums/organ_types.yaml
 
 Returns
 -------
@@ -223,7 +219,7 @@ str
     The description of the organ code
 """
 def get_organ_description(organ_code):
-    yaml_file_url = 'https://raw.githubusercontent.com/hubmapconsortium/search-api/test-release/src/search-schema/data/definitions/enums/organ_types.yaml'
+    yaml_file_url = 'https://raw.githubusercontent.com/hubmapconsortium/search-api/master/src/search-schema/data/definitions/enums/organ_types.yaml'
     
     with urllib.request.urlopen(yaml_file_url) as response:
         yaml_file = response.read()
@@ -267,12 +263,7 @@ def get_dataset_ancestors(dataset_uuid, user_token):
     response = requests.get(url = target_url, headers = auth_header,  verify = False) 
 
     if response.status_code == 200:
-
-        ancestors = response.json()
-
-        logger.debug(ancestors)
-
-        return ancestors
+        return response.json()
     else:
         msg = f"Unable to get the ancestors of dataset with uuid: {dataset_uuid}" 
         
@@ -318,10 +309,7 @@ if __name__ == "__main__":
     response = requests.get(url = target_url, headers = auth_header,  verify = False) 
 
     if response.status_code == 200:
-
         dataset = response.json()
-
-        logger.debug(dataset)
 
         try:
             title = generate_dataset_title(dataset, user_token)
