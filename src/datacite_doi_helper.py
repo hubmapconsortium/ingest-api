@@ -257,12 +257,11 @@ dict
 def update_dataset_after_doi_created(dataset_uuid, doi_data, user_token):
     global _entity_api_url
 
-    # Update the registered_doi, doi_url, and has_doi properties after DOI creatiion
+    # Update the registered_doi, and doi_url properties after DOI creatiion
     # Are we also supposed to update the Dataset.status to "Published"?
     dataset_properties_to_update = {
         'registered_doi': doi_data['attributes']['doi'],
-        'doi_url': doi_data['attributes']['url'],
-        'has_doi': True
+        'doi_url': doi_data['attributes']['url']
     }
 
     request_headers = {
