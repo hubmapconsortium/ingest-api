@@ -1,8 +1,10 @@
 import os
 import sys
+import yaml
 import requests
 import logging
 from flask import Flask
+import urllib.request
 
 # Suppress InsecureRequestWarning warning when requesting status on https with ssl cert verify disabled
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
@@ -83,7 +85,7 @@ str
 """
 def generate_dataset_title(dataset, user_token):
     assay_type_desc = '<assay_type_desc>'
-    organ_name = '<organ_name>'
+    organ_desc = '<organ_desc>'
     age = '<age>'
     race = '<race>'
     sex = '<sex>'
@@ -103,9 +105,14 @@ def generate_dataset_title(dataset, user_token):
     for ancestor in ancestors:
         if (ancestor['entity_type'] == 'Sample') and (ancestor['specimen_type'].lower() == 'organ'):
             # ancestor['organ'] is the two-letter code
-            # Do we need to convert to the description?
+            # We need to convert to the description
             # https://github.com/hubmapconsortium/search-api/blob/test-release/src/search-schema/data/definitions/enums/organ_types.yaml
-            organ_name = ancestor['organ']
+            organ_code = ancestor['organ']
+
+            try:
+                organ_desc = get_organ_description(organ_code)
+            except yaml.YAMLError as e:
+                raise yaml.YAMLError(e)
 
         if ancestor['entity_type'] == 'Donor':
             # Easier to ask for forgiveness than permission (EAFP)
@@ -127,7 +134,7 @@ def generate_dataset_title(dataset, user_token):
             except KeyError:
                 pass
 
-    generated_title = f"{assay_type_desc} data from the {organ_name} of a {age}-year-old {race} {sex}"
+    generated_title = f"{assay_type_desc} data from the {organ_desc} of a {age}-year-old {race} {sex}"
 
     logger.debug("===========Auto generated Title===========")
     logger.debug(generated_title)
@@ -203,6 +210,38 @@ def get_assay_type_description(data_types):
 
 
 """
+Get the description of a given organ code
+
+Parameters
+----------
+organ_code: str
+    The two-letter organ code defined at
+    https://raw.githubusercontent.com/hubmapconsortium/search-api/test-release/src/search-schema/data/definitions/enums/organ_types.yaml
+
+Returns
+-------
+str
+    The description of the organ code
+"""
+def get_organ_description(organ_code):
+    yaml_file_url = 'https://raw.githubusercontent.com/hubmapconsortium/search-api/test-release/src/search-schema/data/definitions/enums/organ_types.yaml'
+    
+    with urllib.request.urlopen(yaml_file_url) as response:
+        yaml_file = response.read()
+
+        try:
+            organ_types_dict = yaml.safe_load(yaml_file)
+
+            logger.info("Organ types yaml file loaded successfully")
+
+            organ_desc = organ_types_dict[organ_code]['description']
+
+            # Lowercase
+            return organ_desc.lower()
+        except yaml.YAMLError as e:
+            raise yaml.YAMLError(e)
+
+"""
 Get the ancestors list of the target dataset
 
 Parameters
@@ -251,7 +290,7 @@ def get_dataset_ancestors(dataset_uuid, user_token):
 
 
 # Running this python file as a script
-# python3 -m datacite_helper <user_token> <dataset_uuid>
+# python3 -m dataset_helper <user_token> <dataset_uuid>
 if __name__ == "__main__":
     try:
         user_token = sys.argv[1]
@@ -287,9 +326,6 @@ if __name__ == "__main__":
 
         try:
             title = generate_dataset_title(dataset, user_token)
-
-            logger.debug("========generated dataset title========")
-            logger.debug(title)
         except requests.exceptions.RequestException as e:
             logger.exception(e)
     else:

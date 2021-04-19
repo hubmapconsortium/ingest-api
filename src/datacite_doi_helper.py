@@ -297,7 +297,7 @@ def update_dataset_after_doi_created(dataset_uuid, doi_data, user_token):
 
 
 # Running this python file as a script
-# python3 -m datacite_helper <user_token> <dataset_uuid>
+# python3 -m datacite_doi_helper <user_token> <dataset_uuid>
 if __name__ == "__main__":
     try:
         user_token = sys.argv[1]
