@@ -86,7 +86,3 @@ DATACITE_API_URL = ''
 # Use 10.80478 for DataCite Test site with DEV/TEST/STAGE deployment
 # Use 10.35079 for DataCite Production site with PROD deployment
 DATACITE_HUBMAP_PREFIX = '10.80478'
-
-# To be used as landing page base URL to provide
-# more information about the DOI resource
-PORTAL_URL = 'https://portal.hubmapconsortium.org'

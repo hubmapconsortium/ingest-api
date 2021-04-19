@@ -3,10 +3,15 @@ import sys
 import requests
 import logging
 from flask import Flask
+from datetime import datetime
 from requests.auth import HTTPBasicAuth
 
 # Suppress InsecureRequestWarning warning when requesting status on https with ssl cert verify disabled
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
+
+# Local modules
+import dataset_helper
+
 
 requests.packages.urllib3.disable_warnings(category = InsecureRequestWarning)
 
@@ -45,7 +50,6 @@ def initialize():
     global _datacite_api_url
     global _entity_api_url
     global _search_api_url
-    global _portal_url
 
     config = load_flask_instance_config()
 
@@ -55,7 +59,6 @@ def initialize():
     _datacite_api_url = config['DATACITE_API_URL']
     _entity_api_url = config['ENTITY_WEBSERVICE_URL']
     _search_api_url = config['SEARCH_WEBSERVICE_URL']
-    _portal_url = config['PORTAL_URL']
 
 
 """
@@ -75,7 +78,6 @@ def load_flask_instance_config():
     app.config['DATACITE_API_URL'] = app.config['DATACITE_API_URL'].strip('/')
     app.config['ENTITY_WEBSERVICE_URL'] = app.config['ENTITY_WEBSERVICE_URL'].strip('/')
     app.config['SEARCH_WEBSERVICE_URL'] = app.config['SEARCH_WEBSERVICE_URL'].strip('/')
-    app.config['PORTAL_URL'] = app.config['PORTAL_URL'].strip('/')
 
     return app.config
 
@@ -86,6 +88,8 @@ Parameters
 ----------
 dataset: dict
     The dataset dict to be published
+dataset_title: str
+    The dataset title, either from dataset.title or an auto generated one
 user_token: str
     The user's globus nexus token
 
@@ -94,18 +98,17 @@ Returns
 dict
     The datset entity dict with updated DOI properties
 """
-def publish_dataset(dataset, user_token):
+def publish_dataset(dataset, dataset_title, user_token):
     global _datacite_repository_id
     global _datacite_repository_password
     global _datacite_hubmap_prefix
     global _datacite_api_url
     global _entity_api_url
-    global _portal_url
 
     if ('entity_type' in dataset) and (dataset['entity_type'] == 'Dataset'):
         # First create the DOI via DataCite
         try:
-            doi_data = create_doi(dataset, user_token)
+            doi_data = create_doi(dataset, dataset_title, user_token)
         except requests.exceptions.RequestException as e:
             raise requests.exceptions.RequestException(e)
 
@@ -127,6 +130,8 @@ Parameters
 ----------
 dataset: dict
     The dataset dict to be published
+dataset_title: str
+    The dataset title, either from dataset.title or an auto generated one
 user_token: str
     The user's globus nexus token
 
@@ -135,7 +140,7 @@ Returns
 dict
     The generated DOI information
 """
-def create_doi(dataset, user_token):
+def create_doi(dataset, dataset_title, user_token):
     global _datacite_repository_id
     global _datacite_repository_password
     global _datacite_hubmap_prefix
@@ -145,12 +150,7 @@ def create_doi(dataset, user_token):
 
     doi = f"{_datacite_hubmap_prefix}/{dataset['hubmap_id']}"
     publisher = 'HuBMAP Consortium'
-
-    # Auto generate the dataset title
-    try:
-        generated_title = generate_dataset_title(dataset, user_token)
-    except requests.exceptions.RequestException as e:
-        raise requests.exceptions.RequestException(e)
+    publication_year = int(datetime.now().year)
 
     # To create a DOI in Findable state with a URL and metadata you need to include 
     # all of the required DOI metadata fields 
@@ -177,19 +177,19 @@ def create_doi(dataset, user_token):
             }],
             # One or more names or titles by which the resource is known
             'titles': [{
-                'title': generated_title
+                'title': dataset_title
             }],
             # The name of the entity that holds, archives, publishes prints, distributes, 
             # releases, issues, or produces the resource
             'publisher': publisher,
             # The year when the resource was or will be made publicly available
-            'publicationYear': 2021, # Integer
+            'publicationYear': publication_year, # Integer
             # The general type of the resource
             'types': {
                 'resourceTypeGeneral': 'Dataset'
             },
             # The location of the landing page with more information about the resource
-            'url': f"{_portal_url}/browse/dataset/{dataset_uuid}"
+            'url': f"{_entity_url}/dataset/redirect/{dataset_uuid}"
         }
       }
     }
@@ -296,174 +296,6 @@ def update_dataset_after_doi_created(dataset_uuid, doi_data, user_token):
         # Also bubble up the error message from entity-api
         raise requests.exceptions.RequestException(response.text)
 
-"""
-Create a dataset name, store it in the Dataset.title field. Based on this template:
-"<Assay Type> data from the <organ name> of a <years old> year old <race> <sex>.
-
-For Example: "Bulk ATAC-seq data from the liver of a 63 year old white male."
-
-Parameters
-----------
-dataset_uuid: str
-    The dataset uuid
-user_token: str
-    The user's globus nexus token
-
-Returns
--------
-str
-    The generated title string
-"""
-def generate_dataset_title(dataset, user_token):
-    assay_type = '<assay_type>'
-    organ_name = '<organ_name>'
-    age = '<age>'
-    race = '<race>'
-    sex = '<sex>'
-
-    # Parse assay_type from the Dataset
-    # Easier to ask for forgiveness than permission (EAFP)
-    # Rather than checking key existence at every level
-    try:
-        # Note, the actual assay_type value is not consistent with 'description' value defined at 
-        # https://github.com/hubmapconsortium/search-api/blob/test-release/src/search-schema/data/definitions/enums/assay_types.yaml
-        assay_type = dataset['ingest_metadata']['metadata']['assay_type']
-    except KeyError:
-        pass
-
-    # Parse organ_name, age, race, and sex from ancestor Sample and Donor         
-    try:
-        ancestors = get_dataset_ancestors(dataset['uuid'], user_token)
-    except requests.exceptions.RequestException as e:
-        raise requests.exceptions.RequestException(e)
-
-    for ancestor in ancestors:
-        if (ancestor['entity_type'] == 'Sample') and (ancestor['specimen_type'].lower() == 'organ'):
-            # ancestor['organ'] is the two-letter code
-            # Do we need to convert to the description?
-            # https://github.com/hubmapconsortium/search-api/blob/test-release/src/search-schema/data/definitions/enums/organ_types.yaml
-            organ_name = ancestor['organ']
-
-        if ancestor['entity_type'] == 'Donor':
-            # Easier to ask for forgiveness than permission (EAFP)
-            # Rather than checking key existence at every level
-            try:
-                data_list = ancestor['metadata']['organ_donor_data']
-
-                for data in data_list:
-                    if 'grouping_concept_preferred_term' in data:
-                        if data['grouping_concept_preferred_term'].lower() == 'age':
-                            # The actual value of age stored in 'data_value' instead of 'preferred_term'
-                            age = data['data_value']
-
-                        # Lowercase the race or not? Example values:
-                        # - White
-                        # - Black or Aferican American
-                        if data['grouping_concept_preferred_term'].lower() == 'race':
-                            race = data['preferred_term']
-
-                        if data['grouping_concept_preferred_term'].lower() == 'sex':
-                            sex = data['preferred_term'].lower()
-            except KeyError:
-                pass
-
-    generated_title = f"{assay_type} data from the {organ_name} of a {age}-year-old {race} {sex}"
-
-    logger.debug("===========Auto generated Title===========")
-    logger.debug(generated_title)
-
-    return generated_title
-
-
-"""
-Get the description of a given assay type
-
-Parameters
-----------
-assay_type: str
-    The assay type name
-
-Returns
--------
-str
-    The description of the target assay type
-"""
-def get_assay_type_desc(assay_type):
-    global _search_api_url
-
-    target_url = f"{_search_api_url}/assaytype/{assay_type}"
-    
-    # The assaytype endpoint in search-api is public accessible, no token needed
-    response = requests.get(url = target_url, verify = False) 
-
-    if response.status_code == 200:
-
-        assay_type_info = response.json()
-
-        logger.debug(assay_type_info)
-
-        return assay_type_info['description']
-    else:
-        msg = f"Unable to query the assay type details of: {assay_type} via search-api" 
-        
-        # Log the full stack trace, prepend a line with our message
-        logger.exception(msg)
-
-        logger.debug("======status code from search-api======")
-        logger.debug(response.status_code)
-
-        logger.debug("======response text from search-api======")
-        logger.debug(response.text)
-
-        raise requests.exceptions.RequestException(response.text)
-
-"""
-Get the ancestors list of the target dataset
-
-Parameters
-----------
-dataset_uuid: str
-    The UUID of target dataset
-user_token: str
-    The user's globus nexus token
-
-Returns
--------
-list
-    A list of ancestors entity dicts
-"""
-def get_dataset_ancestors(dataset_uuid, user_token):
-    global _entity_api_url
-
-    target_url = f"{_entity_api_url}/ancestors/{dataset_uuid}"
-
-    auth_header = {
-        'Authorization': f"Bearer {user_token}"
-    }
-
-    response = requests.get(url = target_url, headers = auth_header,  verify = False) 
-
-    if response.status_code == 200:
-
-        ancestors = response.json()
-
-        logger.debug(ancestors)
-
-        return ancestors
-    else:
-        msg = f"Unable to get the ancestors of dataset with uuid: {dataset_uuid}" 
-        
-        # Log the full stack trace, prepend a line with our message
-        logger.exception(msg)
-
-        logger.debug("======status code from entity-api======")
-        logger.debug(response.status_code)
-
-        logger.debug("======response text from entity-api======")
-        logger.debug(response.text)
-
-        raise requests.exceptions.RequestException(response.text)
-
 
 # Running this python file as a script
 # python3 -m datacite_helper <user_token> <dataset_uuid>
@@ -499,9 +331,13 @@ if __name__ == "__main__":
         dataset = response.json()
 
         logger.debug(dataset)
+        
+        # Generate the dataset title
+        dataset_helper.initialize()
+        dataset_title = dataset_helper.generate_dataset_title(dataset, user_token)
 
         try:
-            publish_dataset(dataset, user_token)
+            publish_dataset(dataset, dataset_title, user_token)
         except requests.exceptions.RequestException as e:
             logger.exception(e)
     else:
