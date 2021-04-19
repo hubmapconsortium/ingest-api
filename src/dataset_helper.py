@@ -59,7 +59,6 @@ def load_flask_instance_config():
     app.config.from_pyfile('app.cfg')
 
     # Remove trailing slash / from URL base to avoid "//" caused by config with trailing slash
-    app.config['DATACITE_API_URL'] = app.config['DATACITE_API_URL'].strip('/')
     app.config['ENTITY_WEBSERVICE_URL'] = app.config['ENTITY_WEBSERVICE_URL'].strip('/')
     app.config['SEARCH_WEBSERVICE_URL'] = app.config['SEARCH_WEBSERVICE_URL'].strip('/')
 
