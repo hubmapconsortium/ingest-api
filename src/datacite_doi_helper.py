@@ -189,7 +189,7 @@ def create_doi(dataset, dataset_title, user_token):
                 'resourceTypeGeneral': 'Dataset'
             },
             # The location of the landing page with more information about the resource
-            'url': f"{_entity_url}/dataset/redirect/{dataset_uuid}"
+            'url': f"{_entity_api_url}/dataset/redirect/{dataset_uuid}"
         }
       }
     }
