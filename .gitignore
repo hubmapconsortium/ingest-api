@@ -2,13 +2,33 @@
 src/instance/app.cfg
 *~
 
+#ignore python virtual environment
+ingest-venv
+
 # Ignore docker copied stuff
 docker/ingest-api-localhost/src
+docker/ingest-api-localhost/VERSION
+docker/ingest-api-localhost/BUILD
+
 docker/ingest-api-dev/src
+docker/ingest-api-dev/VERSION
+docker/ingest-api-dev/BUILD
+
 docker/ingest-api-test/src
+docker/ingest-api-test/VERSION
+docker/ingest-api-test/BUILD
+
 docker/ingest-api-stage/src
+docker/ingest-api-stage/VERSION
+docker/ingest-api-stage/BUILD
+
 docker/ingest-api-prod/src
+docker/ingest-api-prod/VERSION
+docker/ingest-api-prod/BUILD
+
 docker/ingest-api-refactor/src
+docker/ingest-api-refactor/VERSION
+docker/ingest-api-refactor/BUILD
 
 BUILD
 
