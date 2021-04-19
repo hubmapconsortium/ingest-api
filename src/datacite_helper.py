@@ -160,7 +160,7 @@ def create_doi(dataset, user_token):
         'id': dataset['hubmap_id'],
         'type': 'dois',
         'attributes': {
-            # Below are all the required attributes
+            # Below are all the REQUIRED attributes
 
             # The event action determines the DOI state: Draft, Registered, Findable
             # Possible actions:
@@ -194,7 +194,7 @@ def create_doi(dataset, user_token):
       }
     }
 
-    logger.debug("======json_to_post======")
+    logger.debug("======DOI json_to_post======")
     logger.debug(json_to_post)
 
     request_auth = HTTPBasicAuth(_datacite_repository_id, _datacite_repository_password)
@@ -315,12 +315,23 @@ str
     The generated title string
 """
 def generate_dataset_title(dataset, user_token):
-    assay_type_desc = '<assay_type_desc>'
+    assay_type = '<assay_type>'
     organ_name = '<organ_name>'
     age = '<age>'
     race = '<race>'
     sex = '<sex>'
 
+    # Parse assay_type from the Dataset
+    # Easier to ask for forgiveness than permission (EAFP)
+    # Rather than checking key existence at every level
+    try:
+        # Note, the actual assay_type value is not consistent with 'description' value defined at 
+        # https://github.com/hubmapconsortium/search-api/blob/test-release/src/search-schema/data/definitions/enums/assay_types.yaml
+        assay_type = dataset['ingest_metadata']['metadata']['assay_type']
+    except KeyError:
+        pass
+
+    # Parse organ_name, age, race, and sex from ancestor Sample and Donor         
     try:
         ancestors = get_dataset_ancestors(dataset['uuid'], user_token)
     except requests.exceptions.RequestException as e:
@@ -328,34 +339,35 @@ def generate_dataset_title(dataset, user_token):
 
     for ancestor in ancestors:
         if (ancestor['entity_type'] == 'Sample') and (ancestor['specimen_type'].lower() == 'organ'):
+            # ancestor['organ'] is the two-letter code
+            # Do we need to convert to the description?
+            # https://github.com/hubmapconsortium/search-api/blob/test-release/src/search-schema/data/definitions/enums/organ_types.yaml
             organ_name = ancestor['organ']
 
-        if (ancestor['entity_type'] == 'Donor' and ('metadata' in ancestor)):
-            if 'organ_donor_data' in ancestor['metadata']:
+        if ancestor['entity_type'] == 'Donor':
+            # Easier to ask for forgiveness than permission (EAFP)
+            # Rather than checking key existence at every level
+            try:
                 data_list = ancestor['metadata']['organ_donor_data']
 
                 for data in data_list:
                     if 'grouping_concept_preferred_term' in data:
                         if data['grouping_concept_preferred_term'].lower() == 'age':
-                            sex = data['preferred_term']
+                            # The actual value of age stored in 'data_value' instead of 'preferred_term'
+                            age = data['data_value']
 
+                        # Lowercase the race or not? Example values:
+                        # - White
+                        # - Black or Aferican American
                         if data['grouping_concept_preferred_term'].lower() == 'race':
-                            sex = data['preferred_term'].lower()
+                            race = data['preferred_term']
 
                         if data['grouping_concept_preferred_term'].lower() == 'sex':
                             sex = data['preferred_term'].lower()
+            except KeyError:
+                pass
 
-    if ('ingest_metadata' in dataset) and ('metadata' in dataset['ingest_metadata']):
-        metadata = dataset['ingest_metadata']['metadata']
-        if 'assay_type' in dataset['ingest_metadata']['metadata']:
-            assay_type = dataset['ingest_metadata']['metadata']['assay_type']
-
-            try:
-                assay_type_desc = get_assay_type_desc(assay_type)
-            except requests.exceptions.RequestException as e:
-                raise requests.exceptions.RequestException(e)
-
-    generated_title = f"{assay_type_desc} data from the {organ_name} of a {age} year old {race} {sex}"
+    generated_title = f"{assay_type} data from the {organ_name} of a {age}-year-old {race} {sex}"
 
     logger.debug("===========Auto generated Title===========")
     logger.debug(generated_title)
@@ -392,7 +404,7 @@ def get_assay_type_desc(assay_type):
 
         return assay_type_info['description']
     else:
-        msg = f"Unable to query the assay type: {assay_type} via search-api" 
+        msg = f"Unable to query the assay type details of: {assay_type} via search-api" 
         
         # Log the full stack trace, prepend a line with our message
         logger.exception(msg)

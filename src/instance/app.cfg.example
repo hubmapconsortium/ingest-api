@@ -79,8 +79,8 @@ DATACITE_REPOSITORY_ID = ''
 DATACITE_REPOSITORY_PASSWORD = ''
 
 # DataCite REST API base URL
-# https://api.test.datacite.org/ for DEV/TEST/STAGE
-# https://api.datacite.org/ for PROD
+# https://api.test.datacite.org/dois for DEV/TEST/STAGE
+# https://api.datacite.org/dois for PROD
 DATACITE_API_URL = ''
 
 # Use 10.80478 for DataCite Test site with DEV/TEST/STAGE deployment
