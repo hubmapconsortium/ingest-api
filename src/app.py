@@ -715,12 +715,17 @@ def publish_datastage(identifier):
             
             ingest_helper = IngestFileHelper(app.config)
             
-            data_access_level = 'protected'
+            data_access_level = dataset_data_access_level
             #if consortium access level convert to public dataset, if protected access leave it protected
             if dataset_data_access_level == 'consortium':
+                #before moving check to see if there is currently a link for the dataset in the assets directory
+                asset_dir = ingest_helper.dataset_asset_directory_absolute_path(dataset_uuid)
+                asset_dir_exists = os.path.exists(asset_dir)
                 ingest_helper.move_dataset_files_for_publishing(dataset_uuid, dataset_group_uuid, 'consortium')
                 uuids_for_public.append(dataset_uuid)
                 data_access_level = 'public'
+                if asset_dir_exists:
+                    ingest_helper.relink_to_public(dataset_uuid)
             
             acls_cmd = ingest_helper.set_dataset_permissions(dataset_uuid, dataset_group_uuid, data_access_level, True, no_indexing_and_acls)
             
