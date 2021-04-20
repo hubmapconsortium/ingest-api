@@ -6,6 +6,7 @@ import shutil
 from hubmap_commons.hubmap_const import HubmapConst
 from hubmap_commons.hm_auth import AuthHelper
 from hubmap_commons.exceptions import HTTPException
+from hubmap_commons import file_helper
 
 class IngestFileHelper:
 #    @staticmethod
@@ -59,6 +60,9 @@ class IngestFileHelper:
             abs_path = str(os.path.join(base_dir, grp_name, dataset_uuid))
         
         return abs_path
+    
+    def dataset_asset_directory_absolute_path(self, dataset_uuid):
+        return file_helper.ensureTrailingSlashURL(self.appconfig['HUBMAP_WEBSERVICE_FILEPATH']) + dataset_uuid
 
     def create_dataset_directory(self, dataset_record, group_uuid, dataset_uuid):
         if dataset_record['contains_human_genetic_sequences']:
@@ -138,3 +142,18 @@ class IngestFileHelper:
     def set_dataset_permissions(self, dataset_uuid, group_uuid, dataset_access_level, published, trial_run = False):
         file_path = self.__dataset_directory_absolute_path(dataset_access_level, group_uuid, dataset_uuid, published)
         return self.set_dir_permissions(dataset_access_level, file_path, published, trial_run = trial_run)
+    
+    def relink_to_public(self, dataset_uuid):
+        lnk_path = self.appconfig['HUBMAP_WEBSERVICE_FILEPATH']
+        lnk_path = lnk_path.strip()
+        if lnk_path[-1] == '/': lnk_path = lnk_path[:-1]
+        lnk_path = self.dataset_asset_directory_absolute_path(dataset_uuid)
+        pub_path = file_helper.ensureTrailingSlashURL(self.appconfig['GLOBUS_PUBLIC_ENDPOINT_FILEPATH']) + dataset_uuid
+        try:
+            os.unlink(lnk_path)
+        except:
+            print("Error unlinking " + lnk_path)
+            
+        if os.path.exists(pub_path):
+            file_helper.linkDir(pub_path, lnk_path)
+        
