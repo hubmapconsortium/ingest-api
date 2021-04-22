@@ -38,6 +38,8 @@ class IngestFileHelper:
     def get_dataset_directory_absolute_path(self, dataset_record, group_uuid, dataset_uuid):
         if dataset_record['contains_human_genetic_sequences']:
             access_level = 'protected'
+        elif not 'data_access_level' in dataset_record:
+            access_level = 'consortium'
         else:
             access_level = dataset_record['data_access_level']
 
