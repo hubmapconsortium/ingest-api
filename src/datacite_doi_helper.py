@@ -154,16 +154,15 @@ def create_dataset_draft_doi(dataset, dataset_title, user_token):
         logger.debug("======Draft DOI json_to_post======")
         logger.debug(json_to_post)
 
-        request_auth = HTTPBasicAuth(_datacite_repository_id, _datacite_repository_password)
-
-        # Specify the MIME type type of request being sent from the client to the DataCite
-        request_headers = {
-            'Content-Type': 'application/vnd.api+json'
-        }
-
         # Send the POST request using Basic Auth
         # Disable ssl certificate verification
-        response = requests.post(url = _datacite_api_url, auth = request_auth, headers = request_headers, json = json_to_post, verify = False) 
+        response = requests.post(
+            url = _datacite_api_url, 
+            auth = HTTPBasicAuth(_datacite_repository_id, _datacite_repository_password), 
+            headers = create_doi_request_headers(), 
+            json = json_to_post, 
+            verify = False
+        ) 
 
         # Invoke .raise_for_status(), an HTTPError will be raised with certain status codes
         #response.raise_for_status()
@@ -237,18 +236,15 @@ def move_doi_state_from_draft_to_findable(dataset, user_token):
         logger.debug("======DOI [draft -> findable] json_to_post======")
         logger.debug(json_to_post)
 
-        target_url = f"{_datacite_api_url}/{doi}"
-
-        request_auth = HTTPBasicAuth(_datacite_repository_id, _datacite_repository_password)
-
-        # Specify the MIME type type of request being sent from the client to the DataCite
-        request_headers = {
-            'Content-Type': 'application/vnd.api+json'
-        }
-
         # Send the PUT request using Basic Auth
         # Disable ssl certificate verification
-        response = requests.put(url = target_url, auth = request_auth, headers = request_headers, json = json_to_post, verify = False) 
+        response = requests.put(
+            url = f"{_datacite_api_url}/{doi}", 
+            auth = HTTPBasicAuth(_datacite_repository_id, _datacite_repository_password), 
+            headers = create_doi_request_headers(), 
+            json = json_to_post, 
+            verify = False
+        ) 
 
         # Invoke .raise_for_status(), an HTTPError will be raised with certain status codes
         #response.raise_for_status()
@@ -320,7 +316,12 @@ def update_dataset_after_doi_published(dataset_uuid, doi, doi_url, user_token):
         'X-Hubmap-Application': 'ingest-api'
     }
 
-    response = requests.put(url = f"{_entity_api_url}/entities/{dataset_uuid}", headers = request_headers, json = dataset_properties_to_update, verify = False) 
+    response = requests.put(
+        url = f"{_entity_api_url}/entities/{dataset_uuid}", 
+        headers = request_headers, 
+        json = dataset_properties_to_update, 
+        verify = False
+    ) 
     
     if response.status_code == 200:
         logger.info("======The target entity has been updated with DOI info======")
@@ -344,6 +345,22 @@ def update_dataset_after_doi_published(dataset_uuid, doi, doi_url, user_token):
         # Also bubble up the error message from entity-api
         raise requests.exceptions.RequestException(response.text)
 
+"""
+Create the MIME type header for DOI request POST and PUT 
+
+Returns
+-------
+dict
+    The headers dict
+"""
+def create_doi_request_headers():
+    # Specify the MIME type type of request being sent from the client to the DataCite
+    request_headers = {
+        'Content-Type': 'application/vnd.api+json'
+    }
+
+    return request_headers
+
 
 # Running this python file as a script
 # python3 -m datacite_doi_helper <user_token> <dataset_uuid>
@@ -366,13 +383,15 @@ if __name__ == "__main__":
 
     initialize()
 
-    target_url = f"{_entity_api_url}/entities/{dataset_uuid}"
-
     auth_header = {
         'Authorization': f"Bearer {user_token}"
     }
 
-    response = requests.get(url = target_url, headers = auth_header,  verify = False) 
+    response = requests.get(
+        url = f"{_entity_api_url}/entities/{dataset_uuid}", 
+        headers = auth_header,  
+        verify = False
+    ) 
 
     if response.status_code == 200:
         dataset = response.json()

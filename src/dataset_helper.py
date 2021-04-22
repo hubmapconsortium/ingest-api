@@ -161,10 +161,11 @@ def get_assay_type_description(data_types):
     assay_type_desc = ''
 
     for data_type in data_types:
-        target_url = f"{_search_api_url}/assaytype/{data_type}"
-    
         # The assaytype endpoint in search-api is public accessible, no token needed
-        response = requests.get(url = target_url, verify = False) 
+        response = requests.get(
+            url = f"{_search_api_url}/assaytype/{data_type}", 
+            verify = False
+        ) 
 
         if response.status_code == 200:
             assay_type_info = response.json()
@@ -254,13 +255,15 @@ list
 def get_dataset_ancestors(dataset_uuid, user_token):
     global _entity_api_url
 
-    target_url = f"{_entity_api_url}/ancestors/{dataset_uuid}"
-
     auth_header = {
         'Authorization': f"Bearer {user_token}"
     }
 
-    response = requests.get(url = target_url, headers = auth_header,  verify = False) 
+    response = requests.get(
+        url = f"{_entity_api_url}/ancestors/{dataset_uuid}", 
+        headers = auth_header,  
+        verify = False
+    ) 
 
     if response.status_code == 200:
         return response.json()
@@ -300,13 +303,15 @@ if __name__ == "__main__":
 
     initialize()
 
-    target_url = f"{_entity_api_url}/entities/{dataset_uuid}"
-
     auth_header = {
         'Authorization': f"Bearer {user_token}"
     }
 
-    response = requests.get(url = target_url, headers = auth_header,  verify = False) 
+    response = requests.get(
+        url = f"{_entity_api_url}/entities/{dataset_uuid}", 
+        headers = auth_header,  
+        verify = False
+    ) 
 
     if response.status_code == 200:
         dataset = response.json()
