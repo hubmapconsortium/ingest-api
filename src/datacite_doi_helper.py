@@ -146,7 +146,7 @@ def create_dataset_draft_doi(dataset, dataset_title, user_token):
                     'resourceTypeGeneral': 'Dataset'
                 },
                 # The location of the landing page with more information about the resource
-                'url': f"{_entity_api_url}/dataset/redirect/{dataset_uuid}"
+                'url': f"{_entity_api_url}/doi/redirect/{dataset_uuid}"
             }
           }
         }
@@ -404,7 +404,7 @@ if __name__ == "__main__":
 
         try:
             # To create a new draft DOI:
-            #create_dataset_draft_doi(dataset, dataset_title, user_token)
+            create_dataset_draft_doi(dataset, dataset_title, user_token)
 
             # To publish an existing draft DOI (change the state from draft to findable)
             #move_doi_state_from_draft_to_findable(dataset, user_token)
