@@ -74,3 +74,15 @@ INGEST_PIPELINE_URL = 'http://ingest-pipeline:8789/api/hubmap'
 # Default processing type for ingest pipeline API.
 INGEST_PIPELINE_DEFAULT_PROCESS = 'SCAN.AND.BEGIN.PROCESSING'
 
+# DataCite REST API basic auth
+DATACITE_REPOSITORY_ID = ''
+DATACITE_REPOSITORY_PASSWORD = ''
+
+# DataCite REST API base URL
+# https://api.test.datacite.org/dois for DEV/TEST/STAGE
+# https://api.datacite.org/dois for PROD
+DATACITE_API_URL = ''
+
+# Use 10.80478 for DataCite Test site with DEV/TEST/STAGE deployment
+# Use 10.35079 for DataCite Production site with PROD deployment
+DATACITE_HUBMAP_PREFIX = ''
