@@ -285,7 +285,7 @@ def move_doi_state_from_draft_to_findable(dataset, user_token):
 
 
 """
-Update the dataset's properties after doi is published
+Update the dataset's properties after DOI is published (Draft -> Findable) 
 
 Parameters
 ----------
@@ -304,8 +304,9 @@ dict
 def update_dataset_after_doi_published(dataset_uuid, doi, doi_url, user_token):
     global _entity_api_url
 
-    # Update the registered_doi, and doi_url properties after DOI creatiion
-    # Are we also supposed to update the Dataset.status to "Published"?
+    # Update the registered_doi, and doi_url properties after DOI made findable
+    # Changing Dataset.status to "Published" and setting the published_* properties 
+    # are handled by another script
     dataset_properties_to_update = {
         'registered_doi': doi,
         'doi_url': doi_url
