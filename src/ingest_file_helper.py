@@ -84,6 +84,23 @@ class IngestFileHelper:
         except Exception as e:
             self.logger.error(e, exc_info=True)
     
+    def get_upload_directory_absolute_path(self, upload_record, group_uuid, upload_uuid):
+        grp_name = AuthHelper.getGroupDisplayName(group_uuid)
+        base_dir = self.appconfig['GLOBUS_PROTECTED_ENDPOINT_FILEPATH']
+        abs_path = str(os.path.join(base_dir, grp_name, upload_uuid))
+        return abs_path
+    
+    def create_upload_directory(self, upload_record, group_uuid, upload_uuid): 
+        # repli. w/ uploads
+        access_level = 'protected'
+        new_directory_path = self.get_upload_directory_absolute_path(upload_record, group_uuid, upload_uuid)
+        IngestFileHelper.make_directory(new_directory_path, None)
+        try:
+            x = threading.Thread(target=self.set_dir_permissions, args=['protected', new_directory_path])
+            x.start()
+        except Exception as e:
+            self.logger.error(e, exc_info=True)
+            
     def set_dir_permissions(self, access_level, file_path, published = False, trial_run = False):
         acl_text = None
         if not published:
