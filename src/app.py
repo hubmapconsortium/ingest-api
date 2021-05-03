@@ -1376,10 +1376,19 @@ def create_uploadstage():
 #AirFlow interface 
 @app.route('/uploads/<upload_uuid>/validate', methods=['PUT'])
 def validate_upload(upload_uuid):
-    #get auth info to use in other calls
-    auth_headers = {'Authorization': request.headers["AUTHORIZATION"]} 
+    if not request.is_json:
+        return Response("json request required", 400)
 
-    #update the Upload
+    upload_changes = request.json()
+    
+    #get auth info to use in other calls
+    #add the app specific header info
+    auth_headers = {'Authorization': request.headers["AUTHORIZATION"], 'X-Hubmap-Application':'ingest-api'} 
+
+    #update the Upload with any changes from the request
+    #and change the status to "Processing", the validate
+    #pipeline will update the status when finished
+    upload_changes['status'] = 'Processing'
     update_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/' + upload_uuid
     resp = requests.put(update_url, headers=auth_headers)
     if resp.status_code >= 300:
