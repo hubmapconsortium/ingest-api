@@ -314,6 +314,7 @@ class Dataset(object):
         
         bearer_header = 'Bearer ' + nexus_token
         auth_header = {'Authorization': bearer_header}
+
         get_url = file_helper.ensureTrailingSlashURL(self.confdata['ENTITY_WEBSERVICE_URL']) + 'entities/' + source_uuid.strip()        
         response = requests.get(get_url, headers = auth_header, verify = False)
         if response.status_code != 200:
@@ -342,7 +343,9 @@ class Dataset(object):
         #new_ds['data_access_level'] = 'consortium'
 
         post_url = file_helper.ensureTrailingSlashURL(self.confdata['ENTITY_WEBSERVICE_URL']) + 'entities/dataset'
-        response = requests.post(post_url, json=new_ds, headers = auth_header, verify = False)
+        app_header = {'X-Hubmap-Application': 'ingest-api'}
+        # Merge the auth_header and app_header for creating new Dataset
+        response = requests.post(post_url, json=new_ds, headers = {**auth_header, **app_header}, verify = False)
         if response.status_code != 200:
             raise HTTPException("Error creating derived dataset: " + response.text, response.status_code)
 
