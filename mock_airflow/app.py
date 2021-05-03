@@ -19,8 +19,8 @@ def index():
 def upload_validate(upload_uuid):
     ingest_helper = IngestFileHelper(app.config)
     url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/' + upload_uuid
-    h = request.headers
-    resp = requests.get(url, headers=request.headers)
+    auth_headers = {'Authorization': request.headers["AUTHORIZATION"]} 
+    resp = requests.get(url, headers=auth_headers)
     if resp.status_code >= 300:
         return Response(resp.text, resp.status_code)
     upload = resp.json()
