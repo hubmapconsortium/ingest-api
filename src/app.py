@@ -1296,7 +1296,110 @@ def get_collection(identifier):
 """
 
 
+####################################################################################################
+## Uploads API Endpoints
+####################################################################################################
 
+# This creates a new protected Uploads folder once a user creates a new Uploads datagroup
+#
+#
+# example url:  https://my.endpoint.server/uploads
+# inputs:
+#      - The title of the new folder
+#      - The UUID
+#      - A valid nexus token in a authorization bearer header
+#
+# returns
+#      200 json with Details about the new folder (@TODO: paste in once authed again)
+#      400 if invalid json sent
+#      401 if user does not have hubmap read access or the token is invalid
+#
+# Example json response: 
+#                  {{
+#                         "created_by_user_displayname": "Eris Pink",
+#                         "created_by_user_email": "mycoolemail@aolonline.co",
+#                         "created_by_user_sub": "12345678-abba-2468-wdwa-6484IDKSGGFF",
+#                         "created_timestamp": 1587414020,
+#                         "entity_type": "Upload",
+#                         "group_name": "IEC Testing Group",
+#                         "group_uuid": "UUID-OF-GROUP-HERE-0e006b0001e9",
+#                         "hubmap_id": "HBM420.LTRS.999",
+#                         "last_modified_timestamp": 1587414020,
+#                         "last_modified_user_displayname": "E Pink",
+#                         "last_modified_user_email": "Jmycoolemail@aolonline.co",
+#                         "last_modified_user_sub": "76f777all-abba-6971-hehe-125ea519865",
+#                         "status": "New",
+#                         "title": "TestTitle",
+#                         "uuid": "4a583209bfe9ad6cda851d913ac44833915"
+#                    }
+
+
+@app.route('/uploads', methods=['POST'])
+def create_uploadstage():
+    if not request.is_json:
+        return Response("json request required", 400)    
+    try:
+        upload_request = request.json
+        auth_helper = AuthHelper.configured_instance(app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'])
+        auth_tokens = auth_helper.getAuthorizationTokens(request.headers)
+        if isinstance(auth_tokens, Response):
+            return(auth_tokens)
+        elif isinstance(auth_tokens, str):
+            token = auth_tokens
+        elif 'nexus_token' in auth_tokens:
+            token = auth_tokens['nexus_token']
+        else:
+            return(Response("Valid nexus auth token required", 401))
+        
+        requested_group_uuid = None
+        if 'group_uuid' in upload_request:
+            requested_group_uuid = upload_request['group_uuid']
+        
+        ingest_helper = IngestFileHelper(app.config)
+        requested_group_uuid = auth_helper.get_write_group_uuid(token, requested_group_uuid)
+        upload_request['group_uuid'] = requested_group_uuid            
+        post_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + '/entities/upload'
+        response = requests.post(post_url, json = upload_request, headers = {'Authorization': 'Bearer ' + token, 'X-Hubmap-Application':'ingest-api' }, verify = False)
+        if response.status_code != 200:
+            return Response(response.text, response.status_code)
+        new_upload = response.json()
+        ingest_helper.create_upload_directory(new_upload, requested_group_uuid, new_upload['uuid'])
+        return jsonify(new_upload)
+    except HTTPException as hte:
+        return Response(hte.get_description(), hte.get_status_code())
+    except Exception as e:
+        logger.error(e, exc_info=True)
+        return Response("Unexpected error while creating a upload: " + str(e) + "  Check the logs", 500)        
+
+#method to validate an Upload
+#saves the upload then calls the validate workflow via
+#AirFlow interface 
+@app.route('/uploads/<upload_uuid>/validate', methods=['PUT'])
+def validate_upload(upload_uuid):
+    if not request.is_json:
+        return Response("json request required", 400)
+
+    upload_changes = request.json()
+    
+    #get auth info to use in other calls
+    #add the app specific header info
+    auth_headers = {'Authorization': request.headers["AUTHORIZATION"], 'X-Hubmap-Application':'ingest-api'} 
+
+    #update the Upload with any changes from the request
+    #and change the status to "Processing", the validate
+    #pipeline will update the status when finished
+    upload_changes['status'] = 'Processing'
+    update_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/' + upload_uuid
+    resp = requests.put(update_url, headers=auth_headers)
+    if resp.status_code >= 300:
+        return Response(resp.text, resp.status_code)
+    
+    #call the AirFlow validation workflow
+    validate_url = commons_file_helper.ensureTrailingSlashURL(app.config['INGEST_PIPELINE_URL']) + 'uploads/' + upload_uuid + "/validate"
+    resp = requests.put(validate_url, headers=auth_headers)
+    if resp.status_code >= 300:
+        return Response(resp.text, resp.status_code)
+    
 ####################################################################################################
 ## Metadata API Endpoints
 ####################################################################################################
