@@ -1371,7 +1371,35 @@ def create_uploadstage():
         logger.error(e, exc_info=True)
         return Response("Unexpected error while creating a upload: " + str(e) + "  Check the logs", 500)        
 
+#method to validate an Upload
+#saves the upload then calls the validate workflow via
+#AirFlow interface 
+@app.route('/uploads/<upload_uuid>/validate', methods=['PUT'])
+def validate_upload(upload_uuid):
+    if not request.is_json:
+        return Response("json request required", 400)
 
+    upload_changes = request.json()
+    
+    #get auth info to use in other calls
+    #add the app specific header info
+    auth_headers = {'Authorization': request.headers["AUTHORIZATION"], 'X-Hubmap-Application':'ingest-api'} 
+
+    #update the Upload with any changes from the request
+    #and change the status to "Processing", the validate
+    #pipeline will update the status when finished
+    upload_changes['status'] = 'Processing'
+    update_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/' + upload_uuid
+    resp = requests.put(update_url, headers=auth_headers)
+    if resp.status_code >= 300:
+        return Response(resp.text, resp.status_code)
+    
+    #call the AirFlow validation workflow
+    validate_url = commons_file_helper.ensureTrailingSlashURL(app.config['INGEST_PIPELINE_URL']) + 'uploads/' + upload_uuid + "/validate"
+    resp = requests.put(validate_url, headers=auth_headers)
+    if resp.status_code >= 300:
+        return Response(resp.text, resp.status_code)
+    
 ####################################################################################################
 ## Metadata API Endpoints
 ####################################################################################################
