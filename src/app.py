@@ -13,6 +13,7 @@ from dataset import Dataset
 from specimen import Specimen
 from ingest_file_helper import IngestFileHelper
 
+# HuBMAP commons
 from hubmap_commons.hm_auth import AuthHelper, secured
 from hubmap_commons.autherror import AuthError
 from hubmap_commons.exceptions import HTTPException
@@ -27,6 +28,14 @@ from hubmap_commons.hubmap_const import HubmapConst
 # The new neo4j_driver module from commons
 from hubmap_commons import neo4j_driver
 
+
+# Set logging fromat and level (default is warning)
+# All the API logging is forwarded to the uWSGI server and gets written into the log file `uwsgo-entity-api.log`
+# Log rotation is handled via logrotate on the host system with a configuration file
+# Do NOT handle log file and rotation via the Python logging to avoid issues with multi-worker processes
+logging.basicConfig(format='[%(asctime)s] %(levelname)s in %(module)s: %(message)s', level=logging.DEBUG, datefmt='%Y-%m-%d %H:%M:%S')
+logger = logging.getLogger(__name__)
+
 # Specify the absolute path of the instance folder and use the config file relative to the instance path
 app = Flask(__name__, instance_path=os.path.join(os.path.abspath(os.path.dirname(__file__)), 'instance'), instance_relative_config=True)
 app.config.from_pyfile('app.cfg')
@@ -35,24 +44,24 @@ app.config.from_pyfile('app.cfg')
 if app.config['ENABLE_CORS']:
     CORS(app)
 
-token_list = {}
 
-# Initialize the AuthHelper
-# This is used by the @secured decorator
-if AuthHelper.isInitialized() == False:
-    authcache = AuthHelper.create(
-        app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'])
-else:
-    authcache = AuthHelper.instance()
+####################################################################################################
+## AuthHelper initialization
+####################################################################################################
 
-data_admin_group_uuid = '89a69625-99d7-11ea-9366-0e98982705c1'
+# Initialize AuthHelper class and ensure singleton
+try:
+    if AuthHelper.isInitialized() == False:
+        auth_helper_instance = AuthHelper.create(app.config['APP_CLIENT_ID'], 
+                                                 app.config['APP_CLIENT_SECRET'])
 
-# Set logging fromat and level (default is warning)
-# All the API logging is forwarded to the uWSGI server and gets written into the log file `uwsgo-entity-api.log`
-# Log rotation is handled via logrotate on the host system with a configuration file
-# Do NOT handle log file and rotation via the Python logging to avoid issues with multi-worker processes
-logging.basicConfig(format='[%(asctime)s] %(levelname)s in %(module)s: %(message)s', level=logging.DEBUG, datefmt='%Y-%m-%d %H:%M:%S')
-logger = logging.getLogger(__name__)
+        logger.info("Initialized AuthHelper class successfully :)")
+    else:
+        auth_helper_instance = AuthHelper.instance()
+except Exception:
+    msg = "Failed to initialize the AuthHelper class"
+    # Log the full stack trace, prepend a line with our message
+    logger.exception(msg)
 
 
 ####################################################################################################
@@ -73,25 +82,20 @@ except Exception:
     # Log the full stack trace, prepend a line with our message
     logger.exception(msg)
 
+# Admin group UUID
+data_admin_group_uuid = app.config['HUBMAP_DATA_ADMIN_GROUP_UUID']
 
 SINGLE_DATASET_QUERY = "match(e:Dataset {uuid: {uuid}}) return e.uuid as uuid, e.entity_type as entitytype, e.status as status, e.data_access_level as data_access_level, e.group_uuid as group_uuid"
 ALL_ANCESTORS_QUERY = "MATCH (dataset:Dataset {uuid: {uuid}})<-[:ACTIVITY_OUTPUT]-(e1)<-[r:ACTIVITY_INPUT|:ACTIVITY_OUTPUT*]-(all_ancestors:Entity) RETURN distinct all_ancestors.uuid as uuid, all_ancestors.entity_type as entity_type, all_ancestors.data_types as data_types, all_ancestors.data_access_level as data_access_level, all_ancestors.status as status"
+
 
 ####################################################################################################
 ## Default Routes
 ####################################################################################################
 
-# Default endpoint for testing with gateway
 @app.route('/', methods = ['GET'])
 def index():
     return "Hello! This is HuBMAP Ingest API service :)"
-
-
-@app.route('/hello', methods=['GET'])
-@secured(groups="HuBMAP-read")
-def hello():
-    return jsonify({'uuid': 'hello'}), 200
-
 
 # Show status of neo4j connection and optionally of the dependent web services
 # to show the status of the other hubmap services that ingest-api is dependent on
@@ -588,10 +592,10 @@ def update_dataset_status(uuid, new_status):
             msg += str(x)
         print (msg)
         abort(400, msg)
-    finally:
-        if conn != None:
-            if conn.get_driver().closed() == False:
-                conn.close()
+    # finally:
+    #     if conn != None:
+    #         if conn.get_driver().closed() == False:
+    #             conn.close()
     
 @app.route('/datasets/status', methods = ['PUT'])
 # @secured(groups="HuBMAP-read")
@@ -878,10 +882,10 @@ def get_specimen_ingest_group_ids(identifier):
         for x in sys.exc_info():
             msg += str(x)
         abort(400, msg)
-    finally:
-        if conn != None:
-            if conn.get_driver().closed() == False:
-                conn.close()
+    # finally:
+    #     if conn != None:
+    #         if conn.get_driver().closed() == False:
+    #             conn.close()
 
 
 
@@ -942,7 +946,7 @@ def allowable_edit_states(hmuuid):
                 count = count + 1
                 if record.get('e.group_uuid', None) != None:
                     #get user info, make sure it has group information associated
-                    user_info = authcache.getUserInfo(token, True)
+                    user_info = auth_helper_instance.getUserInfo(token, True)
                     if user_info is None:
                         return Response("Unable to obtain user information for auth token", 401)
                     if not 'hmgroupids' in user_info:
