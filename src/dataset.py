@@ -22,13 +22,6 @@ from hubmap_commons.file_helper import linkDir, unlinkDir, mkDir
 from hubmap_commons import file_helper
 from hubmap_commons.exceptions import HTTPException
 
-# Deprecated
-#from hubmap_commons.neo4j_connection import Neo4jConnection
-#from hubmap_commons.metadata import Metadata
-#from hubmap_commons.activity import Activity
-#from hubmap_commons.provenance import Provenance
-#from hubmap_commons.entity import Entity
-
 # Should be deprecated but still in use
 from hubmap_commons.hubmap_const import HubmapConst 
 
@@ -211,11 +204,7 @@ class Dataset(object):
         if 'dataset_id' not in json_data:
             raise ValueError('cannot find dataset_id')
         update_record = {}
-#        try:
-#            metadata_node = Entity.get_entity_metadata(driver, dataset_id)
-#            uuid = metadata_node['uuid']
-#        except:
-#            raise ValueError('cannot find metadata for dataset_id: ' + dataset_id)
+
         if 'status' not in json_data:
             raise ValueError('cannot find status')
         if json_data['status'] not in HubmapConst.DATASET_STATUS_OPTIONS:
@@ -468,10 +457,6 @@ class Dataset(object):
         driver = None
         try:
             if group_display_name == None and data_access_level == None:
-                # Deprecated
-                # conn = Neo4jConnection(self.confdata['NEO4J_SERVER'], self.confdata['NEO4J_USERNAME'], self.confdata['NEO4J_PASSWORD'])
-                # driver = conn.get_driver()
-
                 dataset = Dataset.get_dataset(self.neo4j_driver_instance, dataset_uuid)
                 data_access_level = dataset[HubmapConst.DATA_ACCESS_LEVEL]
                 group_display_name = dataset[HubmapConst.PROVENANCE_GROUP_NAME_ATTRIBUTE]
@@ -552,9 +537,7 @@ if __name__ == "__main__":
     NEO4J_SERVER = 'bolt://localhost:7687'
     NEO4J_USERNAME = 'neo4j'
     NEO4J_PASSWORD = '123'
-    
-    #conn = Neo4jConnection(NEO4J_SERVER, NEO4J_USERNAME, NEO4J_PASSWORD)
-    
+
     nexus_token = 'AgNkroqO86BbgjPxYk9Md20r8lKJ04WxzJnqrm7xWvDKg1lvgbtgCwnxdYBNYw85OkGmoo1wxPb4GMfjO8dakf24g7'
     
     #driver = conn.get_driver()

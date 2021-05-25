@@ -1,5 +1,8 @@
 import sys
 import os
+import time
+import logging
+from pathlib import Path
 import requests
 import argparse
 from flask import Flask, jsonify, abort, request, session, redirect, json, Response
@@ -9,38 +12,20 @@ from globus_sdk import AccessTokenAuthorizer, AuthClient, ConfidentialAppAuthCli
 from dataset import Dataset
 from specimen import Specimen
 from ingest_file_helper import IngestFileHelper
-#from file_helper import FileHelper
-
-from hubmap_commons.hubmap_const import HubmapConst 
 
 from hubmap_commons.hm_auth import AuthHelper, secured
-
 from hubmap_commons.autherror import AuthError
-
 from hubmap_commons.exceptions import HTTPException
 from hubmap_commons import string_helper
 from hubmap_commons.string_helper import isBlank
 from hubmap_commons import net_helper
 from hubmap_commons import file_helper as commons_file_helper
 
-# Deprecated
-#from hubmap_commons.metadata import Metadata
-#from hubmap_commons.entity import Entity
-#from hubmap_commons.neo4j_connection import Neo4jConnection
-
-# Should be deprecated but still in use
+# Should be deprecated/refactored but still in use
 from hubmap_commons.hubmap_const import HubmapConst 
 
 # The new neo4j_driver module from commons
 from hubmap_commons import neo4j_driver
-
-import time
-import logging
-from pathlib import Path
-
-# Commented out by Zhou - 3/5/2021
-# LOG_FILE_NAME = "../log/ingest-api-" + time.strftime("%d-%m-%Y-%H-%M-%S") + ".log" 
-# logger = None
 
 # Specify the absolute path of the instance folder and use the config file relative to the instance path
 app = Flask(__name__, instance_path=os.path.join(os.path.abspath(os.path.dirname(__file__)), 'instance'), instance_relative_config=True)
@@ -578,8 +563,7 @@ def update_dataset_status(uuid, new_status):
     conn = None
     try:
         logger.info(f"++++++++++Called /datasets/{uuid}/{new_status}")
-        # conn = Neo4jConnection(app.config['NEO4J_SERVER'], app.config['NEO4J_USERNAME'], app.config['NEO4J_PASSWORD'])
-        # driver = conn.get_driver()
+
         dataset = Dataset(app.config)
         status_obj = dataset.set_status(neo4j_driver_instance, uuid, new_status)
         conn.close()
@@ -668,10 +652,7 @@ def submit_dataset(uuid):
  
         if 'group_uuid' in dataset_request:
             return Response("Cannot specify group_uuid.  The group ownership cannot be changed after an entity has been created.", 400)
-        
-        # conn = Neo4jConnection(app.config['NEO4J_SERVER'], app.config['NEO4J_USERNAME'], app.config['NEO4J_PASSWORD'])
-        # driver = conn.get_driver()
-        
+      
         with neo4j_driver_instance.session() as session:
             #query Neo4j db to get the group_uuid
             stmt = "match (d:Dataset {uuid:'" + uuid.strip() + "'}) return d.group_uuid as group_uuid"
@@ -885,8 +866,7 @@ def get_specimen_ingest_group_ids(identifier):
         if r.ok == False:
             raise ValueError("Cannot find specimen with identifier: " + identifier)
         uuid = json.loads(r.text)['hm_uuid']
-#        conn = Neo4jConnection(app.config['NEO4J_SERVER'], app.config['NEO4J_USERNAME'], app.config['NEO4J_PASSWORD'])
-#        driver = conn.get_driver()
+
         siblingid_list = Specimen.get_ingest_group_list(neo4j_driver_instance, uuid)
         return jsonify({'ingest_group_ids': siblingid_list}), 200 
 
@@ -947,9 +927,8 @@ def allowable_edit_states(hmuuid):
     try:
         #the Globus nexus auth token will be in the AUTHORIZATION section of the header
         token = str(request.headers["AUTHORIZATION"])[7:]
+        
         #get a connection to Neo4j db
-        # conn = Neo4jConnection(app.config['NEO4J_SERVER'], app.config['NEO4J_USERNAME'], app.config['NEO4J_PASSWORD'])
-        # driver = conn.get_driver()
         with neo4j_driver_instance.session() as session:
             #query Neo4j db to find the entity
             stmt = "match (e:Entity {uuid:'" + hmuuid.strip() + "'}) return e.group_uuid, e.entity_type, e.data_access_level, e.status"

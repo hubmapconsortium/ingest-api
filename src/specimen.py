@@ -1,7 +1,3 @@
-'''
-Created on May 15, 2019
-@author: chb69
-'''
 import os
 import sys
 import re
@@ -668,23 +664,6 @@ class Specimen:
                 print('A transaction error occurred: ', te.value)
                 raise te
         
-        
-    """    
-    @staticmethod
-    def get_create_activity_metadata_statement(activity_metadata_record, activity_metadata_uuid_record, activity_uuid_record, metadata_userinfo, provenance_group):
-        activity_metadata_record[HubmapConst.UUID_ATTRIBUTE] = activity_metadata_uuid_record[HubmapConst.UUID_ATTRIBUTE]
-        activity_metadata_record[HubmapConst.ENTITY_TYPE_ATTRIBUTE] = HubmapConst.METADATA_TYPE_CODE
-        activity_metadata_record[HubmapConst.REFERENCE_UUID_ATTRIBUTE] = activity_uuid_record[HubmapConst.UUID_ATTRIBUTE]
-        activity_metadata_record[HubmapConst.PROVENANCE_SUB_ATTRIBUTE] = metadata_userinfo[HubmapConst.PROVENANCE_SUB_ATTRIBUTE]
-        activity_metadata_record[HubmapConst.PROVENANCE_USER_EMAIL_ATTRIBUTE] = metadata_userinfo[HubmapConst.PROVENANCE_USER_EMAIL_ATTRIBUTE]
-        activity_metadata_record[HubmapConst.PROVENANCE_USER_DISPLAYNAME_ATTRIBUTE] = metadata_userinfo[
-            HubmapConst.PROVENANCE_USER_DISPLAYNAME_ATTRIBUTE]
-        activity_metadata_record[HubmapConst.PROVENANCE_GROUP_NAME_ATTRIBUTE] = provenance_group[HubmapConst.PROVENANCE_GROUP_NAME_ATTRIBUTE]
-        activity_metadata_record[HubmapConst.PROVENANCE_GROUP_UUID_ATTRIBUTE] = provenance_group[HubmapConst.PROVENANCE_GROUP_UUID_ATTRIBUTE]
-        stmt = Neo4jConnection.get_create_statement(
-            activity_metadata_record, HubmapConst.METADATA_NODE_NAME, HubmapConst.METADATA_TYPE_CODE, True)
-        return stmt
-    """
     
     @staticmethod
     def get_create_metadata_statement(metadata_record, current_token, specimen_uuid_record, metadata_userinfo, provenance_group, file_list, data_directory, request):
