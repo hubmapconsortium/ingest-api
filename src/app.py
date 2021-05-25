@@ -82,15 +82,29 @@ except Exception:
     # Log the full stack trace, prepend a line with our message
     logger.exception(msg)
 
+"""
+Close the current neo4j connection at the end of every request
+"""
+@app.teardown_appcontext
+def close_neo4j_driver(error):
+    if hasattr(g, 'neo4j_driver_instance'):
+        # Close the driver instance
+        neo4j_driver.close()
+        # Also remove neo4j_driver_instance from Flask's application context
+        g.neo4j_driver_instance = None
+
+
 # Admin group UUID
 data_admin_group_uuid = app.config['HUBMAP_DATA_ADMIN_GROUP_UUID']
 
-SINGLE_DATASET_QUERY = "match(e:Dataset {uuid: {uuid}}) return e.uuid as uuid, e.entity_type as entitytype, e.status as status, e.data_access_level as data_access_level, e.group_uuid as group_uuid"
+
+# Neo4j Cypher queries to be used
+SINGLE_DATASET_QUERY = "MATCH(e:Dataset {uuid: {uuid}}) RETURN e.uuid as uuid, e.entity_type as entitytype, e.status as status, e.data_access_level as data_access_level, e.group_uuid as group_uuid"
 ALL_ANCESTORS_QUERY = "MATCH (dataset:Dataset {uuid: {uuid}})<-[:ACTIVITY_OUTPUT]-(e1)<-[r:ACTIVITY_INPUT|:ACTIVITY_OUTPUT*]-(all_ancestors:Entity) RETURN distinct all_ancestors.uuid as uuid, all_ancestors.entity_type as entity_type, all_ancestors.data_types as data_types, all_ancestors.data_access_level as data_access_level, all_ancestors.status as status"
 
 
 ####################################################################################################
-## Default Routes
+## Default and Status Routes
 ####################################################################################################
 
 @app.route('/', methods = ['GET'])
@@ -258,11 +272,6 @@ def logout():
     return redirect(globus_logout_url)
 
 
-def get_user_info(token):
-    auth_client = AuthClient(authorizer=AccessTokenAuthorizer(token))
-    return auth_client.oauth2_userinfo()
-
-
 ####################################################################################################
 ## Ingest API Endpoints
 ####################################################################################################
@@ -305,27 +314,6 @@ def get_entity(entity_uuid):
     except Exception as e:
         logger.error(e, exc_info=True)
         return Response(f"Unexpected error while retrieving entity {entity_uuid}: " + str(e), 500)
-
-def __get_dict_prop(dic, prop_name):
-    if not prop_name in dic: return None
-    val = dic[prop_name]
-    if isinstance(val, str) and val.strip() == '': return None
-    return val
-
-def __get_entity(entity_uuid, auth_header = None):
-    if auth_header is None:
-        headers = None
-    else:
-        headers = {'Authorization': auth_header, 'Accept': 'application/json', 'Content-Type': 'application/json'}
-    get_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/' + entity_uuid
-
-    response = requests.get(get_url, headers = headers, verify = False)
-    if response.status_code != 200:
-        err_msg = f"Error while calling {get_url} status code:{response.status_code}  message:{response.text}"
-        logger.error(err_msg)
-        raise HTTPException(err_msg, response.status_code)
-
-    return response.json()
 
 
 # Create derived dataset
@@ -712,7 +700,6 @@ def submit_dataset(uuid):
         logger.error(e, exc_info=True)
         return Response("Unexpected error while creating a dataset: " + str(e) + "  Check the logs", 500)        
  
- 
 
 ####################################################################################################
 ## Uploads API Endpoints
@@ -750,7 +737,6 @@ def submit_dataset(uuid):
 #                         "title": "TestTitle",
 #                         "uuid": "4a583209bfe9ad6cda851d913ac44833915"
 #                    }
-
 
 @app.route('/uploads', methods=['POST'])
 def create_uploadstage():
@@ -818,9 +804,6 @@ def validate_upload(upload_uuid):
     if resp.status_code >= 300:
         return Response(resp.text, resp.status_code)
     
-####################################################################################################
-## Metadata API Endpoints
-####################################################################################################
 
 @app.route('/metadata/usergroups', methods = ['GET'])
 @secured(groups="HuBMAP-read")
@@ -1018,7 +1001,38 @@ def allowable_edit_states(hmuuid):
  #               conn.close()
 
 
-# This is for development only
+####################################################################################################
+## Internal Functions
+####################################################################################################
+
+def get_user_info(token):
+    auth_client = AuthClient(authorizer=AccessTokenAuthorizer(token))
+    return auth_client.oauth2_userinfo()
+
+def __get_dict_prop(dic, prop_name):
+    if not prop_name in dic: return None
+    val = dic[prop_name]
+    if isinstance(val, str) and val.strip() == '': return None
+    return val
+
+def __get_entity(entity_uuid, auth_header = None):
+    if auth_header is None:
+        headers = None
+    else:
+        headers = {'Authorization': auth_header, 'Accept': 'application/json', 'Content-Type': 'application/json'}
+    get_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/' + entity_uuid
+
+    response = requests.get(get_url, headers = headers, verify = False)
+    if response.status_code != 200:
+        err_msg = f"Error while calling {get_url} status code:{response.status_code}  message:{response.text}"
+        logger.error(err_msg)
+        raise HTTPException(err_msg, response.status_code)
+
+    return response.json()
+
+
+
+# For local development/testing
 if __name__ == '__main__':
     try:
         parser = argparse.ArgumentParser()
