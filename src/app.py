@@ -28,6 +28,13 @@ from hubmap_commons.hubmap_const import HubmapConst
 # The new neo4j_driver module from commons
 from hubmap_commons import neo4j_driver
 
+# Local modules
+from file_upload_helper import UploadFileHelper
+
+
+import time
+import logging
+from pathlib import Path
 
 # Set logging fromat and level (default is warning)
 # All the API logging is forwarded to the uWSGI server and gets written into the log file `uwsgo-entity-api.log`
@@ -97,8 +104,30 @@ def close_neo4j_driver(error):
 # Admin group UUID
 data_admin_group_uuid = app.config['HUBMAP_DATA_ADMIN_GROUP_UUID']
 
+####################################################################################################
+## File upload initialization
+####################################################################################################
 
-# Neo4j Cypher queries to be used
+try:
+    # Initialize the UploadFileHelper class and ensure singleton
+    if UploadFileHelper.is_initialized() == False:
+        file_upload_helper_instance = UploadFileHelper.create(app.config['FILE_UPLOAD_TEMP_DIR'], 
+                                                              app.config['FILE_UPLOAD_DIR'],
+                                                              app.config['UUID_API_URL'])
+
+        logger.info("Initialized UploadFileHelper class successfully :)")
+
+        # This will delete all the temp dirs on restart
+        #file_upload_helper_instance.clean_temp_dir()
+    else:
+        file_upload_helper_instance = UploadFileHelper.instance()
+# Use a broad catch-all here
+except Exception:
+    msg = "Failed to initialize the UploadFileHelper class"
+    # Log the full stack trace, prepend a line with our message
+    logger.exception(msg)
+
+
 SINGLE_DATASET_QUERY = "MATCH(e:Dataset {uuid: {uuid}}) RETURN e.uuid as uuid, e.entity_type as entitytype, e.status as status, e.data_access_level as data_access_level, e.group_uuid as group_uuid"
 ALL_ANCESTORS_QUERY = "MATCH (dataset:Dataset {uuid: {uuid}})<-[:ACTIVITY_OUTPUT]-(e1)<-[r:ACTIVITY_INPUT|:ACTIVITY_OUTPUT*]-(all_ancestors:Entity) RETURN distinct all_ancestors.uuid as uuid, all_ancestors.entity_type as entity_type, all_ancestors.data_types as data_types, all_ancestors.data_access_level as data_access_level, all_ancestors.status as status"
 
@@ -273,8 +302,130 @@ def logout():
 
 
 ####################################################################################################
+## Register error handlers
+####################################################################################################
+
+# Error handler for 400 Bad Request with custom error message
+@app.errorhandler(400)
+def http_bad_request(e):
+    return jsonify(error=str(e)), 400
+
+####################################################################################################
 ## Ingest API Endpoints
 ####################################################################################################
+
+
+"""
+File upload handling for Donor and Sample
+
+Returns
+-------
+json
+    A JSON containing the temp file id
+"""
+@app.route('/file-upload', methods=['POST'])
+def upload_file():
+    # Check if the post request has the file part
+    if 'file' not in request.files:
+        bad_request_error('No file part')
+
+    file = request.files['file']
+
+    if file.filename == '':
+        bad_request_error('No selected file')
+
+    try:
+        temp_id = file_upload_helper_instance.save_temp_file(file)
+        rspn_data = {
+            "temp_file_id": temp_id
+        }
+
+        return jsonify(rspn_data), 201
+    except Exception as e:
+        # Log the full stack trace, prepend a line with our message
+        msg = "Failed to upload files"
+        logger.exception(msg)
+        internal_server_error(msg)
+
+"""
+File commit triggered by Entity-api trigger method for Donor and Sample
+
+Returns
+-------
+json
+    A JSON containing the file uuid info
+"""
+@app.route('/file-commit', methods=['POST'])
+def commit_file():
+    # Always expect a json body
+    require_json(request)
+
+    # Parse incoming json string into json data(python dict object)
+    json_data_dict = request.get_json()
+
+    temp_file_id = json_data_dict['temp_file_id']
+    entity_uuid = json_data_dict['entity_uuid']
+    user_token = json_data_dict['user_token']
+
+    file_uuid_info = file_upload_helper_instance.commit_file(temp_file_id, entity_uuid, user_token)
+
+    return jsonify(file_uuid_info)
+
+"""
+File removal triggered by Entity-api trigger method for Donor and Sample
+during entity update
+
+Returns
+-------
+json
+    A JSON containing the file uuid info
+"""
+@app.route('/file-remove', methods=['POST'])
+def remove_file():
+    # Always expect a json body
+    require_json(request)
+
+    # Parse incoming json string into json data(python dict object)
+    json_data_dict = request.get_json()
+
+    entity_uuid = json_data_dict['entity_uuid']
+    files_info_list = json_data_dict['files_info_list']
+
+    # `upload_dir` is already normalized with trailing slash
+    entity_upload_dir = file_upload_helper_instance.upload_dir + entity_uuid + os.sep
+    
+    # Remove the physical files from the file system
+    for file_uuid in new_data_dict[property_key]:
+        # Get back the updated files_info_list
+        files_info_list = schema_manager.get_file_upload_helper_instance().remove_file(entity_upload_dir, file_uuid, files_info_list)
+    
+    return jsonify(files_info_list)
+
+
+"""
+Always expect a json body from user request
+
+request : Flask request object
+    The Flask request passed from the API endpoint
+"""
+def require_json(request):
+    if not request.is_json:
+        bad_request_error("A json body and appropriate Content-Type header are required")
+
+"""
+Throws error for 400 Bad Reqeust with message
+
+Parameters
+----------
+err_msg : str
+    The custom error message to return to end users
+"""
+def bad_request_error(err_msg):
+    abort(400, description = err_msg)
+
+
+
+
 
 @app.route('/datasets/<ds_uuid>/file-system-abs-path', methods = ['GET'])
 def get_file_system_absolute_path(ds_uuid):
