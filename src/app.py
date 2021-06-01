@@ -1,19 +1,16 @@
-import sys
 import os
+import sys
 import time
 import logging
-from pathlib import Path
 import requests
 import argparse
+from pathlib import Path
 from flask import Flask, g, jsonify, abort, request, session, redirect, json, Response
 from flask_cors import CORS
 from globus_sdk import AccessTokenAuthorizer, AuthClient, ConfidentialAppAuthClient
 
-from dataset import Dataset
-from specimen import Specimen
-from ingest_file_helper import IngestFileHelper
-
 # HuBMAP commons
+from hubmap_commons import neo4j_driver
 from hubmap_commons.hm_auth import AuthHelper, secured
 from hubmap_commons.autherror import AuthError
 from hubmap_commons.exceptions import HTTPException
@@ -25,16 +22,12 @@ from hubmap_commons import file_helper as commons_file_helper
 # Should be deprecated/refactored but still in use
 from hubmap_commons.hubmap_const import HubmapConst 
 
-# The new neo4j_driver module from commons
-from hubmap_commons import neo4j_driver
-
 # Local modules
+from dataset import Dataset
+from specimen import Specimen
+from ingest_file_helper import IngestFileHelper
 from file_upload_helper import UploadFileHelper
 
-
-import time
-import logging
-from pathlib import Path
 
 # Set logging fromat and level (default is warning)
 # All the API logging is forwarded to the uWSGI server and gets written into the log file `uwsgo-entity-api.log`
@@ -348,7 +341,7 @@ def upload_file():
         internal_server_error(msg)
 
 """
-File commit triggered by Entity-api trigger method for Donor and Sample
+File commit triggered by entity-api trigger method for Donor and Sample
 
 Returns
 -------
@@ -369,16 +362,17 @@ def commit_file():
 
     file_uuid_info = file_upload_helper_instance.commit_file(temp_file_id, entity_uuid, user_token)
 
+    # Send back the updated file_uuid_info
     return jsonify(file_uuid_info)
 
 """
-File removal triggered by Entity-api trigger method for Donor and Sample
+File removal triggered by entity-api trigger method for Donor and Sample
 during entity update
 
 Returns
 -------
 json
-    A JSON containing the file uuid info
+    A JSON list containing the updated files info
 """
 @app.route('/file-remove', methods=['POST'])
 def remove_file():
@@ -389,42 +383,19 @@ def remove_file():
     json_data_dict = request.get_json()
 
     entity_uuid = json_data_dict['entity_uuid']
+    file_uuids = json_data_dict['file_uuids']
     files_info_list = json_data_dict['files_info_list']
 
     # `upload_dir` is already normalized with trailing slash
     entity_upload_dir = file_upload_helper_instance.upload_dir + entity_uuid + os.sep
     
     # Remove the physical files from the file system
-    for file_uuid in new_data_dict[property_key]:
+    for file_uuid in file_uuids:
         # Get back the updated files_info_list
         files_info_list = schema_manager.get_file_upload_helper_instance().remove_file(entity_upload_dir, file_uuid, files_info_list)
     
+    # Send back the updated files_info_list
     return jsonify(files_info_list)
-
-
-"""
-Always expect a json body from user request
-
-request : Flask request object
-    The Flask request passed from the API endpoint
-"""
-def require_json(request):
-    if not request.is_json:
-        bad_request_error("A json body and appropriate Content-Type header are required")
-
-"""
-Throws error for 400 Bad Reqeust with message
-
-Parameters
-----------
-err_msg : str
-    The custom error message to return to end users
-"""
-def bad_request_error(err_msg):
-    abort(400, description = err_msg)
-
-
-
 
 
 @app.route('/datasets/<ds_uuid>/file-system-abs-path', methods = ['GET'])
@@ -1155,6 +1126,27 @@ def allowable_edit_states(hmuuid):
 ####################################################################################################
 ## Internal Functions
 ####################################################################################################
+
+"""
+Always expect a json body from user request
+
+request : Flask request object
+    The Flask request passed from the API endpoint
+"""
+def require_json(request):
+    if not request.is_json:
+        bad_request_error("A json body and appropriate Content-Type header are required")
+
+"""
+Throws error for 400 Bad Reqeust with message
+
+Parameters
+----------
+err_msg : str
+    The custom error message to return to end users
+"""
+def bad_request_error(err_msg):
+    abort(400, description = err_msg)
 
 def get_user_info(token):
     auth_client = AuthClient(authorizer=AccessTokenAuthorizer(token))
