@@ -5,7 +5,7 @@ import logging
 from pathlib import Path
 import requests
 import argparse
-from flask import Flask, jsonify, abort, request, session, redirect, json, Response
+from flask import Flask, g, jsonify, abort, request, session, redirect, json, Response
 from flask_cors import CORS
 from globus_sdk import AccessTokenAuthorizer, AuthClient, ConfidentialAppAuthClient
 
