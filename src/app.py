@@ -343,7 +343,7 @@ File upload handling for Donor and Sample
 Returns
 -------
 json
-    A JSON containing the temp file uuid
+    A JSON containing the temp file id
 """
 @app.route('/file-upload', methods=['POST'])
 def upload_file():
@@ -369,7 +369,14 @@ def upload_file():
         logger.exception(msg)
         internal_server_error(msg)
 
+"""
+File commit triggered by Entity-api trigger method for Donor and Sample
 
+Returns
+-------
+json
+    A JSON containing the file uuid info
+"""
 @app.route('/file-commit', methods=['POST'])
 def commit_file():
     # Always expect a json body
@@ -386,7 +393,15 @@ def commit_file():
 
     return jsonify(file_uuid_info)
 
+"""
+File removal triggered by Entity-api trigger method for Donor and Sample
+during entity update
 
+Returns
+-------
+json
+    A JSON containing the file uuid info
+"""
 @app.route('/file-remove', methods=['POST'])
 def remove_file():
     # Always expect a json body
@@ -395,6 +410,18 @@ def remove_file():
     # Parse incoming json string into json data(python dict object)
     json_data_dict = request.get_json()
 
+    entity_uuid = json_data_dict['entity_uuid']
+    files_info_list = json_data_dict['files_info_list']
+
+    # `upload_dir` is already normalized with trailing slash
+    entity_upload_dir = file_upload_helper_instance.upload_dir + entity_uuid + os.sep
+    
+    # Remove the physical files from the file system
+    for file_uuid in new_data_dict[property_key]:
+        # Get back the updated files_info_list
+        files_info_list = schema_manager.get_file_upload_helper_instance().remove_file(entity_upload_dir, file_uuid, files_info_list)
+    
+    return jsonify(files_info_list)
 
 
 """
