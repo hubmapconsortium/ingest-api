@@ -106,7 +106,7 @@ try:
     if UploadFileHelper.is_initialized() == False:
         file_upload_helper_instance = UploadFileHelper.create(app.config['FILE_UPLOAD_TEMP_DIR'], 
                                                               app.config['FILE_UPLOAD_DIR'],
-                                                              app.config['UUID_API_URL'])
+                                                              app.config['UUID_WEBSERVICE_URL'])
 
         logger.info("Initialized UploadFileHelper class successfully :)")
 

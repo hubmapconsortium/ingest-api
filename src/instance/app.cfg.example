@@ -19,10 +19,18 @@ GLOBUS_ENDPOINT_UUID = ''
 HUBMAP_DATA_ADMIN_GROUP_UUID = '89a69625-99d7-11ea-9366-0e98982705c1'
 
 # File system settings (shown are for DEV)
-LOCAL_STORAGE_DIRECTORY = '/hive/hubmap-dev/uploads'
 GLOBUS_ENDPOINT_FILEPATH = '/hive/hubmap-dev/protected'
 HUBMAP_WEBSERVICE_FILEPATH = '/hive/hubmap-dev/assets'
 WORKFLOW_SCRATCH = '/hive/hubmap-dev/scratch'
+
+# Directory where file uploads will be placed temporarily (shown are for DEV)
+# until they are committed
+# Remember to set the proper file system user and group permission
+FILE_UPLOAD_TEMP_DIR = '/hive/hubmap-dev/hm_uploads_tmp'
+
+# Directory where file uploads are permanantly stored (shown are for DEV)
+# Remember to set the proper file system user and group permission
+FILE_UPLOAD_DIR = '/hive/hubmap-dev/hm_uploads'
 
 # UUIDs of the Globus endpoints (shown are for DEV)
 GLOBUS_PUBLIC_ENDPOINT_UUID = 'a00a00b8-d1d1-4ab9-b915-0bada54c27a3'
@@ -40,12 +48,6 @@ GLOBUS_BASE_FILE_USER_NAME = 'hive'
 GLOBUS_ADMIN_FILE_USER_NAME = 'shirey'
 GLOBUS_GENOMIC_DATA_FILE_GROUP_NAME = 'hubseq'
 GLOBUS_CONSORTIUM_FILE_GROUP_NAME = 'hubmap'
-
-# URL for talking to UUID API (default value used for docker deployment, no token needed)
-# Don't use localhost since uuid-api is running on a different container
-# Point to remote URL for non-docker development
-# Works regardless of the trailing slash
-UUID_API_URL = 'http://hubmap-auth:9999/hmuuid'
 
 # URL for talking to UUID API (default value used for localhost docker environment)
 # Don't use http://localhost since uuid-api running on a different container
