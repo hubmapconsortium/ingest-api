@@ -324,6 +324,15 @@ def get_user_info(token):
 
 
 ####################################################################################################
+## Register error handlers
+####################################################################################################
+
+# Error handler for 400 Bad Request with custom error message
+@app.errorhandler(400)
+def http_bad_request(e):
+    return jsonify(error=str(e)), 400
+
+####################################################################################################
 ## Ingest API Endpoints
 ####################################################################################################
 
@@ -359,6 +368,55 @@ def upload_file():
         msg = "Failed to upload files"
         logger.exception(msg)
         internal_server_error(msg)
+
+
+@app.route('/file-commit', methods=['POST'])
+def commit_file():
+    # Always expect a json body
+    require_json(request)
+
+    # Parse incoming json string into json data(python dict object)
+    json_data_dict = request.get_json()
+
+    temp_file_id = json_data_dict['temp_file_id']
+    entity_uuid = json_data_dict['entity_uuid']
+    user_token = json_data_dict['user_token']
+
+    file_uuid_info = file_upload_helper_instance.commit_file(temp_file_id, entity_uuid, user_token)
+
+    return jsonify(file_uuid_info)
+
+
+@app.route('/file-remove', methods=['POST'])
+def remove_file():
+    # Always expect a json body
+    require_json(request)
+
+    # Parse incoming json string into json data(python dict object)
+    json_data_dict = request.get_json()
+
+
+
+"""
+Always expect a json body from user request
+
+request : Flask request object
+    The Flask request passed from the API endpoint
+"""
+def require_json(request):
+    if not request.is_json:
+        bad_request_error("A json body and appropriate Content-Type header are required")
+
+"""
+Throws error for 400 Bad Reqeust with message
+
+Parameters
+----------
+err_msg : str
+    The custom error message to return to end users
+"""
+def bad_request_error(err_msg):
+    abort(400, description = err_msg)
 
 
 
