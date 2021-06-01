@@ -392,7 +392,7 @@ def remove_file():
     # Remove the physical files from the file system
     for file_uuid in file_uuids:
         # Get back the updated files_info_list
-        files_info_list = schema_manager.get_file_upload_helper_instance().remove_file(entity_upload_dir, file_uuid, files_info_list)
+        files_info_list = file_upload_helper_instance.remove_file(entity_upload_dir, file_uuid, files_info_list)
     
     # Send back the updated files_info_list
     return jsonify(files_info_list)
