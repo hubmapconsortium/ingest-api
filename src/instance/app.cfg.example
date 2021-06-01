@@ -41,6 +41,20 @@ GLOBUS_ADMIN_FILE_USER_NAME = 'shirey'
 GLOBUS_GENOMIC_DATA_FILE_GROUP_NAME = 'hubseq'
 GLOBUS_CONSORTIUM_FILE_GROUP_NAME = 'hubmap'
 
+# Directory where file uploads will be placed temporarily
+# until they are committed
+# Remember to set the proper file system user and group permission
+FILE_UPLOAD_TEMP_DIR = '/hubmap-data/hm_uploads_tmp'
+
+# Directory where file uploads are permanantly stored
+# Remember to set the proper file system user and group permission
+FILE_UPLOAD_DIR = '/hubmap-data/hm_uploads'
+
+# URL for talking to UUID API (default value used for docker deployment, no token needed)
+# Don't use localhost since uuid-api is running on a different container
+# Point to remote URL for non-docker development
+# Works regardless of the trailing slash
+UUID_API_URL = 'http://hubmap-auth:9999/hmuuid'
 
 # URL for talking to UUID API (default value used for localhost docker environment)
 # Don't use http://localhost since uuid-api running on a different container

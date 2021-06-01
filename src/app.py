@@ -39,6 +39,10 @@ from hubmap_commons.hubmap_const import HubmapConst
 # The new neo4j_driver module from commons
 from hubmap_commons import neo4j_driver
 
+# Local modules
+from file_upload_helper import UploadFileHelper
+
+
 import time
 import logging
 from pathlib import Path
@@ -107,6 +111,31 @@ except Exception:
     msg = "Failed to initialize the neo4j_driver module"
     # Log the full stack trace, prepend a line with our message
     logger.exception(msg)
+
+
+####################################################################################################
+## File upload initialization
+####################################################################################################
+
+try:
+    # Initialize the UploadFileHelper class and ensure singleton
+    if UploadFileHelper.is_initialized() == False:
+        file_upload_helper_instance = UploadFileHelper.create(app.config['FILE_UPLOAD_TEMP_DIR'], 
+                                                              app.config['FILE_UPLOAD_DIR'],
+                                                              app.config['UUID_API_URL'])
+
+        logger.info("Initialized UploadFileHelper class successfully :)")
+
+        # This will delete all the temp dirs on restart
+        #file_upload_helper_instance.clean_temp_dir()
+    else:
+        file_upload_helper_instance = UploadFileHelper.instance()
+# Use a broad catch-all here
+except Exception:
+    msg = "Failed to initialize the UploadFileHelper class"
+    # Log the full stack trace, prepend a line with our message
+    logger.exception(msg)
+
 
 
 SINGLE_DATASET_QUERY = "match(e:Dataset {uuid: {uuid}}) return e.uuid as uuid, e.entity_type as entitytype, e.status as status, e.data_access_level as data_access_level, e.group_uuid as group_uuid"
@@ -297,6 +326,43 @@ def get_user_info(token):
 ####################################################################################################
 ## Ingest API Endpoints
 ####################################################################################################
+
+
+"""
+File upload handling for Donor and Sample
+
+Returns
+-------
+json
+    A JSON containing the temp file uuid
+"""
+@app.route('/file-upload', methods=['POST'])
+def upload_file():
+    # Check if the post request has the file part
+    if 'file' not in request.files:
+        bad_request_error('No file part')
+
+    file = request.files['file']
+
+    if file.filename == '':
+        bad_request_error('No selected file')
+
+    try:
+        temp_id = file_upload_helper_instance.save_temp_file(file)
+        rspn_data = {
+            "temp_file_id": temp_id
+        }
+
+        return jsonify(rspn_data), 201
+    except Exception as e:
+        # Log the full stack trace, prepend a line with our message
+        msg = "Failed to upload files"
+        logger.exception(msg)
+        internal_server_error(msg)
+
+
+
+
 
 @app.route('/datasets/<ds_uuid>/file-system-abs-path', methods = ['GET'])
 def get_file_system_absolute_path(ds_uuid):
