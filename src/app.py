@@ -66,6 +66,7 @@ else:
     authcache = AuthHelper.instance()
 
 data_admin_group_uuid = '89a69625-99d7-11ea-9366-0e98982705c1'
+data_curator_group_uuid = '75804b96-d4a8-11e9-9da9-0ad4acb67ed4'
 
 # Commented out by Zhou - 3/5/2021
 # @app.before_first_request
@@ -2336,7 +2337,8 @@ def update_sample(uuid):
 #                   true if a user is a member of the group that the entity is a member of or
 #                   the user is a member of the Data Admin group, except in the case where
 #                   the entity is public or has been published, in which case no one can write
-#  has_submit_priv- denotes if a user has permission to submit a dataset.
+#                   in the case of a data Upload, this denotes the ability to save and validate the data.
+#  has_submit_priv- denotes if a user has permission to submit a dataset or data Upload.
 #                   true only if the Dataset is in the New state and the user is a member of the
 #                   Data Admin group
 # has_publish_priv- denotes if a user has permission to publish a Dataset
@@ -2398,42 +2400,64 @@ def allowable_edit_states(hmuuid):
                     entity_type = record.get('e.entity_type', None)
                     status = record.get('e.status', None)
                                         
-                    if isBlank(group_uuid) or isBlank(data_access_level) or isBlank(entity_type):
-                        msg = f"ERROR: unable to obtain a group_uuid, data_access_level or entity_type from database for entity uuid:{hmuuid} during a call to allowable-edit-states"
+                    if isBlank(group_uuid):
+                        msg = f"ERROR: unable to obtain a group_uuid from database for entity uuid:{hmuuid} during a call to allowable-edit-states"
                         logger.error(msg)
                         return Response(msg, 500)
                     
-
-                    data_access_level = data_access_level.lower().strip()
+                    if isBlank(entity_type):
+                        msg = f"ERROR: unable to obtain an entity_type from database for entity uuid:{hmuuid} during a call to allowable-edit-states"
+                        logger.error(msg)
+                        return Response(msg, 500)
+                    
                     entity_type = entity_type.lower().strip()                          
+                    if not entity_type == 'upload':
+                        if isBlank(data_access_level): 
+                            msg = f"ERROR: unable to obtain a data_access_level from database for entity uuid:{hmuuid} during a call to allowable-edit-states"
+                            logger.error(msg)
+                            return Response(msg, 500)                        
+                        else:
+                            data_access_level = data_access_level.lower().strip()
+                    else:
+                        data_access_level = 'protected'
+        
                     #if it is published, no write allowed
-                    if entity_type == 'dataset':
+                    if entity_type == 'dataset' or entity_type == 'upload':
                         if isBlank(status):
-                            msg = f"ERROR: unable to obtain status field from db for dataset with uuid:{hmuuid} during a call to allowable-edit-states"
+                            msg = f"ERROR: unable to obtain status field from db for {entity_type} with uuid:{hmuuid} during a call to allowable-edit-states"
                             logger.error(msg)
                             return Response(msg, 500)
                         status = status.lower().strip()
-                        if status == 'published':
+                        if status == 'published' or status == 'reorganized':
                             return Response(json.dumps(r_val), 200, mimetype='application/json')
                     #if the entity is public, no write allowed
                     elif entity_type in ['sample', 'donor']:
                         if data_access_level == 'public':
                             return Response(json.dumps(r_val), 200, mimetype='application/json')
+
                     else:
                         return Response("Invalid data type " + entity_type + ".", 400)
 
                     #compare the group_uuid in the entity to the users list of groups
                     #if the user is a member of the HuBMAP-Data-Admin group,
-                    #they have write access to everything and the ability to submit datasets
+                    #they have write access to everything and the ability to submit datasets and uploads
                     if data_admin_group_uuid in user_info['hmgroupids']:
-                        r_val['has_write_priv'] = True
+                        if not status == 'processing':
+                            r_val['has_write_priv'] = True
                         if entity_type == 'dataset':
                             if status == 'new':
                                 r_val['has_submit_priv'] = True
                             elif status == 'qa':
                                 r_val['has_publish_priv'] = True
+                        if entity_type == 'upload':
+                            if status in ['new', 'invalid', 'valid', 'error']:
+                                r_val['has_submit_priv'] = True
                     #if in the users list of groups return true otherwise false
                     elif group_uuid in user_info['hmgroupids']:
+                        if not status == 'processing':
+                            r_val['has_write_priv'] = True
+                    #if the user is a data_curator they are allowed to save/validate Uploads
+                    elif data_curator_group_uuid in user_info['hmgroupids'] and entity_type == 'upload' and not status == 'processing':
                         r_val['has_write_priv'] = True
                     else:
                         r_val['has_write_priv'] = False
@@ -2454,10 +2478,6 @@ def allowable_edit_states(hmuuid):
         for x in sys.exc_info():
             msg += str(x)
         abort(400, msg)
- #   finally:
- #       if conn != None:
- #           if conn.get_driver().closed() == False:
- #               conn.close()
 
 
 # This is for development only
