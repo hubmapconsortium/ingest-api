@@ -16,7 +16,7 @@ APP_CLIENT_SECRET = ''
 GLOBUS_ENDPOINT_UUID = ''
 
 # Admin group UUID
-HUBMAP_DATA_ADMIN_GROUP_UUID = ''
+HUBMAP_DATA_ADMIN_GROUP_UUID = '89a69625-99d7-11ea-9366-0e98982705c1'
 
 # File system settings (shown are for DEV)
 LOCAL_STORAGE_DIRECTORY = '/hive/hubmap-dev/uploads'
