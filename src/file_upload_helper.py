@@ -12,9 +12,6 @@ import hashlib
 import os
 from werkzeug.utils import secure_filename
 
-# Local modules
-from schema import schema_errors
-
 # HuBMAP commons
 from hubmap_commons import file_helper
 
@@ -96,7 +93,7 @@ class UploadFileHelper:
 
         file_temp_dir = self.__get_temp_file_dir(temp_file_id.strip())
         if not os.path.exists(file_temp_dir):
-            raise schema_errors.FileUploadException("Temporary file with id " + temp_file_id + " does not have a temp directory.")
+            raise Exception("Temporary file with id " + temp_file_id + " does not have a temp directory.")
         
         fcount = 0
         temp_file_name = None
@@ -105,9 +102,9 @@ class UploadFileHelper:
             temp_file_name = tfile
         
         if fcount == 0:
-            raise schema_errors.FileUploadException("File not found for temporary file with id " + temp_file_id)
+            raise Exception("File not found for temporary file with id " + temp_file_id)
         if fcount > 1:
-            raise schema_errors.FileUploadException("Multiple files found in temporary file path for temp file id " + temp_file_id)
+            raise Exception("Multiple files found in temporary file path for temp file id " + temp_file_id)
         
         
         file_from_path = file_temp_dir + temp_file_name
@@ -130,7 +127,7 @@ class UploadFileHelper:
         data['file_info'] = [file_info]
         response = requests.post(self.uuid_api_url, json = data, headers = headers, verify = False)
         if response is None or response.status_code != 200:
-            raise schema_errors.FileUploadException(f"Unable to generate uuid for file {file_temp_dir}{temp_file_name}")
+            raise Exception(f"Unable to generate uuid for file {file_temp_dir}{temp_file_name}")
         
         rsjs = response.json()
         file_uuid = rsjs[0]['uuid']
