@@ -303,6 +303,11 @@ def logout():
 def http_bad_request(e):
     return jsonify(error=str(e)), 400
 
+# Error handler for 500 Internal Server Error with custom error message
+@app.errorhandler(500)
+def http_internal_server_error(e):
+    return jsonify(error=str(e)), 500
+
 ####################################################################################################
 ## Ingest API Endpoints
 ####################################################################################################
@@ -1148,6 +1153,16 @@ err_msg : str
 def bad_request_error(err_msg):
     abort(400, description = err_msg)
 
+"""
+Throws error for 500 Internal Server Error with message
+Parameters
+----------
+err_msg : str
+    The custom error message to return to end users
+"""
+def internal_server_error(err_msg):
+    abort(500, description = err_msg)
+    
 def get_user_info(token):
     auth_client = AuthClient(authorizer=AccessTokenAuthorizer(token))
     return auth_client.oauth2_userinfo()
