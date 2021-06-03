@@ -18,6 +18,9 @@ GLOBUS_ENDPOINT_UUID = ''
 # Admin group UUID
 HUBMAP_DATA_ADMIN_GROUP_UUID = '89a69625-99d7-11ea-9366-0e98982705c1'
 
+# Curator group UUID
+HUBMAP_DATA_CURATOR_GROUP_UUID = '75804b96-d4a8-11e9-9da9-0ad4acb67ed4'
+
 # File system settings (shown are for DEV)
 GLOBUS_ENDPOINT_FILEPATH = '/hive/hubmap-dev/protected'
 HUBMAP_WEBSERVICE_FILEPATH = '/hive/hubmap-dev/assets'
