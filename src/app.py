@@ -82,6 +82,7 @@ except Exception:
     # Log the full stack trace, prepend a line with our message
     logger.exception(msg)
 
+
 """
 Close the current neo4j connection at the end of every request
 """
@@ -97,11 +98,6 @@ def close_neo4j_driver(error):
 # Admin group UUID
 data_admin_group_uuid = app.config['HUBMAP_DATA_ADMIN_GROUP_UUID']
 data_curator_group_uuid = app.config['HUBMAP_DATA_CURATOR_GROUP_UUID']
-
-# Neo4j Cypher queries to be used
-SINGLE_DATASET_QUERY = "MATCH(e:Dataset {uuid: {uuid}}) RETURN e.uuid as uuid, e.entity_type as entitytype, e.status as status, e.data_access_level as data_access_level, e.group_uuid as group_uuid"
-ALL_ANCESTORS_QUERY = "MATCH (dataset:Dataset {uuid: {uuid}})<-[:ACTIVITY_OUTPUT]-(e1)<-[r:ACTIVITY_INPUT|:ACTIVITY_OUTPUT*]-(all_ancestors:Entity) RETURN distinct all_ancestors.uuid as uuid, all_ancestors.entity_type as entity_type, all_ancestors.data_types as data_types, all_ancestors.data_access_level as data_access_level, all_ancestors.status as status"
-
 
 ####################################################################################################
 ## Default and Status Routes
@@ -457,7 +453,8 @@ def publish_datastage(identifier):
             #look at all of the ancestors
             #gather uuids of ancestors that need to be switched to public access_level
             #grab the id of the donor ancestor to use for reindexing
-            rval = neo_session.run(ALL_ANCESTORS_QUERY, uuid=dataset_uuid).data()
+            q = f"MATCH (dataset:Dataset {{uuid: '{dataset_uuid}'}})<-[:ACTIVITY_OUTPUT]-(e1)<-[:ACTIVITY_INPUT|ACTIVITY_OUTPUT*]-(all_ancestors:Entity) RETURN distinct all_ancestors.uuid as uuid, all_ancestors.entity_type as entity_type, all_ancestors.data_types as data_types, all_ancestors.data_access_level as data_access_level, all_ancestors.status as status"
+            rval = neo_session.run(q).data()
             uuids_for_public = []
             donor_uuid = None
             for node in rval:
@@ -482,7 +479,8 @@ def publish_datastage(identifier):
                 return Response(f"{dataset_uuid}: no donor found for dataset, will not Publish")
             
             #get info for the dataset to be published
-            rval = neo_session.run(SINGLE_DATASET_QUERY, uuid=dataset_uuid).data()
+            q = f"MATCH (e:Dataset {{uuid: '{dataset_uuid}'}}) RETURN e.uuid as uuid, e.entity_type as entitytype, e.status as status, e.data_access_level as data_access_level, e.group_uuid as group_uuid"
+            rval = neo_session.run(q).data()
             dataset_status = rval[0]['status']
             dataset_entitytype = rval[0]['entitytype']
             dataset_data_access_level = rval[0]['data_access_level']
