@@ -122,7 +122,6 @@ except Exception:
 data_admin_group_uuid = app.config['HUBMAP_DATA_ADMIN_GROUP_UUID']
 data_curator_group_uuid = app.config['HUBMAP_DATA_CURATOR_GROUP_UUID']
 
-
 ####################################################################################################
 ## Default and Status Routes
 ####################################################################################################
