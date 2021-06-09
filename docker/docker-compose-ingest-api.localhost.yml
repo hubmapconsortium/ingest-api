@@ -34,6 +34,9 @@ services:
       - "../log:/usr/src/app/log"
       # Mount Globus data
       - "/hubmap-data:/hubmap-data"
+      # Mount the file uploads tmp directory and destination directory
+      - "/hive/hubmap-dev/hm_uploads_tmp:/hive/hubmap-dev/hm_uploads_tmp"
+      - "/hive/hubmap-dev/hm_uploads:/hive/hubmap-dev/hm_uploads"
     networks:
       - gateway_hubmap
 
