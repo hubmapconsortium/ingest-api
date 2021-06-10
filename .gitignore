@@ -47,3 +47,7 @@ src/VERSION
 #ignore eclipse files
 .project
 .pydevproject
+
+#ignore PyCharm files
+.idea/
+venv

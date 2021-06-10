@@ -15,3 +15,4 @@ requests==2.25.1
 # Default is master branch specified in docker-compose.yml if not set
 git+git://github.com/hubmapconsortium/commons.git@${COMMONS_BRANCH}#egg=hubmap-commons
 
+nose2
