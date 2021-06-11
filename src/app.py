@@ -28,6 +28,7 @@ from dataset import Dataset
 from specimen import Specimen
 from ingest_file_helper import IngestFileHelper
 from file_upload_helper import UploadFileHelper
+import app_manager
 
 
 # Set logging fromat and level (default is warning)
@@ -721,7 +722,6 @@ def update_ingest_status():
         abort(400, jsonify( { 'error': 'no data found cannot process update' } ))
     
     try:
-        app_manager = AppManager()
         updated_ds = app_manager.update_ingest_status(app.config, request.json, request.headers, logger)
 
         headers = {'Authorization': request.headers["AUTHORIZATION"], 'Content-Type': 'application/json',

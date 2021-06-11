@@ -24,6 +24,19 @@ logger = logging.getLogger(__name__)
 _entity_api_url = None
 _search_api_url = None
 
+def load_flask_instance_config():
+    # Specify the absolute path of the instance folder and use the config file relative to the instance path
+    app = Flask(__name__,
+                instance_path=os.path.join(os.path.abspath(os.path.dirname(__file__)), 'instance'),
+                instance_relative_config=True)
+    app.config.from_pyfile('app.cfg')
+
+    # Remove trailing slash / from URL base to avoid "//" caused by config with trailing slash
+    app.config['ENTITY_WEBSERVICE_URL'] = app.config['ENTITY_WEBSERVICE_URL'].strip('/')
+    app.config['SEARCH_WEBSERVICE_URL'] = app.config['SEARCH_WEBSERVICE_URL'].strip('/')
+
+    return app.config
+
 
 class DatasetHelper:
 
@@ -32,23 +45,11 @@ class DatasetHelper:
         global _entity_api_url
         global _search_api_url
 
-        config = self.load_flask_instance_config()
+        if _entity_api_url == None:
+            config = load_flask_instance_config()
 
         _entity_api_url = config['ENTITY_WEBSERVICE_URL']
         _search_api_url = config['SEARCH_WEBSERVICE_URL']
-
-    def load_flask_instance_config(self):
-        # Specify the absolute path of the instance folder and use the config file relative to the instance path
-        app = Flask(__name__,
-                    instance_path=os.path.join(os.path.abspath(os.path.dirname(__file__)), 'instance'),
-                    instance_relative_config=True)
-        app.config.from_pyfile('app.cfg')
-
-        # Remove trailing slash / from URL base to avoid "//" caused by config with trailing slash
-        app.config['ENTITY_WEBSERVICE_URL'] = app.config['ENTITY_WEBSERVICE_URL'].strip('/')
-        app.config['SEARCH_WEBSERVICE_URL'] = app.config['SEARCH_WEBSERVICE_URL'].strip('/')
-
-        return app.config
 
     def generate_dataset_title(self, dataset, user_token):
         organ_desc = '<organ_desc>'
