@@ -39,6 +39,7 @@ class TestAppManager(unittest.TestCase):
 
         self.assertTrue('title' in result)
         self.assertEqual(result['title'], 'Dataset Title String')
+        self.assertEqual(len(result), 4)
 
     def test_update_ingest_status_with_not_status_qa(self):
         self.dataset.get_dataset_ingest_update_record.return_value = {
@@ -51,6 +52,7 @@ class TestAppManager(unittest.TestCase):
 
         self.assertFalse('title' in result)
         self.dataset_helper.generate_dataset_title.assert_not_called()
+        self.assertEqual(len(result), 3)
 
 
 if __name__ == "__main__":
