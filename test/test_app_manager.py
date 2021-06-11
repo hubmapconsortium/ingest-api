@@ -5,6 +5,7 @@ from unittest.mock import Mock, MagicMock
 from dataset import Dataset
 from src.dataset_helper_object import DatasetHelper
 
+
 #
 # Running the tests... At the top level directory type 'nose2 --verbose --log-level debug`
 #
@@ -17,7 +18,8 @@ class TestAppManager(unittest.TestCase):
 
         self.dataset_helper = DatasetHelper
         self.dataset_helper.__init__ = MagicMock(name='__init__', return_value=None)
-        self.dataset_helper.generate_dataset_title = MagicMock(spec='generate_dataset_title', return_value='Dataset Title String')
+        self.dataset_helper.generate_dataset_title = \
+            MagicMock(spec='generate_dataset_title', return_value='Dataset Title String')
 
         self.request_json = []
         self.request_headers = {'AUTHORIZATION': 'bearer   token'}
@@ -28,9 +30,9 @@ class TestAppManager(unittest.TestCase):
 
     def test_update_ingest_status_with_status_qa(self):
         self.dataset.get_dataset_ingest_update_record.return_value = {
-            'dataset_id' : '287d61b60b806fdf54916e3b7795ad5a',
-            'status' : 'QA',
-            'message' : 'the process ran'
+            'dataset_id': '287d61b60b806fdf54916e3b7795ad5a',
+            'status': 'QA',
+            'message': 'the process ran'
         }
 
         result = update_ingest_status(None, self.request_json, self.request_headers, self.logger)
