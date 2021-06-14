@@ -8,8 +8,6 @@ from flask import Flask, g, jsonify, abort, request, session, redirect, json, Re
 from flask_cors import CORS
 from globus_sdk import AccessTokenAuthorizer, AuthClient, ConfidentialAppAuthClient
 
-from app_manager import AppManager
-
 # HuBMAP commons
 from hubmap_commons import neo4j_driver
 from hubmap_commons.hm_auth import AuthHelper, secured

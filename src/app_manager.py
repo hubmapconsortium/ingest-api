@@ -1,6 +1,6 @@
 from flask import json
 from dataset import Dataset
-from src.dataset_helper_object import DatasetHelper
+from dataset_helper_object import DatasetHelper
 
 
 def update_ingest_status(app_config, request_json, request_headers, logger):
