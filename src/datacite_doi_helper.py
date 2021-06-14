@@ -10,7 +10,7 @@ from requests.auth import HTTPBasicAuth
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
 # Local modules
-import dataset_helper
+from dataset_helper_object import DatasetHelper
 
 
 requests.packages.urllib3.disable_warnings(category = InsecureRequestWarning)
@@ -400,7 +400,7 @@ if __name__ == "__main__":
         logger.debug(dataset)
         
         # Generate the dataset title
-        dataset_helper.initialize()
+        dataset_helper = DatasetHelper()
         dataset_title = dataset_helper.generate_dataset_title(dataset, user_token)
 
         try:
