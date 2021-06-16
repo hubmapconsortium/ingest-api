@@ -51,7 +51,7 @@ class DatasetHelper:
         _entity_api_url = config['ENTITY_WEBSERVICE_URL']
         _search_api_url = config['SEARCH_WEBSERVICE_URL']
 
-    def generate_dataset_title(self, dataset, user_token):
+    def generate_dataset_title(self, dataset: object, user_token: object) -> object:
         organ_desc = '<organ_desc>'
         age = '<age>'
         race = '<race>'
@@ -70,8 +70,9 @@ class DatasetHelper:
             raise requests.exceptions.RequestException(e)
 
         for ancestor in ancestors:
+            # 'specimen_type' is a key in search-api/src/search-schema/data/definitions/enums/tissue_sample_types.yaml
             if (ancestor['entity_type'] == 'Sample') and (ancestor['specimen_type'].lower() == 'organ'):
-                # ancestor['organ'] is the two-letter code
+                # ancestor['organ'] is the two-letter code only set if sample_type == organ.
                 # We need to convert to the description
                 # https://github.com/hubmapconsortium/search-api/blob/test-release/src/search-schema/data/definitions/enums/organ_types.yaml
                 organ_code = ancestor['organ']
@@ -159,7 +160,7 @@ class DatasetHelper:
 
         return assay_type_desc
 
-    def get_organ_description(self, organ_code):
+    def get_organ_description(self, organ_code) -> str:
         yaml_file_url = 'https://raw.githubusercontent.com/hubmapconsortium/search-api/master/src/search-schema/data/definitions/enums/organ_types.yaml'
 
         with urllib.request.urlopen(yaml_file_url) as response:
