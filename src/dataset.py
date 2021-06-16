@@ -193,7 +193,7 @@ class Dataset(object):
     @classmethod
     def get_dataset_ingest_update_record(self, json_data):
         """ expect something like this:
-        #{'dataset_id' : '4d3eb2a87cda705bde38495bb564c8dc', 'status': '<status>', 'message': 'the process ran', 'metadata': [maybe some metadata stuff], 'thumbnail': 'full file path'} 
+        #{'dataset_id' : '4d3eb2a87cda705bde38495bb564c8dc', 'status': '<status>', 'message': 'the process ran', 'metadata': [maybe some metadata stuff], 'thumbnail_image': 'full file path'} 
         files: [{ "relativePath" : "/path/to/file/example.txt",
            "type":"filetype",
            "size":filesize,
@@ -202,8 +202,8 @@ class Dataset(object):
          """
         
         # Added by Zhou 6/16/2021 for thumbnail image handling
-        if 'thumbnail' in json_data:
-            update_record['thumbnail'] = json_data['thumbnail']
+        if 'thumbnail_image' in json_data:
+            update_record['thumbnail_image'] = json_data['thumbnail_image']
             
          
         if 'dataset_id' not in json_data:
