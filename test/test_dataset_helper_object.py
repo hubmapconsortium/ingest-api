@@ -33,6 +33,7 @@ class TestDatasetHelper(unittest.TestCase):
 
     def test_generate_dataset_title_happy_path(self):
         # response.json() from requests..get(url=f"{_entity_api_url}/ancestors/{dataset_uuid}", ...)
+        # for 'organ' values see: https://raw.githubusercontent.com/hubmapconsortium/search-api/master/src/search-schema/data/definitions/enums/organ_types.yaml
         self.dataset_helper.get_dataset_ancestors.return_value = [
             {'entity_type': 'Sample',
              'specimen_type': 'Organ',
