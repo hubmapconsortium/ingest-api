@@ -725,9 +725,47 @@ def update_ingest_status():
         logger.info("++++++++++Calling /datasets/status")
         logger.info("++++++++++Request:" + json.dumps(ds_request))
         # expecting something like this:
-        #{'dataset_id' : '287d61b60b806fdf54916e3b7795ad5a', 'status': '<', 'message': 'the process ran', 'metadata': [maybe some metadata stuff], 'thumbnail_image': 'full path to the image'}
+        #{'dataset_id' : '287d61b60b806fdf54916e3b7795ad5a', 'status': '<', 'message': 'the process ran', 'metadata': [maybe some metadata stuff], 'thumbnail_image_abs_path': 'full path to the image'}
         updated_ds = dataset.get_dataset_ingest_update_record(ds_request)
 
+        ###################################################################
+        # Added by Zhou 6/16/2021 for thumbnail image handling
+        if 'thumbnail_image_abs_path' in updated_ds:
+            # For later use
+            thumbnail_image_abs_path = updated_ds['thumbnail_image_abs_path']
+
+            # Generate a file_uuid for the thumbnail.jpg and copy this image to 
+            # /hive/hubmap/assets/<thumbnail_file_uuid>/thumbnail.jpg (for PROD)
+            headers = {
+                'Authorization': request.headers["AUTHORIZATION"], 
+                'Content-Type': 'application/json'
+            }
+
+            data = {
+                'entity_type': 'FILE',
+                'parent_ids': [entity_uuid]
+            }
+
+            response = requests.post(app.config['UUID_WEBSERVICE_URL'], json = data, headers = headers, verify = False)
+            
+            if response is None or response.status_code != 200:
+                raise Exception(f"Unable to generate uuid for thumbnail image file of dataset uuid {entity_uuid}")
+            
+            response_json = response.json()
+            thumbnail_file_uuid = response_json[0]['uuid']
+
+            # This is the property to be updated via entity-api
+            updated_ds['thumbnail_image_file'] = {
+                # The filename includes the extension, e.g., 'thumbnail.jpg'
+                'filename': os.path.basename(thumbnail_image_abs_path),
+                'file_uuid': thumbnail_file_uuid
+            }
+
+            # Remove the 'thumbnail_image'
+            updated_ds.pop('thumbnail_image_abs_path')
+        ###################################################################
+
+        # Update the dataset via entity-api via a PUT call
         headers = {'Authorization': request.headers["AUTHORIZATION"], 'Content-Type': 'application/json', 'X-Hubmap-Application':'ingest-api'}
         entity_uuid = ds_request['dataset_id']
         update_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/' + entity_uuid
@@ -739,39 +777,23 @@ def update_ingest_status():
             logger.error("Sent: " + json.dumps(updated_ds))
             return Response(response.text, response.status_code)
 
+        result_json = response.json()
+
         ###################################################################
         # Added by Zhou 6/16/2021 for thumbnail image handling
-        # Generate a file_uuid for the thumbnail.jpg and copy this image to 
-        # /hive/hubmap/assets/<thumbnail_file_uuid>/thumbnail.jpg (for PROD)
-        headers = {'Authorization': 'Bearer ' + user_token, 'Content-Type': 'application/json'}
-        data = {
-            'entity_type': 'FILE',
-            'parent_ids': [entity_uuid]
-        }
+        if 'thumbnail_image_file' in result_json:
+            thumbnail_image_file = result_json['thumbnail_image_file']
 
-        response = requests.post(app.config['UUID_WEBSERVICE_URL'], json = data, headers = headers, verify = False)
-        
-        if response is None or response.status_code != 200:
-            raise Exception(f"Unable to generate uuid for thumbnail image file of dataset uuid {entity_uuid}")
-        
-        response_json = response.json()
-        thumbnail_file_uuid = response_json[0]['uuid']
+            # /hive/hubmap/assets/<thumbnail_file_uuid>/<thumbnail.jpg> (for PROD)
+            target_file_path = os.path.join(str(app.config['HUBMAP_WEBSERVICE_FILEPATH']), thumbnail_image_file['file_uuid'], thumbnail_image_file['filename'])
 
-        # /hive/hubmap/assets/<thumbnail_file_uuid> (for PROD)
-        target_dir = os.path.join(str(app.config['HUBMAP_WEBSERVICE_FILEPATH']), thumbnail_file_uuid)
-        
-        # Use pathlib to create dir instead of file_helper.mkDir
-        Path(target_dir).mkdir(parents=True, exist_ok=True)
-
-        # Put the thumbnanail.jpg under the target_dir dir
-        target_file_path = os.path.join(target_dir, 'thumbnail.jpg')
-
-        # Copy the original extra/thumbnail.jpg returned by ingest-pipeline to the target path
-        copy2(updated_ds['thumbnail_image'], target_file_path)
+            # Copy the original path/extra/thumbnail.jpg returned by ingest-pipeline 
+            # to the target path under assets
+            copy2(thumbnail_image_abs_path, target_file_path)
         ###################################################################
 
 
-        return jsonify( { 'result' : response.json() } ), response.status_code
+        return jsonify( { 'result' : result_json } ), response.status_code
     
     except HTTPException as hte:
         return Response(hte.get_description(), hte.get_status_code())
