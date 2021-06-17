@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+import hashlib
 import logging
 import requests
 import argparse
@@ -743,7 +744,10 @@ def update_ingest_status():
 
             data = {
                 'entity_type': 'FILE',
-                'parent_ids': [entity_uuid]
+                'parent_ids': [entity_uuid],
+                'base_dir': 'ASSETS'
+                'checksum': hashlib.md5(open(file_from_path, 'rb').read()).hexdigest(),
+                'size': os.path.getsize(file_from_path)
             }
 
             response = requests.post(app.config['UUID_WEBSERVICE_URL'], json = data, headers = headers, verify = False)
