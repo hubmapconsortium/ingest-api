@@ -201,9 +201,11 @@ class Dataset(object):
          }]
          """
         
+        ###################################################################
         # Added by Zhou 6/16/2021 for thumbnail image handling
         if 'thumbnail_image' in json_data:
             update_record['thumbnail_image'] = json_data['thumbnail_image']
+        ###################################################################
             
          
         if 'dataset_id' not in json_data:
