@@ -22,7 +22,7 @@ HUBMAP_DATA_ADMIN_GROUP_UUID = '89a69625-99d7-11ea-9366-0e98982705c1'
 HUBMAP_DATA_CURATOR_GROUP_UUID = '75804b96-d4a8-11e9-9da9-0ad4acb67ed4'
 
 # File system settings (shown are for DEV)
-GLOBUS_ENDPOINT_FILEPATH = '/hive/hubmap-dev/protected'
+GLOBUS_ENDPOINT_FILEPATH = '/hive/hubmap-dev/data/protected'
 HUBMAP_WEBSERVICE_FILEPATH = '/hive/hubmap-dev/assets'
 WORKFLOW_SCRATCH = '/hive/hubmap-dev/scratch'
 
@@ -41,9 +41,9 @@ GLOBUS_CONSORTIUM_ENDPOINT_UUID = '3cb7d673-a3db-40e9-8376-f2ead6cb5a45'
 GLOBUS_PROTECTED_ENDPOINT_UUID = 'bdaf8547-aab3-4142-97bd-0a16d5cd9f58'
 
 # File paths of the Globus endpoints (shown are for DEV, change for TEST/STAGE/PROD deployment)
-GLOBUS_PUBLIC_ENDPOINT_FILEPATH = '/hive/hubmap-dev/public'
-GLOBUS_CONSORTIUM_ENDPOINT_FILEPATH = '/hive/hubmap-dev/consortium'
-GLOBUS_PROTECTED_ENDPOINT_FILEPATH = '/hive/hubmap-dev/protected'
+GLOBUS_PUBLIC_ENDPOINT_FILEPATH = '/hive/hubmap-dev/data/public'
+GLOBUS_CONSORTIUM_ENDPOINT_FILEPATH = '/hive/hubmap-dev/data/consortium'
+GLOBUS_PROTECTED_ENDPOINT_FILEPATH = '/hive/hubmap-dev/data/protected'
 
 # File Access Control List Settings to be used by `setfacl` command
 # Set value to `hubmap` for all the following users and groups on localhost docker mode

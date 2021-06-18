@@ -1,15 +1,15 @@
 openapi: 3.0.0
 info:
   description: |
-    This is the HuBMAP DataIngest API specification
+    A restful web service exposing calls needed for the Ingest UI React application.
   version: "1.0.0-oas3-test"
-  title: HuBMAP DataIngest APIs
-  termsOfService: "http://hubmapconsortium.org"
+  title: HuBMAP Ingest API
   contact:
-    email: apiteam@hubmap.org
+    name: HuBMAP Help Desk
+    email: help@hubmapconsortium.org
   license:
-    name: Apache 2.0
-    url: "http://www.apache.org/licenses/LICENSE-2.0.html"
+    name: MIT License
+    url: 'https://github.com/hubmapconsortium/ingest-api/blob/main/license.txt'
 tags:
   - name: dataset
     description: Operations pertaining to datasets
@@ -316,6 +316,99 @@ paths:
           description: There was a system error
         "401":
           description: User's token is not valid
+  /file-upload:
+    post:
+      summary: "Upload a file to temporarily stage.  On success the file will be staged and a temporary id will be returned to reference the staged file by.  The temporary id can be used by the *_files_to_add properties during PUT/POST for Donors and Samples to commit the file permanantly and associate with an entity." 
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: The file was successfully uploaded and staged, the temporary file id is returned.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  temp_file_id:
+                    type: string
+        '400':
+          description: Missing file
+        '401':
+          description: The user's token has expired or the user did not supply a valid token
+        '403':
+          description: The user is not authorized to upload the file.
+        '500':
+          description: Internal error
+  /file-commit:
+    post:
+      summary: "File commit triggered by entity-api trigger method for Donor and Sample" 
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                temp_file_id:
+                  type: string
+                entity_uuid:
+                  type: string
+                user_token:
+                  type: string
+      responses:
+        '200':
+          description: The file was successfully commited, the file uuid is returned.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  filename:
+                    type: string
+                  file_uuid:
+                    type: string
+        '400':
+          description: Missing JSON input
+        '401':
+          description: The user's token has expired or the user did not supply a valid token
+        '500':
+          description: Internal error
+  /file-remove:
+    post:
+      summary: "File removal triggered by entity-api trigger method for Donor and Sample
+during entity update." 
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                entity_uuid:
+                  type: string
+                file_uuids:
+                  type: array
+                  items:
+                    - $ref: '#/components/schemas/file_uuid'
+                files_info_list:
+                  type: array
+                  items:
+                    - $ref: '#/components/schemas/file_info'
+                  
+      responses:
+        '200':
+          description: The file was successfully deleted.
+        '400':
+          description: Missing JSON input
+        '401':
+          description: The user's token has expired or the user did not supply a valid token
+        '500':
+          description: Internal error
 
 
 servers:
@@ -336,6 +429,18 @@ components:
       name: api_key
       in: header
   schemas:
+    file_info:
+      type: object
+      required:
+        - filename
+        - file_uuid]
+      properties:
+        filename:
+          type: string
+        file_uuid:
+          type: string
+    file_uuid:
+      type: string
     Dataset:
       type: object
       required:
