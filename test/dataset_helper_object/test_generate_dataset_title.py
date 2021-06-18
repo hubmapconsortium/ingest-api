@@ -8,7 +8,7 @@ from dataset_helper_object import DatasetHelper
 # Running the tests... At the top level directory type 'nose2 --verbose --log-level debug`
 #
 # WARNING: ONLY methods beginning with "test_" will be considered tests by 'nose2' :-(
-class TestDatasetHelper(unittest.TestCase):
+class TestGenerateDatasetTitle(unittest.TestCase):
 
     def setUp(self):
         self.logger = Mock()
