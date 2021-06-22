@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import Mock, MagicMock
+from unittest.mock import MagicMock
 
 from api.entity_api import EntityApi
 from api.search_api import SearchApi
@@ -15,7 +15,7 @@ from pprint import pprint
 class TestVerifyDatasetTitleInfo(unittest.TestCase):
 
     def setUp(self):
-        self.logger = Mock()
+        self.logger = MagicMock()
         self.logger.info = MagicMock(name='info', return_value=None)
 
         self.dataset_helper = DatasetHelper

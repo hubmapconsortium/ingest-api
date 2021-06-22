@@ -1,6 +1,5 @@
-import unittest, json
+import unittest
 from app import app
-#from app_manager import verify_dataset_title_info
 
 class BaseAppTests(unittest.TestCase) :
 
@@ -10,12 +9,22 @@ class BaseAppTests(unittest.TestCase) :
         self.token = 'token'
         self.headers = {'AUTHORIZATION': f'bearer   {self.token}'}
 
-    def test_success(self):
-        response = self.app.get(f'/datasets/{self.dataset_uuid}/verifytitleinfo', headers=self.headers)
+    def test_verify_dataset_title_info_success1(self):
+        route = f'/datasets/{self.dataset_uuid}/verifytitleinfo'
+        response = self.app.get(route, headers=self.headers)
 
         self.assertEqual(response.status_code, 200)
 
-    def test_baduuld(self):
-        response = self.app.get(f'/datasets/badUuid/verifytitleinfo', headers=self.headers)
+    def test_verify_dataset_title_info_success2(self):
+        uuid = '12345678123456781234567812345678'
+        route = f'/datasets/{uuid}/verifytitleinfo'
+        response = self.app.get(route, headers=self.headers)
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_verify_dataset_title_info_baduuld(self):
+        route = f'/datasets/badUuid/verifytitleinfo'
+        response = self.app.get(route, headers=self.headers)
 
         self.assertEqual(response.status_code, 400)
+#        self.assertEqual(response.error, 'parameter uuid of dataset is required')

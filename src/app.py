@@ -717,7 +717,7 @@ def update_dataset_status(uuid, new_status):
 
 @app.route('/datasets/<uuid>/verifytitleinfo', methods=['GET'])
 # @secured(groups="HuBMAP-read")
-def verify_dataset_title_info(uuid: str):
+def verify_dataset_title_info(uuid: str) -> object:
     try:
         UUID(uuid)
     except ValueError:
