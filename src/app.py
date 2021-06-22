@@ -1,6 +1,8 @@
 import os
 import sys
 import logging
+from uuid import UUID
+
 import requests
 import argparse
 from pathlib import Path
@@ -711,6 +713,30 @@ def update_dataset_status(uuid, new_status):
     #     if conn != None:
     #         if conn.get_driver().closed() == False:
     #             conn.close()
+
+
+@app.route('/datasets/<uuid>/verifytitleinfo', methods=['GET'])
+# @secured(groups="HuBMAP-read")
+def verify_dataset_title_info(uuid: str):
+    try:
+        UUID(uuid)
+    except ValueError:
+        abort(400, jsonify({'error': 'parameter uuid of dataset is required'}))
+    try:
+        result_array = app_manager.verify_dataset_title_info(uuid, request.headers)
+        return jsonify({'verification_errors': result_array}), 200
+
+    except HTTPException as hte:
+        return Response(hte.get_description(), hte.get_status_code())
+
+    except ValueError as ve:
+        logger.error(str(ve))
+        return jsonify({'error': str(ve)}), 400
+
+    except Exception as e:
+        logger.error(e, exc_info=True)
+        return Response("Unexpected error: " + str(e), 500)
+
 
 # Called by "data ingest pipeline" to update status of dataset...
 @app.route('/datasets/status', methods = ['PUT'])

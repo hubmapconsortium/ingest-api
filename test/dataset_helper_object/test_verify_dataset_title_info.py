@@ -1,6 +1,5 @@
 import unittest
-from array import array
-from unittest.mock import Mock, MagicMock, PropertyMock
+from unittest.mock import Mock, MagicMock
 
 from api.entity_api import EntityApi
 from api.search_api import SearchApi
