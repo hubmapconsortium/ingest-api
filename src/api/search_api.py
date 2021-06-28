@@ -6,7 +6,7 @@ from api.api import Api
 # NOTE: Should be derived from an OpenAPI spec
 class SearchApi(Api):
 
-    def __init__(self, user_token, api_url):
+    def __init__(self, user_token: str, api_url: str):
         super().__init__(user_token, api_url)
 
     def get_assaytype(self, data_type) -> object:

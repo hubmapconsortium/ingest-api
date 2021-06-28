@@ -55,6 +55,9 @@ class DatasetHelper:
             _entity_api_url = config['ENTITY_WEBSERVICE_URL']
             _search_api_url = config['SEARCH_WEBSERVICE_URL']
 
+        print(f"__init__ _entity_api_url: {_entity_api_url}")
+        print(f"__init__ _search_api_url: {_search_api_url}")
+
     def get_organ_types_dict(self) -> object:
         yaml_file_url = 'https://raw.githubusercontent.com/hubmapconsortium/search-api/master/src/search-schema/data/definitions/enums/organ_types.yaml'
         with urllib.request.urlopen(yaml_file_url) as response:

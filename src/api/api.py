@@ -7,7 +7,7 @@ class Api(object):
         self.auth_header = {
             'Authorization': f"Bearer {user_token}"
         }
-        self.api_utl = api_url
+        self.api_url = api_url
         self.verify_server_tls_certificate = False
 
     def request_get(self, url_path) -> object:
