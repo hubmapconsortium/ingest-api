@@ -1,4 +1,5 @@
 import os
+from pprint import pprint
 import sys
 from array import array
 
@@ -92,6 +93,7 @@ class DatasetHelper:
             rslt.append(f"Unable to get the ancestors of dataset with uuid: {dataset_uuid}")
 
         for ancestor in response.json():
+            #pprint(ancestor)
             if ancestor['entity_type'] == 'Sample':
                 if 'specimen_type' in ancestor and ancestor['specimen_type'].lower() == 'organ':
                     if 'organ' in ancestor:
@@ -104,22 +106,19 @@ class DatasetHelper:
                         else:
                             rslt.append(f"Organ code '{organ_code}' not found in organ types file")
                     else:
-                        rslt.append('Organ key not found in organ types file')
-                else:
-                    rslt.append('For entity_type==Sample, a specimen_type==organ not found')
+                        rslt.append('Organ key not found in specimen_type organ')
 
             elif ancestor['entity_type'] == 'Donor':
                 try:
                     for data in ancestor['metadata']['organ_donor_data']:
-                        if 'grouping_concept_preferred_term' in data:
-                            if data['grouping_concept_preferred_term'].lower() == 'age':
-                                data_found['age'] = True
+                        if data['grouping_concept_preferred_term'].lower() == 'age':
+                            data_found['age'] = True
 
-                            if data['grouping_concept_preferred_term'].lower() == 'race':
-                                data_found['race'] = True
+                        if data['grouping_concept_preferred_term'].lower() == 'race':
+                            data_found['race'] = True
 
-                            if data['grouping_concept_preferred_term'].lower() == 'sex':
-                                data_found['sex'] = True
+                        if data['grouping_concept_preferred_term'].lower() == 'sex':
+                            data_found['sex'] = True
                 except KeyError:
                     pass
 
