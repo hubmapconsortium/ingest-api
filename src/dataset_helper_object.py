@@ -47,9 +47,8 @@ class DatasetHelper:
 
         if _entity_api_url == None:
             config = load_flask_instance_config()
-
-        _entity_api_url = config['ENTITY_WEBSERVICE_URL']
-        _search_api_url = config['SEARCH_WEBSERVICE_URL']
+            _entity_api_url = config['ENTITY_WEBSERVICE_URL']
+            _search_api_url = config['SEARCH_WEBSERVICE_URL']
 
     def generate_dataset_title(self, dataset, user_token):
         organ_desc = '<organ_desc>'
