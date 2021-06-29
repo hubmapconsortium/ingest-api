@@ -789,11 +789,15 @@ def update_ingest_status():
             thumbnail_image_file = result_json['thumbnail_image_file']
 
             # /hive/hubmap/assets/<thumbnail_file_uuid>/<thumbnail.jpg> (for PROD)
-            target_file_path = os.path.join(str(app.config['HUBMAP_WEBSERVICE_FILEPATH']), thumbnail_image_file['file_uuid'], thumbnail_image_file['filename'])
+            symbolic_file_path = os.path.join(str(app.config['HUBMAP_WEBSERVICE_FILEPATH']), thumbnail_image_file['file_uuid'], thumbnail_image_file['filename'])
 
-            # Copy the original path/extra/thumbnail.jpg returned by ingest-pipeline 
-            # to the target path under assets
-            copy2(thumbnail_image_abs_path, target_file_path)
+            # Create the file_uuid directory 
+            # and a symbolic link to the original image file
+            try:
+                # IngestFileHelper.make_directory() is a static method
+                IngestFileHelper.make_directory(thumbnail_image_abs_path, symbolic_file_path)
+            except Exception as e:
+                logger.exception(f"Failed to create the symbolic link from {thumbnail_image_abs_path} to {symbolic_file_path}")
         ###################################################################
 
 
