@@ -39,7 +39,7 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
             'BR': {'description': 'Brain'}
         }
 
-    def test_generate_dataset_title_entities_happy_path(self):
+    def test_verify_dataset_title_info_happy_path(self):
         entity_api = EntityApi
 
         entity_api.get_entities = MagicMock()
@@ -66,9 +66,10 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
 
         result = self.dataset_helper.verify_dataset_title_info(self.dataset_helper, self.dataset_uuid, self.user_token)
 
+        pprint(result)
         self.assertEqual(len(result), 0)
 
-    def test_generate_dataset_title_entities_not_found(self):
+    def test_verify_dataset_title_info_entities_not_found(self):
         entity_api = EntityApi
         entity_api.get_entities = MagicMock()
         entity_api.get_entities.return_value.status_code = 404
@@ -78,7 +79,7 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0], f"Unable to get the target dataset with uuid: {self.dataset_uuid}")
 
-    def test_generate_dataset_title_entities_description_not_found(self):
+    def test_verify_dataset_title_info_organ_code_description_not_found(self):
         entity_api = EntityApi
         search_api = SearchApi
 
@@ -109,7 +110,7 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0], "Description for Organ code 'BL' not found in organ types file")
 
-    def test_generate_dataset_title_entities_happy_path(self):
+    def test_verify_dataset_title_info_organ_code_not_found_in_types_file(self):
         entity_api = EntityApi
         search_api = SearchApi
 
@@ -140,7 +141,7 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0], "Organ code 'xx' not found in organ types file")
 
-    def test_generate_dataset_title_entities_no_organ(self):
+    def test_verify_dataset_title_info_organ_key_not_found(self):
         entity_api = EntityApi
         search_api = SearchApi
 
@@ -168,40 +169,9 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
         result = self.dataset_helper.verify_dataset_title_info(self.dataset_helper, self.dataset_uuid, self.user_token)
 
         self.assertEqual(len(result), 1)
-        self.assertEqual(result[0], 'Organ key not found in organ types file')
+        self.assertEqual(result[0], 'Organ key not found in specimen_type organ')
 
-    def test_generate_dataset_title_entities_no_specimine_type(self):
-        entity_api = EntityApi
-        search_api = SearchApi
-
-        entity_api.get_entities = MagicMock()
-        entity_api.get_entities.return_value.status_code = 200
-        entity_api.get_entities.return_value.json = lambda: self.dataset
-        search_api.get_assaytype = MagicMock()
-        search_api.get_assaytype.return_value.status_code = 200
-
-        entity_api.get_ancestors = MagicMock()
-        entity_api.get_ancestors.return_value.status_code = 200
-        entity_api.get_ancestors.return_value.json = lambda: [
-            {'entity_type': 'Sample',
-             'organ': 'BM'},
-            {'entity_type': 'Donor',
-             'metadata':
-                 {'organ_donor_data': [
-                     {'grouping_concept_preferred_term': 'Age'},
-                     {'grouping_concept_preferred_term': 'Race'},
-                     {'grouping_concept_preferred_term': 'Sex'}
-                 ]
-                 }}
-        ]
-
-        result = self.dataset_helper.verify_dataset_title_info(self.dataset_helper, self.dataset_uuid,
-                                                               self.user_token)
-
-        self.assertEqual(len(result), 1)
-        self.assertEqual(result[0], 'For entity_type==Sample, a specimen_type==organ not found')
-
-    def test_generate_dataset_title_entities_no_race_no_sex(self):
+    def test_verify_dataset_title_info_no_race_no_sex(self):
         entity_api = EntityApi
         search_api = SearchApi
 
@@ -232,7 +202,7 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
         self.assertEqual(result[0], f'Donor metadata.organ_donor_data grouping_concept_preferred_term race not found')
         self.assertEqual(result[1], f'Donor metadata.organ_donor_data grouping_concept_preferred_term sex not found')
 
-    def test_generate_dataset_title_assaytype_not_found(self):
+    def test_verify_dataset_title_info_assaytype_not_found(self):
         entity_api = EntityApi
         search_api = SearchApi
 

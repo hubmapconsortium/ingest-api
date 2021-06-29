@@ -934,7 +934,7 @@ def validate_upload(upload_uuid):
     if not request.is_json:
         return Response("json request required", 400)
 
-    upload_changes = request.json()
+    upload_changes = request.json
     
     #get auth info to use in other calls
     #add the app specific header info

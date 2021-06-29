@@ -94,33 +94,35 @@ class DatasetHelper:
 
         for ancestor in response.json():
             #pprint(ancestor)
-            if ancestor['entity_type'] == 'Sample':
-                if 'specimen_type' in ancestor and ancestor['specimen_type'].lower() == 'organ':
-                    if 'organ' in ancestor:
-                        organ_code = ancestor['organ']
-                        organ_types_dict = self.get_organ_types_dict()
-                        if organ_code in organ_types_dict:
-                            organ_entry = organ_types_dict[organ_code]
-                            if 'description' not in organ_entry:
-                                rslt.append(f"Description for Organ code '{organ_code}' not found in organ types file")
+            if 'entity_type' in ancestor:
+
+                if ancestor['entity_type'] == 'Sample':
+                    if 'specimen_type' in ancestor and ancestor['specimen_type'].lower() == 'organ':
+                        if 'organ' in ancestor:
+                            organ_code = ancestor['organ']
+                            organ_types_dict = self.get_organ_types_dict()
+                            if organ_code in organ_types_dict:
+                                organ_entry = organ_types_dict[organ_code]
+                                if 'description' not in organ_entry:
+                                    rslt.append(f"Description for Organ code '{organ_code}' not found in organ types file")
+                            else:
+                                rslt.append(f"Organ code '{organ_code}' not found in organ types file")
                         else:
-                            rslt.append(f"Organ code '{organ_code}' not found in organ types file")
-                    else:
-                        rslt.append('Organ key not found in specimen_type organ')
+                            rslt.append('Organ key not found in specimen_type organ')
 
-            elif ancestor['entity_type'] == 'Donor':
-                try:
-                    for data in ancestor['metadata']['organ_donor_data']:
-                        if data['grouping_concept_preferred_term'].lower() == 'age':
-                            data_found['age'] = True
+                elif ancestor['entity_type'] == 'Donor':
+                    try:
+                        for data in ancestor['metadata']['organ_donor_data']:
+                            if data['grouping_concept_preferred_term'].lower() == 'age':
+                                data_found['age'] = True
 
-                        if data['grouping_concept_preferred_term'].lower() == 'race':
-                            data_found['race'] = True
+                            if data['grouping_concept_preferred_term'].lower() == 'race':
+                                data_found['race'] = True
 
-                        if data['grouping_concept_preferred_term'].lower() == 'sex':
-                            data_found['sex'] = True
-                except KeyError:
-                    pass
+                            if data['grouping_concept_preferred_term'].lower() == 'sex':
+                                data_found['sex'] = True
+                    except KeyError:
+                        pass
 
         for k, v in data_found.items():
             if not v:
@@ -130,6 +132,9 @@ class DatasetHelper:
 
     # Note: verify_dataset_title_info checks information used here and so if this is changed that should be updated.
     def generate_dataset_title(self, dataset: object, user_token: str) -> str:
+        entity_api = EntityApi(user_token, _entity_api_url)
+        search_api = SearchApi(user_token, _search_api_url)
+
         organ_desc = '<organ_desc>'
         age = '<age>'
         race = '<race>'
@@ -137,48 +142,51 @@ class DatasetHelper:
 
         # Parse assay_type from the Dataset
         try:
-            assay_type_desc = self.get_assay_type_description(dataset['data_types'])
+            assay_type_desc = self.get_assay_type_description(search_api, dataset['data_types'])
         except requests.exceptions.RequestException as e:
             raise requests.exceptions.RequestException(e)
 
         # Parse organ_name, age, race, and sex from ancestor Sample and Donor
         try:
-            ancestors = self.get_dataset_ancestors(dataset['uuid'], user_token)
+            ancestors = self.get_dataset_ancestors(entity_api, dataset['uuid'])
         except requests.exceptions.RequestException as e:
             raise requests.exceptions.RequestException(e)
 
+        # https://github.com/hubmapconsortium/entity-api/blob/73d880fbeefb0ec5a9527cbea8b83ddd3d7f4e50/entity-api-spec.yaml
         for ancestor in ancestors:
-            # 'specimen_type' is a key in search-api/src/search-schema/data/definitions/enums/tissue_sample_types.yaml
-            if (ancestor['entity_type'] == 'Sample') and (ancestor['specimen_type'].lower() == 'organ'):
-                # ancestor['organ'] is the two-letter code only set if sample_type == organ.
-                # We need to convert to the description
-                # https://github.com/hubmapconsortium/search-api/blob/test-release/src/search-schema/data/definitions/enums/organ_types.yaml
-                organ_code = ancestor['organ']
+            if 'entity_type' in ancestor:
+                # 'specimen_type' is a key in search-api/src/search-schema/data/definitions/enums/tissue_sample_types.yaml
 
-                try:
-                    organ_desc = self.get_organ_description(organ_code)
-                except yaml.YAMLError as e:
-                    raise yaml.YAMLError(e)
+                if ancestor['entity_type'] == 'Sample':
+                    if 'specimen_type' in ancestor and ancestor['specimen_type'].lower() == 'organ' and \
+                            'organ' in ancestor:
+                        try:
+                            # ancestor['organ'] is the two-letter code only set if sample_type == organ.
+                            # Convert the two-letter code to a description
+                            # https://github.com/hubmapconsortium/search-api/blob/test-release/src/search-schema/data/definitions/enums/organ_types.yaml
+                            organ_desc = self.get_organ_description(ancestor['organ'])
+                        except yaml.YAMLError as e:
+                            raise yaml.YAMLError(e)
 
-            if ancestor['entity_type'] == 'Donor':
-                # Easier to ask for forgiveness than permission (EAFP)
-                # Rather than checking key existence at every level
-                try:
-                    data_list = ancestor['metadata']['organ_donor_data']
+                if ancestor['entity_type'] == 'Donor':
+                    # Easier to ask for forgiveness than permission (EAFP)
+                    # Rather than checking key existence at every level
+                    try:
+                        data_list = ancestor['metadata']['organ_donor_data']
 
-                    for data in data_list:
-                        if 'grouping_concept_preferred_term' in data:
-                            if data['grouping_concept_preferred_term'].lower() == 'age':
-                                # The actual value of age stored in 'data_value' instead of 'preferred_term'
-                                age = data['data_value']
+                        for data in data_list:
+                            if 'grouping_concept_preferred_term' in data:
+                                if data['grouping_concept_preferred_term'].lower() == 'age':
+                                    # The actual value of age stored in 'data_value' instead of 'preferred_term'
+                                    age = data['data_value']
 
-                            if data['grouping_concept_preferred_term'].lower() == 'race':
-                                race = data['preferred_term'].lower()
+                                if data['grouping_concept_preferred_term'].lower() == 'race':
+                                    race = data['preferred_term'].lower()
 
-                            if data['grouping_concept_preferred_term'].lower() == 'sex':
-                                sex = data['preferred_term'].lower()
-                except KeyError:
-                    pass
+                                if data['grouping_concept_preferred_term'].lower() == 'sex':
+                                    sex = data['preferred_term'].lower()
+                    except KeyError:
+                        pass
 
         generated_title = f"{assay_type_desc} data from the {organ_desc} of a {age}-year-old {race} {sex}"
 
@@ -187,19 +195,13 @@ class DatasetHelper:
 
         return generated_title
 
-    def get_assay_type_description(self, data_types: array) -> str:
-        global _search_api_url
-
+    def get_assay_type_description(self, search_api, data_types: array) -> str:
         assay_types = []
         assay_type_desc = ''
 
         for data_type in data_types:
             # The assaytype endpoint in search-api is public accessible, no token needed
-            response = requests.get(
-                url=f"{_search_api_url}/assaytype/{data_type}",
-                verify=False
-            )
-
+            response = search_api.get_assaytype(data_types)
             if response.status_code == 200:
                 assay_type_info = response.json()
 
@@ -242,19 +244,8 @@ class DatasetHelper:
         organ_types_dict = self.get_organ_types_dict()
         return organ_types_dict[organ_code]['description'].lower()
 
-    def get_dataset_ancestors(self, dataset_uuid: str, user_token: str) -> object:
-        global _entity_api_url
-
-        auth_header = {
-            'Authorization': f"Bearer {user_token}"
-        }
-
-        response = requests.get(
-            url=f"{_entity_api_url}/ancestors/{dataset_uuid}",
-            headers=auth_header,
-            verify=False
-        )
-
+    def get_dataset_ancestors(self, entity_api, dataset_uuid: str) -> object:
+        response = entity_api.get_ancestors(dataset['uuid'])
         if response.status_code == 200:
             return response.json()
         else:
