@@ -203,8 +203,8 @@ class Dataset(object):
         
         ###################################################################
         # Added by Zhou 6/16/2021 for thumbnail image handling
-        if 'thumbnail_image_abs_path' in json_data:
-            update_record['thumbnail_image_abs_path'] = json_data['thumbnail_image_abs_path']
+        if 'thumbnail_file_abs_path' in json_data:
+            update_record['thumbnail_file_abs_path'] = json_data['thumbnail_file_abs_path']
         ###################################################################
             
          

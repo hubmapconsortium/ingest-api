@@ -367,6 +367,23 @@ def commit_file():
 
     file_uuid_info = file_upload_helper_instance.commit_file(temp_file_id, entity_uuid, user_token)
 
+    ###################################################################
+    # Added by Zhou 6/30/2021 related to thumbnail image handling
+    # Link the uploaded file dir to assets
+    # /hive/hubmap/hm_uploads/<file_uuid> (for PROD)
+    uploaded_dir = os.path.join(str(app.config['FILE_UPLOAD_DIR']), file_uuid_info['file_uuid'])
+    # /hive/hubmap/assets/<file_uuid> (for PROD)
+    assets_symbolic_dir = os.path.join(str(app.config['HUBMAP_WEBSERVICE_FILEPATH']), file_uuid_info['file_uuid'])
+
+    # Create the file_uuid directory under assets dir
+    # and a symbolic link to the uploaded dir
+    try:
+        # IngestFileHelper.make_directory() is a static method
+        IngestFileHelper.make_directory(uploaded_dir, assets_symbolic_dir)
+    except Exception as e:
+        logger.exception(f"Failed to create the uploaded file symbolic link from {uploaded_dir} to {assets_symbolic_dir}")
+    ###################################################################
+
     # Send back the updated file_uuid_info
     return jsonify(file_uuid_info)
 
@@ -731,9 +748,11 @@ def update_ingest_status():
 
         ###################################################################
         # Added by Zhou 6/16/2021 for thumbnail image handling
-        if 'thumbnail_image_abs_path' in updated_ds:
+        thumbnail_file_abs_path = None
+
+        if 'thumbnail_file_abs_path' in updated_ds:
             # For later use
-            thumbnail_image_abs_path = updated_ds['thumbnail_image_abs_path']
+            thumbnail_file_abs_path = updated_ds['thumbnail_file_abs_path']
 
             # Generate a file_uuid for the thumbnail.jpg and copy this image to 
             # /hive/hubmap/assets/<thumbnail_file_uuid>/thumbnail.jpg (for PROD)
@@ -746,8 +765,8 @@ def update_ingest_status():
                 'entity_type': 'FILE',
                 'parent_ids': [entity_uuid],
                 'base_dir': 'ASSETS'
-                'checksum': hashlib.md5(open(file_from_path, 'rb').read()).hexdigest(),
-                'size': os.path.getsize(file_from_path)
+                'checksum': hashlib.md5(open(thumbnail_file_abs_path, 'rb').read()).hexdigest(),
+                'size': os.path.getsize(thumbnail_file_abs_path)
             }
 
             response = requests.post(app.config['UUID_WEBSERVICE_URL'], json = data, headers = headers, verify = False)
@@ -759,14 +778,14 @@ def update_ingest_status():
             thumbnail_file_uuid = response_json[0]['uuid']
 
             # This is the property to be updated via entity-api
-            updated_ds['thumbnail_image_file'] = {
+            updated_ds['thumbnail_file'] = {
                 # The filename includes the extension, e.g., 'thumbnail.jpg'
-                'filename': os.path.basename(thumbnail_image_abs_path),
+                'filename': os.path.basename(thumbnail_file_abs_path),
                 'file_uuid': thumbnail_file_uuid
             }
 
-            # Remove the 'thumbnail_image'
-            updated_ds.pop('thumbnail_image_abs_path')
+            # Remove the 'thumbnail_file_abs_path'
+            updated_ds.pop('thumbnail_file_abs_path')
         ###################################################################
 
         # Update the dataset via entity-api via a PUT call
@@ -785,19 +804,34 @@ def update_ingest_status():
 
         ###################################################################
         # Added by Zhou 6/16/2021 for thumbnail image handling
-        if 'thumbnail_image_file' in result_json:
-            thumbnail_image_file = result_json['thumbnail_image_file']
+        if 'thumbnail_file' in result_json:
+            thumbnail_file = result_json['thumbnail_file']
 
+            # First, create the target upload dir for the thumbnail
+            # /hive/hubmap/hm_uploads/<thumbnail_file_uuid> (for PROD)
+            uploaded_dir = os.path.join(str(app.config['FILE_UPLOAD_TEMP_DIR']), thumbnail_file['file_uuid'])
+            
+            try:
+                IngestFileHelper.make_directory(uploaded_dir)
+            except Exception as e:
+                logger.exception(f"Failed to create the thumbnail upload dir {uploaded_dir} for thumbnail file attched to Dataset {result_json['uuid']}")
+
+            # Then copy the source thumbnail file to the upload dir
+            # shutil.copy2 is identical to shutil.copy() method
+            #  but it also try to preserves the file’s metadata
+            copy2(thumbnail_image_abs_path, uploaded_dir)
+
+            # Link the thumbnail dir to assets
             # /hive/hubmap/assets/<thumbnail_file_uuid>/<thumbnail.jpg> (for PROD)
-            symbolic_file_path = os.path.join(str(app.config['HUBMAP_WEBSERVICE_FILEPATH']), thumbnail_image_file['file_uuid'], thumbnail_image_file['filename'])
+            assets_symbolic_dir = os.path.join(str(app.config['HUBMAP_WEBSERVICE_FILEPATH']), thumbnail_file['file_uuid'])
 
-            # Create the file_uuid directory 
-            # and a symbolic link to the original image file
+            # Create the file_uuid directory under assets dir
+            # and a symbolic link to the thumbnail upload dir
             try:
                 # IngestFileHelper.make_directory() is a static method
-                IngestFileHelper.make_directory(thumbnail_image_abs_path, symbolic_file_path)
+                IngestFileHelper.make_directory(uploaded_dir, assets_symbolic_dir)
             except Exception as e:
-                logger.exception(f"Failed to create the symbolic link from {thumbnail_image_abs_path} to {symbolic_file_path}")
+                logger.exception(f"Failed to create the thumbnail symbolic link from {uploaded_dir} to {assets_symbolic_dir}")
         ###################################################################
 
 
