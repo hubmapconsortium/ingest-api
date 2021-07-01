@@ -63,7 +63,7 @@ class UploadFileHelper:
     #            shutil.rmtree(dirpath)
     
     def save_temp_file(self, file):
-        temp_id = self.__get_temp_file_id()
+        temp_id = self.get_temp_file_id()
         file_dir = self.__get_temp_file_dir(temp_id)
 
         # Use pathlib to create dir instead of file_helper.mkDir
@@ -76,7 +76,7 @@ class UploadFileHelper:
     def __get_temp_file_dir(self, temp_id):
         return self.upload_temp_dir + temp_id + os.sep
     
-    def __get_temp_file_id(self, iteration=0):
+    def get_temp_file_id(self, iteration=0):
         if iteration == 100:
             raise Exception("Unable to get a temporary file id after 100 attempts")
         rid = ''
