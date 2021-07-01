@@ -34,7 +34,7 @@ class TestAppManager(unittest.TestCase):
 
         self.assertEqual(result, self.token)
 
-    def test_update_ingest_status_with_status_qa(self):
+    def update_ingest_status_with_status_qa(self):
         self.dataset.get_dataset_ingest_update_record.return_value = {
             'dataset_id': '287d61b60b806fdf54916e3b7795ad5a',
             'status': 'QA',
@@ -48,7 +48,7 @@ class TestAppManager(unittest.TestCase):
         self.dataset_helper.generate_dataset_title.assert_called()
         self.assertEqual(len(result), 4)
 
-    def test_update_ingest_status_with_not_status_qa(self):
+    def update_ingest_status_with_not_status_qa(self):
         self.dataset.get_dataset_ingest_update_record.return_value = {
             'dataset_id': '287d61b60b806fdf54916e3b7795ad5a',
             'status': 'Unknown',

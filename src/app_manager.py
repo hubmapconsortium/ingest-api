@@ -9,7 +9,7 @@ def nexus_token_from_request_headers(request_headers: object) -> str:
     return nexus_token
 
 
-def update_ingest_status(app_config, request_json, request_headers, logger):
+def update_ingest_status(app_config: object, request_json: object, request_headers: object, logger: object) -> object:
     dataset = Dataset(app_config)
     logger.info("++++++++++Calling /datasets/status")
     logger.info("++++++++++Request:" + json.dumps(request_json))
