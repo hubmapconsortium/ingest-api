@@ -1,5 +1,4 @@
 import os
-from pprint import pprint
 import sys
 from array import array
 
@@ -93,7 +92,6 @@ class DatasetHelper:
             rslt.append(f"Unable to get the ancestors of dataset with uuid: {dataset_uuid}")
 
         for ancestor in response.json():
-            #pprint(ancestor)
             if 'entity_type' in ancestor:
 
                 if ancestor['entity_type'] == 'Sample':
@@ -204,7 +202,6 @@ class DatasetHelper:
             response = search_api.get_assaytype(data_types)
             if response.status_code == 200:
                 assay_type_info = response.json()
-
                 # Add to the list
                 assay_types.append(assay_type_info['description'])
             else:
@@ -245,7 +242,7 @@ class DatasetHelper:
         return organ_types_dict[organ_code]['description'].lower()
 
     def get_dataset_ancestors(self, entity_api, dataset_uuid: str) -> object:
-        response = entity_api.get_ancestors(dataset['uuid'])
+        response = entity_api.get_ancestors(dataset_uuid)
         if response.status_code == 200:
             return response.json()
         else:

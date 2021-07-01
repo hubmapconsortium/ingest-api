@@ -28,8 +28,6 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
 
         self.user_token = "fake token"
 
-        self.search_api = SearchApi
-
         self.dataset_helper.get_organ_types_dict = MagicMock()
         self.dataset_helper.get_organ_types_dict.return_value = {
             'AO': {'description': 'Aorta'},
@@ -41,6 +39,7 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
 
     def test_verify_dataset_title_info_happy_path(self):
         entity_api = EntityApi
+        search_api = SearchApi
 
         entity_api.get_entities = MagicMock()
         entity_api.get_entities.return_value.status_code = 200
@@ -63,10 +62,11 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
                  ]
             }}
         ]
+        search_api.get_assaytype = MagicMock()
+        search_api.get_assaytype.return_value.status_code = 200
 
         result = self.dataset_helper.verify_dataset_title_info(self.dataset_helper, self.dataset_uuid, self.user_token)
 
-        pprint(result)
         self.assertEqual(len(result), 0)
 
     def test_verify_dataset_title_info_entities_not_found(self):
@@ -148,8 +148,6 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
         entity_api.get_entities = MagicMock()
         entity_api.get_entities.return_value.status_code = 200
         entity_api.get_entities.return_value.json = lambda: self.dataset
-        search_api.get_assaytype = MagicMock()
-        search_api.get_assaytype.return_value.status_code = 200
 
         entity_api.get_ancestors = MagicMock()
         entity_api.get_ancestors.return_value.status_code = 200
@@ -165,6 +163,8 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
                  ]
             }}
         ]
+        search_api.get_assaytype = MagicMock()
+        search_api.get_assaytype.return_value.status_code = 200
 
         result = self.dataset_helper.verify_dataset_title_info(self.dataset_helper, self.dataset_uuid, self.user_token)
 
@@ -178,8 +178,6 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
         entity_api.get_entities = MagicMock()
         entity_api.get_entities.return_value.status_code = 200
         entity_api.get_entities.return_value.json = lambda: self.dataset
-        search_api.get_assaytype = MagicMock()
-        search_api.get_assaytype.return_value.status_code = 200
 
         entity_api.get_ancestors = MagicMock()
         entity_api.get_ancestors.return_value.status_code = 200
@@ -194,6 +192,8 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
                  ]
                  }}
         ]
+        search_api.get_assaytype = MagicMock()
+        search_api.get_assaytype.return_value.status_code = 200
 
         result = self.dataset_helper\
             .verify_dataset_title_info(self.dataset_helper, self.dataset_uuid, self.user_token)
@@ -209,8 +209,6 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
         entity_api.get_entities = MagicMock()
         entity_api.get_entities.return_value.status_code = 200
         entity_api.get_entities.return_value.json = lambda: self.dataset
-        search_api.get_assaytype = MagicMock()
-        search_api.get_assaytype.return_value.status_code = 404
 
         entity_api.get_ancestors = MagicMock()
         entity_api.get_ancestors.return_value.status_code = 200
@@ -227,6 +225,8 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
                  ]
             }}
         ]
+        search_api.get_assaytype = MagicMock()
+        search_api.get_assaytype.return_value.status_code = 404
 
         result = self.dataset_helper.verify_dataset_title_info(self.dataset_helper, self.dataset_uuid, self.user_token)
 
