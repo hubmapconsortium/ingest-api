@@ -193,7 +193,7 @@ class DatasetHelper:
 
         return generated_title
 
-    def get_assay_type_description(self, search_api, data_types: array) -> str:
+    def get_assay_type_description(self, search_api: object, data_types: array) -> str:
         assay_types = []
         assay_type_desc = ''
 
@@ -241,7 +241,7 @@ class DatasetHelper:
         organ_types_dict = self.get_organ_types_dict()
         return organ_types_dict[organ_code]['description'].lower()
 
-    def get_dataset_ancestors(self, entity_api, dataset_uuid: str) -> object:
+    def get_dataset_ancestors(self, entity_api: object, dataset_uuid: str) -> object:
         response = entity_api.get_ancestors(dataset_uuid)
         if response.status_code == 200:
             return response.json()
@@ -281,16 +281,8 @@ if __name__ == "__main__":
 
     dataset_helper = DatasetHelper()
 
-    auth_header = {
-        'Authorization': f"Bearer {user_token}"
-    }
-
-    response = requests.get(
-        url=f"{_entity_api_url}/entities/{dataset_uuid}",
-        headers=auth_header,
-        verify=False
-    )
-
+    entity_api = EntityApi(user_token, _entity_api_url)
+    response = entity_api.get_entities(dataset_uuid)
     if response.status_code == 200:
         dataset = response.json()
 
