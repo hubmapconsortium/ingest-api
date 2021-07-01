@@ -346,7 +346,14 @@ def upload_file():
         internal_server_error(msg)
 
 """
-File commit triggered by entity-api trigger method for Donor and Sample
+File commit triggered by entity-api trigger method for Donor/Sample/Dataset
+
+Donor: image files
+Sample: image files and metadata files
+Dataset: only the one thumbnail file
+
+This call also creates the symbolic from the file uuid dir under uploads
+to the assets dir so the uploaded files can be exposed via gateway's file assets service
 
 Returns
 -------
@@ -367,9 +374,7 @@ def commit_file():
 
     file_uuid_info = file_upload_helper_instance.commit_file(temp_file_id, entity_uuid, user_token)
 
-    ###################################################################
-    # Added by Zhou 6/30/2021 related to thumbnail image handling
-    # Link the uploaded file dir to assets
+    # Link the uploaded file uuid dir to assets
     # /hive/hubmap/hm_uploads/<file_uuid> (for PROD)
     uploaded_dir = os.path.join(str(app.config['FILE_UPLOAD_DIR']), file_uuid_info['file_uuid'])
     # /hive/hubmap/assets/<file_uuid> (for PROD)
@@ -381,20 +386,25 @@ def commit_file():
         # IngestFileHelper.make_directory() is a static method
         IngestFileHelper.make_directory(uploaded_dir, assets_symbolic_dir)
     except Exception as e:
-        logger.exception(f"Failed to create the uploaded file symbolic link from {uploaded_dir} to {assets_symbolic_dir}")
+        logger.exception(f"Failed to create the symbolic link from {uploaded_dir} to {assets_symbolic_dir}")
     ###################################################################
 
     # Send back the updated file_uuid_info
     return jsonify(file_uuid_info)
 
 """
-File removal triggered by entity-api trigger method for Donor and Sample
+File removal triggered by entity-api trigger method for Donor/Sample/Dataset
 during entity update
+
+Donor: image files
+Sample: image files and metadata files
+Dataset: only the one thumbnail file
 
 Returns
 -------
 json
     A JSON list containing the updated files info
+    It's an empty list for Dataset since there's only one thumbnail file
 """
 @app.route('/file-remove', methods=['POST'])
 def remove_file():
@@ -746,30 +756,27 @@ def update_ingest_status():
         #{'dataset_id' : '287d61b60b806fdf54916e3b7795ad5a', 'status': '<', 'message': 'the process ran', 'metadata': [maybe some metadata stuff], 'thumbnail_image_abs_path': 'full path to the image'}
         updated_ds = dataset.get_dataset_ingest_update_record(ds_request)
 
-        ###################################################################
-        # Added by Zhou 6/30/2021 for thumbnail image handling
-        thumbnail_file_abs_path = None
-
+        # For thumbnail image handling if ingest-pipeline finds the file
+        # and sends the absolute file path back
         if 'thumbnail_file_abs_path' in updated_ds:
-            # For later use
             thumbnail_file_abs_path = updated_ds['thumbnail_file_abs_path']
 
-            # Generate a tmp id and copy the source file to the tmp upload dir
-            tmp_id = file_upload_helper_instance.get_temp_file_id()
+            # Generate a temp file id and copy the source file to the temp upload dir
+            temp_file_id = file_upload_helper_instance.get_temp_file_id()
 
-            # Create the tmp upload dir for the thumbnail
-            # /hive/hubmap/hm_uploads_tmp/<tmp_id> (for PROD)
-            tmp_dir = os.path.join(str(app.config['FILE_UPLOAD_TEMP_DIR']), tmp_id)
+            # Create the temp file dir under the temp uploads for the thumbnail
+            # /hive/hubmap/hm_uploads_tmp/<temp_file_id> (for PROD)
+            temp_file_dir = os.path.join(str(app.config['FILE_UPLOAD_TEMP_DIR']), temp_file_id)
             
             try:
-                IngestFileHelper.make_directory(tmp_dir)
+                IngestFileHelper.make_directory(temp_file_dir)
             except Exception as e:
-                logger.exception(f"Failed to create the thumbnail tmp upload dir {uploaded_dir} for thumbnail file attched to Dataset {result_json['uuid']}")
+                logger.exception(f"Failed to create the thumbnail temp upload dir {temp_file_dir} for thumbnail file attched to Dataset {result_json['uuid']}")
 
-            # Then copy the source thumbnail file to the tmp dir
+            # Then copy the source thumbnail file to the temp file dir
             # shutil.copy2 is identical to shutil.copy() method
             # but it also try to preserves the file’s metadata
-            copy2(thumbnail_image_abs_path, tmp_dir)
+            copy2(thumbnail_image_abs_path, temp_file_dir)
 
             # Now add the thumbnail file by making a call to entity-api
             # And the entity-api will execute the trigger method defined
@@ -779,13 +786,12 @@ def update_ingest_status():
             # dir under the upload dir: /hive/hubmap/hm_uploads/<file_uuid> (for PROD)
             # and also creates the symbolic link to the assets
             updated_ds['thumbnail_file_to_add'] = {
-                'temp_file_id': tmp_id
+                'temp_file_id': temp_file_id
             }
 
             # Remove the 'thumbnail_file_abs_path' property 
             # since it's not defined in entity-api schema
             updated_ds.pop('thumbnail_file_abs_path')
-        ###################################################################
 
         # Update the dataset via entity-api via a PUT call
         headers = {'Authorization': request.headers["AUTHORIZATION"], 'Content-Type': 'application/json', 'X-Hubmap-Application':'ingest-api'}

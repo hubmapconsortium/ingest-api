@@ -201,13 +201,10 @@ class Dataset(object):
          }]
          """
         
-        ###################################################################
-        # Added by Zhou 6/16/2021 for thumbnail image handling
+        # For thumbnail image handling
         if 'thumbnail_file_abs_path' in json_data:
             update_record['thumbnail_file_abs_path'] = json_data['thumbnail_file_abs_path']
-        ###################################################################
-            
-         
+
         if 'dataset_id' not in json_data:
             raise ValueError('cannot find dataset_id')
         update_record = {}
