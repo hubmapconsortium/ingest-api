@@ -204,4 +204,4 @@ class TestGenerateDatasetTitle(unittest.TestCase):
             return r
         mock_url_open.side_effect = [resp4()]
 
-        self.assertRaises(TypeError, self.dataset_helper.generate_dataset_title,  self.dataset, self.user_token)
+        self.assertRaises(KeyError, self.dataset_helper.generate_dataset_title,  self.dataset, self.user_token)
