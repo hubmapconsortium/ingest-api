@@ -280,9 +280,17 @@ if __name__ == "__main__":
         sys.exit(msg)
 
     dataset_helper = DatasetHelper()
-    entity_api = EntityApi(user_token ,_entity_api_url)
 
-    response = entity_api.get_entities(dataset_uuid)
+    auth_header = {
+        'Authorization': f"Bearer {user_token}"
+    }
+
+    response = requests.get(
+        url=f"{_entity_api_url}/entities/{dataset_uuid}",
+        headers=auth_header,
+        verify=False
+    )
+
     if response.status_code == 200:
         dataset = response.json()
 
