@@ -348,7 +348,7 @@ paths:
           description: Internal error
   /file-commit:
     post:
-      summary: "File commit triggered by entity-api trigger method for Donor and Sample" 
+      summary: "File commit triggered by entity-api trigger method for Donor/Sample/Dataset. Donor: image files. Sample: image files and metadata files. Dataset: only the one thumbnail file. This call also creates the symbolic from the file uuid dir under uploads assets dir so the uploaded files can be exposed via gateway's file assets service" 
       requestBody:
         content:
           application/json:
@@ -381,8 +381,7 @@ paths:
           description: Internal error
   /file-remove:
     post:
-      summary: "File removal triggered by entity-api trigger method for Donor and Sample
-during entity update." 
+      summary: "File removal triggered by entity-api trigger method for Donor and Sample during entity update. Donor/Sample/Dataset. Donor: image files. Sample: image files and metadata files. Dataset: only the one thumbnail file." 
       requestBody:
         content:
           application/json:

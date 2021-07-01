@@ -387,7 +387,6 @@ def commit_file():
         IngestFileHelper.make_directory(uploaded_dir, assets_symbolic_dir)
     except Exception as e:
         logger.exception(f"Failed to create the symbolic link from {uploaded_dir} to {assets_symbolic_dir}")
-    ###################################################################
 
     # Send back the updated file_uuid_info
     return jsonify(file_uuid_info)
