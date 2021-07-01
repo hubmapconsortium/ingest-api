@@ -16,18 +16,20 @@ class TestAppManager(unittest.TestCase):
         self.logger = Mock()
         self.logger.info = MagicMock(name='info', return_value=None)
 
-        self.dataset_helper = DatasetHelper
-        self.dataset_helper.__init__ = MagicMock(name='__init__', return_value=None)
-        self.dataset_helper.generate_dataset_title = \
-            MagicMock(spec='generate_dataset_title', return_value='Dataset Title String')
-
-        self.request_json = []
         self.token = 'token'
         self.request_headers = {'AUTHORIZATION': f'bearer   {self.token}'}
 
-        self.dataset = Dataset
-        self.dataset.__init__ = MagicMock(name='__init__', return_value=None)
-        self.dataset.get_dataset_ingest_update_record = MagicMock(name='get_dataset_ingest_update_record')
+        #
+        # self.dataset_helper = DatasetHelper
+        # self.dataset_helper.__init__ = MagicMock(name='__init__', return_value=None)
+        # self.dataset_helper.generate_dataset_title = \
+        #     MagicMock(spec='generate_dataset_title', return_value='Dataset Title String')
+        #
+        # self.request_json = []
+        #
+        # self.dataset = Dataset
+        # self.dataset.__init__ = MagicMock(name='__init__', return_value=None)
+        # self.dataset.get_dataset_ingest_update_record = MagicMock(name='get_dataset_ingest_update_record')
 
     def test_nexus_token_from_request_headers(self):
         result = nexus_token_from_request_headers(self.request_headers)
