@@ -11,9 +11,9 @@ from dataset_helper_object import DatasetHelper
 # WARNING: ONLY methods beginning with "test_" will be considered tests by 'nose2' :-(
 class TestGenerateDatasetTitle(unittest.TestCase):
 
-    @patch("dataset_helper_object.__init__")
-    def setUp(self, mock_init):
-        mock_init.return_value = None
+    @patch("dataset_helper_object.load_flask_instance_config")
+    def setUp(self, mock_load_flask_instance_config):
+        mock_load_flask_instance_config.return_value = {'ENTITY_WEBSERVICE_URL': 'eUrl', 'SEARCH_WEBSERVICE_URL': 'sUrl'}
         self.dataset_helper = DatasetHelper()
 
         # For a "Dataset": response.json() from requests.get(url = f"{_entity_api_url}/entities/{dataset_uuid}", ...)
