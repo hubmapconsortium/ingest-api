@@ -6,7 +6,7 @@ import logging
 import requests
 import argparse
 from pathlib import Path
-from shutil import copy2 # Used by thumbnail.jpg
+from shutil import copy2, rmtree # Used by file removal and thumbnail file
 from flask import Flask, g, jsonify, abort, request, session, redirect, json, Response
 from flask_cors import CORS
 from globus_sdk import AccessTokenAuthorizer, AuthClient, ConfidentialAppAuthClient
@@ -428,6 +428,13 @@ def remove_file():
         # Get back the updated files_info_list
         files_info_list = file_upload_helper_instance.remove_file(entity_upload_dir, file_uuid, files_info_list)
     
+        # Also remove the dir contains the symlink to the uploaded file under assets
+        # /hive/hubmap/assets/<file_uuid> (for PROD)
+        assets_file_dir = os.path.join(str(app.config['HUBMAP_WEBSERVICE_FILEPATH']), file_uuid)
+        # Delete an entire directory tree
+        # path must point to a directory (but not a symbolic link to a directory)
+        rmtree(assets_file_dir)
+
     # Send back the updated files_info_list
     return jsonify(files_info_list)
 
