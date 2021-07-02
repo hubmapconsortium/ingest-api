@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import requests
 from dataset_helper_object import DatasetHelper
@@ -11,9 +11,10 @@ from dataset_helper_object import DatasetHelper
 # WARNING: ONLY methods beginning with "test_" will be considered tests by 'nose2' :-(
 class TestGenerateDatasetTitle(unittest.TestCase):
 
-    def setUp(self):
+    @patch("dataset_helper_object.__init__")
+    def setUp(self, mock_init):
+        mock_init.return_value = None
         self.dataset_helper = DatasetHelper()
-        self.dataset_helper.__init__ = MagicMock(name='__init__', return_value=None)
 
         # For a "Dataset": response.json() from requests.get(url = f"{_entity_api_url}/entities/{dataset_uuid}", ...)
         self.dataset_uuid = '12345678-1234-5678-1234-567812345678'
