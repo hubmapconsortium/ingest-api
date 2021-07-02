@@ -755,7 +755,7 @@ def update_ingest_status():
         logger.info("++++++++++Calling /datasets/status")
         logger.info("++++++++++Request:" + json.dumps(ds_request))
         # expecting something like this:
-        #{'dataset_id' : '287d61b60b806fdf54916e3b7795ad5a', 'status': '<', 'message': 'the process ran', 'metadata': [maybe some metadata stuff], 'thumbnail_image_abs_path': 'full path to the image'}
+        #{'dataset_id' : '287d61b60b806fdf54916e3b7795ad5a', 'status': '<status>', 'message': 'the process ran', 'metadata': [maybe some metadata stuff], 'thumbnail_image_abs_path': 'full path to the image'}
         updated_ds = dataset.get_dataset_ingest_update_record(ds_request)
 
         # For thumbnail image handling if ingest-pipeline finds the file
