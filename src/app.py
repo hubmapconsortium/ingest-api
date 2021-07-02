@@ -766,12 +766,14 @@ def update_ingest_status():
             # Generate a temp file id and copy the source file to the temp upload dir
             temp_file_id = file_upload_helper_instance.get_temp_file_id()
 
+            logger.debug(f"temp_file_id created for thumbnail file: {temp_file_id}")
+            
             # Create the temp file dir under the temp uploads for the thumbnail
             # /hive/hubmap/hm_uploads_tmp/<temp_file_id> (for PROD)
             temp_file_dir = os.path.join(str(app.config['FILE_UPLOAD_TEMP_DIR']), temp_file_id)
             
             try:
-                IngestFileHelper.make_directory(temp_file_dir)
+                Path(temp_file_dir).mkdir(parents=True, exist_ok=True)
             except Exception as e:
                 logger.exception(f"Failed to create the thumbnail temp upload dir {temp_file_dir} for thumbnail file attched to Dataset {result_json['uuid']}")
 
@@ -800,6 +802,9 @@ def update_ingest_status():
         entity_uuid = ds_request['dataset_id']
         update_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/' + entity_uuid
         
+        logger.debug("==========updated_ds=========")
+        logger.debug(updated_ds)
+
         response = requests.put(update_url, json = updated_ds, headers = headers, verify = False)
         if response.status_code != 200:
             err_msg = f"Error while calling {update_url} status code:{response.status_code}  message:{response.text}"
