@@ -767,7 +767,7 @@ def update_ingest_status():
         if 'thumbnail_file_abs_path' in updated_ds:
             # Delete the old thumbnail file from Neo4j before updaing with new one
             # First get back the exisiting thumbnail file uuid
-            response = requests.get(update_url, headers = headers, verify = False)
+            response = requests.get(entity_query_url, headers = headers, verify = False)
             if response.status_code != 200:
                 err_msg = f"Error while calling GET {entity_query_url} status code:{response.status_code}  message:{response.text}"
                 logger.error(err_msg)
