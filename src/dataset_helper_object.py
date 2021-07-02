@@ -10,6 +10,8 @@ import urllib.request
 from api.entity_api import EntityApi
 from api.search_api import SearchApi
 
+import pprint
+
 # Suppress InsecureRequestWarning warning when requesting status on https with ssl cert verify disabled
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
@@ -98,7 +100,7 @@ class DatasetHelper:
                             organ_types_dict = self.get_organ_types_dict()
                             if organ_code in organ_types_dict:
                                 organ_entry = organ_types_dict[organ_code]
-                                if 'description' not in organ_entry:
+                                if organ_entry is None or 'description' not in organ_entry:
                                     rslt.append(f"Description for Organ code '{organ_code}' not found in organ types file")
                             else:
                                 rslt.append(f"Organ code '{organ_code}' not found in organ types file")
