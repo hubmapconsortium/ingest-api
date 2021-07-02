@@ -375,8 +375,8 @@ def commit_file():
     file_uuid_info = file_upload_helper_instance.commit_file(temp_file_id, entity_uuid, user_token)
 
     # Link the uploaded file uuid dir to assets
-    # /hive/hubmap/hm_uploads/<file_uuid> (for PROD)
-    uploaded_dir = os.path.join(str(app.config['FILE_UPLOAD_DIR']), file_uuid_info['file_uuid'])
+    # /hive/hubmap/hm_uploads/<entity_uuid>/<file_uuid> (for PROD)
+    uploaded_dir = os.path.join(str(app.config['FILE_UPLOAD_DIR']), entity_uuid, file_uuid_info['file_uuid'])
     # /hive/hubmap/assets/<file_uuid> (for PROD)
     assets_symbolic_dir = os.path.join(str(app.config['HUBMAP_WEBSERVICE_FILEPATH']), file_uuid_info['file_uuid'])
 
