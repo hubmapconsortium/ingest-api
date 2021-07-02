@@ -422,7 +422,7 @@ def remove_file():
 
     # `upload_dir` is already normalized with trailing slash
     entity_upload_dir = file_upload_helper_instance.upload_dir + entity_uuid + os.sep
-    
+
     # Remove the physical files from the file system
     for file_uuid in file_uuids:
         # Get back the updated files_info_list
@@ -769,7 +769,7 @@ def update_ingest_status():
             # First get back the exisiting thumbnail file uuid
             response = requests.get(entity_query_url, headers = headers, verify = False)
             if response.status_code != 200:
-                err_msg = f"Error while calling GET {entity_query_url} status code:{response.status_code}  message:{response.text}"
+                err_msg = f"Failed to query the dataset while calling GET {entity_query_url} status code:{response.status_code}  message:{response.text}"
                 logger.error(err_msg)
                 return Response(response.text, response.status_code)
 
@@ -780,11 +780,18 @@ def update_ingest_status():
             try:
                 thumbnail_file_uuid = entity_dict['thumbnail_file']['file_uuid']
 
-                # To remove the existing thumbnail file when making the PUT call later
-                # Just pass the file uuid as a string
-                updated_ds['thumbnail_file_to_remove'] = thumbnail_file_uuid
+                # To remove the existing thumbnail file, just pass the file uuid as a string
+                request_data = {
+                    'thumbnail_file_to_remove': thumbnail_file_uuid
+                }
 
-                logger.debug(f"Will remove the existing thumbnail file of the dataset uuid {entity_uuid}")
+                response = requests.put(entity_query_url, json = request_data, headers = headers, verify = False)
+                if response.status_code != 200:
+                    err_msg = f"Failed to remove the thumbnail file while calling GET {entity_query_url} status code:{response.status_code}  message:{response.text}"
+                    logger.error(err_msg)
+                    return Response(response.text, response.status_code)
+
+                logger.debug(f"Successfully removed the existing thumbnail file of the dataset uuid {entity_uuid}")
             except KeyError:
                 logger.debug(f"No existing thumbnail file found for the dataset uuid {entity_uuid}")
                 pass
@@ -832,7 +839,7 @@ def update_ingest_status():
         # Update the dataset via entity-api via a PUT call
         response = requests.put(entity_query_url, json = updated_ds, headers = headers, verify = False)
         if response.status_code != 200:
-            err_msg = f"Error while calling PUT {entity_query_url} status code:{response.status_code}  message:{response.text}"
+            err_msg = f"Failed to update dataset while calling PUT {entity_query_url} status code:{response.status_code}  message:{response.text}"
             logger.error(err_msg)
             logger.error("Sent: " + json.dumps(updated_ds))
             return Response(response.text, response.status_code)
@@ -840,14 +847,11 @@ def update_ingest_status():
         result_json = response.json()
 
         return jsonify( { 'result' : result_json } ), response.status_code
-    
     except HTTPException as hte:
         return Response(hte.get_description(), hte.get_status_code())
-    
     except ValueError as ve:
         logger.error(str(ve))
         return jsonify({'error' : str(ve)}), 400
-        
     except Exception as e:
         logger.error(e, exc_info=True)
         return Response("Unexpected error while saving dataset: " + str(e), 500)        
