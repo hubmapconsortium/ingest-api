@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 import requests
 from dataset_helper_object import DatasetHelper
@@ -13,6 +13,7 @@ class TestGenerateDatasetTitle(unittest.TestCase):
 
     def setUp(self):
         self.dataset_helper = DatasetHelper()
+        self.dataset_helper.__init__ = MagicMock(name='__init__', return_value=None)
 
         # For a "Dataset": response.json() from requests.get(url = f"{_entity_api_url}/entities/{dataset_uuid}", ...)
         self.dataset_uuid = '12345678-1234-5678-1234-567812345678'
