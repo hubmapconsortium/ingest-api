@@ -373,18 +373,21 @@ def commit_file():
     user_token = json_data_dict['user_token']
 
     file_uuid_info = file_upload_helper_instance.commit_file(temp_file_id, entity_uuid, user_token)
+    filename = file_uuid_info['filename']
+    file_uuid = file_uuid_info['file_uuid']
 
     # Link the uploaded file uuid dir to assets
-    # /hive/hubmap/hm_uploads/<entity_uuid>/<file_uuid> (for PROD)
-    uploaded_dir = os.path.join(str(app.config['FILE_UPLOAD_DIR']), entity_uuid, file_uuid_info['file_uuid'])
-    # /hive/hubmap/assets/<file_uuid> (for PROD)
-    assets_symbolic_dir = os.path.join(str(app.config['HUBMAP_WEBSERVICE_FILEPATH']), file_uuid_info['file_uuid'])
+    # /hive/hubmap/hm_uploads/<entity_uuid>/<file_uuid>/<filename> (for PROD)
+    source_file_path = os.path.join(str(app.config['FILE_UPLOAD_DIR']), entity_uuid, file_uuid, filename)
+    # /hive/hubmap/assets/<file_uuid>/<filename> (for PROD)
+    target_file_dir = os.path.join(str(app.config['HUBMAP_WEBSERVICE_FILEPATH']), file_uuid)
+    target_file_path = os.path.join(target_file_dir, filename)
 
     # Create the file_uuid directory under assets dir
-    # and a symbolic link to the uploaded dir
+    # and a symbolic link to the uploaded file
     try:
-        # IngestFileHelper.make_directory() is a static method
-        IngestFileHelper.make_directory(uploaded_dir, assets_symbolic_dir)
+        Path(target_file_dir).mkdir(parents=True, exist_ok=True)
+        os.symlink(source_file_path, target_file_path)
     except Exception as e:
         logger.exception(f"Failed to create the symbolic link from {uploaded_dir} to {assets_symbolic_dir}")
 
