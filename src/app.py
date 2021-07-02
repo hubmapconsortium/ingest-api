@@ -767,7 +767,7 @@ def update_ingest_status():
             temp_file_id = file_upload_helper_instance.get_temp_file_id()
 
             logger.debug(f"temp_file_id created for thumbnail file: {temp_file_id}")
-            
+
             # Create the temp file dir under the temp uploads for the thumbnail
             # /hive/hubmap/hm_uploads_tmp/<temp_file_id> (for PROD)
             temp_file_dir = os.path.join(str(app.config['FILE_UPLOAD_TEMP_DIR']), temp_file_id)
@@ -780,7 +780,7 @@ def update_ingest_status():
             # Then copy the source thumbnail file to the temp file dir
             # shutil.copy2 is identical to shutil.copy() method
             # but it also try to preserves the file’s metadata
-            copy2(thumbnail_image_abs_path, temp_file_dir)
+            copy2(thumbnail_file_abs_path, temp_file_dir)
 
             # Now add the thumbnail file by making a call to entity-api
             # And the entity-api will execute the trigger method defined
