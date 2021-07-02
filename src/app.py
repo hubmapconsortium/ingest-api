@@ -758,9 +758,39 @@ def update_ingest_status():
         #{'dataset_id' : '287d61b60b806fdf54916e3b7795ad5a', 'status': '<status>', 'message': 'the process ran', 'metadata': [maybe some metadata stuff], 'thumbnail_image_abs_path': 'full path to the image'}
         updated_ds = dataset.get_dataset_ingest_update_record(ds_request)
 
+        headers = {'Authorization': request.headers["AUTHORIZATION"], 'Content-Type': 'application/json', 'X-Hubmap-Application':'ingest-api'}
+        entity_uuid = ds_request['dataset_id']
+        entity_query_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/' + entity_uuid
+
         # For thumbnail image handling if ingest-pipeline finds the file
         # and sends the absolute file path back
         if 'thumbnail_file_abs_path' in updated_ds:
+            # Delete the old thumbnail file from Neo4j before updaing with new one
+            # First get back the exisiting thumbnail file uuid
+            response = requests.get(update_url, headers = headers, verify = False)
+            if response.status_code != 200:
+                err_msg = f"Error while calling GET {entity_query_url} status code:{response.status_code}  message:{response.text}"
+                logger.error(err_msg)
+                return Response(response.text, response.status_code)
+
+            entity_dict = response.json()
+
+            # Easier to ask for forgiveness than permission (EAFP)
+            # Rather than checking key existence at every level
+            try:
+                thumbnail_file_uuid = ancentity_dictestor['thumbnail_file']['file_uuid']
+
+                # To remove the existing thumbnail file when making the PUT call later
+                updated_ds['thumbnail_file_to_remove'] = {
+                    'temp_file_id': thumbnail_file_uuid
+                }
+
+                logger.debug(f"Will remove the existing thumbnail file of the dataset uuid {entity_uuid}")
+            except KeyError:
+                logger.debug(f"No existing thumbnail file found for the dataset uuid {entity_uuid}")
+                pass
+
+            # All steps on updaing with this new thumbnail
             thumbnail_file_abs_path = updated_ds['thumbnail_file_abs_path']
 
             # Generate a temp file id and copy the source file to the temp upload dir
@@ -797,17 +827,13 @@ def update_ingest_status():
             # since it's not defined in entity-api schema
             updated_ds.pop('thumbnail_file_abs_path')
 
-        # Update the dataset via entity-api via a PUT call
-        headers = {'Authorization': request.headers["AUTHORIZATION"], 'Content-Type': 'application/json', 'X-Hubmap-Application':'ingest-api'}
-        entity_uuid = ds_request['dataset_id']
-        update_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/' + entity_uuid
-        
         logger.debug("==========updated_ds=========")
         logger.debug(updated_ds)
 
-        response = requests.put(update_url, json = updated_ds, headers = headers, verify = False)
+        # Update the dataset via entity-api via a PUT call
+        response = requests.put(entity_query_url, json = updated_ds, headers = headers, verify = False)
         if response.status_code != 200:
-            err_msg = f"Error while calling {update_url} status code:{response.status_code}  message:{response.text}"
+            err_msg = f"Error while calling PUT {entity_query_url} status code:{response.status_code}  message:{response.text}"
             logger.error(err_msg)
             logger.error("Sent: " + json.dumps(updated_ds))
             return Response(response.text, response.status_code)
