@@ -778,7 +778,7 @@ def update_ingest_status():
             # Easier to ask for forgiveness than permission (EAFP)
             # Rather than checking key existence at every level
             try:
-                thumbnail_file_uuid = ancentity_dictestor['thumbnail_file']['file_uuid']
+                thumbnail_file_uuid = entity_dict['thumbnail_file']['file_uuid']
 
                 # To remove the existing thumbnail file when making the PUT call later
                 updated_ds['thumbnail_file_to_remove'] = {
