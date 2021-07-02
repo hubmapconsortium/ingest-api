@@ -781,9 +781,8 @@ def update_ingest_status():
                 thumbnail_file_uuid = entity_dict['thumbnail_file']['file_uuid']
 
                 # To remove the existing thumbnail file when making the PUT call later
-                updated_ds['thumbnail_file_to_remove'] = {
-                    'temp_file_id': thumbnail_file_uuid
-                }
+                # Just pass the file uuid as a string
+                updated_ds['thumbnail_file_to_remove'] = thumbnail_file_uuid
 
                 logger.debug(f"Will remove the existing thumbnail file of the dataset uuid {entity_uuid}")
             except KeyError:
