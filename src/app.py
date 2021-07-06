@@ -816,6 +816,7 @@ def submit_dataset(uuid):
         if not data_admin_group_uuid in user_info['hmgroupids']:
             return Response("user not authorized to submit data, must be a member of the HuBMAP-Data-Admin group", 403)
 
+        # TODO: Temp fix till we can get this in the "Validation Pipeline"... add the validation code here... If it returns any errors fail out of this. Return 412 Precondition Failed with the errors in the description.
         pipeline_url = commons_file_helper.ensureTrailingSlashURL(app.config['INGEST_PIPELINE_URL']) + 'request_ingest'
         r = requests.post(pipeline_url, json={"submission_id" : "{uuid}".format(uuid=uuid),
                                      "process" : app.config['INGEST_PIPELINE_DEFAULT_PROCESS'],
