@@ -81,10 +81,13 @@ class DatasetHelper:
             return rslt
         dataset = response.json()
 
-        for data_type in dataset['data_types']:
-            response = search_api.get_assaytype(data_type)
-            if response.status_code != 200:
-                rslt.append(f"Unable to query the assay type details of: {data_type} via search-api")
+        if 'data_types' in dataset:
+            for data_type in dataset['data_types']:
+                response = search_api.get_assaytype(data_type)
+                if response.status_code != 200:
+                    rslt.append(f"Unable to query the assay type details of: {data_type} via search-api")
+        else:
+            rslt.append('The dataset did not contain a ''data_types'' key')
 
         response = entity_api.get_ancestors(dataset['uuid'])
         if response.status_code != 200:
