@@ -369,3 +369,59 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
         self.assertEqual(len(result), 2)
         self.assertEqual(result[0], 'Unable to query the assay type details of: bulk-RNA via search-api')
         self.assertEqual(result[1], 'Unable to query the assay type details of: IMC via search-api')
+
+    @patch('dataset_helper_object.urllib.request.urlopen')
+    @patch('dataset_helper_object.EntityApi.get_entities')
+    @patch('dataset_helper_object.EntityApi.get_ancestors')
+    @patch('dataset_helper_object.SearchApi.get_assaytype')
+    def test_verify_dataset_title_info_dataset_data_types_missing(self, mock_get_assaytype, mock_get_ancestors, mock_get_entities, mock_url_open):
+        # https://github.com/hubmapconsortium/search-api/blob/test-release/src/search-schema/data/definitions/enums/assay_types.yaml
+        def resp1():
+            r = requests.Response()
+            r.status_code = 200
+            r.json = lambda: {'description': 'Imaging Mass Cytometry', 'alt-names': [], 'primary': 'true', 'vitessce-hints': []}
+            return r
+
+        def resp2():
+            r = requests.Response()
+            r.status_code = 200
+            r.json = lambda: {'description': 'Bulk RNA-seq', 'alt-names': [], 'primary': 'true', 'vitessce-hints': []}
+            return r
+        mock_get_assaytype.side_effect = [resp1(), resp2()]
+
+        def resp3():
+            r = requests.Response()
+            r.status_code = 200
+            r.json = lambda: [{'entity_type': 'Sample',
+                               'specimen_type': 'Organ',
+                               'organ': 'BM'},
+                              {'entity_type': 'Donor',
+                               'metadata':
+                                 {'organ_donor_data': [
+                                    {'grouping_concept_preferred_term': 'Age'},
+                                    {'grouping_concept_preferred_term': 'Race'},
+                                    {'grouping_concept_preferred_term': 'Sex'}
+                                  ]
+                               }}]
+            return r
+        mock_get_ancestors.side_effect = [resp3()]
+
+        def resp4():
+            r = requests.Response()
+            r.status_code = 200
+            r.json = lambda: {'uuid': self.dataset_uuid}
+            return r
+        mock_get_entities.side_effect = [resp4()]
+
+        def resp5():
+            r = requests.Response()
+            r.read = lambda: b'AO:\r\n  description: Aorta\r\nBL:\r\n  \r\nBD:\r\n  description: Blood\r\nBM:\r\n  description: Bone Marrow\r\nBR:\r\n  description: Brain\r\n'
+            # The 'when' needs the close method in the response....
+            r.close = lambda: True
+            return r
+        mock_url_open.side_effect = [resp5()]
+
+        result = self.dataset_helper.verify_dataset_title_info(self.dataset_uuid, self.user_token)
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0], 'The dataset did not contain a ''data_types'' key')
