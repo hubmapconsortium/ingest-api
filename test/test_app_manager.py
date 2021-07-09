@@ -1,6 +1,6 @@
 import unittest
 
-from app_manager import update_ingest_status
+from app_manager import update_ingest_status, nexus_token_from_request_headers
 from unittest.mock import Mock, MagicMock
 from dataset import Dataset
 from dataset_helper_object import DatasetHelper
@@ -16,19 +16,27 @@ class TestAppManager(unittest.TestCase):
         self.logger = Mock()
         self.logger.info = MagicMock(name='info', return_value=None)
 
-        self.dataset_helper = DatasetHelper
-        self.dataset_helper.__init__ = MagicMock(name='__init__', return_value=None)
-        self.dataset_helper.generate_dataset_title = \
-            MagicMock(spec='generate_dataset_title', return_value='Dataset Title String')
+        self.token = 'token'
+        self.request_headers = {'AUTHORIZATION': f'bearer   {self.token}'}
 
-        self.request_json = []
-        self.request_headers = {'AUTHORIZATION': 'bearer   token'}
+        #
+        # self.dataset_helper = DatasetHelper
+        # self.dataset_helper.__init__ = MagicMock(name='__init__', return_value=None)
+        # self.dataset_helper.generate_dataset_title = \
+        #     MagicMock(spec='generate_dataset_title', return_value='Dataset Title String')
+        #
+        # self.request_json = []
+        #
+        # self.dataset = Dataset
+        # self.dataset.__init__ = MagicMock(name='__init__', return_value=None)
+        # self.dataset.get_dataset_ingest_update_record = MagicMock(name='get_dataset_ingest_update_record')
 
-        self.dataset = Dataset
-        self.dataset.__init__ = MagicMock(name='__init__', return_value=None)
-        self.dataset.get_dataset_ingest_update_record = MagicMock(name='get_dataset_ingest_update_record')
+    def test_nexus_token_from_request_headers(self):
+        result = nexus_token_from_request_headers(self.request_headers)
 
-    def test_update_ingest_status_with_status_qa(self):
+        self.assertEqual(result, self.token)
+
+    def update_ingest_status_with_status_qa(self):
         self.dataset.get_dataset_ingest_update_record.return_value = {
             'dataset_id': '287d61b60b806fdf54916e3b7795ad5a',
             'status': 'QA',
@@ -42,7 +50,7 @@ class TestAppManager(unittest.TestCase):
         self.dataset_helper.generate_dataset_title.assert_called()
         self.assertEqual(len(result), 4)
 
-    def test_update_ingest_status_with_not_status_qa(self):
+    def update_ingest_status_with_not_status_qa(self):
         self.dataset.get_dataset_ingest_update_record.return_value = {
             'dataset_id': '287d61b60b806fdf54916e3b7795ad5a',
             'status': 'Unknown',
