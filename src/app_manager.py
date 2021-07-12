@@ -1,8 +1,9 @@
+import os
 import logging
 import requests
 # Don't confuse urllib (Python native library) with urllib3 (3rd-party library, requests also uses urllib3)
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
-from flask import json
+from flask import json, Response
 from pathlib import Path
 from shutil import copy2
 
@@ -23,7 +24,7 @@ def nexus_token_from_request_headers(request_headers: object) -> str:
     return nexus_token
 
 
-def update_ingest_status(app_config: object, request_json: object, request_headers: object, logger: object) -> object:
+def update_ingest_status(app_config: object, request_json: object, request_headers: object) -> object:
     dataset = Dataset(app_config)
     logger.info("++++++++++Calling /datasets/status")
     logger.info("++++++++++Request:" + json.dumps(request_json))
@@ -46,7 +47,7 @@ def verify_dataset_title_info(uuid: str, request_headers: object) -> object:
     return dataset_helper.verify_dataset_title_info(uuid, nexus_token)
 
 
-def handle_thumbnail_file(entity_api: object, dataset_uuid: str, extra_headers: object, file_upload_helper_instance: object, file_upload_temp_dir: str):
+def handle_thumbnail_file(dataset_dict: object, entity_api: object, dataset_uuid: str, extra_headers: object, temp_file_id: str, file_upload_temp_dir: str):
     # Delete the old thumbnail file from Neo4j before updating with new one
     # First retrieve the exisiting thumbnail file uuid
     response = entity_api.get_entities(dataset_uuid)
@@ -79,10 +80,7 @@ def handle_thumbnail_file(entity_api: object, dataset_uuid: str, extra_headers: 
         pass
 
     # All steps on updaing with this new thumbnail
-    thumbnail_file_abs_path = updated_ds['thumbnail_file_abs_path']
-
-    # Generate a temp file id and copy the source file to the temp upload dir
-    temp_file_id = file_upload_helper_instance.get_temp_file_id()
+    thumbnail_file_abs_path = dataset_dict['thumbnail_file_abs_path']
 
     logger.debug(f"temp_file_id created for thumbnail file: {temp_file_id}")
 
@@ -107,12 +105,12 @@ def handle_thumbnail_file(entity_api: object, dataset_uuid: str, extra_headers: 
     # the temp file as uploaded file and moves it to the generated file_uuid
     # dir under the upload dir: /hive/hubmap/hm_uploads/<file_uuid> (for PROD)
     # and also creates the symbolic link to the assets
-    updated_ds['thumbnail_file_to_add'] = {
+    dataset_dict['thumbnail_file_to_add'] = {
         'temp_file_id': temp_file_id
     }
 
     # Remove the 'thumbnail_file_abs_path' property 
     # since it's not defined in entity-api schema
-    updated_ds.pop('thumbnail_file_abs_path')
+    dataset_dict.pop('thumbnail_file_abs_path')
 
-    return updated_ds
+    return dataset_dict

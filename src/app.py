@@ -802,10 +802,14 @@ def update_ingest_status():
         # For thumbnail image handling if ingest-pipeline finds the file
         # and sends the absolute file path back
         if 'thumbnail_file_abs_path' in updated_ds:
-            updated_ds = app_manager.handle_thumbnail_file(entity_api,
+            # Generate a temp file id and copy the source file to the temp upload dir
+            temp_file_id = file_upload_helper_instance.get_temp_file_id()
+
+            updated_ds = app_manager.handle_thumbnail_file(updated_ds,
+                                                           entity_api,
                                                            dataset_uuid, 
                                                            extra_headers, 
-                                                           file_upload_helper_instance, 
+                                                           temp_file_id, 
                                                            str(app.config['FILE_UPLOAD_TEMP_DIR']))
 
         logger.debug("==========updated_ds=========")
