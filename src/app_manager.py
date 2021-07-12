@@ -9,6 +9,7 @@ from shutil import copy2
 # Local modules
 from dataset import Dataset
 from dataset_helper_object import DatasetHelper
+from api.entity_api import EntityApi
 
 logger = logging.getLogger(__name__)
 
@@ -45,13 +46,12 @@ def verify_dataset_title_info(uuid: str, request_headers: object) -> object:
     return dataset_helper.verify_dataset_title_info(uuid, nexus_token)
 
 
-# Added by Zhou for handling dataset thumbnail file
-def handle_thumbnail_file(entity_query_url: str, dataset_uuid: str, request_headers: object, file_upload_helper_instance: object, file_upload_temp_dir: str):
+def handle_thumbnail_file(entity_api: object, dataset_uuid: str, extra_headers: object, file_upload_helper_instance: object, file_upload_temp_dir: str):
     # Delete the old thumbnail file from Neo4j before updating with new one
     # First retrieve the exisiting thumbnail file uuid
-    response = requests.get(entity_query_url, headers = request_headers, verify = False)
+    response = entity_api.get_entities(dataset_uuid)
     if response.status_code != 200:
-        err_msg = f"Failed to query the dataset while calling GET {entity_query_url} status code:{response.status_code}  message:{response.text}"
+        err_msg = f"Failed to query the dataset of uuid {dataset_uuid} while calling EntityApi.get_entities() status code:{response.status_code}  message:{response.text}"
         logger.error(err_msg)
         return Response(response.text, response.status_code)
 
@@ -67,9 +67,9 @@ def handle_thumbnail_file(entity_query_url: str, dataset_uuid: str, request_head
             'thumbnail_file_to_remove': thumbnail_file_uuid
         }
 
-        response = requests.put(entity_query_url, json = put_data, headers = request_headers, verify = False)
+        response = entity_api.put_entities(dataset_uuid, put_data, extra_headers)
         if response.status_code != 200:
-            err_msg = f"Failed to remove the thumbnail file while calling GET {entity_query_url} status code:{response.status_code}  message:{response.text}"
+            err_msg = f"Failed to remove the existing thumbnail file for dataset of uuid {dataset_uuid} while calling EntityApi.put_entities() status code:{response.status_code}  message:{response.text}"
             logger.error(err_msg)
             return Response(response.text, response.status_code)
 

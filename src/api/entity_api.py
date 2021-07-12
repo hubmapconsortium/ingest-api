@@ -9,22 +9,20 @@ class EntityApi(Api):
     def __init__(self, user_token: str, api_url: str):
         super().__init__(user_token, api_url)
 
-    # Missing POST call - Zhou
+    def post_entities(self, dataset_uuid: str, json: object, extra_headers: object) -> object:
+        return super().request_put(f"/entities/{dataset_uuid}", json, extra_headers)
 
-    # Should be renamed to get_entity() - Zhou
+    def put_entities(self, dataset_uuid: str, json: object, extra_headers: object) -> object:
+        return super().request_put(f"/entities/{dataset_uuid}", json, extra_headers)
+
     def get_entities(self, dataset_uuid: str) -> object:
         return super().request_get(f"/entities/{dataset_uuid}")
-
-    # Should be renamed to put_entity() - Zhou
-    def put_entities(self, dataset_uuid: str, json: object) -> object:
-        return super().request_put(f"/entities/{dataset_uuid}", json)
 
     def get_ancestors(self, dataset_uuid: str) -> object:
         return super().request_get(f"/ancestors/{dataset_uuid}")
 
-    # The following calls are not being used by ingest-api
-    # and will probably not be used here. Better to just 
-    # define the ones being used currently - Zhou
+    # The following calls are not being used by ingest-api currently
+    # Uncomment when being used
 
     # def get_entity_types(self, dataset_uuid: str) -> object:
     #     return super().request_get(f"/entity-types/{dataset_uuid}")
@@ -32,9 +30,8 @@ class EntityApi(Api):
     # def get_descendants(self, dataset_uuid: str) -> object:
     #     return super().request_get(f"/descendants/{dataset_uuid}")
 
-    # # Should it be parents instead of patients? - Zhou
-    # def get_patients(self, dataset_uuid: str) -> object:
-    #     return super().request_get(f"/patients/{dataset_uuid}")
+    # def get_parents(self, dataset_uuid: str) -> object:
+    #     return super().request_get(f"/parents/{dataset_uuid}")
 
     # def get_children(self, dataset_uuid: str) -> object:
     #     return super().request_get(f"/children/{dataset_uuid}")
