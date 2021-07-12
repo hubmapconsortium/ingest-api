@@ -6,7 +6,7 @@ from uuid import UUID
 import requests
 import argparse
 from pathlib import Path
-from shutil import copy2, rmtree # Used by file removal and thumbnail file
+from shutil import rmtree # Used by file removal
 from flask import Flask, g, jsonify, abort, request, session, redirect, json, Response
 from flask_cors import CORS
 from globus_sdk import AccessTokenAuthorizer, AuthClient, ConfidentialAppAuthClient
@@ -30,7 +30,9 @@ from specimen import Specimen
 from ingest_file_helper import IngestFileHelper
 from file_upload_helper import UploadFileHelper
 import app_manager
-from api.entity_api import EntityApi
+
+# Commented out by Zhou
+# from api.entity_api import EntityApi
 
 
 # Set logging fromat and level (default is warning)
@@ -784,101 +786,59 @@ def update_ingest_status():
         abort(400, jsonify( { 'error': 'no data found cannot process update' } ))
     
     try:
-        entity_api = EntityApi(app_manager.nexus_token_from_request_headers(request.headers["AUTHORIZATION"]),
-                               commons_file_helper.removeTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']))
+        ds_request = request.json
 
-        updated_ds = app_manager.update_ingest_status(app.config, request.json, request.headers, logger)
+        # Commented out by Zhou
+        # entity_api = EntityApi(app_manager.nexus_token_from_request_headers(request.headers["AUTHORIZATION"]),
+        #                        commons_file_helper.removeTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']))
+
+        updated_ds = app_manager.update_ingest_status(app.config, request.json, request.headers)
         
+        # Headers for calling entity-api
+        headers = {
+            'Authorization': request.headers["AUTHORIZATION"], 
+            'Content-Type': 'application/json', 
+            # Only need this X-Hubmap-Application header on updating the Dataset.status via PUT
+            # But no hurt to send over for GET call
+            'X-Hubmap-Application': 'ingest-api'
+        }
+
+        dataset_uuid = ds_request['dataset_id']
+        entity_query_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/' + entity_uuid
+
         # For thumbnail image handling if ingest-pipeline finds the file
         # and sends the absolute file path back
         if 'thumbnail_file_abs_path' in updated_ds:
-            # Delete the old thumbnail file from Neo4j before updating with new one
-            # First retrieve the exisiting thumbnail file uuid
-            response = requests.get(entity_query_url, headers = headers, verify = False)
-            if response.status_code != 200:
-                err_msg = f"Failed to query the dataset while calling GET {entity_query_url} status code:{response.status_code}  message:{response.text}"
-                logger.error(err_msg)
-                return Response(response.text, response.status_code)
-
-            entity_dict = response.json()
-
-            # Easier to ask for forgiveness than permission (EAFP)
-            # Rather than checking key existence at every level
-            try:
-                thumbnail_file_uuid = entity_dict['thumbnail_file']['file_uuid']
-
-                # To remove the existing thumbnail file, just pass the file uuid as a string
-                request_data = {
-                    'thumbnail_file_to_remove': thumbnail_file_uuid
-                }
-
-                response = requests.put(entity_query_url, json = request_data, headers = headers, verify = False)
-                if response.status_code != 200:
-                    err_msg = f"Failed to remove the thumbnail file while calling GET {entity_query_url} status code:{response.status_code}  message:{response.text}"
-                    logger.error(err_msg)
-                    return Response(response.text, response.status_code)
-
-                logger.debug(f"Successfully removed the existing thumbnail file of the dataset uuid {entity_uuid}")
-            except KeyError:
-                logger.debug(f"No existing thumbnail file found for the dataset uuid {entity_uuid}")
-                pass
-
-            # All steps on updaing with this new thumbnail
-            thumbnail_file_abs_path = updated_ds['thumbnail_file_abs_path']
-
-            # Generate a temp file id and copy the source file to the temp upload dir
-            temp_file_id = file_upload_helper_instance.get_temp_file_id()
-
-            logger.debug(f"temp_file_id created for thumbnail file: {temp_file_id}")
-
-            # Create the temp file dir under the temp uploads for the thumbnail
-            # /hive/hubmap/hm_uploads_tmp/<temp_file_id> (for PROD)
-            temp_file_dir = os.path.join(str(app.config['FILE_UPLOAD_TEMP_DIR']), temp_file_id)
-            
-            try:
-                Path(temp_file_dir).mkdir(parents=True, exist_ok=True)
-            except Exception as e:
-                logger.exception(f"Failed to create the thumbnail temp upload dir {temp_file_dir} for thumbnail file attched to Dataset {result_json['uuid']}")
-
-            # Then copy the source thumbnail file to the temp file dir
-            # shutil.copy2 is identical to shutil.copy() method
-            # but it also try to preserves the file's metadata
-            copy2(thumbnail_file_abs_path, temp_file_dir)
-
-            # Now add the thumbnail file by making a call to entity-api
-            # And the entity-api will execute the trigger method defined
-            # for the property 'thumbnail_file_to_add' to commit this
-            # file via ingest-api's /file-commit endpoint, which treats
-            # the temp file as uploaded file and moves it to the generated file_uuid
-            # dir under the upload dir: /hive/hubmap/hm_uploads/<file_uuid> (for PROD)
-            # and also creates the symbolic link to the assets
-            updated_ds['thumbnail_file_to_add'] = {
-                'temp_file_id': temp_file_id
-            }
-
-            # Remove the 'thumbnail_file_abs_path' property 
-            # since it's not defined in entity-api schema
-            updated_ds.pop('thumbnail_file_abs_path')
+            updated_ds = app_manager.handle_thumbnail_file(entity_query_url, 
+                                                           dataset_uuid, headers, 
+                                                           file_upload_helper_instance, 
+                                                           str(app.config['FILE_UPLOAD_TEMP_DIR']))
 
         logger.debug("==========updated_ds=========")
         logger.debug(updated_ds)
 
-        response = entity_api.put_entities(request.json['dataset_id'].strip(), updated_ds)
+        # Commented out by Zhou
+        # response = entity_api.put_entities(request.json['dataset_id'].strip(), updated_ds)
+        # if response.status_code != 200:
+        #     err_msg = f"Error while calling EntityApi.put_entities() status code:{response.status_code}  message:{response.text}"
+        #     logger.error(err_msg)
+        #     logger.error("Sent: " + json.dumps(updated_ds))
+        #     return Response(response.text, response.status_code)
+
+        # Update the dataset via entity-api via a PUT call
+        response = requests.put(entity_query_url, json = updated_ds, headers = headers, verify = False)
         if response.status_code != 200:
-            err_msg = f"Error while calling EntityApi.put_entities() status code:{response.status_code}  message:{response.text}"
+            err_msg = f"Failed to update dataset while calling PUT {entity_query_url} status code:{response.status_code}  message:{response.text}"
             logger.error(err_msg)
             logger.error("Sent: " + json.dumps(updated_ds))
             return Response(response.text, response.status_code)
 
         return jsonify({'result': response.json()}), response.status_code
-    
     except HTTPException as hte:
         return Response(hte.get_description(), hte.get_status_code())
-    
     except ValueError as ve:
         logger.error(str(ve))
         return jsonify({'error' : str(ve)}), 400
-        
     except Exception as e:
         logger.error(e, exc_info=True)
         return Response("Unexpected error while saving dataset: " + str(e), 500)     

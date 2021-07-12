@@ -6,7 +6,10 @@ class Api(object):
     def __init__(self, user_token, api_url):
         self.headers = {
             'Authorization': f"Bearer {user_token}",
+            # Won't need this header for calls to search-api - Zhou 
             'Content-Type': 'application/json',
+            # Only need this X-Hubmap-Application header on updating the Dataset.status
+            # via entity-api using a PUT call - Zhou
             'X-Hubmap-Application': 'ingest-api'
         }
         self.api_url = api_url
