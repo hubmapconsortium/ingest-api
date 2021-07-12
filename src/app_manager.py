@@ -46,7 +46,7 @@ def verify_dataset_title_info(uuid: str, request_headers: object) -> object:
     dataset_helper = DatasetHelper()
     return dataset_helper.verify_dataset_title_info(uuid, nexus_token)
 
-
+# Added by Zhou for handling dataset thumbnail file
 def handle_thumbnail_file(dataset_dict: object, entity_api: object, dataset_uuid: str, extra_headers: object, temp_file_id: str, file_upload_temp_dir: str):
     # Delete the old thumbnail file from Neo4j before updating with new one
     # First retrieve the exisiting thumbnail file uuid
