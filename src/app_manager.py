@@ -14,7 +14,7 @@ def update_ingest_status(app_config: object, request_json: object, request_heade
     logger.info("++++++++++Calling /datasets/status")
     logger.info("++++++++++Request:" + json.dumps(request_json))
     # expecting something like this:
-    # {'dataset_id' : '287d61b60b806fdf54916e3b7795ad5a', 'status': '<', 'message': 'the process ran', 'metadata': [maybe some metadata stuff]}
+    # {'dataset_id' : '287d61b60b806fdf54916e3b7795ad5a', 'status': '<', 'message': 'the process ran', 'metadata': [maybe some metadata stuff], 'thumbnail_image_abs_path': 'full path to the image'}}
     updated_ds = dataset.get_dataset_ingest_update_record(request_json)
 
     if updated_ds['status'].upper() == 'QA':
