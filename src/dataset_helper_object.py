@@ -7,6 +7,8 @@ import requests
 import logging
 from flask import Flask
 import urllib.request
+from pathlib import Path
+from shutil import copy2
 from api.entity_api import EntityApi
 from api.search_api import SearchApi
 
@@ -201,7 +203,7 @@ class DatasetHelper:
 
         for data_type in data_types:
             # The assaytype endpoint in search-api is public accessible, no token needed
-            response = search_api.get_assaytype(data_types)
+            response = search_api.get_assaytype(data_type)
             if response.status_code == 200:
                 assay_type_info = response.json()
                 # Add to the list
@@ -261,6 +263,89 @@ class DatasetHelper:
 
             raise requests.exceptions.RequestException(response.text)
 
+    # Added by Zhou for handling dataset thumbnail file
+    def handle_thumbnail_file(self, dataset_dict: object, entity_api: EntityApi, dataset_uuid: str,
+                              extra_headers: object, temp_file_id: str, file_upload_temp_dir: str):
+        # Delete the old thumbnail file from Neo4j before updating with new one
+        # First retrieve the exisiting thumbnail file uuid
+        response = entity_api.get_entities(dataset_uuid)
+        if response.status_code != 200:
+            err_msg = f"Failed to query the dataset of uuid {dataset_uuid} while calling EntityApi.get_entities() status code:{response.status_code}  message:{response.text}"
+            logger.error(err_msg)
+            raise requests.exceptions.RequestException(err_msg)
+
+        entity_dict = response.json()
+        print('entity_api.get_entities(dataset_uuid).json()')
+        pprint.pprint(entity_dict)
+
+        logger.debug('=======EntityApi.get_entities() resulting entity_dict=======')
+        logger.debug(entity_dict)
+
+        # Easier to ask for forgiveness than permission (EAFP)
+        # Rather than checking key existence at every level
+        try:
+            thumbnail_file_uuid = entity_dict['thumbnail_file']['file_uuid']
+
+            # To remove the existing thumbnail file, just pass the file uuid as a string
+            put_data = {
+                'thumbnail_file_to_remove': thumbnail_file_uuid
+            }
+
+            response = entity_api.put_entities(dataset_uuid, put_data, extra_headers)
+            if response.status_code != 200:
+                err_msg = f"Failed to remove the existing thumbnail file for dataset of uuid {dataset_uuid} while calling EntityApi.put_entities() status code:{response.status_code}  message:{response.text}"
+                logger.error(err_msg)
+                raise requests.exceptions.RequestException(err_msg)
+
+            logger.debug(f"Successfully removed the existing thumbnail file of the dataset uuid {dataset_uuid}")
+        except KeyError:
+            logger.debug(f"No existing thumbnail file found for the dataset uuid {dataset_uuid}")
+            pass
+
+        entity_dict = response.json()
+        print('entity_api.put_entities(dataset_uuid, put_data, extra_headers).json()')
+        pprint.pprint(entity_dict)
+
+        logger.debug('=======EntityApi.put_entities() resulting entity_dict=======')
+        logger.debug(entity_dict)
+
+        # All steps on updaing with this new thumbnail
+        thumbnail_file_abs_path = dataset_dict['thumbnail_file_abs_path']
+
+        # Create the temp file dir under the temp uploads for the thumbnail
+        # /hive/hubmap/hm_uploads_tmp/<temp_file_id> (for PROD)
+        temp_file_dir = os.path.join(file_upload_temp_dir, temp_file_id)
+
+        try:
+            Path(temp_file_dir).mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            logger.exception(
+                f"Failed to create the thumbnail temp upload dir {temp_file_dir} for thumbnail file attched to Dataset {dataset_uuid}")
+
+        # Then copy the source thumbnail file to the temp file dir
+        # shutil.copy2 is identical to shutil.copy() method
+        # but it also try to preserves the file's metadata
+        copy2(thumbnail_file_abs_path, temp_file_dir)
+
+        # Now add the thumbnail file by making a call to entity-api
+        # And the entity-api will execute the trigger method defined
+        # for the property 'thumbnail_file_to_add' to commit this
+        # file via ingest-api's /file-commit endpoint, which treats
+        # the temp file as uploaded file and moves it to the generated file_uuid
+        # dir under the upload dir: /hive/hubmap/hm_uploads/<file_uuid> (for PROD)
+        # and also creates the symbolic link to the assets
+        dataset_dict['thumbnail_file_to_add'] = {
+            'temp_file_id': temp_file_id
+        }
+
+        # Remove the 'thumbnail_file_abs_path' property
+        # since it's not defined in entity-api schema
+        dataset_dict.pop('thumbnail_file_abs_path')
+
+        logger.debug("=======resulting dataset_dict=======")
+        logger.debug(dataset_dict)
+
+        return dataset_dict
 
 # Running this python file as a script
 # python3 -m dataset_helper <user_token> <dataset_uuid>
