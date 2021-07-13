@@ -16,10 +16,14 @@ from api.entity_api import EntityApi
 # Use test classes derived from fake_filesystem_unittest.TestCase
 class TestDatasetThumbnail(TestCase):
 
-    def setUp(self):
+    @patch('dataset_helper_object.DatasetHelper.__init__', return_value=None)
+    def setUp(self, mock_dataset_helper_object_init):
         # pyfakefs will automatically find all real file functions and modules, 
         # and stub these out with the fake file system functions and modules
         self.setUpPyfakefs()
+        # We are telling the DatasetHelper.__init__ to do nothing
+        # but we got a real instance of DatasetHelper
+        # Doing this to avoid the app.cfg being loaded in the fake file system
         self.dataset_helper = DatasetHelper()
         self.entity_api = EntityApi("", "")
 
