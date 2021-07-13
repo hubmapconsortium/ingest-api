@@ -58,6 +58,9 @@ def handle_thumbnail_file(dataset_dict: object, entity_api: object, dataset_uuid
 
     entity_dict = response.json()
 
+    logger.debug('=======EntityApi.get_entities() resulting entity_dict=======')
+    logger.debug(entity_dict)
+
     # Easier to ask for forgiveness than permission (EAFP)
     # Rather than checking key existence at every level
     try:
@@ -79,10 +82,13 @@ def handle_thumbnail_file(dataset_dict: object, entity_api: object, dataset_uuid
         logger.debug(f"No existing thumbnail file found for the dataset uuid {dataset_uuid}")
         pass
 
+    entity_dict = response.json()
+
+    logger.debug('=======EntityApi.put_entities() resulting entity_dict=======')
+    logger.debug(entity_dict)
+
     # All steps on updaing with this new thumbnail
     thumbnail_file_abs_path = dataset_dict['thumbnail_file_abs_path']
-
-    logger.debug(f"temp_file_id created for thumbnail file: {temp_file_id}")
 
     # Create the temp file dir under the temp uploads for the thumbnail
     # /hive/hubmap/hm_uploads_tmp/<temp_file_id> (for PROD)
@@ -112,5 +118,8 @@ def handle_thumbnail_file(dataset_dict: object, entity_api: object, dataset_uuid
     # Remove the 'thumbnail_file_abs_path' property 
     # since it's not defined in entity-api schema
     dataset_dict.pop('thumbnail_file_abs_path')
+
+    logger.debug("=======resulting dataset_dict=======")
+    logger.debug(dataset_dict)
 
     return dataset_dict

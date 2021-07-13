@@ -805,6 +805,8 @@ def update_ingest_status():
             # Generate a temp file id and copy the source file to the temp upload dir
             temp_file_id = file_upload_helper_instance.get_temp_file_id()
 
+            logger.debug(f"temp_file_id created for thumbnail file {updated_ds['thumbnail_file_abs_path']}: {temp_file_id}")
+
             updated_ds = app_manager.handle_thumbnail_file(updated_ds,
                                                            entity_api,
                                                            dataset_uuid, 
