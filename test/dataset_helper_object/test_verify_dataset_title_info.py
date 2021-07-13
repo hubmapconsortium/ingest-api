@@ -76,6 +76,10 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
         result = self.dataset_helper.verify_dataset_title_info(self.dataset_uuid, self.user_token)
 
         self.assertEqual(len(result), 0)
+        mock_get_assaytype.assert_called()
+        mock_get_ancestors.assert_called()
+        mock_get_entities.assert_called()
+        mock_url_open.assert_called()
 
     @patch('dataset_helper_object.EntityApi.get_entities')
     def test_verify_dataset_title_info_entities_not_found(self, mock_get_entities):
@@ -90,6 +94,7 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
 
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0], f"Unable to get the target dataset with uuid: {self.dataset_uuid}")
+        mock_get_entities.assert_called()
 
     @patch('dataset_helper_object.urllib.request.urlopen')
     @patch('dataset_helper_object.EntityApi.get_entities')
@@ -146,6 +151,10 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
 
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0], "Description for Organ code 'BL' not found in organ types file")
+        mock_get_assaytype.assert_called()
+        mock_get_ancestors.assert_called()
+        mock_get_entities.assert_called()
+        mock_url_open.assert_called()
 
     @patch('dataset_helper_object.urllib.request.urlopen')
     @patch('dataset_helper_object.EntityApi.get_entities')
@@ -202,6 +211,10 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
 
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0], "Organ code 'xx' not found in organ types file")
+        mock_get_assaytype.assert_called()
+        mock_get_ancestors.assert_called()
+        mock_get_entities.assert_called()
+        mock_url_open.assert_called()
 
     @patch('dataset_helper_object.urllib.request.urlopen')
     @patch('dataset_helper_object.EntityApi.get_entities')
@@ -257,6 +270,11 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
 
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0], 'Organ key not found in specimen_type organ')
+        mock_get_assaytype.assert_called()
+        mock_get_ancestors.assert_called()
+        mock_get_entities.assert_called()
+        # because no 'organ:' is called by mock_get_ancestors
+        mock_url_open.assert_not_called()
 
     @patch('dataset_helper_object.urllib.request.urlopen')
     @patch('dataset_helper_object.EntityApi.get_entities')
@@ -312,6 +330,10 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
         self.assertEqual(len(result), 2)
         self.assertEqual(result[0], f'Donor metadata.organ_donor_data grouping_concept_preferred_term race not found')
         self.assertEqual(result[1], f'Donor metadata.organ_donor_data grouping_concept_preferred_term sex not found')
+        mock_get_assaytype.assert_called()
+        mock_get_ancestors.assert_called()
+        mock_get_entities.assert_called()
+        mock_url_open.assert_called()
 
     @patch('dataset_helper_object.urllib.request.urlopen')
     @patch('dataset_helper_object.EntityApi.get_entities')
@@ -369,6 +391,10 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
         self.assertEqual(len(result), 2)
         self.assertEqual(result[0], 'Unable to query the assay type details of: bulk-RNA via search-api')
         self.assertEqual(result[1], 'Unable to query the assay type details of: IMC via search-api')
+        mock_get_assaytype.assert_called()
+        mock_get_ancestors.assert_called()
+        mock_get_entities.assert_called()
+        mock_url_open.assert_called()
 
     @patch('dataset_helper_object.urllib.request.urlopen')
     @patch('dataset_helper_object.EntityApi.get_entities')
@@ -425,3 +451,8 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
 
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0], 'The dataset did not contain a ''data_types'' key')
+        # Because dataset did not contain a ''data_types'' key...
+        mock_get_assaytype.assert_not_called()
+        mock_get_ancestors.assert_called()
+        mock_get_entities.assert_called()
+        mock_url_open.assert_called()

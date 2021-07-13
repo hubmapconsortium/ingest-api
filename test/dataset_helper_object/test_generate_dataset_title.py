@@ -70,6 +70,9 @@ class TestGenerateDatasetTitle(unittest.TestCase):
         self.assertTrue(type(result) is str)
         #  f"{assay_type_desc} data from the {organ_desc} of a {age}-year-old {race} {sex}"
         self.assertEqual(result, 'Imaging Mass Cytometry and Bulk RNA-seq data from the aorta of a 99-year-old martian m')
+        mock_get_assaytype.assert_called()
+        mock_get_ancestors.assert_called()
+        mock_url_open.assert_called()
 
     @patch('dataset_helper_object.urllib.request.urlopen')
     @patch('dataset_helper_object.EntityApi.get_ancestors')
@@ -112,6 +115,9 @@ class TestGenerateDatasetTitle(unittest.TestCase):
         self.assertTrue(type(result) is str)
         #  f"{assay_type_desc} data from the {organ_desc} of a {age}-year-old {race} {sex}"
         self.assertEqual(result, 'Imaging Mass Cytometry and Bulk RNA-seq data from the aorta of a <age>-year-old <race> <sex>')
+        mock_get_assaytype.assert_called()
+        mock_get_ancestors.assert_called()
+        mock_url_open.assert_called()
 
     @patch('dataset_helper_object.urllib.request.urlopen')
     @patch('dataset_helper_object.EntityApi.get_ancestors')
@@ -161,6 +167,10 @@ class TestGenerateDatasetTitle(unittest.TestCase):
         self.assertTrue(type(result) is str)
         #  f"{assay_type_desc} data from the {organ_desc} of a {age}-year-old {race} {sex}"
         self.assertEqual(result, 'Imaging Mass Cytometry and Bulk RNA-seq data from the <organ_desc> of a 99-year-old martian m')
+        mock_get_assaytype.assert_called()
+        mock_get_ancestors.assert_called()
+        # because no 'organ:' is called by mock_get_ancestors
+        mock_url_open.assert_not_called()
 
     @patch('dataset_helper_object.urllib.request.urlopen')
     @patch('dataset_helper_object.EntityApi.get_ancestors')
@@ -207,3 +217,6 @@ class TestGenerateDatasetTitle(unittest.TestCase):
         mock_url_open.side_effect = [resp4()]
 
         self.assertRaises(TypeError, self.dataset_helper.generate_dataset_title,  self.dataset, self.user_token)
+        mock_get_assaytype.assert_called()
+        mock_get_ancestors.assert_called()
+        mock_url_open.assert_called()
