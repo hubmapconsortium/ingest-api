@@ -68,7 +68,7 @@ class TestDatasetThumbnail(TestCase):
 
         mock_get_entities.assert_called()
         mock_put_entities.assert_called()
-        mock_put_entities.assert_called()
+
         # Verify resulting value
         self.assertFalse('thumbnail_file_abs_path' in updated_dataset_dict)
         self.assertTrue('thumbnail_file_to_add' in updated_dataset_dict)
