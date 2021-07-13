@@ -1,7 +1,8 @@
 import os
 import sys
-import time
 import logging
+from uuid import UUID
+
 import requests
 import argparse
 from pathlib import Path
@@ -20,13 +21,15 @@ from hubmap_commons import net_helper
 from hubmap_commons import file_helper as commons_file_helper
 
 # Should be deprecated/refactored but still in use
-from hubmap_commons.hubmap_const import HubmapConst 
+from hubmap_commons.hubmap_const import HubmapConst
 
 # Local modules
 from dataset import Dataset
 from specimen import Specimen
 from ingest_file_helper import IngestFileHelper
 from file_upload_helper import UploadFileHelper
+import app_manager
+from api.entity_api import EntityApi
 
 
 # Set logging fromat and level (default is warning)
@@ -711,7 +714,32 @@ def update_dataset_status(uuid, new_status):
     #     if conn != None:
     #         if conn.get_driver().closed() == False:
     #             conn.close()
-    
+
+
+@app.route('/datasets/<uuid>/verifytitleinfo', methods=['GET'])
+# @secured(groups="HuBMAP-read")
+def verify_dataset_title_info(uuid: str) -> object:
+    try:
+        UUID(uuid)
+    except ValueError:
+        abort(400, jsonify({'error': 'parameter uuid of dataset is required'}))
+    try:
+        result_array = app_manager.verify_dataset_title_info(uuid, request.headers)
+        return jsonify({'verification_errors': result_array}), 200
+
+    except HTTPException as hte:
+        return Response(hte.get_description(), hte.get_status_code())
+
+    except ValueError as ve:
+        logger.error(str(ve))
+        return jsonify({'error': str(ve)}), 400
+
+    except Exception as e:
+        logger.error(e, exc_info=True)
+        return Response("Unexpected error: " + str(e), 500)
+
+
+# Called by "data ingest pipeline" to update status of dataset...
 @app.route('/datasets/status', methods = ['PUT'])
 # @secured(groups="HuBMAP-read")
 def update_ingest_status():
@@ -719,25 +747,18 @@ def update_ingest_status():
         abort(400, jsonify( { 'error': 'no data found cannot process update' } ))
     
     try:
-        dataset = Dataset(app.config)
-        ds_request = request.json
-        logger.info("++++++++++Calling /datasets/status")
-        logger.info("++++++++++Request:" + json.dumps(ds_request))
-        # expecting something like this:
-        #{'dataset_id' : '287d61b60b806fdf54916e3b7795ad5a', 'status': '<', 'message': 'the process ran', 'metadata': [maybe some metadata stuff]}
-        updated_ds = dataset.get_dataset_ingest_update_record(ds_request)
+        entity_api = EntityApi(app_manager.nexus_token_from_request_headers(request.headers["AUTHORIZATION"]),
+                               commons_file_helper.removeTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']))
 
-        headers = {'Authorization': request.headers["AUTHORIZATION"], 'Content-Type': 'application/json', 'X-Hubmap-Application':'ingest-api'}
-        entity_uuid = ds_request['dataset_id']
-        update_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/' + entity_uuid
-        
-        response = requests.put(update_url, json = updated_ds, headers = headers, verify = False)
+        updated_ds = app_manager.update_ingest_status(app.config, request.json, request.headers, logger)
+        response = entity_api.put_entities(request.json['dataset_id'].strip(), updated_ds)
         if response.status_code != 200:
-            err_msg = f"Error while calling {update_url} status code:{response.status_code}  message:{response.text}"
+            err_msg = f"Error while calling EntityApi.put_entities() status code:{response.status_code}  message:{response.text}"
             logger.error(err_msg)
             logger.error("Sent: " + json.dumps(updated_ds))
             return Response(response.text, response.status_code)
-        return jsonify( { 'result' : response.json() } ), response.status_code
+
+        return jsonify({'result': response.json()}), response.status_code
     
     except HTTPException as hte:
         return Response(hte.get_description(), hte.get_status_code())
@@ -795,6 +816,7 @@ def submit_dataset(uuid):
         if not data_admin_group_uuid in user_info['hmgroupids']:
             return Response("user not authorized to submit data, must be a member of the HuBMAP-Data-Admin group", 403)
 
+        # TODO: Temp fix till we can get this in the "Validation Pipeline"... add the validation code here... If it returns any errors fail out of this. Return 412 Precondition Failed with the errors in the description.
         pipeline_url = commons_file_helper.ensureTrailingSlashURL(app.config['INGEST_PIPELINE_URL']) + 'request_ingest'
         r = requests.post(pipeline_url, json={"submission_id" : "{uuid}".format(uuid=uuid),
                                      "process" : app.config['INGEST_PIPELINE_DEFAULT_PROCESS'],
@@ -910,7 +932,7 @@ def validate_upload(upload_uuid):
     if not request.is_json:
         return Response("json request required", 400)
 
-    upload_changes = request.json()
+    upload_changes = request.json
     
     #get auth info to use in other calls
     #add the app specific header info
