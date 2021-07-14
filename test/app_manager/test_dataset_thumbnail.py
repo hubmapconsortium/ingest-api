@@ -18,50 +18,54 @@ class TestDatasetThumbnail(TestCase):
 
     @patch('dataset_helper_object.DatasetHelper.__init__', return_value=None)
     def setUp(self, mock_dataset_helper_object_init):
-        # pyfakefs will automatically find all real file functions and modules, 
-        # and stub these out with the fake file system functions and modules
-        self.setUpPyfakefs()
         # We are telling the DatasetHelper.__init__ to do nothing
         # but we got a real instance of DatasetHelper
         # Doing this to avoid the app.cfg being loaded in the fake file system
         self.dataset_helper = DatasetHelper()
         self.entity_api = EntityApi("", "")
 
-    @patch('dataset_helper_object.EntityApi.get_entities')
-    @patch('dataset_helper_object.EntityApi.put_entities')
-    def test_dataset_thumbnail_file_handling(self, mock_put_entities, mock_get_entities):
-        dataset_dict = {'thumbnail_file_abs_path': '/hive/hubmap/data/public/University of Florida TMC/e69fb303e035192a0ee38a34e4b25024/extra/thumbnail.jpg'}
-        dataset_uuid = 'e69fb303e035192a0ee38a34e4b25024'
-        temp_file_id = '40bc92d7eb4a77988f274f2e6862d42a'
-        file_upload_temp_dir = '/hive/hubmap/hm_uploads_tmp'
-        extra_headers = {
+        self.dataset_dict = {'thumbnail_file_abs_path': '/hive/hubmap/data/public/University of Florida TMC/e69fb303e035192a0ee38a34e4b25024/extra/thumbnail.jpg'}
+        self.dataset_uuid = 'e69fb303e035192a0ee38a34e4b25024'
+        self.temp_file_id = '40bc92d7eb4a77988f274f2e6862d42a'
+        self.file_upload_temp_dir = '/hive/hubmap/hm_uploads_tmp'
+        self.extra_headers = {
             'Content-Type': 'application/json', 
             'X-Hubmap-Application': 'ingest-api'
         }
 
+        # pyfakefs will automatically find all real file functions and modules, 
+        # and stub these out with the fake file system functions and modules
+        self.setUpPyfakefs()
+
+        # Create thumbnail file on the fake file system
+        orig_file_path = self.dataset_dict['thumbnail_file_abs_path']
+        self.fs.create_file(orig_file_path)
+
+
+    @patch('dataset_helper_object.EntityApi.get_entities')
+    @patch('dataset_helper_object.EntityApi.put_entities')
+    def test_dataset_with_existing_thumbnail_file(self, mock_put_entities, mock_get_entities):
         def resp1():
             r = requests.Response()
             r.status_code = 200
-            r.json = lambda: {'thumbnail_file': {'filename': 'thumbnail.jpg', 'file_uuid': 'fc95dd0faaf2cfc4786d89bf7b074485'}}
+            r.json = lambda: {'thumbnail_file': {'filename': 'thumbnail.jpg', 'file_uuid': 'fc95dd0faaf2cfc4786d89bf7b074485'}, 'title': "CX_19-002_lymph-node_R2", 'uuid': 'e69fb303e035192a0ee38a34e4b25024'}
             return r
         mock_get_entities.side_effect = [resp1()]
 
         def resp2():
             r = requests.Response()
             r.status_code = 200
-            r.json = lambda: {}
+            r.json = lambda: {'title': "CX_19-002_lymph-node_R2", 'uuid': 'e69fb303e035192a0ee38a34e4b25024'}
             return r
         mock_put_entities.side_effect = [resp2()]
 
-        # Create fake file and verify existence
-        orig_file_path = dataset_dict['thumbnail_file_abs_path']
-        self.assertFalse(os.path.exists(orig_file_path))
-        self.fs.create_file(orig_file_path)
-        self.assertTrue(os.path.exists(orig_file_path))
-
         updated_dataset_dict =\
-            self.dataset_helper.handle_thumbnail_file(dataset_dict, self.entity_api, dataset_uuid, extra_headers,
-                                                      temp_file_id, file_upload_temp_dir)
+            self.dataset_helper.handle_thumbnail_file(self.dataset_dict, 
+                                                      self.entity_api, 
+                                                      self.dataset_uuid, 
+                                                      self.extra_headers,
+                                                      self.temp_file_id, 
+                                                      self.file_upload_temp_dir)
 
         mock_get_entities.assert_called()
         mock_put_entities.assert_called()
@@ -69,9 +73,40 @@ class TestDatasetThumbnail(TestCase):
         # Verify resulting value
         self.assertFalse('thumbnail_file_abs_path' in updated_dataset_dict)
         self.assertTrue('thumbnail_file_to_add' in updated_dataset_dict)
-        self.assertEquals(updated_dataset_dict['thumbnail_file_to_add']['temp_file_id'], temp_file_id)
+        self.assertEquals(updated_dataset_dict['thumbnail_file_to_add']['temp_file_id'], self.temp_file_id)
 
-        temp_file_path = os.path.join(file_upload_temp_dir, temp_file_id, 'thumbnail.jpg')
+        temp_file_path = os.path.join(self.file_upload_temp_dir, self.temp_file_id, 'thumbnail.jpg')
+        self.assertTrue(os.path.exists(temp_file_path))
+
+
+    @patch('dataset_helper_object.EntityApi.get_entities')
+    @patch('dataset_helper_object.EntityApi.put_entities')
+    def test_dataset_without_existing_thumbnail_file(self, mock_put_entities, mock_get_entities):
+        def resp1():
+            r = requests.Response()
+            r.status_code = 200
+            r.json = lambda: {'title': "CX_19-002_lymph-node_R2", 'uuid': 'e69fb303e035192a0ee38a34e4b25024'}
+            return r
+        mock_get_entities.side_effect = [resp1()]
+
+        updated_dataset_dict =\
+            self.dataset_helper.handle_thumbnail_file(self.dataset_dict, 
+                                                      self.entity_api, 
+                                                      self.dataset_uuid, 
+                                                      self.extra_headers,
+                                                      self.temp_file_id, 
+                                                      self.file_upload_temp_dir)
+
+        mock_get_entities.assert_called()
+        # No existing thumbnail, thus no removal via PUT
+        mock_put_entities.assert_not_called()
+
+        # Verify resulting value
+        self.assertFalse('thumbnail_file_abs_path' in updated_dataset_dict)
+        self.assertTrue('thumbnail_file_to_add' in updated_dataset_dict)
+        self.assertEquals(updated_dataset_dict['thumbnail_file_to_add']['temp_file_id'], self.temp_file_id)
+
+        temp_file_path = os.path.join(self.file_upload_temp_dir, self.temp_file_id, 'thumbnail.jpg')
         self.assertTrue(os.path.exists(temp_file_path))
 
 
