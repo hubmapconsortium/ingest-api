@@ -10,7 +10,7 @@ from datacite_doi_helper_object import DataCiteDoiHelper
 # Running the tests... At the top level directory type 'nose2 --verbose --log-level debug`
 #
 # WARNING: ONLY methods beginning with "test_" will be considered tests by 'nose2' :-(
-class TestCreateDatasetDraftDoi(unittest.TestCase):
+class TestDataciteDoiHelperObject(unittest.TestCase):
 
     @patch("datacite_doi_helper_object.load_flask_instance_config")
     def setUp(self, mock_load_flask_instance_config):
@@ -22,7 +22,6 @@ class TestCreateDatasetDraftDoi(unittest.TestCase):
         self.dataset_uuid = '12345678-1234-5678-1234-567812345678'
         self.dataset = {'uuid': self.dataset_uuid, 'entity_type': 'Dataset', 'hubmap_id': 'Hubmap ID'}
         self.response_doi = {'data': {'id': 'HBM836.LNMM.773', 'type': 'dois', 'attributes': {'doi': '10.80478/HBM836.LNMM.773', 'creators': [{'name': 'HuBMAP'}], 'titles': [{'title': 'sciATAC-seq data from the heart of a 25-year-old white female'}], 'publisher': 'HuBMAP Consortium', 'publicationYear': 2021, 'types': {'resourceTypeGeneral': 'Dataset'}, 'url': 'https://entity-api.test.hubmapconsortium.org/doi/redirect/2d4d2f368c6f74cc3aa17177924003b8'}}}
-
 
     @patch('datacite_doi_helper_object.DataCiteApi.post_create_draft_doi')
     def test_create_dataset_draft_doi_happy_path(self, mock_post_create_draft_doi):
