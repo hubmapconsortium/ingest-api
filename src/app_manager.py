@@ -20,6 +20,10 @@ def update_ingest_status_and_title(app_config: object, request_json: object, req
     dataset_helper = DatasetHelper()
 
     updated_ds = dataset.get_dataset_ingest_update_record(request_json)
+
+    logger.debug('=======get_dataset_ingest_update_record=======')
+    logger.debug(updated_ds)
+
     response = entity_api.put_entities(dataset_uuid, updated_ds)
     if response.status_code != 200:
         err_msg = f"Error while updating the dataset status using EntityApi.put_entities() status code:{response.status_code}  message:{response.text}"
