@@ -1,13 +1,15 @@
+<<<<<<< HEAD
 import logging
 import requests
 # Don't confuse urllib (Python native library) with urllib3 (3rd-party library, requests also uses urllib3)
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
-from flask import json
+from flask import jsonify, json, Response
 
 # Local modules
 from dataset import Dataset
 from dataset_helper_object import DatasetHelper
 from api.entity_api import EntityApi
+from file_upload_helper import UploadFileHelper
 
 logger = logging.getLogger(__name__)
 
@@ -21,21 +23,60 @@ def nexus_token_from_request_headers(request_headers: object) -> str:
     return nexus_token
 
 
-def update_ingest_status(app_config: object, request_json: object, request_headers: object) -> object:
+def update_ingest_status_and_title(app_config: object, request_json: object, request_headers: object, entity_api: EntityApi) -> object:
+    dataset_uuid = request_json['dataset_id'].strip()
+    nexus_token = nexus_token_from_request_headers(request_headers)
     dataset = Dataset(app_config)
-    logger.info("++++++++++Calling /datasets/status")
-    logger.info("++++++++++Request:" + json.dumps(request_json))
-    # expecting something like this:
-    # {'dataset_id' : '287d61b60b806fdf54916e3b7795ad5a', 'status': '<', 'message': 'the process ran', 'metadata': [maybe some metadata stuff], 'thumbnail_image_abs_path': 'full path to the image'}}
+    dataset_helper = DatasetHelper()
+
+    # Headers for calling entity-api via PUT to update Dataset.status
+    extra_headers = {
+        'Content-Type': 'application/json', 
+        'X-Hubmap-Application': 'ingest-api'
+    }
+
+    # updated_ds is the dict returned by ingest-pipeline, not the complete entity information
     updated_ds = dataset.get_dataset_ingest_update_record(request_json)
 
-    if updated_ds['status'].upper() == 'QA':
-        # Update the title
-        nexus_token = nexus_token_from_request_headers(request_headers)
-        dataset_helper = DatasetHelper()
-        updated_ds['title'] = dataset_helper.generate_dataset_title(updated_ds, nexus_token)
+    # For thumbnail image handling if ingest-pipeline finds the file
+    # and sends the absolute file path back
+    if 'thumbnail_file_abs_path' in updated_ds:
+        try:
+            updated_ds = dataset_helper.handle_thumbnail_file(updated_ds, 
+                                                              entity_api, 
+                                                              dataset_uuid, 
+                                                              extra_headers, 
+                                                              file_upload_helper_instance, 
+                                                              file_upload_temp_dir)
+        except requests.exceptions.RequestException as e:
+            msg = e.response.text 
+            logger.exception(msg)
 
-    return updated_ds
+            # Due to the use of response.raise_for_status() in schema_manager.create_hubmap_ids()
+            # we can access the status codes from the exception
+            return Response(msg, e.response.status_code)
+
+    response = entity_api.put_entities(dataset_uuid, updated_ds, extra_headers)
+    if response.status_code != 200:
+        err_msg = f"Error while updating the dataset status using EntityApi.put_entities() status code:{response.status_code}  message:{response.text}"
+        logger.error(err_msg)
+        logger.error("Sent: " + json.dumps(updated_ds))
+        return Response(response.text, response.status_code)
+    
+    # The PUT call returns the latest dataset...
+    lastest_dataset = response.json()
+    
+    if lastest_dataset['status'].upper() == 'QA':
+        # Update only the title and save...
+        updated_title = {'title': dataset_helper.generate_dataset_title(lastest_dataset, nexus_token)}
+        response = entity_api.put_entities(dataset_uuid, updated_title)
+        if response.status_code != 200:
+            err_msg = f"Error while updating the dataset title using EntityApi.put_entities() status code:{response.status_code}  message:{response.text}"
+            logger.error(err_msg)
+            logger.error("Sent: " + json.dumps(updated_title))
+            return Response(response.text, response.status_code)
+
+    return jsonify({'result': response.json()}), response.status_code
 
 
 def verify_dataset_title_info(uuid: str, request_headers: object) -> object:
@@ -45,6 +86,6 @@ def verify_dataset_title_info(uuid: str, request_headers: object) -> object:
 
 
 # Added by Zhou for handling dataset thumbnail file
-def handle_thumbnail_file(dataset_dict: object, entity_api: EntityApi, dataset_uuid: str, extra_headers: object, temp_file_id: str, file_upload_temp_dir: str):
+def handle_thumbnail_file(dataset_dict: object, entity_api: EntityApi, dataset_uuid: str, extra_headers: object, file_upload_helper_instance: UploadFileHelper, file_upload_temp_dir: str):
     dataset_helper = DatasetHelper()
-    return dataset_helper.handle_thumbnail_file(dataset_dict, entity_api, dataset_uuid, extra_headers, temp_file_id, file_upload_temp_dir)
+    return dataset_helper.handle_thumbnail_file(dataset_dict, entity_api, dataset_uuid, extra_headers, file_upload_helper_instance, file_upload_temp_dir)

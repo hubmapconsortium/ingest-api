@@ -11,6 +11,7 @@ from pathlib import Path
 from shutil import copy2
 from api.entity_api import EntityApi
 from api.search_api import SearchApi
+from file_upload_helper import UploadFileHelper
 
 import pprint
 
@@ -264,14 +265,20 @@ class DatasetHelper:
             raise requests.exceptions.RequestException(response.text)
 
     # Added by Zhou for handling dataset thumbnail file
-    def handle_thumbnail_file(self, dataset_dict: object, entity_api: EntityApi, dataset_uuid: str,
-                              extra_headers: object, temp_file_id: str, file_upload_temp_dir: str):
+    # updated_ds is the dict returned by ingest-pipeline, not the complete entity information
+    def handle_thumbnail_file(self, updated_ds: object, entity_api: EntityApi, dataset_uuid: str,
+                              extra_headers: object, file_upload_helper_instance: UploadFileHelper, file_upload_temp_dir: str):
         # Delete the old thumbnail file from Neo4j before updating with new one
         # First retrieve the exisiting thumbnail file uuid
         response = entity_api.get_entities(dataset_uuid)
+        
+        # Invoke .raise_for_status(), an HTTPError will be raised with certain status codes
+        response.raise_for_status()
+
         if response.status_code != 200:
             err_msg = f"Failed to query the dataset of uuid {dataset_uuid} while calling EntityApi.get_entities() status code:{response.status_code}  message:{response.text}"
             logger.error(err_msg)
+            # Bubble up the error message
             raise requests.exceptions.RequestException(err_msg)
 
         entity_dict = response.json()
@@ -292,9 +299,14 @@ class DatasetHelper:
             }
 
             response = entity_api.put_entities(dataset_uuid, put_data, extra_headers)
+
+            # Invoke .raise_for_status(), an HTTPError will be raised with certain status codes
+            response.raise_for_status()
+
             if response.status_code != 200:
                 err_msg = f"Failed to remove the existing thumbnail file for dataset of uuid {dataset_uuid} while calling EntityApi.put_entities() status code:{response.status_code}  message:{response.text}"
                 logger.error(err_msg)
+                # Bubble up the error message
                 raise requests.exceptions.RequestException(err_msg)
 
             logger.debug(f"Successfully removed the existing thumbnail file of the dataset uuid {dataset_uuid}")
@@ -310,10 +322,12 @@ class DatasetHelper:
         logger.debug(entity_dict)
 
         # All steps on updaing with this new thumbnail
-        thumbnail_file_abs_path = dataset_dict['thumbnail_file_abs_path']
+        thumbnail_file_abs_path = updated_ds['thumbnail_file_abs_path']
 
         # Create the temp file dir under the temp uploads for the thumbnail
         # /hive/hubmap/hm_uploads_tmp/<temp_file_id> (for PROD)
+        # Generate a temp file id and copy the source file to the temp upload dir
+        temp_file_id = file_upload_helper_instance.get_temp_file_id()
         temp_file_dir = os.path.join(file_upload_temp_dir, temp_file_id)
 
         try:
@@ -334,18 +348,18 @@ class DatasetHelper:
         # the temp file as uploaded file and moves it to the generated file_uuid
         # dir under the upload dir: /hive/hubmap/hm_uploads/<file_uuid> (for PROD)
         # and also creates the symbolic link to the assets
-        dataset_dict['thumbnail_file_to_add'] = {
+        updated_ds['thumbnail_file_to_add'] = {
             'temp_file_id': temp_file_id
         }
 
         # Remove the 'thumbnail_file_abs_path' property
         # since it's not defined in entity-api schema
-        dataset_dict.pop('thumbnail_file_abs_path')
+        updated_ds.pop('thumbnail_file_abs_path')
 
-        logger.debug("=======resulting dataset_dict=======")
-        logger.debug(dataset_dict)
+        logger.debug("=======resulting updated_ds=======")
+        logger.debug(updated_ds)
 
-        return dataset_dict
+        return updated_ds
 
 # Running this python file as a script
 # python3 -m dataset_helper <user_token> <dataset_uuid>

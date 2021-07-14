@@ -26,6 +26,7 @@ from hubmap_commons.hubmap_const import HubmapConst
 
 # Local modules
 from dataset import Dataset
+from dataset_helper_object import DatasetHelper
 from specimen import Specimen
 from ingest_file_helper import IngestFileHelper
 from file_upload_helper import UploadFileHelper
@@ -784,48 +785,10 @@ def update_ingest_status():
         abort(400, jsonify( { 'error': 'no data found cannot process update' } ))
     
     try:
-        ds_request = request.json
-
-        entity_api = EntityApi(app_manager.nexus_token_from_request_headers(request.headers["AUTHORIZATION"]),
+        entity_api = EntityApi(app_manager.nexus_token_from_request_headers(request.headers),
                                commons_file_helper.removeTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']))
 
-        updated_ds = app_manager.update_ingest_status(app.config, request.json, request.headers)
-        
-        dataset_uuid = ds_request['dataset_id'].strip()
-
-        # Headers for calling entity-api
-        extra_headers = {
-            'Content-Type': 'application/json', 
-            'X-Hubmap-Application': 'ingest-api'
-        }
-
-        # For thumbnail image handling if ingest-pipeline finds the file
-        # and sends the absolute file path back
-        if 'thumbnail_file_abs_path' in updated_ds:
-            # Generate a temp file id and copy the source file to the temp upload dir
-            temp_file_id = file_upload_helper_instance.get_temp_file_id()
-
-            logger.debug(f"temp_file_id created for thumbnail file {updated_ds['thumbnail_file_abs_path']}: {temp_file_id}")
-
-            updated_ds = app_manager.handle_thumbnail_file(updated_ds,
-                                                           entity_api,
-                                                           dataset_uuid, 
-                                                           extra_headers, 
-                                                           temp_file_id, 
-                                                           str(app.config['FILE_UPLOAD_TEMP_DIR']))
-
-        logger.debug("==========updated_ds=========")
-        logger.debug(updated_ds)
-
-        # Update the dataset via entity-api via a PUT call
-        response = entity_api.put_entities(dataset_uuid, updated_ds, extra_headers)
-        if response.status_code != 200:
-            err_msg = f"Failed to update dataset while calling EntityApi.put_entities() status code:{response.status_code}  message:{response.text}"
-            logger.error(err_msg)
-            logger.error("Sent: " + json.dumps(updated_ds))
-            return Response(response.text, response.status_code)
-
-        return jsonify({'result': response.json()}), response.status_code
+        return app_manager.update_ingest_status_and_title(app.config, request.json, request.headers, entity_api)
     except HTTPException as hte:
         return Response(hte.get_description(), hte.get_status_code())
     except ValueError as ve:
