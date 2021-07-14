@@ -38,7 +38,7 @@ class Api(object):
         )
 
     def request_put(self, url_path, json, extra_headers = None) -> object:
-        return requests.get(
+        return requests.put(
             url=f"{self.api_url}{url_path}",
             json=json,
             headers=self.add_extra_headers(extra_headers),
