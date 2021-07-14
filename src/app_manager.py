@@ -2,7 +2,6 @@ from flask import jsonify, json, Response
 from dataset import Dataset
 from dataset_helper_object import DatasetHelper
 from api.entity_api import EntityApi
-import app_manager
 import logging
 
 logger = logging.getLogger(__name__)
@@ -16,7 +15,7 @@ def nexus_token_from_request_headers(request_headers: object) -> str:
 
 def update_ingest_status_and_title(app_config: object, request_json: object, request_headers: object, entity_api: EntityApi) -> object:
     dataset_uuid = request_json['dataset_id'].strip()
-    nexus_token = app_manager.nexus_token_from_request_headers(request_headers)
+    nexus_token = nexus_token_from_request_headers(request_headers)
     dataset = Dataset(app_config)
     dataset_helper = DatasetHelper()
 
