@@ -81,7 +81,7 @@ def update_ingest_status_title_thumbnail(app_config: object, request_json: objec
     if lastest_dataset['status'].upper() == 'QA':
         # Update only the title and save...
         updated_title = {'title': dataset_helper.generate_dataset_title(lastest_dataset, nexus_token)}
-        response = entity_api.put_entities(dataset_uuid, updated_title)
+        response = entity_api.put_entities(dataset_uuid, updated_title, extra_headers)
         if response.status_code != 200:
             err_msg = f"Error while updating the dataset title using EntityApi.put_entities() status code:{response.status_code}  message:{response.text}"
             logger.error(err_msg)
