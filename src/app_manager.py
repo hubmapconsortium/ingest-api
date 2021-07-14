@@ -30,6 +30,9 @@ def update_ingest_status_and_title(app_config: object, request_json: object, req
     # The PUT call returns the latest dataset...
     lastest_dataset = response.json()
     
+    logger.debug('=======lastest_dataset before title update=======')
+    logger.debug(lastest_dataset)
+
     if lastest_dataset['status'].upper() == 'QA':
         # Update only the title and save...
         updated_title = {'title': dataset_helper.generate_dataset_title(lastest_dataset, nexus_token)}
@@ -37,10 +40,15 @@ def update_ingest_status_and_title(app_config: object, request_json: object, req
         if response.status_code != 200:
             err_msg = f"Error while updating the dataset title using EntityApi.put_entities() status code:{response.status_code}  message:{response.text}"
             logger.error(err_msg)
-            logger.error("Sent: " + json.dumps(updated_ds))
+            logger.error("Sent: " + json.dumps(updated_title))
             return Response(response.text, response.status_code)
 
-    return jsonify({'result': response.json()}), response.status_code
+    final_dataset = response.json()
+
+    logger.debug('=======final_dataset after title update=======')
+    logger.debug(final_dataset)
+
+    return jsonify({'result': }), response.status_code
 
 
 def verify_dataset_title_info(uuid: str, request_headers: object) -> object:
