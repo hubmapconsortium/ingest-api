@@ -201,7 +201,7 @@ class DatasetHelper:
 
         for data_type in data_types:
             # The assaytype endpoint in search-api is public accessible, no token needed
-            response = search_api.get_assaytype(data_types)
+            response = search_api.get_assaytype(data_type)
             if response.status_code == 200:
                 assay_type_info = response.json()
                 # Add to the list
