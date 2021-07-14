@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import logging
 import requests
 # Don't confuse urllib (Python native library) with urllib3 (3rd-party library, requests also uses urllib3)
@@ -23,7 +22,9 @@ def nexus_token_from_request_headers(request_headers: object) -> str:
     return nexus_token
 
 
-def update_ingest_status_and_title(app_config: object, request_json: object, request_headers: object, entity_api: EntityApi) -> object:
+def update_ingest_status_title_thumbnail(app_config: object, request_json: object, 
+                                         request_headers: object, entity_api: EntityApi, 
+                                         file_upload_helper_instance: UploadFileHelper) -> object:
     dataset_uuid = request_json['dataset_id'].strip()
     nexus_token = nexus_token_from_request_headers(request_headers)
     dataset = Dataset(app_config)
@@ -42,11 +43,14 @@ def update_ingest_status_and_title(app_config: object, request_json: object, req
     # and sends the absolute file path back
     if 'thumbnail_file_abs_path' in updated_ds:
         try:
+            # Generate a temp file id and copy the source file to the temp upload dir
+            temp_file_id = file_upload_helper_instance.get_temp_file_id()
+
             updated_ds = dataset_helper.handle_thumbnail_file(updated_ds, 
                                                               entity_api, 
                                                               dataset_uuid, 
                                                               extra_headers, 
-                                                              file_upload_helper_instance, 
+                                                              temp_file_id, 
                                                               file_upload_temp_dir)
         except requests.exceptions.RequestException as e:
             msg = e.response.text 
@@ -84,8 +88,3 @@ def verify_dataset_title_info(uuid: str, request_headers: object) -> object:
     dataset_helper = DatasetHelper()
     return dataset_helper.verify_dataset_title_info(uuid, nexus_token)
 
-
-# Added by Zhou for handling dataset thumbnail file
-def handle_thumbnail_file(dataset_dict: object, entity_api: EntityApi, dataset_uuid: str, extra_headers: object, file_upload_helper_instance: UploadFileHelper, file_upload_temp_dir: str):
-    dataset_helper = DatasetHelper()
-    return dataset_helper.handle_thumbnail_file(dataset_dict, entity_api, dataset_uuid, extra_headers, file_upload_helper_instance, file_upload_temp_dir)

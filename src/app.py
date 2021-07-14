@@ -788,7 +788,11 @@ def update_ingest_status():
         entity_api = EntityApi(app_manager.nexus_token_from_request_headers(request.headers),
                                commons_file_helper.removeTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']))
 
-        return app_manager.update_ingest_status_and_title(app.config, request.json, request.headers, entity_api)
+        return app_manager.update_ingest_status_title_thumbnail(app.config, 
+                                                                request.json, 
+                                                                request.headers, 
+                                                                entity_api,
+                                                                file_upload_helper_instance)
     except HTTPException as hte:
         return Response(hte.get_description(), hte.get_status_code())
     except ValueError as ve:

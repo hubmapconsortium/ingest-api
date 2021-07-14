@@ -6,6 +6,7 @@ from unittest.mock import patch
 # Local modules
 from dataset_helper_object import DatasetHelper
 from api.entity_api import EntityApi
+from file_upload_helper import UploadFileHelper
 
 
 #

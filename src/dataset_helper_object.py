@@ -11,7 +11,6 @@ from pathlib import Path
 from shutil import copy2
 from api.entity_api import EntityApi
 from api.search_api import SearchApi
-from file_upload_helper import UploadFileHelper
 
 import pprint
 
@@ -267,7 +266,7 @@ class DatasetHelper:
     # Added by Zhou for handling dataset thumbnail file
     # updated_ds is the dict returned by ingest-pipeline, not the complete entity information
     def handle_thumbnail_file(self, updated_ds: object, entity_api: EntityApi, dataset_uuid: str,
-                              extra_headers: object, file_upload_helper_instance: UploadFileHelper, file_upload_temp_dir: str):
+                              extra_headers: object, temp_file_id: str, file_upload_temp_dir: str):
         # Delete the old thumbnail file from Neo4j before updating with new one
         # First retrieve the exisiting thumbnail file uuid
         response = entity_api.get_entities(dataset_uuid)
@@ -326,8 +325,6 @@ class DatasetHelper:
 
         # Create the temp file dir under the temp uploads for the thumbnail
         # /hive/hubmap/hm_uploads_tmp/<temp_file_id> (for PROD)
-        # Generate a temp file id and copy the source file to the temp upload dir
-        temp_file_id = file_upload_helper_instance.get_temp_file_id()
         temp_file_dir = os.path.join(file_upload_temp_dir, temp_file_id)
 
         try:

@@ -27,7 +27,11 @@ class TestAppManager(unittest.TestCase):
             'message': 'the process ran'
         }
 
-        result = app_manager.update_ingest_status_and_title(None, self.request_json, self.request_headers, MagicMock())
+        result = app_manager.update_ingest_status_title_thumbnail(None, 
+                                                                  self.request_json, 
+                                                                  self.request_headers, 
+                                                                  MagicMock(),
+                                                                  MagicMock())
 
         self.assertTrue('title' in result)
         self.assertEqual(result['title'], 'Dataset Title String')
@@ -41,7 +45,11 @@ class TestAppManager(unittest.TestCase):
             'message': 'the process ran'
         }
 
-        result = app_manager.update_ingest_status_and_title(None, self.request_json, self.request_headers, MagicMock())
+        result = app_manager.update_ingest_status_title_thumbnail(None, 
+                                                                  self.request_json, 
+                                                                  self.request_headers, 
+                                                                  MagicMock(),
+                                                                  MagicMock())
 
         self.assertFalse('title' in result)
         self.dataset_helper.generate_dataset_title.assert_not_called()
