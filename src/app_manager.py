@@ -48,7 +48,7 @@ def update_ingest_status_and_title(app_config: object, request_json: object, req
     logger.debug('=======final_dataset after title update=======')
     logger.debug(final_dataset)
 
-    return jsonify({'result': }), response.status_code
+    return jsonify({'result': final_dataset}), response.status_code
 
 
 def verify_dataset_title_info(uuid: str, request_headers: object) -> object:
