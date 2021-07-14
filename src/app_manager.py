@@ -1,6 +1,10 @@
-from flask import json
+from flask import jsonify, json, Response
 from dataset import Dataset
 from dataset_helper_object import DatasetHelper
+from api.entity_api import EntityApi
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def nexus_token_from_request_headers(request_headers: object) -> str:
@@ -9,21 +13,47 @@ def nexus_token_from_request_headers(request_headers: object) -> str:
     return nexus_token
 
 
-def update_ingest_status(app_config: object, request_json: object, request_headers: object, logger: object) -> object:
+def update_ingest_status_and_title(app_config: object, request_json: object, request_headers: object, entity_api: EntityApi) -> object:
+    dataset_uuid = request_json['dataset_id'].strip()
+    nexus_token = nexus_token_from_request_headers(request_headers)
     dataset = Dataset(app_config)
-    logger.info("++++++++++Calling /datasets/status")
-    logger.info("++++++++++Request:" + json.dumps(request_json))
-    # expecting something like this:
-    # {'dataset_id' : '287d61b60b806fdf54916e3b7795ad5a', 'status': '<', 'message': 'the process ran', 'metadata': [maybe some metadata stuff]}
+    dataset_helper = DatasetHelper()
+
+    # Note: 'dataset_id' is in request_json but not in the resulting updated_ds
     updated_ds = dataset.get_dataset_ingest_update_record(request_json)
 
-    if updated_ds['status'].upper() == 'QA':
-        # Update the title
-        nexus_token = nexus_token_from_request_headers(request_headers)
-        dataset_helper = DatasetHelper()
-        updated_ds['title'] = dataset_helper.generate_dataset_title(updated_ds, nexus_token)
+    logger.debug('=======get_dataset_ingest_update_record=======')
+    logger.debug(updated_ds)
 
-    return updated_ds
+    response = entity_api.put_entities(dataset_uuid, updated_ds)
+    if response.status_code != 200:
+        err_msg = f"Error while updating the dataset status using EntityApi.put_entities() status code:{response.status_code}  message:{response.text}"
+        logger.error(err_msg)
+        logger.error("Sent: " + json.dumps(updated_ds))
+        return Response(response.text, response.status_code)
+    
+    # The PUT call returns the latest dataset...
+    lastest_dataset = response.json()
+    
+    logger.debug('=======lastest_dataset before title update=======')
+    logger.debug(lastest_dataset)
+
+    if lastest_dataset['status'].upper() == 'QA':
+        # Update only the title and save...
+        updated_title = {'title': dataset_helper.generate_dataset_title(lastest_dataset, nexus_token)}
+        response = entity_api.put_entities(dataset_uuid, updated_title)
+        if response.status_code != 200:
+            err_msg = f"Error while updating the dataset title using EntityApi.put_entities() status code:{response.status_code}  message:{response.text}"
+            logger.error(err_msg)
+            logger.error("Sent: " + json.dumps(updated_title))
+            return Response(response.text, response.status_code)
+
+    final_dataset = response.json()
+
+    logger.debug('=======final_dataset after title update=======')
+    logger.debug(final_dataset)
+
+    return jsonify({'result': final_dataset}), response.status_code
 
 
 def verify_dataset_title_info(uuid: str, request_headers: object) -> object:

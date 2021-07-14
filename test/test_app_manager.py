@@ -1,9 +1,7 @@
 import unittest
 
-from app_manager import update_ingest_status, nexus_token_from_request_headers
+import app_manager
 from unittest.mock import Mock, MagicMock
-from dataset import Dataset
-from dataset_helper_object import DatasetHelper
 
 
 #
@@ -19,20 +17,8 @@ class TestAppManager(unittest.TestCase):
         self.token = 'token'
         self.request_headers = {'AUTHORIZATION': f'bearer   {self.token}'}
 
-        #
-        # self.dataset_helper = DatasetHelper
-        # self.dataset_helper.__init__ = MagicMock(name='__init__', return_value=None)
-        # self.dataset_helper.generate_dataset_title = \
-        #     MagicMock(spec='generate_dataset_title', return_value='Dataset Title String')
-        #
-        # self.request_json = []
-        #
-        # self.dataset = Dataset
-        # self.dataset.__init__ = MagicMock(name='__init__', return_value=None)
-        # self.dataset.get_dataset_ingest_update_record = MagicMock(name='get_dataset_ingest_update_record')
-
     def test_nexus_token_from_request_headers(self):
-        result = nexus_token_from_request_headers(self.request_headers)
+        result = app_manager.nexus_token_from_request_headers(self.request_headers)
 
         self.assertEqual(result, self.token)
 
@@ -43,7 +29,7 @@ class TestAppManager(unittest.TestCase):
             'message': 'the process ran'
         }
 
-        result = update_ingest_status(None, self.request_json, self.request_headers, self.logger)
+        result = app_manager.update_ingest_status_and_title(None, self.request_json, self.request_headers, MagicMock())
 
         self.assertTrue('title' in result)
         self.assertEqual(result['title'], 'Dataset Title String')
@@ -57,7 +43,7 @@ class TestAppManager(unittest.TestCase):
             'message': 'the process ran'
         }
 
-        result = update_ingest_status(None, self.request_json, self.request_headers, self.logger)
+        result = app_manager.update_ingest_status_and_title(None, self.request_json, self.request_headers, MagicMock())
 
         self.assertFalse('title' in result)
         self.dataset_helper.generate_dataset_title.assert_not_called()
