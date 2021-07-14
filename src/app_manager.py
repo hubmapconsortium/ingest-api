@@ -26,14 +26,10 @@ def update_ingest_status_and_title(app_config: object, request_json: object, req
         logger.error(err_msg)
         logger.error("Sent: " + json.dumps(updated_ds))
         return Response(response.text, response.status_code)
-    # Get the latest dataset...
-    response = entity_api.get_entities(dataset_uuid)
-    if response.status_code != 200:
-        err_msg = f"Error while retrieving the dataset using EntityApi.get_entities() status code:{response.status_code}  message:{response.text}"
-        logger.error(err_msg)
-        logger.error("Sent: " + json.dumps(updated_ds))
-        return Response(response.text, response.status_code)
+    
+    # The PUT call returns the latest dataset...
     lastest_dataset = response.json()
+    
     if lastest_dataset['status'].upper() == 'QA':
         # Update only the title and save...
         updated_title = {'title': dataset_helper.generate_dataset_title(lastest_dataset, nexus_token)}
