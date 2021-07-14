@@ -595,14 +595,13 @@ def publish_datastage(identifier):
                 entity_type = node['entity_type']
                 data_access_level = node['data_access_level']
                 status = node['status']
-                if entity_type == 'Sample':                        
-                    # If this sample is already set to public, no need to set again
-                    if not data_access_level == 'public':
+                if entity_type == 'Sample':
+                    if data_access_level != 'public':
                         uuids_for_public.append(uuid)
                 elif entity_type == 'Donor':
                     donor_uuid = uuid
                     donors_to_reindex.append(uuid)
-                    if not data_access_level == 'public':
+                    if data_access_level != 'public':
                         uuids_for_public.append(uuid)
                 elif entity_type == 'Dataset':
                     # Changed after the file system handling is completed...
