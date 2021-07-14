@@ -19,6 +19,7 @@ def update_ingest_status_and_title(app_config: object, request_json: object, req
     dataset = Dataset(app_config)
     dataset_helper = DatasetHelper()
 
+    # Note: 'dataset_id' is in request_json but not in the resulting updated_ds
     updated_ds = dataset.get_dataset_ingest_update_record(request_json)
 
     logger.debug('=======get_dataset_ingest_update_record=======')

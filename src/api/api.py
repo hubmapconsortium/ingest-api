@@ -26,7 +26,7 @@ class Api(object):
         )
 
     def request_put(self, url_path, json) -> object:
-        return requests.get(
+        return requests.put(
             url=f"{self.api_url}{url_path}",
             json=json,
             headers=self.headers,

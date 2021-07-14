@@ -203,6 +203,8 @@ class Dataset(object):
          
         if 'dataset_id' not in json_data:
             raise ValueError('cannot find dataset_id')
+
+        # Note: `dataset_id` is not being returned!
         update_record = {}
 
         if 'status' not in json_data:
