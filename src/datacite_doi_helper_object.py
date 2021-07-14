@@ -81,8 +81,7 @@ class DataCiteDoiHelper:
             else:
                 # Log the full stack trace, prepend a line with our message
                 logger.exception(f"Unable to create draft DOI for dataset {dataset['uuid']} via DataCite")
-                logger.debug("======status code from DataCite======")
-                logger.debug(response.status_code)
+                logger.debug(f'======Status code from DataCite {response.status_code} ======')
                 logger.debug("======response text from DataCite======")
                 logger.debug(response.text)
 
@@ -115,7 +114,6 @@ class DataCiteDoiHelper:
 
             if response.status_code == 200:
                 logger.info(f"======Published DOI for dataset {dataset['uuid']} via DataCite======")
-
                 doi_data = response.json()
                 logger.debug("======resulting json from DataCite======")
                 logger.debug(doi_data)
@@ -132,8 +130,7 @@ class DataCiteDoiHelper:
             else:
                 # Log the full stack trace, prepend a line with our message
                 logger.exception(f"Unable to publish DOI for dataset {dataset['uuid']} via DataCite")
-                logger.debug("======status code from DataCite======")
-                logger.debug(response.status_code)
+                logger.debug(f'======Status code from DataCite {response.status_code} ======')
                 logger.debug("======response text from DataCite======")
                 logger.debug(response.text)
 
@@ -166,6 +163,7 @@ class DataCiteDoiHelper:
         # Update the registered_doi, and doi_url properties after DOI made findable
         # Changing Dataset.status to "Published" and setting the published_* properties
         # are handled by another script
+        # See https://github.com/hubmapconsortium/ingest-ui/issues/354
         dataset_properties_to_update = {
             'registered_doi': registration_doi,
             'doi_url': doi_url
@@ -173,7 +171,7 @@ class DataCiteDoiHelper:
         response = entity_api.put_entities(dataset_uuid, dataset_properties_to_update)
 
         if response.status_code == 200:
-            logger.info("======The target entity has been updated with DOI info======")
+            logger.info("======The dataset {dataset['uuid']}  has been updated with DOI info======")
             updated_entity = response.json()
             logger.debug("======updated_entity======")
             logger.debug(updated_entity)
@@ -182,8 +180,7 @@ class DataCiteDoiHelper:
         else:
             # Log the full stack trace, prepend a line with our message
             logger.exception(f"Unable to update the DOI properties of dataset {dataset_uuid}")
-            logger.debug("======status code from entity-api======")
-            logger.debug(response.status_code)
+            logger.debug(f'======Status code from DataCite {response.status_code} ======')
             logger.debug("======response text from entity-api======")
             logger.debug(response.text)
 

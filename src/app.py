@@ -758,7 +758,7 @@ def update_ingest_status():
         abort(400, jsonify( { 'error': 'no data found cannot process update' } ))
     
     try:
-        entity_api = EntityApi(app_manager.nexus_token_from_request_headers(request.headers["AUTHORIZATION"]),
+        entity_api = EntityApi(app_manager.nexus_token_from_request_headers(request.headers),
                                commons_file_helper.removeTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']))
 
         updated_ds = app_manager.update_ingest_status(app.config, request.json, request.headers, logger)
