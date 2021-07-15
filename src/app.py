@@ -25,6 +25,7 @@ from hubmap_commons.hubmap_const import HubmapConst
 
 # Local modules
 from dataset import Dataset
+from dataset_helper_object import DatasetHelper
 from specimen import Specimen
 from ingest_file_helper import IngestFileHelper
 from file_upload_helper import UploadFileHelper
@@ -760,15 +761,7 @@ def update_ingest_status():
         entity_api = EntityApi(app_manager.nexus_token_from_request_headers(request.headers),
                                commons_file_helper.removeTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']))
 
-        updated_ds = app_manager.update_ingest_status(app.config, request.json, request.headers, logger)
-        response = entity_api.put_entities(request.json['dataset_id'].strip(), updated_ds)
-        if response.status_code != 200:
-            err_msg = f"Error while calling EntityApi.put_entities() status code:{response.status_code}  message:{response.text}"
-            logger.error(err_msg)
-            logger.error("Sent: " + json.dumps(updated_ds))
-            return Response(response.text, response.status_code)
-
-        return jsonify({'result': response.json()}), response.status_code
+        return app_manager.update_ingest_status_and_title(app.config, request.json, request.headers, entity_api)
     
     except HTTPException as hte:
         return Response(hte.get_description(), hte.get_status_code())
