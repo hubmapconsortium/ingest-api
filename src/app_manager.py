@@ -38,6 +38,7 @@ def update_ingest_status_title_thumbnail(app_config: object, request_json: objec
 
     # updated_ds is the dict returned by ingest-pipeline, not the complete entity information
     # Note: 'dataset_id' is in request_json but not in the resulting updated_ds
+    # request_json['thumbnail_file_abs_path'] is converted to updated_ds['ingest_metadata']['thumbnail_file_abs_path']
     updated_ds = dataset.get_dataset_ingest_update_record(request_json)
 
     logger.debug('=======get_dataset_ingest_update_record=======')
@@ -52,6 +53,7 @@ def update_ingest_status_title_thumbnail(app_config: object, request_json: objec
 
         # Generate a temp file id and copy the source file to the temp upload dir
         temp_file_id = file_upload_helper_instance.get_temp_file_id()
+        file_upload_temp_dir = file_upload_helper_instance.upload_temp_dir
 
         try:
             dataset_helper.handle_thumbnail_file(thumbnail_file_abs_path, 
