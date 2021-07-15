@@ -24,8 +24,8 @@ class TestDatasetThumbnail(TestCase):
         # Doing this to avoid the app.cfg being loaded in the fake file system
         self.dataset_helper = DatasetHelper()
         self.entity_api = EntityApi("", "")
-
-        self.dataset_dict = {'thumbnail_file_abs_path': '/hive/hubmap/data/public/University of Florida TMC/e69fb303e035192a0ee38a34e4b25024/extra/thumbnail.jpg'}
+        
+        self.thumbnail_file_abs_path = '/hive/hubmap/data/public/University of Florida TMC/e69fb303e035192a0ee38a34e4b25024/extra/thumbnail.jpg'
         self.dataset_uuid = 'e69fb303e035192a0ee38a34e4b25024'
         self.temp_file_id = '40bc92d7eb4a77988f274f2e6862d42a'
         self.file_upload_temp_dir = '/hive/hubmap/hm_uploads_tmp'
@@ -39,8 +39,7 @@ class TestDatasetThumbnail(TestCase):
         self.setUpPyfakefs()
 
         # Create thumbnail file on the fake file system
-        orig_file_path = self.dataset_dict['thumbnail_file_abs_path']
-        self.fs.create_file(orig_file_path)
+        self.fs.create_file(self.thumbnail_file_abs_path)
 
 
     @patch('dataset_helper_object.EntityApi.get_entities')
@@ -61,7 +60,7 @@ class TestDatasetThumbnail(TestCase):
         mock_put_entities.side_effect = [resp2()]
 
         updated_dataset_dict =\
-            self.dataset_helper.handle_thumbnail_file(self.dataset_dict, 
+            self.dataset_helper.handle_thumbnail_file(self.thumbnail_file_abs_path, 
                                                       self.entity_api, 
                                                       self.dataset_uuid, 
                                                       self.extra_headers,
@@ -70,11 +69,6 @@ class TestDatasetThumbnail(TestCase):
 
         mock_get_entities.assert_called()
         mock_put_entities.assert_called()
-
-        # Verify resulting value
-        self.assertFalse('thumbnail_file_abs_path' in updated_dataset_dict)
-        self.assertTrue('thumbnail_file_to_add' in updated_dataset_dict)
-        self.assertEquals(updated_dataset_dict['thumbnail_file_to_add']['temp_file_id'], self.temp_file_id)
 
         temp_file_path = os.path.join(self.file_upload_temp_dir, self.temp_file_id, 'thumbnail.jpg')
         self.assertTrue(os.path.exists(temp_file_path))
@@ -91,7 +85,7 @@ class TestDatasetThumbnail(TestCase):
         mock_get_entities.side_effect = [resp1()]
 
         updated_dataset_dict =\
-            self.dataset_helper.handle_thumbnail_file(self.dataset_dict, 
+            self.dataset_helper.handle_thumbnail_file(self.thumbnail_file_abs_path, 
                                                       self.entity_api, 
                                                       self.dataset_uuid, 
                                                       self.extra_headers,
@@ -101,11 +95,6 @@ class TestDatasetThumbnail(TestCase):
         mock_get_entities.assert_called()
         # No existing thumbnail, thus no removal via PUT
         mock_put_entities.assert_not_called()
-
-        # Verify resulting value
-        self.assertFalse('thumbnail_file_abs_path' in updated_dataset_dict)
-        self.assertTrue('thumbnail_file_to_add' in updated_dataset_dict)
-        self.assertEquals(updated_dataset_dict['thumbnail_file_to_add']['temp_file_id'], self.temp_file_id)
 
         temp_file_path = os.path.join(self.file_upload_temp_dir, self.temp_file_id, 'thumbnail.jpg')
         self.assertTrue(os.path.exists(temp_file_path))

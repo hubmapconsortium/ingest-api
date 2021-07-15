@@ -44,22 +44,33 @@ def update_ingest_status_title_thumbnail(app_config: object, request_json: objec
     logger.debug(updated_ds)
 
     # For thumbnail image handling if ingest-pipeline finds the file
-    # and sends the absolute file path back
-    if 'thumbnail_file_abs_path' in updated_ds:
-        logger.debug("======='thumbnail_file_abs_path' exists=======")
+    # and sends the absolute file path back 
+    try:
+        thumbnail_file_abs_path = updated_ds['ingest_metadata']['thumbnail_file_abs_path']
+
+        logger.debug("=======thumbnail_file_abs_path found=======")
+
+        # Generate a temp file id and copy the source file to the temp upload dir
+        temp_file_id = file_upload_helper_instance.get_temp_file_id()
+
         try:
-            # Generate a temp file id and copy the source file to the temp upload dir
-            temp_file_id = file_upload_helper_instance.get_temp_file_id()
+            dataset_helper.handle_thumbnail_file(thumbnail_file_abs_path, 
+                                                 entity_api, 
+                                                 dataset_uuid, 
+                                                 extra_headers, 
+                                                 temp_file_id, 
+                                                 file_upload_temp_dir)
 
-            updated_ds = dataset_helper.handle_thumbnail_file(updated_ds, 
-                                                              entity_api, 
-                                                              dataset_uuid, 
-                                                              extra_headers, 
-                                                              temp_file_id, 
-                                                              file_upload_temp_dir)
-
-            logger.debug('=======handle_thumbnail_file resulting updated_ds=======')
-            logger.debug(updated_ds)
+            # Now add the thumbnail file by making a call to entity-api
+            # And the entity-api will execute the trigger method defined
+            # for the property 'thumbnail_file_to_add' to commit this
+            # file via ingest-api's /file-commit endpoint, which treats
+            # the temp file as uploaded file and moves it to the generated file_uuid
+            # dir under the upload dir: /hive/hubmap/hm_uploads/<file_uuid> (for PROD)
+            # and also creates the symbolic link to the assets
+            updated_ds['thumbnail_file_to_add'] = {
+                'temp_file_id': temp_file_id
+            }
         except requests.exceptions.RequestException as e:
             msg = e.response.text 
             logger.exception(msg)
@@ -67,6 +78,9 @@ def update_ingest_status_title_thumbnail(app_config: object, request_json: objec
             # Due to the use of response.raise_for_status() in schema_manager.create_hubmap_ids()
             # we can access the status codes from the exception
             return Response(msg, e.response.status_code)
+    except KeyError:
+        logger.info(f"No existing thumbnail file found for the dataset uuid {dataset_uuid}")
+        pass
 
     response = entity_api.put_entities(dataset_uuid, updated_ds, extra_headers)
 
