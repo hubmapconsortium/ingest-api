@@ -46,6 +46,7 @@ def update_ingest_status_title_thumbnail(app_config: object, request_json: objec
     # For thumbnail image handling if ingest-pipeline finds the file
     # and sends the absolute file path back
     if 'thumbnail_file_abs_path' in updated_ds:
+        logger.debug("======='thumbnail_file_abs_path' exists=======")
         try:
             # Generate a temp file id and copy the source file to the temp upload dir
             temp_file_id = file_upload_helper_instance.get_temp_file_id()
@@ -56,6 +57,9 @@ def update_ingest_status_title_thumbnail(app_config: object, request_json: objec
                                                               extra_headers, 
                                                               temp_file_id, 
                                                               file_upload_temp_dir)
+
+            logger.debug('=======handle_thumbnail_file resulting updated_ds=======')
+            logger.debug(updated_ds)
         except requests.exceptions.RequestException as e:
             msg = e.response.text 
             logger.exception(msg)

@@ -200,12 +200,6 @@ class Dataset(object):
            "checksum":"file-checksum"
          }]
          """
-         
-        update_record = {}
-
-        # For thumbnail image handling
-        if 'thumbnail_file_abs_path' in json_data:
-            update_record['thumbnail_file_abs_path'] = json_data['thumbnail_file_abs_path']
 
         if 'dataset_id' not in json_data:
             raise ValueError('cannot find dataset_id')
@@ -296,7 +290,11 @@ class Dataset(object):
             update_record['antibodies'] = antibodies
         if not contributors is None:
             update_record['contributors'] = contributors
-            
+        
+        # For thumbnail image handling
+        if 'thumbnail_file_abs_path' in json_data:
+            update_record['thumbnail_file_abs_path'] = json_data['thumbnail_file_abs_path']
+              
         return update_record
 
     @classmethod
