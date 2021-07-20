@@ -47,8 +47,7 @@ class DataCiteDoiHelper:
         self.datacite_api_url = config['DATACITE_API_URL']
         self.entity_api_url = config['ENTITY_WEBSERVICE_URL']
 
-    # NOTE: ORCID provides a persistent digital identifier (an ORCID iD) that you own and control, and that distinguishes you from every other researcher.
-    # TODO: Not sure where to put dataset_contributor['orcid_id']
+    # See: https://support.datacite.org/docs/schema-40#table-3-expanded-datacite-mandatory-properties
     def build_common_dataset_contributors_list(self, dataset_contributor: object) -> object:
         contributor = {}
         if 'name' in dataset_contributor:
@@ -57,6 +56,13 @@ class DataCiteDoiHelper:
             contributor['givenName'] = f"{dataset_contributor['first_name']} {dataset_contributor['middle_name_or_initial']}"
         if 'last_name' in dataset_contributor:
             contributor['familyName'] = dataset_contributor['last_name']
+        # NOTE: ORCID provides a persistent digital identifier (an ORCID iD) that you own and control, and that distinguishes you from every other researcher.
+        if 'orcid_id' in dataset_contributor:
+            contributor['nameIdentifiers'] = [
+                {'nameIdentifierScheme': 'ORCID',
+                 'nameIdentifier': dataset_contributor['orcid_id'],
+                 'schemeURI': 'http://orchid.org' }
+            ]
 
         return contributor
 
