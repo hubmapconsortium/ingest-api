@@ -6,6 +6,7 @@ from uuid import UUID
 import requests
 import argparse
 from pathlib import Path
+from shutil import rmtree # Used by file removal
 from flask import Flask, g, jsonify, abort, request, session, redirect, json, Response
 from flask_cors import CORS
 from globus_sdk import AccessTokenAuthorizer, AuthClient, ConfidentialAppAuthClient
@@ -348,7 +349,14 @@ def upload_file():
         internal_server_error(msg)
 
 """
-File commit triggered by entity-api trigger method for Donor and Sample
+File commit triggered by entity-api trigger method for Donor/Sample/Dataset
+
+Donor: image files
+Sample: image files and metadata files
+Dataset: only the one thumbnail file
+
+This call also creates the symbolic from the file uuid dir under uploads
+to the assets dir so the uploaded files can be exposed via gateway's file assets service
 
 Returns
 -------
@@ -368,18 +376,40 @@ def commit_file():
     user_token = json_data_dict['user_token']
 
     file_uuid_info = file_upload_helper_instance.commit_file(temp_file_id, entity_uuid, user_token)
+    filename = file_uuid_info['filename']
+    file_uuid = file_uuid_info['file_uuid']
+
+    # Link the uploaded file uuid dir to assets
+    # /hive/hubmap/hm_uploads/<entity_uuid>/<file_uuid>/<filename> (for PROD)
+    source_file_path = os.path.join(str(app.config['FILE_UPLOAD_DIR']), entity_uuid, file_uuid, filename)
+    # /hive/hubmap/assets/<file_uuid>/<filename> (for PROD)
+    target_file_dir = os.path.join(str(app.config['HUBMAP_WEBSERVICE_FILEPATH']), file_uuid)
+    target_file_path = os.path.join(target_file_dir, filename)
+
+    # Create the file_uuid directory under assets dir
+    # and a symbolic link to the uploaded file
+    try:
+        Path(target_file_dir).mkdir(parents=True, exist_ok=True)
+        os.symlink(source_file_path, target_file_path)
+    except Exception as e:
+        logger.exception(f"Failed to create the symbolic link from {uploaded_dir} to {assets_symbolic_dir}")
 
     # Send back the updated file_uuid_info
     return jsonify(file_uuid_info)
 
 """
-File removal triggered by entity-api trigger method for Donor and Sample
+File removal triggered by entity-api trigger method for Donor/Sample/Dataset
 during entity update
+
+Donor: image files
+Sample: image files and metadata files
+Dataset: only the one thumbnail file
 
 Returns
 -------
 json
     A JSON list containing the updated files info
+    It's an empty list for Dataset since there's only one thumbnail file
 """
 @app.route('/file-remove', methods=['POST'])
 def remove_file():
@@ -395,12 +425,19 @@ def remove_file():
 
     # `upload_dir` is already normalized with trailing slash
     entity_upload_dir = file_upload_helper_instance.upload_dir + entity_uuid + os.sep
-    
+
     # Remove the physical files from the file system
     for file_uuid in file_uuids:
         # Get back the updated files_info_list
         files_info_list = file_upload_helper_instance.remove_file(entity_upload_dir, file_uuid, files_info_list)
     
+        # Also remove the dir contains the symlink to the uploaded file under assets
+        # /hive/hubmap/assets/<file_uuid> (for PROD)
+        assets_file_dir = os.path.join(str(app.config['HUBMAP_WEBSERVICE_FILEPATH']), file_uuid)
+        # Delete an entire directory tree
+        # path must point to a directory (but not a symbolic link to a directory)
+        rmtree(assets_file_dir)
+
     # Send back the updated files_info_list
     return jsonify(files_info_list)
 
@@ -751,18 +788,19 @@ def update_ingest_status():
         entity_api = EntityApi(app_manager.nexus_token_from_request_headers(request.headers),
                                commons_file_helper.removeTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']))
 
-        return app_manager.update_ingest_status_and_title(app.config, request.json, request.headers, entity_api)
-    
+        return app_manager.update_ingest_status_title_thumbnail(app.config, 
+                                                                request.json, 
+                                                                request.headers, 
+                                                                entity_api,
+                                                                file_upload_helper_instance)
     except HTTPException as hte:
         return Response(hte.get_description(), hte.get_status_code())
-    
     except ValueError as ve:
         logger.error(str(ve))
         return jsonify({'error' : str(ve)}), 400
-        
     except Exception as e:
         logger.error(e, exc_info=True)
-        return Response("Unexpected error while saving dataset: " + str(e), 500)        
+        return Response("Unexpected error while saving dataset: " + str(e), 500)     
 
 
 @app.route('/datasets/<uuid>/submit', methods = ['PUT'])
