@@ -7,7 +7,6 @@ from flask import Flask
 from api.datacite_api import DataCiteApi
 from api.entity_api import EntityApi
 from dataset_helper_object import DatasetHelper
-import json
 import ast
 
 requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
@@ -48,9 +47,9 @@ class DataCiteDoiHelper:
         self.datacite_api_url = config['DATACITE_API_URL']
         self.entity_api_url = config['ENTITY_WEBSERVICE_URL']
 
-    def safely_convert_string(self, dataset_contributors_string: str) -> object:
+    def safely_convert_string(self, string_to_convert: str) -> object:
         try:
-            return ast.literal_eval(dataset_contributors_string)
+            return ast.literal_eval(string_to_convert)
         except (SyntaxError, ValueError, TypeError) as e:
             msg = f"Failed to convert the source string with ast.literal_eval(); msg: {repr(e)}"
             logger.exception(msg)
