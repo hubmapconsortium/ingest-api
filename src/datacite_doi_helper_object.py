@@ -7,6 +7,7 @@ from flask import Flask
 from api.datacite_api import DataCiteApi
 from api.entity_api import EntityApi
 from dataset_helper_object import DatasetHelper
+import json
 
 requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
 
@@ -46,6 +47,53 @@ class DataCiteDoiHelper:
         self.datacite_api_url = config['DATACITE_API_URL']
         self.entity_api_url = config['ENTITY_WEBSERVICE_URL']
 
+    # NOTE: ORCID provides a persistent digital identifier (an ORCID iD) that you own and control, and that distinguishes you from every other researcher.
+    # TODO: Not sure where to put dataset_contributor['orcid_id']
+    def build_common_dataset_contributors_list(self, dataset_contributor: object) -> object:
+        contributor = {}
+        if 'name' in dataset_contributor:
+            contributor['name'] = dataset_contributor['name']
+        if 'first_name' in dataset_contributor:
+            contributor['givenName'] = f"{dataset_contributor['first_name']} {dataset_contributor['middle_name_or_initial']}"
+        if 'last_name' in dataset_contributor:
+            contributor['familyName'] = dataset_contributor['last_name']
+
+        return contributor
+
+    # See: https://support.datacite.org/reference/dois-2#post_dois
+    def build_doi_contributors(self, dataset: object) -> object:
+        dataset_contributors_string = dataset['contributors']
+        # TODO: This is a hack that should be fixed....
+        dataset_contributors = json.loads(dataset_contributors_string.replace("'", '"'))
+        contributors = []
+        for dataset_contributor in dataset_contributors:
+            # a 'contributor' is defined by ['is_contact'] == 'TRUE'...
+            if 'is_contact' in dataset_contributor and dataset_contributor['is_contact'].upper() == 'TRUE':
+                contributor = self.build_common_dataset_contributors_list(dataset_contributor)
+                if 'affiliation' in dataset_contributor:
+                    contributor['affiliation'] = dataset_contributor['affiliation']
+                if len(contributor) != 0:
+                    contributors.append(contributor)
+        if len(contributors) == 0:
+            return None
+        return contributors
+
+    # See: https://support.datacite.org/reference/dois-2#post_dois
+    def build_doi_creators(self, dataset: object) -> object:
+        dataset_contributors_string = dataset['contributors']
+        # TODO: This is a hack that should be fixed....
+        dataset_contributors = json.loads(dataset_contributors_string.replace("'", '"'))
+        creators = []
+        for dataset_contributor in dataset_contributors:
+            creator = self.build_common_dataset_contributors_list(dataset_contributor)
+            if 'affiliation' in dataset_contributor:
+                creator['affiliation'] = [{'name': dataset_contributor['affiliation']}]
+            if len(creator) != 0:
+                creators.append(creator)
+        if len(creators) == 0:
+            return None
+        return creators
+
     """
     Register a draft DOI with DataCite
 
@@ -70,7 +118,9 @@ class DataCiteDoiHelper:
         if ('entity_type' in dataset) and (dataset['entity_type'] == 'Dataset'):
             datacite_api = DataCiteApi(self.datacite_repository_id, self.datacite_repository_password,
                                        self.datacite_hubmap_prefix, self.datacite_api_url, self.entity_api_url)
-            response = datacite_api.post_create_draft_doi(dataset['hubmap_id'], dataset['uuid'], dataset_title)
+            response = datacite_api.add_new_doi(dataset['hubmap_id'], dataset['uuid'], dataset_title,
+                                                self.build_doi_contributors(dataset),
+                                                self.build_doi_creators(dataset))
 
             if response.status_code == 201:
                 logger.info(f"======Created draft DOI for dataset {dataset['uuid']} via DataCite======")
@@ -109,8 +159,7 @@ class DataCiteDoiHelper:
         if ('entity_type' in dataset) and (dataset['entity_type'] == 'Dataset'):
             datacite_api = DataCiteApi(self.datacite_repository_id, self.datacite_repository_password,
                                        self.datacite_hubmap_prefix, self.datacite_api_url, self.entity_api_url)
-            response = datacite_api.put_publish_doi(dataset['hubmap_id'])
-            entity_api = EntityApi(user_token, self.entity_api_url)
+            response = datacite_api.update_doi_event_publish(dataset['hubmap_id'])
 
             if response.status_code == 200:
                 logger.info(f"======Published DOI for dataset {dataset['uuid']} via DataCite======")
@@ -122,6 +171,7 @@ class DataCiteDoiHelper:
                 try:
                     doi_url = doi_data['data']['attributes']['url']
                     registration_doi = datacite_api.registration_doi(dataset['hubmap_id'])
+                    entity_api = EntityApi(user_token, self.entity_api_url)
                     updated_dataset = self.update_dataset_after_doi_published(dataset['uuid'], registration_doi, doi_url, entity_api)
 
                     return updated_dataset
