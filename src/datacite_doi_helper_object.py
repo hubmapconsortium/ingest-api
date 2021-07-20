@@ -8,6 +8,7 @@ from api.datacite_api import DataCiteApi
 from api.entity_api import EntityApi
 from dataset_helper_object import DatasetHelper
 import json
+import ast
 
 requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
 
@@ -47,6 +48,14 @@ class DataCiteDoiHelper:
         self.datacite_api_url = config['DATACITE_API_URL']
         self.entity_api_url = config['ENTITY_WEBSERVICE_URL']
 
+    def safely_convert_string(self, dataset_contributors_string: str) -> object:
+        try:
+            return ast.literal_eval(dataset_contributors_string)
+        except (SyntaxError, ValueError, TypeError) as e:
+            msg = f"Failed to convert the source string with ast.literal_eval(); msg: {repr(e)}"
+            logger.exception(msg)
+        return {}
+
     # See: https://support.datacite.org/docs/schema-40#table-3-expanded-datacite-mandatory-properties
     def build_common_dataset_contributors_list(self, dataset_contributor: object) -> object:
         contributor = {}
@@ -68,9 +77,7 @@ class DataCiteDoiHelper:
 
     # See: https://support.datacite.org/reference/dois-2#post_dois
     def build_doi_contributors(self, dataset: object) -> object:
-        dataset_contributors_string = dataset['contributors']
-        # TODO: This is a hack that should be fixed....
-        dataset_contributors = json.loads(dataset_contributors_string.replace("'", '"'))
+        dataset_contributors = self.safely_convert_string(dataset['contributors'])
         contributors = []
         for dataset_contributor in dataset_contributors:
             # a 'contributor' is defined by ['is_contact'] == 'TRUE'...
@@ -86,9 +93,7 @@ class DataCiteDoiHelper:
 
     # See: https://support.datacite.org/reference/dois-2#post_dois
     def build_doi_creators(self, dataset: object) -> object:
-        dataset_contributors_string = dataset['contributors']
-        # TODO: This is a hack that should be fixed....
-        dataset_contributors = json.loads(dataset_contributors_string.replace("'", '"'))
+        dataset_contributors = self.safely_convert_string(dataset['contributors'])
         creators = []
         for dataset_contributor in dataset_contributors:
             creator = self.build_common_dataset_contributors_list(dataset_contributor)
