@@ -4,6 +4,7 @@ from unittest.mock import patch
 import requests
 
 from datacite_doi_helper_object import DataCiteDoiHelper
+from api.datacite_api import DataCiteApi
 from datetime import datetime
 
 
@@ -112,6 +113,33 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
         # Here there can be an array of affiliations...
         self.assertEquals(creators[0]['affiliation'][0]['name'], 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA')
 
+    @patch('api.datacite_api.requests.put')
+    def test_update_doi_event_publish_happy_path(self, mock_put):
+        def resp1():
+            r = requests.Response()
+            r.status_code = 201
+            r.json = lambda: None
+            return r
+
+        mock_put.side_effect = [resp1()]
+
+        datacite_api = DataCiteApi('PSC.HUBMAP', 'xyzzy', self.hubmap_prefix, self.datacite_api_url, 'eUrl')
+        datacite_api.update_doi_event_publish(self.hubmap_id)
+
+        mock_put.assert_called()
+        args = mock_put.call_args_list[-1]
+
+        url_from_put_call = args[1]['url']
+        self.assertEqual(url_from_put_call, f"{self.datacite_api_url}/{self.hubmap_prefix}/{self.hubmap_id}")
+
+        headers_from_put_call = args[1]['headers']
+        self.assertTrue('Content-Type' in headers_from_put_call)
+        self.assertEqual(headers_from_put_call['Content-Type'], 'application/vnd.api+json')
+
+        json_from_put_call = args[1]['json']
+        self.assertEqual(json_from_put_call['data']['id'], f"{self.hubmap_prefix}/{self.hubmap_id}")
+        self.assertEqual(json_from_put_call['data']['type'], 'dois')
+        self.assertEqual(json_from_put_call['data']['attributes']['event'], 'publish')
 
     @patch('datacite_doi_helper_object.DataCiteApi.add_new_doi')
     def test_create_dataset_draft_doi_fail(self, mock_add_new_doi):
