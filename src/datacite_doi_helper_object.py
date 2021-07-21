@@ -43,13 +43,16 @@ class DataCiteDoiHelper:
         self.datacite_api_url = config['DATACITE_API_URL']
         self.entity_api_url = config['ENTITY_WEBSERVICE_URL']
 
-    def safely_convert_string(self, string_to_convert: str) -> object:
+    def safely_convert_string(self, to_convert: object) -> list:
+        # from entity-api this will be a json array, from Neo4j it will be a string...
+        if not isinstance(to_convert, str):
+            return to_convert
         try:
-            return ast.literal_eval(string_to_convert)
+            return ast.literal_eval(to_convert)
         except (SyntaxError, ValueError, TypeError) as e:
             msg = f"Failed to convert the source string with ast.literal_eval(); msg: {repr(e)}"
             logger.exception(msg)
-        return {}
+            raise ValueError(msg)
 
     # See: https://support.datacite.org/docs/schema-40#table-3-expanded-datacite-mandatory-properties
     def build_common_dataset_contributors_list(self, dataset_contributor: object) -> object:
