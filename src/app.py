@@ -25,13 +25,12 @@ from hubmap_commons import file_helper as commons_file_helper
 from hubmap_commons.hubmap_const import HubmapConst
 
 # Local modules
-from dataset import Dataset
-from dataset_helper_object import DatasetHelper
 from specimen import Specimen
 from ingest_file_helper import IngestFileHelper
 from file_upload_helper import UploadFileHelper
 import app_manager
 from api.entity_api import EntityApi
+from dataset import Dataset
 from dataset_helper_object import DatasetHelper
 from datacite_doi_helper_object import DataCiteDoiHelper
 
