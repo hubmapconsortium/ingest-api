@@ -1,7 +1,6 @@
 import unittest
 from unittest.mock import patch
 
-import requests
 from api.entity_api import EntityApi
 
 
