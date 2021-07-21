@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 import requests
 from api.api import Api
+import pprint
 
 
 #
@@ -14,10 +15,26 @@ class TestApi(unittest.TestCase):
     def setUp(self):
         self.bearer_token = 'NiceToken'
         self.api_url = 'http://www.kollar.com/'
+        self.url_path = "happy_goat.html"
         self.api = Api(self.bearer_token, self.api_url)
 
+    def test_add_extra_headers_with(self):
+        headers = self.api.add_extra_headers({'extra_header': 'value'})
+
+        self.assertTrue('Authorization' in headers)
+        self.assertEqual(headers['Authorization'], f"Bearer {self.bearer_token}")
+        self.assertTrue('extra_header' in headers)
+        self.assertEqual(headers['extra_header'], 'value')
+
+    def test_add_extra_headers_without(self):
+        headers = self.api.add_extra_headers(None)
+
+        self.assertTrue('Authorization' in headers)
+        self.assertEqual(headers['Authorization'], f"Bearer {self.bearer_token}")
+        self.assertFalse('extra_header' in headers)
+
     @patch('api.api.requests.get')
-    def test_create_dataset_draft_doi_happy_path(self, mock_get):
+    def test_request_get(self, mock_get):
         def resp1():
             r = requests.Response()
             r.status_code = 201
@@ -25,20 +42,100 @@ class TestApi(unittest.TestCase):
             return r
         mock_get.side_effect = [resp1()]
 
-        path = "happy_goat.html"
-        self.api.request_get(path)
+        self.api.request_get(self.url_path)
 
         mock_get.assert_called()
         args = mock_get.call_args_list[-1]
 
-        url_from_get_call = args[1]['url']
-        self.assertEqual(url_from_get_call, f"{self.api_url}{path}")
+        self.assertTrue('url' in args[1])
+        self.assertEqual(args[1]['url'], f"{self.api_url}{self.url_path}")
 
-        headers_from_get_call = args[1]['headers']
-        self.assertTrue('Authorization' in headers_from_get_call)
-        self.assertEqual(headers_from_get_call['Authorization'], f"Bearer {self.bearer_token}")
-        self.assertTrue('Content-Type' in headers_from_get_call)
-        self.assertEqual(headers_from_get_call['Content-Type'], 'application/json')
+        self.assertTrue('headers' in args[1])
+        headers_from_call = args[1]['headers']
+        self.assertTrue('Authorization' in headers_from_call)
+        self.assertEqual(headers_from_call['Authorization'], f"Bearer {self.bearer_token}")
 
-        headers_from_get_call = args[1]['verify']
-        self.assertFalse(headers_from_get_call)
+        self.assertTrue('verify' in args[1])
+        self.assertFalse(args[1]['verify'])
+
+    @patch('api.api.requests.get')
+    def test_request_get_public(self, mock_get):
+        def resp1():
+            r = requests.Response()
+            r.status_code = 201
+            r.json = lambda: None
+            return r
+        mock_get.side_effect = [resp1()]
+
+        self.api.request_get_public(self.url_path)
+
+        mock_get.assert_called()
+        args = mock_get.call_args_list[-1]
+
+        self.assertTrue('url' in args[1])
+        self.assertEqual(args[1]['url'], f"{self.api_url}{self.url_path}")
+
+        self.assertFalse('headers' in args[1])
+
+        self.assertTrue('verify' in args[1])
+        self.assertFalse(args[1]['verify'])
+
+    @patch('api.api.requests.post')
+    def test_request_post(self, mock_post):
+        def resp1():
+            r = requests.Response()
+            r.status_code = 201
+            r.json = lambda: None
+            return r
+        mock_post.side_effect = [resp1()]
+
+        json = {'test': 'value'}
+
+        self.api.request_post(self.url_path, json)
+
+        mock_post.assert_called()
+        args = mock_post.call_args_list[-1]
+
+        self.assertTrue('url' in args[1])
+        self.assertEqual(args[1]['url'], f"{self.api_url}{self.url_path}")
+
+        self.assertTrue('json' in args[1])
+        self.assertEqual(args[1]['json'], json)
+
+        self.assertTrue('headers' in args[1])
+        headers_from_call = args[1]['headers']
+        self.assertTrue('Authorization' in headers_from_call)
+        self.assertEqual(headers_from_call['Authorization'], f"Bearer {self.bearer_token}")
+
+        self.assertTrue('verify' in args[1])
+        self.assertFalse(args[1]['verify'])
+
+    @patch('api.api.requests.put')
+    def test_request_put(self, mock_put):
+        def resp1():
+            r = requests.Response()
+            r.status_code = 201
+            r.json = lambda: None
+            return r
+        mock_put.side_effect = [resp1()]
+
+        json = {'test': 'value'}
+
+        self.api.request_put(self.url_path, json)
+
+        mock_put.assert_called()
+        args = mock_put.call_args_list[-1]
+
+        self.assertTrue('url' in args[1])
+        self.assertEqual(args[1]['url'], f"{self.api_url}{self.url_path}")
+
+        self.assertTrue('json' in args[1])
+        self.assertEqual(args[1]['json'], json)
+
+        self.assertTrue('headers' in args[1])
+        headers_from_call = args[1]['headers']
+        self.assertTrue('Authorization' in headers_from_call)
+        self.assertEqual(headers_from_call['Authorization'], f"Bearer {self.bearer_token}")
+
+        self.assertTrue('verify' in args[1])
+        self.assertFalse(args[1]['verify'])

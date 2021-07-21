@@ -1,8 +1,9 @@
 import unittest
-
+import requests
 import app_manager
-from unittest.mock import Mock, MagicMock
-
+from unittest.mock import MagicMock
+from dataset import Dataset
+from dataset_helper_object import DatasetHelper
 
 #
 # Running the tests... At the top level directory type 'nose2 --verbose --log-level debug`
@@ -11,9 +12,6 @@ from unittest.mock import Mock, MagicMock
 class TestAppManager(unittest.TestCase):
 
     def setUp(self):
-        self.logger = Mock()
-        self.logger.info = MagicMock(name='info', return_value=None)
-
         self.token = 'token'
         self.request_headers = {'AUTHORIZATION': f'bearer   {self.token}'}
 
@@ -29,7 +27,11 @@ class TestAppManager(unittest.TestCase):
             'message': 'the process ran'
         }
 
-        result = app_manager.update_ingest_status_and_title(None, self.request_json, self.request_headers, MagicMock())
+        result = app_manager.update_ingest_status_title_thumbnail(None, 
+                                                                  self.request_json, 
+                                                                  self.request_headers, 
+                                                                  MagicMock(),
+                                                                  MagicMock())
 
         self.assertTrue('title' in result)
         self.assertEqual(result['title'], 'Dataset Title String')
@@ -43,12 +45,15 @@ class TestAppManager(unittest.TestCase):
             'message': 'the process ran'
         }
 
-        result = app_manager.update_ingest_status_and_title(None, self.request_json, self.request_headers, MagicMock())
+        result = app_manager.update_ingest_status_title_thumbnail(None, 
+                                                                  self.request_json, 
+                                                                  self.request_headers, 
+                                                                  MagicMock(),
+                                                                  MagicMock())
 
         self.assertFalse('title' in result)
         self.dataset_helper.generate_dataset_title.assert_not_called()
         self.assertEqual(len(result), 3)
-
 
 if __name__ == "__main__":
     import nose2
