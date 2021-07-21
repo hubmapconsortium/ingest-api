@@ -3,7 +3,6 @@ from unittest.mock import patch
 
 import requests
 from api.api import Api
-import pprint
 
 
 #
@@ -70,7 +69,7 @@ class TestApi(unittest.TestCase):
         self.api.request_get_public(self.url_path)
 
         mock_get.assert_called()
-        args = mock_get.call_args_list[-1]
+        args = mock_get.call_args_list[0]
 
         self.assertTrue('url' in args[1])
         self.assertEqual(args[1]['url'], f"{self.api_url}{self.url_path}")
