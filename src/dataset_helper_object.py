@@ -12,8 +12,6 @@ from shutil import copy2
 from api.entity_api import EntityApi
 from api.search_api import SearchApi
 
-import pprint
-
 # Suppress InsecureRequestWarning warning when requesting status on https with ssl cert verify disabled
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
@@ -39,10 +37,6 @@ def load_flask_instance_config():
                 instance_path=os.path.join(os.path.abspath(os.path.dirname(__file__)), 'instance'),
                 instance_relative_config=True)
     app.config.from_pyfile('app.cfg')
-
-    # Remove trailing slash / from URL base to avoid "//" caused by config with trailing slash
-    app.config['ENTITY_WEBSERVICE_URL'] = app.config['ENTITY_WEBSERVICE_URL'].strip('/')
-    app.config['SEARCH_WEBSERVICE_URL'] = app.config['SEARCH_WEBSERVICE_URL'].strip('/')
 
     return app.config
 
@@ -70,6 +64,8 @@ class DatasetHelper:
 
     # This is the business logic for an endpoint that is used by the ingress-validation-tests package to validate
     # the data needed to produce a title from data found in a dataset using generate_dataset_title below.
+    # Note: This is a list of dataset_uuid(s) that actually pass validation requirements:
+    # ead5cc01250b4f9ea73dd91503c313a5
     def verify_dataset_title_info(self, dataset_uuid: str, user_token: str) -> array:
         entity_api = EntityApi(user_token, _entity_api_url)
         search_api = SearchApi(user_token, _search_api_url)
@@ -197,7 +193,7 @@ class DatasetHelper:
 
         return generated_title
 
-    def get_assay_type_description(self, search_api: object, data_types: array) -> str:
+    def get_assay_type_description(self, search_api: SearchApi, data_types: array) -> str:
         assay_types = []
         assay_type_desc = ''
 
@@ -245,7 +241,7 @@ class DatasetHelper:
         organ_types_dict = self.get_organ_types_dict()
         return organ_types_dict[organ_code]['description'].lower()
 
-    def get_dataset_ancestors(self, entity_api: object, dataset_uuid: str) -> object:
+    def get_dataset_ancestors(self, entity_api: EntityApi, dataset_uuid: str) -> object:
         response = entity_api.get_ancestors(dataset_uuid)
         if response.status_code == 200:
             return response.json()
@@ -332,12 +328,32 @@ class DatasetHelper:
         copy2(thumbnail_file_abs_path, temp_file_dir)
 
 
+def _generate_test_title(dataset_helper: object, entity_api: EntityApi) -> str:
+    response = entity_api.get_entities(dataset_uuid)
+    if response.status_code == 200:
+        dataset = response.json()
+
+        try:
+            return dataset_helper.generate_dataset_title(dataset, user_token)
+        except requests.exceptions.RequestException as e:
+            logger.exception(e)
+    else:
+        msg = f"Unable to query the target dataset with uuid: {dataset_uuid}"
+
+        # Log the full stack trace, prepend a line with our message
+        logger.exception(msg)
+
+        logger.debug("======status code from entity-api======")
+        logger.debug(response.status_code)
+
+        logger.debug("======response text from entity-api======")
+        logger.debug(response.text)
+
 # Running this python file as a script
 # python3 -m dataset_helper <user_token> <dataset_uuid>
 if __name__ == "__main__":
     try:
         user_token = sys.argv[1]
-
         try:
             dataset_uuid = sys.argv[2]
         except IndexError as e:
@@ -352,24 +368,7 @@ if __name__ == "__main__":
         sys.exit(msg)
 
     dataset_helper = DatasetHelper()
-
     entity_api = EntityApi(user_token, _entity_api_url)
-    response = entity_api.get_entities(dataset_uuid)
-    if response.status_code == 200:
-        dataset = response.json()
 
-        try:
-            title = dataset_helper.generate_dataset_title(dataset, user_token)
-        except requests.exceptions.RequestException as e:
-            logger.exception(e)
-    else:
-        msg = f"Unable to query the target dataset with uuid: {dataset_uuid}"
-
-        # Log the full stack trace, prepend a line with our message
-        logger.exception(msg)
-
-        logger.debug("======status code from entity-api======")
-        logger.debug(response.status_code)
-
-        logger.debug("======response text from entity-api======")
-        logger.debug(response.text)
+    title = _generate_test_title(dataset_helper, entity_api)
+    print(f'TITLE: {title}')

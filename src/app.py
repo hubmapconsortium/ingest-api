@@ -25,13 +25,14 @@ from hubmap_commons import file_helper as commons_file_helper
 from hubmap_commons.hubmap_const import HubmapConst
 
 # Local modules
-from dataset import Dataset
-from dataset_helper_object import DatasetHelper
 from specimen import Specimen
 from ingest_file_helper import IngestFileHelper
 from file_upload_helper import UploadFileHelper
 import app_manager
 from api.entity_api import EntityApi
+from dataset import Dataset
+from dataset_helper_object import DatasetHelper
+from datacite_doi_helper_object import DataCiteDoiHelper
 
 
 # Set logging fromat and level (default is warning)
@@ -580,7 +581,7 @@ def create_datastage():
         logger.error(e, exc_info=True)
         return Response("Unexpected error while creating a dataset: " + str(e) + "  Check the logs", 500)        
 
-
+# Needs to be triggered in the workflow or manually?!
 @app.route('/datasets/<identifier>/publish', methods = ['PUT'])
 @secured(groups="HuBMAP-read")
 def publish_datastage(identifier):
@@ -592,24 +593,23 @@ def publish_datastage(identifier):
         if isinstance(user_info, Response):
             return user_info
         
-        if not 'hmgroupids' in user_info:
+        if 'hmgroupids' not in user_info:
             return Response("User has no valid group information to authorize publication.", 403)
-        if not data_admin_group_uuid in user_info['hmgroupids']:
+        if data_admin_group_uuid not in user_info['hmgroupids']:
             return Response("User must be a member of the HuBMAP Data Admin group to publish data.", 403)
 
-
-        if identifier == None or len(identifier) == 0:
+        if identifier is None or len(identifier) == 0:
             abort(400, jsonify( { 'error': 'identifier parameter is required to publish a dataset' } ))
 
-
         r = requests.get(app.config['UUID_WEBSERVICE_URL'] + "/" + identifier, headers={'Authorization': request.headers["AUTHORIZATION"]})
-        if r.ok == False:
+        if r.ok is False:
             raise ValueError("Cannot find specimen with identifier: " + identifier)
         dataset_uuid = json.loads(r.text)['hm_uuid']
 
         suspend_indexing_and_acls = string_helper.isYes(request.args.get('suspend-indexing-and-acls'))
         no_indexing_and_acls = False
-        if suspend_indexing_and_acls: no_indexing_and_acls = True 
+        if suspend_indexing_and_acls:
+            no_indexing_and_acls = True
 
         donors_to_reindex = []
         with neo4j_driver_instance.session() as neo_session:
@@ -632,17 +632,26 @@ def publish_datastage(identifier):
                 entity_type = node['entity_type']
                 data_access_level = node['data_access_level']
                 status = node['status']
-                if entity_type == 'Sample':                        
-                    #if this sample is already set to public, no need to set again
-                    if not data_access_level == 'public':
+                if entity_type == 'Sample':
+                    if data_access_level != 'public':
                         uuids_for_public.append(uuid)
                 elif entity_type == 'Donor':
                     donor_uuid = uuid
                     donors_to_reindex.append(uuid)
-                    if not data_access_level == 'public':
+                    if data_access_level != 'public':
                         uuids_for_public.append(uuid)
                 elif entity_type == 'Dataset':
-                    if not status == 'Published':
+                    # Changed after the file system handling is completed...
+                    if status == 'Published':
+                        nexus_token = app_manager.nexus_token_from_request_headers(request.headers)
+                        dataset_helper = DatasetHelper()
+                        dataset_title = dataset_helper.generate_dataset_title(node, nexus_token)
+
+                        datacite_doi_helper = DataCiteDoiHelper()
+                        datacite_doi_helper.create_dataset_draft_doi(node, dataset_title)
+                        # This will make the draft DQI created above 'findable'....
+                        datacite_doi_helper.move_doi_state_from_draft_to_findable(node, nexus_token)
+                    else:
                         return Response(f"{dataset_uuid} has an ancestor dataset that has not been Published. Will not Publish. Ancestor dataset is: {uuid}", 400)
             
             if donor_uuid is None:
