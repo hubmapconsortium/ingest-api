@@ -80,6 +80,63 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
 
         self.assertRaises(ValueError, self.datacite_doi_helper.safely_convert_string, str)
 
+    def test_build_doi_contributors_is_contact(self):
+        str = "[{'affiliation': 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA', 'first_name': 'Jeffrey', 'is_contact': 'TRUE', 'last_name': 'Spraggins', 'middle_name_or_initial': 'M.', 'name': 'Jeffrey M. Spraggins', 'orcid_id': '0000-0001-9198-5498', 'version': '1'}]"
+
+        result = self.datacite_doi_helper.build_doi_contributors({'contributors': str})
+
+        self.assertTrue(isinstance(result, list))
+        self.assertEqual(len(result), 1)
+        contributor = result[0]
+        # See: https://support.datacite.org/docs/schema-40#table-3-expanded-datacite-mandatory-properties
+        self.assertTrue(isinstance(contributor, dict))
+        self.assertEqual(len(contributor.keys()), 6)
+
+        self.assertEqual(contributor['name'], 'Jeffrey M. Spraggins')
+        self.assertEqual(contributor['givenName'], 'Jeffrey M.')
+        self.assertEqual(contributor['familyName'], 'Spraggins')
+        self.assertEqual(contributor['contributorType'], 'Contact person')
+        self.assertEqual(contributor['affiliation'], 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA')
+
+        contributorIdentifiers = contributor['nameIdentifiers']
+        self.assertTrue(isinstance(contributorIdentifiers, list))
+        self.assertEqual(len(contributorIdentifiers), 1)
+        self.assertTrue(isinstance(contributorIdentifiers[0], dict))
+        self.assertEqual(len(contributorIdentifiers[0].keys()), 3)
+        self.assertEqual(contributorIdentifiers[0]['nameIdentifierScheme'], 'ORCID')
+        self.assertEqual(contributorIdentifiers[0]['nameIdentifier'], '0000-0001-9198-5498')
+        self.assertEqual(contributorIdentifiers[0]['schemeURI'], 'http://orchid.org')
+
+    def test_build_doi_contributors_is_not_contact(self):
+        str = "[{'affiliation': 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA', 'first_name': 'David', 'is_contact': 'FALSE', 'last_name': 'Anderson', 'middle_name_or_initial': 'M.G.', 'name': 'David M.G. Anderson', 'orcid_id': '0000-0002-3866-0923', 'version': '1'}]"
+
+        result = self.datacite_doi_helper.build_doi_contributors({'contributors': str})
+
+        self.assertEqual(result, None)
+
+    def test_build_doi_creators(self):
+        str = "[{'affiliation': 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA', 'first_name': 'Jamie', 'is_contact': 'FALSE', 'last_name': 'Allen', 'middle_name_or_initial': 'L.', 'name': 'Jamie L. Allen', 'orcid_id': '0000-0002-4739-2166', 'version': '1'}]"
+
+        result = self.datacite_doi_helper.build_doi_creators({'contributors': str})
+
+        self.assertTrue(isinstance(result, list))
+        self.assertEqual(len(result), 1)
+        self.assertTrue(isinstance(result[0], dict))
+        self.assertEqual(len(result[0].keys()), 5)
+        self.assertEqual(result[0]['familyName'], 'Allen')
+        self.assertEqual(result[0]['givenName'], 'Jamie L.')
+        self.assertEqual(result[0]['name'], 'Jamie L. Allen')
+        # Here there can be an array of affiliations...
+        self.assertEqual(result[0]['affiliation'][0]['name'],
+                         'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA')
+        creators0NmeIdentifiers0 = result[0]['nameIdentifiers']
+        self.assertEqual(len(creators0NmeIdentifiers0), 1)
+        self.assertTrue(isinstance(creators0NmeIdentifiers0[0], dict))
+        self.assertEqual(len(creators0NmeIdentifiers0[0].keys()), 3)
+        self.assertEqual(creators0NmeIdentifiers0[0]['nameIdentifierScheme'], 'ORCID')
+        self.assertEqual(creators0NmeIdentifiers0[0]['nameIdentifier'], '0000-0002-4739-2166')
+        self.assertEqual(creators0NmeIdentifiers0[0]['schemeURI'], 'http://orchid.org')
+
     @patch('api.datacite_api.requests.post')
     def test_create_dataset_draft_doi_happy_path(self, mock_post):
         def resp1():
@@ -107,41 +164,29 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
         #pprint.pprint(json_from_post_call)
         self.assertEqual(json_from_post_call['data']['id'], self.hubmap_id)
         self.assertEqual(json_from_post_call['data']['type'], 'dois')
-        self.assertEqual(json_from_post_call['data']['attributes']['event'], 'register')
-        self.assertEqual(json_from_post_call['data']['attributes']['doi'], f"{self.hubmap_prefix}/{self.hubmap_id}")
-        self.assertEqual(json_from_post_call['data']['attributes']['titles'][0]['title'], dataset_title_string)
-        self.assertEqual(json_from_post_call['data']['attributes']['publisher'], 'HuBMAP Consortium')
-        self.assertEqual(json_from_post_call['data']['attributes']['publicationYear'], int(datetime.now().year))
-        self.assertEqual(json_from_post_call['data']['attributes']['types']['resourceTypeGeneral'], 'Dataset')
-        self.assertEqual(json_from_post_call['data']['attributes']['url'], f"{self.entity_webservice_url}/doi/redirect/{self.uuid}")
+
+        data_attributes = json_from_post_call['data']['attributes']
+        self.assertTrue(isinstance(data_attributes, dict))
+        self.assertEqual(len(data_attributes.keys()), 9)
+        self.assertEqual(data_attributes['event'], 'register')
+        self.assertEqual(data_attributes['doi'], f"{self.hubmap_prefix}/{self.hubmap_id}")
+        self.assertEqual(data_attributes['titles'][0]['title'], dataset_title_string)
+        self.assertEqual(data_attributes['publisher'], 'HuBMAP Consortium')
+        self.assertEqual(data_attributes['publicationYear'], int(datetime.now().year))
+        self.assertEqual(data_attributes['types']['resourceTypeGeneral'], 'Dataset')
+        self.assertEqual(data_attributes['url'], f"{self.entity_webservice_url}/doi/redirect/{self.uuid}")
 
         contributors = json_from_post_call['data']['attributes']['contributors']
         self.assertTrue(isinstance(contributors, list))
         self.assertEqual(len(contributors), 1)
-        # See: https://support.datacite.org/docs/schema-40#table-3-expanded-datacite-mandatory-properties
-        self.assertEqual(contributors[0]['familyName'], 'Spraggins')
-        self.assertEqual(contributors[0]['givenName'], 'Jeffrey M.')
-        self.assertEqual(contributors[0]['name'], 'Jeffrey M. Spraggins')
-        self.assertEqual(contributors[0]['affiliation'], 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA')
-        contributors0NmeIdentifiers0 = contributors[0]['nameIdentifiers']
-        self.assertEqual(len(contributors0NmeIdentifiers0), 1)
-        self.assertEqual(contributors0NmeIdentifiers0[0]['nameIdentifierScheme'], 'ORCID')
-        self.assertEqual(contributors0NmeIdentifiers0[0]['nameIdentifier'], '0000-0001-9198-5498')
-        self.assertEqual(contributors0NmeIdentifiers0[0]['schemeURI'], 'http://orchid.org')
+        for contributor in contributors:
+            self.assertTrue(isinstance(contributor, dict))
 
         creators = json_from_post_call['data']['attributes']['creators']
         self.assertTrue(isinstance(creators, list))
         self.assertEqual(len(creators), 17)
-        self.assertEqual(creators[0]['familyName'], 'Allen')
-        self.assertEqual(creators[0]['givenName'], 'Jamie L.')
-        self.assertEqual(creators[0]['name'], 'Jamie L. Allen')
-        # Here there can be an array of affiliations...
-        self.assertEqual(creators[0]['affiliation'][0]['name'], 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA')
-        creators0NmeIdentifiers0 = creators[0]['nameIdentifiers']
-        self.assertEqual(len(creators0NmeIdentifiers0), 1)
-        self.assertEqual(creators0NmeIdentifiers0[0]['nameIdentifierScheme'], 'ORCID')
-        self.assertEqual(creators0NmeIdentifiers0[0]['nameIdentifier'], '0000-0002-4739-2166')
-        self.assertEqual(creators0NmeIdentifiers0[0]['schemeURI'], 'http://orchid.org')
+        for creator in creators:
+            self.assertTrue(isinstance(creator, dict))
 
     @patch('api.datacite_api.requests.put')
     def test_update_doi_event_publish_happy_path(self, mock_put):

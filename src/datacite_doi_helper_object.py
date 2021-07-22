@@ -81,6 +81,7 @@ class DataCiteDoiHelper:
             # a 'contributor' is defined by ['is_contact'] == 'TRUE'...
             if 'is_contact' in dataset_contributor and dataset_contributor['is_contact'].upper() == 'TRUE':
                 contributor = self.build_common_dataset_contributors_list(dataset_contributor)
+                contributor['contributorType'] = 'Contact person'
                 if 'affiliation' in dataset_contributor:
                     contributor['affiliation'] = dataset_contributor['affiliation']
                 if len(contributor) != 0:
