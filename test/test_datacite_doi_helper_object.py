@@ -117,31 +117,31 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
 
         contributors = json_from_post_call['data']['attributes']['contributors']
         self.assertTrue(isinstance(contributors, list))
-        self.assertEquals(len(contributors), 1)
+        self.assertEqual(len(contributors), 1)
         # See: https://support.datacite.org/docs/schema-40#table-3-expanded-datacite-mandatory-properties
-        self.assertEquals(contributors[0]['familyName'], 'Spraggins')
-        self.assertEquals(contributors[0]['givenName'], 'Jeffrey M.')
-        self.assertEquals(contributors[0]['name'], 'Jeffrey M. Spraggins')
-        self.assertEquals(contributors[0]['affiliation'], 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA')
+        self.assertEqual(contributors[0]['familyName'], 'Spraggins')
+        self.assertEqual(contributors[0]['givenName'], 'Jeffrey M.')
+        self.assertEqual(contributors[0]['name'], 'Jeffrey M. Spraggins')
+        self.assertEqual(contributors[0]['affiliation'], 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA')
         contributors0NmeIdentifiers0 = contributors[0]['nameIdentifiers']
-        self.assertEquals(len(contributors0NmeIdentifiers0), 1)
-        self.assertEquals(contributors0NmeIdentifiers0[0]['nameIdentifierScheme'], 'ORCID')
-        self.assertEquals(contributors0NmeIdentifiers0[0]['nameIdentifier'], '0000-0001-9198-5498')
-        self.assertEquals(contributors0NmeIdentifiers0[0]['schemeURI'], 'http://orchid.org')
+        self.assertEqual(len(contributors0NmeIdentifiers0), 1)
+        self.assertEqual(contributors0NmeIdentifiers0[0]['nameIdentifierScheme'], 'ORCID')
+        self.assertEqual(contributors0NmeIdentifiers0[0]['nameIdentifier'], '0000-0001-9198-5498')
+        self.assertEqual(contributors0NmeIdentifiers0[0]['schemeURI'], 'http://orchid.org')
 
         creators = json_from_post_call['data']['attributes']['creators']
         self.assertTrue(isinstance(creators, list))
-        self.assertEquals(len(creators), 17)
-        self.assertEquals(creators[0]['familyName'], 'Allen')
-        self.assertEquals(creators[0]['givenName'], 'Jamie L.')
-        self.assertEquals(creators[0]['name'], 'Jamie L. Allen')
+        self.assertEqual(len(creators), 17)
+        self.assertEqual(creators[0]['familyName'], 'Allen')
+        self.assertEqual(creators[0]['givenName'], 'Jamie L.')
+        self.assertEqual(creators[0]['name'], 'Jamie L. Allen')
         # Here there can be an array of affiliations...
-        self.assertEquals(creators[0]['affiliation'][0]['name'], 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA')
+        self.assertEqual(creators[0]['affiliation'][0]['name'], 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA')
         creators0NmeIdentifiers0 = creators[0]['nameIdentifiers']
-        self.assertEquals(len(creators0NmeIdentifiers0), 1)
-        self.assertEquals(creators0NmeIdentifiers0[0]['nameIdentifierScheme'], 'ORCID')
-        self.assertEquals(creators0NmeIdentifiers0[0]['nameIdentifier'], '0000-0002-4739-2166')
-        self.assertEquals(creators0NmeIdentifiers0[0]['schemeURI'], 'http://orchid.org')
+        self.assertEqual(len(creators0NmeIdentifiers0), 1)
+        self.assertEqual(creators0NmeIdentifiers0[0]['nameIdentifierScheme'], 'ORCID')
+        self.assertEqual(creators0NmeIdentifiers0[0]['nameIdentifier'], '0000-0002-4739-2166')
+        self.assertEqual(creators0NmeIdentifiers0[0]['schemeURI'], 'http://orchid.org')
 
     @patch('api.datacite_api.requests.put')
     def test_update_doi_event_publish_happy_path(self, mock_put):
