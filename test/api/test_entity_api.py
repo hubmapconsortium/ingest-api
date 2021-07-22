@@ -20,26 +20,52 @@ class TestEntityApi(unittest.TestCase):
 
         dataset_uuid = "nice_uuid"
         json = {'test': 'value'}
-        self.entity_api.post_entities(dataset_uuid, json, None)
+        self.entity_api.post_entities(dataset_uuid, json)
 
         mock_request_post.assert_called()
         args = mock_request_post.call_args_list[0]
         self.assertEqual(args[0][0], f"/entities/{dataset_uuid}")
         self.assertEqual(args[0][1], json)
-        self.assertEqual(args[0][2], None)
+        self.assertEqual(args[0][2], {})
+
+    @patch('api.api.Api.request_post')
+    def test_post_entities_extra_headers(self, mock_request_post):
+
+        dataset_uuid = "nice_uuid"
+        json = {'test': 'value'}
+        self.entity_api.post_entities(dataset_uuid, json, {'extra_header': 'fun Header'})
+
+        mock_request_post.assert_called()
+        args = mock_request_post.call_args_list[0]
+        self.assertEqual(args[0][0], f"/entities/{dataset_uuid}")
+        self.assertEqual(args[0][1], json)
+        self.assertEqual(args[0][2], {'extra_header': 'fun Header'})
 
     @patch('api.api.Api.request_put')
     def test_put_entities(self, mock_request_put):
 
         dataset_uuid = "nice_uuid"
         json = {'test': 'value'}
-        self.entity_api.put_entities(dataset_uuid, json, None)
+        self.entity_api.put_entities(dataset_uuid, json)
 
         mock_request_put.assert_called()
         args = mock_request_put.call_args_list[0]
         self.assertEqual(args[0][0], f"/entities/{dataset_uuid}")
         self.assertEqual(args[0][1], json)
-        self.assertEqual(args[0][2], None)
+        self.assertEqual(args[0][2], {})
+
+    @patch('api.api.Api.request_put')
+    def test_put_entities_extra_headers(self, mock_request_put):
+
+        dataset_uuid = "nice_uuid"
+        json = {'test': 'value'}
+        self.entity_api.put_entities(dataset_uuid, json, {'extra_header': 'fun Header'})
+
+        mock_request_put.assert_called()
+        args = mock_request_put.call_args_list[0]
+        self.assertEqual(args[0][0], f"/entities/{dataset_uuid}")
+        self.assertEqual(args[0][1], json)
+        self.assertEqual(args[0][2], {'extra_header': 'fun Header'})
 
     @patch('api.api.Api.request_get')
     def test_get_entities(self, mock_request_get):

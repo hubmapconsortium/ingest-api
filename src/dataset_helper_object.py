@@ -263,7 +263,7 @@ class DatasetHelper:
     # - delete exisiting 'thumbnail_file' via entity-api if already exists
     # - copy the original thumbnail file to upload temp dir
     def handle_thumbnail_file(self, thumbnail_file_abs_path: str, entity_api: EntityApi, dataset_uuid: str,
-                              extra_headers: object, temp_file_id: str, file_upload_temp_dir: str):
+                              extra_headers: dict, temp_file_id: str, file_upload_temp_dir: str):
         # Delete the old thumbnail file from Neo4j before updating with new one
         # First retrieve the exisiting thumbnail file uuid
         response = entity_api.get_entities(dataset_uuid)
