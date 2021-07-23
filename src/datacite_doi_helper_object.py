@@ -60,20 +60,25 @@ class DataCiteDoiHelper:
         if 'name' in dataset_contributor:
             contributor['name'] = dataset_contributor['name']
         if 'first_name' in dataset_contributor:
-            contributor['givenName'] = f"{dataset_contributor['first_name']} {dataset_contributor['middle_name_or_initial']}"
+            # See: https://support.datacite.org/docs/schema-optional-properties-v43#72-givenname
+            contributor['givenName'] = dataset_contributor['first_name']
         if 'last_name' in dataset_contributor:
+            # See: https://support.datacite.org/docs/schema-optional-properties-v43#73-familyname
             contributor['familyName'] = dataset_contributor['last_name']
+        if 'affiliation' in dataset_contributor:
+            # See: https://support.datacite.org/docs/schema-optional-properties-v43#75-affiliation
+            contributor['affiliation'] = [{'name': dataset_contributor['affiliation']}]
         # NOTE: ORCID provides a persistent digital identifier (an ORCID iD) that you own and control, and that distinguishes you from every other researcher.
         if 'orcid_id' in dataset_contributor:
+            # See: https://support.datacite.org/docs/schema-optional-properties-v43#74-nameidentifier
             contributor['nameIdentifiers'] = [
                 {'nameIdentifierScheme': 'ORCID',
                  'nameIdentifier': dataset_contributor['orcid_id'],
                  'schemeURI': 'http://orchid.org' }
             ]
-
         return contributor
 
-    # See: https://support.datacite.org/reference/dois-2#post_dois
+    # See: https://support.datacite.org/docs/schema-optional-properties-v43#7-contributor
     def build_doi_contributors(self, dataset: object) -> object:
         dataset_contributors = self.safely_convert_string(dataset['contributors'])
         contributors = []
@@ -81,22 +86,19 @@ class DataCiteDoiHelper:
             # a 'contributor' is defined by ['is_contact'] == 'TRUE'...
             if 'is_contact' in dataset_contributor and dataset_contributor['is_contact'].upper() == 'TRUE':
                 contributor = self.build_common_dataset_contributors_list(dataset_contributor)
-                if 'affiliation' in dataset_contributor:
-                    contributor['affiliation'] = dataset_contributor['affiliation']
+                # See: https://support.datacite.org/docs/schema-optional-properties-v43#7a-contributortype
+                contributor['contributorType'] = 'Editor'
                 if len(contributor) != 0:
                     contributors.append(contributor)
         if len(contributors) == 0:
             return None
         return contributors
 
-    # See: https://support.datacite.org/reference/dois-2#post_dois
     def build_doi_creators(self, dataset: object) -> object:
         dataset_contributors = self.safely_convert_string(dataset['contributors'])
         creators = []
         for dataset_contributor in dataset_contributors:
             creator = self.build_common_dataset_contributors_list(dataset_contributor)
-            if 'affiliation' in dataset_contributor:
-                creator['affiliation'] = [{'name': dataset_contributor['affiliation']}]
             if len(creator) != 0:
                 creators.append(creator)
         if len(creators) == 0:
@@ -248,7 +250,14 @@ class DataCiteDoiHelper:
 
 
 # Running this python file as a script
-# python3 -m datacite_doi_helper_object <user_token> <dataset_uuid>
+# cd src; python3 -m datacite_doi_helper_object <user_token> <dataset_uuid>
+
+# To get the uuid of a published dataset with contributors that have a contact use this Neo4J query....
+# http://neo4j.dev.hubmapconsortium.org:7474/browser/
+# match(n:Dataset) where n.status="Published" and n.contributors contains "is_contact" return n.uuid
+# You can look up that dataset on HubMap...
+# https://portal.dev.hubmapconsortium.org/
+# If you add .json to the end of the URL returned you can see the data.
 
 # Verify information in...
 # URL: https://doi.test.datacite.org/sign-in
