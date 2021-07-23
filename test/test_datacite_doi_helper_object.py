@@ -93,10 +93,13 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
         self.assertEqual(len(contributor.keys()), 6)
 
         self.assertEqual(contributor['name'], 'Jeffrey M. Spraggins')
-        self.assertEqual(contributor['givenName'], 'Jeffrey M.')
+        # See:  https://support.datacite.org/docs/schema-optional-properties-v43#72-givenname
+        self.assertEqual(contributor['givenName'], 'Jeffrey')
         self.assertEqual(contributor['familyName'], 'Spraggins')
-        self.assertEqual(contributor['contributorType'], 'Contact person')
-        self.assertEqual(contributor['affiliation'], 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA')
+        self.assertEqual(contributor['contributorType'], 'Editor')
+        # Here there can be an array of affiliations...
+        self.assertEqual(contributor['affiliation'][0]['name'],
+                         'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA')
 
         contributorIdentifiers = contributor['nameIdentifiers']
         self.assertTrue(isinstance(contributorIdentifiers, list))
@@ -124,7 +127,7 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
         self.assertTrue(isinstance(result[0], dict))
         self.assertEqual(len(result[0].keys()), 5)
         self.assertEqual(result[0]['familyName'], 'Allen')
-        self.assertEqual(result[0]['givenName'], 'Jamie L.')
+        self.assertEqual(result[0]['givenName'], 'Jamie')
         self.assertEqual(result[0]['name'], 'Jamie L. Allen')
         # Here there can be an array of affiliations...
         self.assertEqual(result[0]['affiliation'][0]['name'],
