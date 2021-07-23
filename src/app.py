@@ -484,12 +484,22 @@ def get_entity(entity_uuid):
 
 # Create derived dataset
 """
-Input JSON example:
+Input JSON example of single source_dataset_uuid:
 {
 "source_dataset_uuid":"e517ce652d3c4f22ace7f21fd64208ac",
 "derived_dataset_name":"Test derived dataset 1",
 "derived_dataset_types":["QX11", "xxx"]
 }
+
+OR 
+
+source_dataset_uuid is a list of uuids:
+{
+"source_dataset_uuid":["e517ce652d3c4f22ace7f21fd64208ac", "hyt0tse652d3c4f22ace7f21fd64208ac"],
+"derived_dataset_name":"Test derived dataset 1",
+"derived_dataset_types":["QX11", "xxx"]
+}
+
 
 Output JSON example:
 {
