@@ -9,10 +9,10 @@ class EntityApi(Api):
     def __init__(self, user_token: str, api_url: str):
         super().__init__(user_token, api_url)
 
-    def post_entities(self, dataset_uuid: str, json: object, extra_headers: object) -> object:
-        return super().request_put(f"/entities/{dataset_uuid}", json, extra_headers)
+    def post_entities(self, dataset_uuid: str, json: object, extra_headers: dict = {}) -> object:
+        return super().request_post(f"/entities/{dataset_uuid}", json, extra_headers)
 
-    def put_entities(self, dataset_uuid: str, json: object, extra_headers: object) -> object:
+    def put_entities(self, dataset_uuid: str, json: object, extra_headers: dict = {}) -> object:
         return super().request_put(f"/entities/{dataset_uuid}", json, extra_headers)
 
     def get_entities(self, dataset_uuid: str) -> object:
