@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import patch
-#import pprint
+# import pprint
 
 import requests
 
@@ -82,8 +82,7 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
 
     def test_build_doi_contributors_is_contact(self):
         str = "[{'affiliation': 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA', 'first_name': 'Jeffrey', 'is_contact': 'TRUE', 'last_name': 'Spraggins', 'middle_name_or_initial': 'M.', 'name': 'Jeffrey M. Spraggins', 'orcid_id': '0000-0001-9198-5498', 'version': '1'}]"
-
-        result = self.datacite_doi_helper.build_doi_contributors({'contributors': str})
+        result: list = self.datacite_doi_helper.build_doi_contributors({'contributors': str})
 
         self.assertTrue(isinstance(result, list))
         self.assertEqual(len(result), 1)
@@ -96,12 +95,12 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
         # See:  https://support.datacite.org/docs/schema-optional-properties-v43#72-givenname
         self.assertEqual(contributor['givenName'], 'Jeffrey')
         self.assertEqual(contributor['familyName'], 'Spraggins')
-        self.assertEqual(contributor['contributorType'], 'Editor')
+        self.assertEqual(contributor['contributorType'], 'ContactPerson')
         # Here there can be an array of affiliations...
         self.assertEqual(contributor['affiliation'][0]['name'],
                          'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA')
 
-        contributorIdentifiers = contributor['nameIdentifiers']
+        contributorIdentifiers: list = contributor['nameIdentifiers']
         self.assertTrue(isinstance(contributorIdentifiers, list))
         self.assertEqual(len(contributorIdentifiers), 1)
         self.assertTrue(isinstance(contributorIdentifiers[0], dict))
@@ -112,15 +111,13 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
 
     def test_build_doi_contributors_is_not_contact(self):
         str = "[{'affiliation': 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA', 'first_name': 'David', 'is_contact': 'FALSE', 'last_name': 'Anderson', 'middle_name_or_initial': 'M.G.', 'name': 'David M.G. Anderson', 'orcid_id': '0000-0002-3866-0923', 'version': '1'}]"
-
         result = self.datacite_doi_helper.build_doi_contributors({'contributors': str})
 
         self.assertEqual(result, None)
 
     def test_build_doi_creators(self):
         str = "[{'affiliation': 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA', 'first_name': 'Jamie', 'is_contact': 'FALSE', 'last_name': 'Allen', 'middle_name_or_initial': 'L.', 'name': 'Jamie L. Allen', 'orcid_id': '0000-0002-4739-2166', 'version': '1'}]"
-
-        result = self.datacite_doi_helper.build_doi_creators({'contributors': str})
+        result: list = self.datacite_doi_helper.build_doi_creators({'contributors': str})
 
         self.assertTrue(isinstance(result, list))
         self.assertEqual(len(result), 1)
@@ -132,13 +129,14 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
         # Here there can be an array of affiliations...
         self.assertEqual(result[0]['affiliation'][0]['name'],
                          'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA')
-        creators0NmeIdentifiers0 = result[0]['nameIdentifiers']
-        self.assertEqual(len(creators0NmeIdentifiers0), 1)
-        self.assertTrue(isinstance(creators0NmeIdentifiers0[0], dict))
-        self.assertEqual(len(creators0NmeIdentifiers0[0].keys()), 3)
-        self.assertEqual(creators0NmeIdentifiers0[0]['nameIdentifierScheme'], 'ORCID')
-        self.assertEqual(creators0NmeIdentifiers0[0]['nameIdentifier'], '0000-0002-4739-2166')
-        self.assertEqual(creators0NmeIdentifiers0[0]['schemeURI'], 'http://orchid.org')
+        result0NmeIdentifiers: list = result[0]['nameIdentifiers']
+        self.assertTrue(isinstance(result0NmeIdentifiers, list))
+        self.assertEqual(len(result0NmeIdentifiers), 1)
+        self.assertTrue(isinstance(result0NmeIdentifiers[0], dict))
+        self.assertEqual(len(result0NmeIdentifiers[0].keys()), 3)
+        self.assertEqual(result0NmeIdentifiers[0]['nameIdentifierScheme'], 'ORCID')
+        self.assertEqual(result0NmeIdentifiers[0]['nameIdentifier'], '0000-0002-4739-2166')
+        self.assertEqual(result0NmeIdentifiers[0]['schemeURI'], 'http://orchid.org')
 
     @patch('api.datacite_api.requests.post')
     def test_create_dataset_draft_doi_happy_path(self, mock_post):
@@ -164,7 +162,7 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
         self.assertEqual(headers_from_post_call['Content-Type'], 'application/vnd.api+json')
 
         json_from_post_call = args[1]['json']
-        #pprint.pprint(json_from_post_call)
+        # pprint.pprint(json_from_post_call)
         self.assertEqual(json_from_post_call['data']['id'], self.hubmap_id)
         self.assertEqual(json_from_post_call['data']['type'], 'dois')
 
@@ -190,6 +188,10 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
         self.assertEqual(len(creators), 17)
         for creator in creators:
             self.assertTrue(isinstance(creator, dict))
+            self.assertTrue('familyName' in creator)
+            self.assertTrue('givenName' in creator)
+            self.assertTrue('name' in creator)
+            self.assertTrue('affiliation' in creator)
 
     @patch('api.datacite_api.requests.put')
     def test_update_doi_event_publish_happy_path(self, mock_put):
@@ -228,7 +230,8 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
             return r
         mock_add_new_doi.side_effect = [resp1()]
 
-        self.assertRaises(requests.RequestException, self.datacite_doi_helper.create_dataset_draft_doi, self.dataset, "Dataset Title String")
+        self.assertRaises(requests.RequestException,
+                          self.datacite_doi_helper.create_dataset_draft_doi, self.dataset, "Dataset Title String")
         mock_add_new_doi.assert_called()
 
     @patch('datacite_doi_helper_object.EntityApi.put_entities')
@@ -264,7 +267,9 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
             return r
         mock_update_doi_event_publish.side_effect = [resp1()]
 
-        self.assertRaises(requests.RequestException, self.datacite_doi_helper.move_doi_state_from_draft_to_findable, self.dataset, "Dataset Title String")
+        self.assertRaises(requests.RequestException,
+                          self.datacite_doi_helper.move_doi_state_from_draft_to_findable,
+                          self.dataset, "Dataset Title String")
         mock_update_doi_event_publish.assert_called()
         mock_put_entities.assert_not_called()
 
@@ -285,6 +290,8 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
             return r
         mock_put_entities.side_effect = [resp2()]
 
-        self.assertRaises(requests.RequestException, self.datacite_doi_helper.move_doi_state_from_draft_to_findable, self.dataset, "Dataset Title String")
+        self.assertRaises(requests.RequestException,
+                          self.datacite_doi_helper.move_doi_state_from_draft_to_findable,
+                          self.dataset, "Dataset Title String")
         mock_update_doi_event_publish.assert_called()
         mock_put_entities.assert_called()
