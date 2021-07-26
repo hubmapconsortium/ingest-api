@@ -505,8 +505,9 @@ source_dataset_uuid is a list of uuids:
 Output JSON example:
 {
     "derived_dataset_uuid": "2ecc257c3fd1875be08a12ff654f1264",
-    "group_display_name": "IEC Testing Group",
-    "group_uuid": "5bd084c8-edc2-11e8-802f-0e368f3075e8"
+    "group_display_name": "University of California San Diego TMC",
+    "group_uuid": "03b3d854-ed44-11e8-8bce-0e368f3075e8",
+    "full_path": "/hive/hubmap/data/consortium/University of California San Diego TMC/33c0ce043ae331ea23fc80023428e534"
 }
 """
 @app.route('/datasets/derived', methods=['POST'])

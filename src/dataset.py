@@ -131,7 +131,6 @@ class Dataset(object):
         return response_data
 
 
-
     @classmethod
     def get_writeable_flag(self, token, writeable_uuid_list, current_record):
         authcache = None
