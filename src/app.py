@@ -641,16 +641,16 @@ def publish_datastage(identifier):
                     if data_access_level != 'public':
                         uuids_for_public.append(uuid)
                 elif entity_type == 'Dataset':
-                    # Changed after the file system handling is completed...
                     if status == 'Published':
-                        nexus_token = app_manager.nexus_token_from_request_headers(request.headers)
-                        dataset_helper = DatasetHelper()
-                        dataset_title = dataset_helper.generate_dataset_title(node, nexus_token)
-
-                        datacite_doi_helper = DataCiteDoiHelper()
-                        datacite_doi_helper.create_dataset_draft_doi(node, dataset_title)
-                        # This will make the draft DQI created above 'findable'....
-                        datacite_doi_helper.move_doi_state_from_draft_to_findable(node, nexus_token)
+                        pass # TODO: Enable the commented code once the integration work with pipeline has been completed for story #354.
+                        # nexus_token = app_manager.nexus_token_from_request_headers(request.headers)
+                        # dataset_helper = DatasetHelper()
+                        # dataset_title = dataset_helper.generate_dataset_title(node, nexus_token)
+                        #
+                        # datacite_doi_helper = DataCiteDoiHelper()
+                        # datacite_doi_helper.create_dataset_draft_doi(node, dataset_title)
+                        # # This will make the draft DQI created above 'findable'....
+                        # datacite_doi_helper.move_doi_state_from_draft_to_findable(node, nexus_token)
                     else:
                         return Response(f"{dataset_uuid} has an ancestor dataset that has not been Published. Will not Publish. Ancestor dataset is: {uuid}", 400)
             
