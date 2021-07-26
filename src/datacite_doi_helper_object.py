@@ -55,7 +55,7 @@ class DataCiteDoiHelper:
             raise ValueError(msg)
 
     # See: https://support.datacite.org/docs/schema-40#table-3-expanded-datacite-mandatory-properties
-    def build_common_dataset_contributors_list(self, dataset_contributor: object) -> object:
+    def build_common_dataset_contributors(self, dataset_contributor: dict) -> dict:
         contributor = {}
         if 'name' in dataset_contributor:
             contributor['name'] = dataset_contributor['name']
@@ -79,26 +79,26 @@ class DataCiteDoiHelper:
         return contributor
 
     # See: https://support.datacite.org/docs/schema-optional-properties-v43#7-contributor
-    def build_doi_contributors(self, dataset: object) -> object:
+    def build_doi_contributors(self, dataset: dict) -> list:
         dataset_contributors = self.safely_convert_string(dataset['contributors'])
         contributors = []
         for dataset_contributor in dataset_contributors:
             # a 'contributor' is defined by ['is_contact'] == 'TRUE'...
             if 'is_contact' in dataset_contributor and dataset_contributor['is_contact'].upper() == 'TRUE':
-                contributor = self.build_common_dataset_contributors_list(dataset_contributor)
+                contributor = self.build_common_dataset_contributors(dataset_contributor)
                 # See: https://support.datacite.org/docs/schema-optional-properties-v43#7a-contributortype
-                contributor['contributorType'] = 'Editor'
+                contributor['contributorType'] = 'ContactPerson'
                 if len(contributor) != 0:
                     contributors.append(contributor)
         if len(contributors) == 0:
             return None
         return contributors
 
-    def build_doi_creators(self, dataset: object) -> object:
+    def build_doi_creators(self, dataset: object) -> list:
         dataset_contributors = self.safely_convert_string(dataset['contributors'])
         creators = []
         for dataset_contributor in dataset_contributors:
-            creator = self.build_common_dataset_contributors_list(dataset_contributor)
+            creator = self.build_common_dataset_contributors(dataset_contributor)
             if len(creator) != 0:
                 creators.append(creator)
         if len(creators) == 0:
@@ -125,7 +125,7 @@ class DataCiteDoiHelper:
     dict
         The registered DOI details
     """
-    def create_dataset_draft_doi(self, dataset: object, dataset_title: str) -> object:
+    def create_dataset_draft_doi(self, dataset: dict, dataset_title: str) -> object:
         if ('entity_type' in dataset) and (dataset['entity_type'] == 'Dataset'):
             datacite_api = DataCiteApi(self.datacite_repository_id, self.datacite_repository_password,
                                        self.datacite_hubmap_prefix, self.datacite_api_url, self.entity_api_url)
@@ -166,7 +166,7 @@ class DataCiteDoiHelper:
     dict
         The published datset entity dict with updated DOI properties
     """
-    def move_doi_state_from_draft_to_findable(self, dataset: object, user_token: str) -> object:
+    def move_doi_state_from_draft_to_findable(self, dataset: dict, user_token: str) -> object:
         if ('entity_type' in dataset) and (dataset['entity_type'] == 'Dataset'):
             datacite_api = DataCiteApi(self.datacite_repository_id, self.datacite_repository_password,
                                        self.datacite_hubmap_prefix, self.datacite_api_url, self.entity_api_url)
