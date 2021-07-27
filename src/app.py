@@ -59,27 +59,12 @@ if app.config['ENABLE_CORS']:
 def http_bad_request(e):
     return jsonify(error=str(e)), 400
 
-# Error handler for 401 Unauthorized with custom error message
-@app.errorhandler(401)
-def http_unauthorized(e):
-    return jsonify(error=str(e)), 401
-
-# Error handler for 403 Forbidden with custom error message
-@app.errorhandler(403)
-def http_forbidden(e):
-    return jsonify(error=str(e)), 403
-
-# Error handler for 404 Not Found with custom error message
-@app.errorhandler(404)
-def http_not_found(e):
-    return jsonify(error=str(e)), 404
-
 # Error handler for 500 Internal Server Error with custom error message
 @app.errorhandler(500)
 def http_internal_server_error(e):
     return jsonify(error=str(e)), 500
 
-    
+
 ####################################################################################################
 ## AuthHelper initialization
 ####################################################################################################
@@ -533,36 +518,35 @@ Output JSON example:
 @app.route('/datasets/derived', methods=['POST'])
 #@secured(groups="HuBMAP-read")
 def create_derived_dataset():
-    if not request.is_json:
-        abort(400, jsonify( { 'error': 'This request requires json in the body' } ))
+    require_json(request)
     
-    json_data = request.get_json()
+    json_data = request.json
 
     logger.info("++++++++++Calling /datasets/derived")
     logger.info("++++++++++Request:" + json.dumps(json_data))
 
     if 'source_dataset_uuids' not in json_data:
-        abort(400, jsonify( { 'error': "The 'source_dataset_uuids' property is required." } ))
+        bad_request_error("The 'source_dataset_uuids' property is required.")
     
     if 'derived_dataset_name' not in json_data:
-        abort(400, jsonify( { 'error': "The 'derived_dataset_name' property is required." } ))
+        bad_request_error("The 'derived_dataset_name' property is required.")
 
     if 'derived_dataset_types' not in json_data:
-        abort(400, jsonify( { 'error': "The 'derived_dataset_types' property is required." } ))
+        bad_request_error("The 'derived_dataset_types' property is required.")
 
     # Ensure the source_dataset_uuids and derived_dataset_types are json arrays
     if not isinstance(json_data['source_dataset_uuids'], list):
-        abort(400, jsonify( { 'error': "The 'source_dataset_uuids' must be a json array" } ))
+        bad_request_error("The 'source_dataset_uuids' must be a json array")
 
     if not isinstance(json_data['derived_dataset_types'], list):
-        abort(400, jsonify( { 'error': "The 'derived_dataset_types' must be a json array" } ))
+        bad_request_error("The 'derived_dataset_types' must be a json array")
 
     # Ensure the arrays are not empty
     if len(json_data['source_dataset_uuids']) == 0:
-        abort(400, jsonify( { 'error': "The 'source_dataset_uuids' can not be an empty array" } ))
+        bad_request_error("The 'source_dataset_uuids' can not be an empty array")
 
     if len(json_data['derived_dataset_types']) == 0:
-        abort(400, jsonify( { 'error': "The 'derived_dataset_types' can not be an empty array" } ))
+        bad_request_error("The 'derived_dataset_types' can not be an empty array")
 
     try:
         dataset = Dataset(app.config)
@@ -581,7 +565,7 @@ def create_derived_dataset():
         return Response(hte.get_description(), hte.get_status_code())
     except Exception as e:
         logger.error(e, exc_info=True)
-        return Response("Unexpected error while creating derived dataset: " + str(e), 500)        
+        internal_server_error("Unexpected error while creating derived dataset: " + str(e))        
 
 
 @app.route('/datasets', methods=['POST'])
@@ -1267,7 +1251,6 @@ def require_json(request):
 
 """
 Throws error for 400 Bad Reqeust with message
-
 Parameters
 ----------
 err_msg : str
