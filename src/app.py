@@ -59,6 +59,16 @@ if app.config['ENABLE_CORS']:
 def http_bad_request(e):
     return jsonify(error=str(e)), 400
 
+# Error handler for 401 Unauthorized with custom error message
+@app.errorhandler(401)
+def http_unauthorized(e):
+    return jsonify(error=str(e)), 401
+
+# Error handler for 404 Not Found with custom error message
+@app.errorhandler(404)
+def http_not_found(e):
+    return jsonify(error=str(e)), 404
+
 # Error handler for 500 Internal Server Error with custom error message
 @app.errorhandler(500)
 def http_internal_server_error(e):
@@ -557,12 +567,24 @@ def create_derived_dataset():
         try:
             nexus_token = AuthHelper.parseAuthorizationTokens(request.headers)
         except:
-            raise ValueError("Unable to parse globus token from request header")
+            internal_server_error("Unable to parse globus token from request header")
 
         new_record = dataset.create_derived_datastage(nexus_token, json_data)
         return jsonify( new_record ), 201
     except HTTPException as hte:
-        return Response(hte.get_description(), hte.get_status_code())
+        status_code = hte.get_status_code()
+        response_text = hte.get_description()
+
+        if status_code == 400:
+            bad_request_error(response_text)
+        elif status_code == 401:
+            unauthorized_error(response_text)
+        elif status_code == 404:
+            not_found_error(response_text)
+        elif status_code == 500:
+            internal_server_error(response_text)
+        else:
+            return Response(response_text, status_code)
     except Exception as e:
         logger.error(e, exc_info=True)
         internal_server_error("Unexpected error while creating derived dataset: " + str(e))        
@@ -1259,6 +1281,25 @@ err_msg : str
 def bad_request_error(err_msg):
     abort(400, description = err_msg)
 
+"""
+Throws error for 401 Unauthorized with message
+Parameters
+----------
+err_msg : str
+    The custom error message to return to end users
+"""
+def unauthorized_error(err_msg):
+    abort(401, description = err_msg)
+
+"""
+Throws error for 404 Not Found with message
+Parameters
+----------
+err_msg : str
+    The custom error message to return to end users
+"""
+def not_found_error(err_msg):
+    abort(404, description = err_msg)
 
 """
 Throws error for 500 Internal Server Error with message

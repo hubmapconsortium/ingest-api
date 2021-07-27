@@ -76,6 +76,7 @@ class Dataset(object):
         first_source_uuid = source_dataset_uuids[0]
         get_url = file_helper.ensureTrailingSlashURL(self.confdata['ENTITY_WEBSERVICE_URL']) + 'entities/' + first_source_uuid
         response = requests.get(get_url, headers = auth_header, verify = False)
+
         if response.status_code != 200:
             raise HTTPException("Error retrieving source dataset " + first_source_uuid, response.status_code)
         
@@ -96,6 +97,7 @@ class Dataset(object):
         
         # Merge the auth_header and app_header for creating new Dataset
         response = requests.post(post_url, json=derived_dataset_to_post, headers = {**auth_header, **app_header}, verify = False)
+        
         if response.status_code != 200:
             raise HTTPException("Error creating derived dataset: " + response.text, response.status_code)
 
