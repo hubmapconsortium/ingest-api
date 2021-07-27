@@ -487,16 +487,18 @@ def get_entity(entity_uuid):
 """
 Input JSON example:
 {
-"source_dataset_uuid":"e517ce652d3c4f22ace7f21fd64208ac",
+"source_dataset_uuid":["e517ce652d3c4f22ace7f21fd64208ac", "hyt0tse652d3c4f22ace7f21fd64208ac"],
 "derived_dataset_name":"Test derived dataset 1",
 "derived_dataset_types":["QX11", "xxx"]
 }
 
+
 Output JSON example:
 {
     "derived_dataset_uuid": "2ecc257c3fd1875be08a12ff654f1264",
-    "group_display_name": "IEC Testing Group",
-    "group_uuid": "5bd084c8-edc2-11e8-802f-0e368f3075e8"
+    "group_display_name": "University of California San Diego TMC",
+    "group_uuid": "03b3d854-ed44-11e8-8bce-0e368f3075e8",
+    "full_path": "/hive/hubmap/data/consortium/University of California San Diego TMC/33c0ce043ae331ea23fc80023428e534"
 }
 """
 @app.route('/datasets/derived', methods=['POST'])
@@ -509,8 +511,8 @@ def create_derived_dataset():
     logger.info("++++++++++Calling /datasets/derived")
     logger.info("++++++++++Request:" + json.dumps(json_data))
 
-    if 'source_dataset_uuid' not in json_data:
-        abort(400, jsonify( { 'error': "The 'source_dataset_uuid' property is required." } ))
+    if 'source_dataset_uuids' not in json_data:
+        abort(400, jsonify( { 'error': "The 'source_dataset_uuids' property is required." } ))
     
     if 'derived_dataset_name' not in json_data:
         abort(400, jsonify( { 'error': "The 'derived_dataset_name' property is required." } ))
@@ -518,9 +520,19 @@ def create_derived_dataset():
     if 'derived_dataset_types' not in json_data:
         abort(400, jsonify( { 'error': "The 'derived_dataset_types' property is required." } ))
 
-    # Ensure the data types is an array
+    # Ensure the source_dataset_uuids and derived_dataset_types are json arrays
+    if not isinstance(json_data['source_dataset_uuids'], list):
+        abort(400, jsonify( { 'error': "The 'source_dataset_uuids' must be a json array" } ))
+
     if not isinstance(json_data['derived_dataset_types'], list):
-        abort(400, jsonify( { 'error': "The 'derived_dataset_types' values must be an json array" } ))
+        abort(400, jsonify( { 'error': "The 'derived_dataset_types' must be a json array" } ))
+
+    # Ensure the arrays are not empty
+    if len(json_data['source_dataset_uuids']) == 0:
+        abort(400, jsonify( { 'error': "The 'source_dataset_uuids' can not be an empty array" } ))
+
+    if len(json_data['derived_dataset_types']) == 0:
+        abort(400, jsonify( { 'error': "The 'derived_dataset_types' can not be an empty array" } ))
 
     try:
         dataset = Dataset(app.config)

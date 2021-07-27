@@ -66,78 +66,59 @@ class Dataset(object):
     # Create derived dataset
     @classmethod
     def create_derived_datastage(self, nexus_token, json_data):
-        global logger
-        
-        # check the incoming UUID to make sure they exist
-        source_datasets = json_data['source_dataset_uuid']
-        if isinstance(source_datasets, list):
-            source_uuid = source_datasets[0].strip()
-        else:
-            source_uuid = source_datasets.strip()
-        if source_uuid == None or len(source_uuid) == 0:
-            raise ValueError('Error: source_dataset_uuid must be set to create a derived dataset')
-        
-        bearer_header = 'Bearer ' + nexus_token
-        auth_header = {'Authorization': bearer_header}
+        auth_header = {'Authorization': 'Bearer ' + nexus_token}
+        app_header = {'X-Hubmap-Application': 'ingest-api'}
 
-        get_url = file_helper.ensureTrailingSlashURL(self.confdata['ENTITY_WEBSERVICE_URL']) + 'entities/' + source_uuid.strip()        
+        # All of the source datasets come from the same data provider
+        # Get the group_uuid based on the first source dataset via entity-api
+        first_source_uuid = source_dataset_uuids[0]
+        get_url = file_helper.ensureTrailingSlashURL(self.confdata['ENTITY_WEBSERVICE_URL']) + 'entities/' + first_source_uuid
         response = requests.get(get_url, headers = auth_header, verify = False)
         if response.status_code != 200:
-            raise HTTPException("Error retrieving source dataset " + source_uuid, response.status_code)
-        source_ds = response.json()
+            raise HTTPException("Error retrieving source dataset " + first_source_uuid, response.status_code)
         
-
-        # Create the Entity Metadata node
-        # Don't use None, it'll throw TypeError: 'NoneType' object does not support item assignment
-        new_ds = {}
-
-        # Use the dataset name from input json
-        # Need to use constant instead of hardcoding later
-        new_ds['title'] = json_data['derived_dataset_name']
-        # Also use the dataset data types array from input json and store as string in metadata attribute
-        new_ds['data_types'] = json_data['derived_dataset_types']
-        new_ds['direct_ancestor_uuids'] = [source_uuid]
-        new_ds['group_uuid'] = source_ds['group_uuid']
-        #new_ds['group_name'] = source_ds['group_name']
-
+        first_source_dataset = response.json()
         
-        # Set the 'phi' attribute with default value as "no"
-        new_ds['contains_human_genetic_sequences'] = False
-        # Set the default status to New
-        #new_ds['status'] = 'New'
-        #new_ds['data_access_level'] = 'consortium'
+        # Create the derived dataset via entity-api
+        # The entity-api validates each of the provided source dataset uuid for existenace check
+        # The derived dataset will have the same group_uuid as the source datasets
+        derived_dataset_to_post = {
+            'title': json_data['derived_dataset_name'],
+            'data_types': json_data['derived_dataset_types'],
+            'direct_ancestor_uuids': json_data['source_dataset_uuids'],
+            'contains_human_genetic_sequences': False,
+            'group_uuid': first_source_dataset['group_uuid']
+        }
 
         post_url = file_helper.ensureTrailingSlashURL(self.confdata['ENTITY_WEBSERVICE_URL']) + 'entities/dataset'
-        app_header = {'X-Hubmap-Application': 'ingest-api'}
+        
         # Merge the auth_header and app_header for creating new Dataset
-        response = requests.post(post_url, json=new_ds, headers = {**auth_header, **app_header}, verify = False)
+        response = requests.post(post_url, json=derived_dataset_to_post, headers = {**auth_header, **app_header}, verify = False)
         if response.status_code != 200:
             raise HTTPException("Error creating derived dataset: " + response.text, response.status_code)
 
-        ds = response.json()
+        derived_dataset = response.json()
+        
         file_help = IngestFileHelper(self.confdata)
-        sym_path = os.path.join(str(self.confdata['HUBMAP_WEBSERVICE_FILEPATH']),ds['uuid'])
+        sym_path = os.path.join(str(self.confdata['HUBMAP_WEBSERVICE_FILEPATH']), derived_dataset['uuid'])
 
-        new_directory_path = file_help.get_dataset_directory_absolute_path(new_ds, new_ds['group_uuid'], ds['uuid'])   
+        new_directory_path = file_help.get_dataset_directory_absolute_path(derived_dataset, derived_dataset['group_uuid'], derived_dataset['uuid'])   
         new_path = IngestFileHelper.make_directory(new_directory_path, sym_path)
 
         try:
             x = threading.Thread(target=file_help.set_dir_permissions, args=['consortium', new_path])
             x.start()
         except Exception as e:
-            logger = logging.getLogger('ingest.service')
             logger.error(e, exc_info=True)
 
-
         response_data = {
-            'derived_dataset_uuid': ds['uuid'],
-            'group_uuid': ds['group_uuid'],
-            'group_display_name': ds['group_name'],
+            'derived_dataset_uuid': derived_dataset['uuid'],
+            'group_uuid': derived_dataset['group_uuid'],
+            'group_display_name': derived_dataset['group_name'],
             'full_path': new_path
         }
 
         return response_data
-
 
 
     @classmethod
