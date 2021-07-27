@@ -511,7 +511,7 @@ def get_entity(entity_uuid):
 """
 Input JSON example:
 {
-"source_dataset_uuid":["e517ce652d3c4f22ace7f21fd64208ac", "hyt0tse652d3c4f22ace7f21fd64208ac"],
+"source_dataset_uuid":["6e24ba7b41725e4b06630192476f8364", "hyt0tse652d3c4f22ace7f21fd64208ac"],
 "derived_dataset_name":"Test derived dataset 1",
 "derived_dataset_types":["QX11", "xxx"]
 }
@@ -519,10 +519,10 @@ Input JSON example:
 
 Output JSON example:
 {
-    "derived_dataset_uuid": "2ecc257c3fd1875be08a12ff654f1264",
-    "group_display_name": "University of California San Diego TMC",
-    "group_uuid": "03b3d854-ed44-11e8-8bce-0e368f3075e8",
-    "full_path": "/hive/hubmap/data/consortium/University of California San Diego TMC/33c0ce043ae331ea23fc80023428e534"
+    "derived_dataset_uuid": "78462470866bdda77deaaebe21ae7151",
+    "full_path": "/hive/hubmap-dev/data/consortium/IEC Testing Group/78462470866bdda77deaaebe21ae7151",
+    "group_display_name": "IEC Testing Group",
+    "group_uuid": "5bd084c8-edc2-11e8-802f-0e368f3075e8"
 }
 """
 @app.route('/datasets/derived', methods=['POST'])
