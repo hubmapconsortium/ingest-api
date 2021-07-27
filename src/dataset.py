@@ -70,10 +70,19 @@ class Dataset(object):
         app_header = {'X-Hubmap-Application': 'ingest-api'}
 
         source_dataset_uuids = json_data['source_dataset_uuids']
+        source_uuids = []
+
+        if isinstance(source_dataset_uuids, str):
+            # Create a list from this string
+            source_uuids = [source_dataset_uuids]
+        elif isinstance(source_dataset_uuids, list):
+            source_uuids = source_dataset_uuids
+        else:
+            raise TypeError("json_data['source_dataset_uuids'] must either be a string or a list")
 
         # All of the source datasets come from the same data provider
         # Get the group_uuid based on the first source dataset via entity-api
-        first_source_uuid = source_dataset_uuids[0]
+        first_source_uuid = source_uuids[0]
         get_url = file_helper.ensureTrailingSlashURL(self.confdata['ENTITY_WEBSERVICE_URL']) + 'entities/' + first_source_uuid
         response = requests.get(get_url, headers = auth_header, verify = False)
 
@@ -88,7 +97,7 @@ class Dataset(object):
         derived_dataset_to_post = {
             'title': json_data['derived_dataset_name'],
             'data_types': json_data['derived_dataset_types'],
-            'direct_ancestor_uuids': source_dataset_uuids,
+            'direct_ancestor_uuids': source_uuids,
             'contains_human_genetic_sequences': False,
             'group_uuid': first_source_dataset['group_uuid']
         }

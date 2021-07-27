@@ -509,13 +509,20 @@ def get_entity(entity_uuid):
 
 # Create derived dataset
 """
-Input JSON example:
+Input JSON example with "source_dataset_uuid" being an array of uuids:
 {
 "source_dataset_uuid":["6e24ba7b41725e4b06630192476f8364", "hyt0tse652d3c4f22ace7f21fd64208ac"],
 "derived_dataset_name":"Test derived dataset 1",
 "derived_dataset_types":["QX11", "xxx"]
 }
 
+OR with "source_dataset_uuid" being a single uuid string to support past cases:
+
+{
+"source_dataset_uuid": "6e24ba7b41725e4b06630192476f8364",
+"derived_dataset_name":"Test derived dataset 1",
+"derived_dataset_types":["QX11", "xxx"]
+}
 
 Output JSON example:
 {
@@ -551,15 +558,16 @@ def create_derived_dataset():
     if 'derived_dataset_types' not in json_data:
         bad_request_error("The 'derived_dataset_types' property is required.")
 
-    # Ensure the source_dataset_uuids and derived_dataset_types are json arrays
-    if not isinstance(json_data['source_dataset_uuids'], list):
-        bad_request_error("The 'source_dataset_uuids' must be a json array")
+    # source_dataset_uuids can either be a single uuid string OR a json array
+    if not isinstance(json_data['source_dataset_uuids'], (str, list)):
+        bad_request_error("The 'source_dataset_uuids' must either be a json string or an array")
 
+    # Ensure the derived_dataset_types is json array
     if not isinstance(json_data['derived_dataset_types'], list):
         bad_request_error("The 'derived_dataset_types' must be a json array")
 
     # Ensure the arrays are not empty
-    if len(json_data['source_dataset_uuids']) == 0:
+    if isinstance(json_data['source_dataset_uuids'], list) and len(json_data['source_dataset_uuids']) == 0:
         bad_request_error("The 'source_dataset_uuids' can not be an empty array")
 
     if len(json_data['derived_dataset_types']) == 0:
@@ -568,7 +576,7 @@ def create_derived_dataset():
     try:
         dataset = Dataset(app.config)
         new_record = dataset.create_derived_datastage(nexus_token, json_data)
-        
+
         return jsonify( new_record ), 201
     except HTTPException as hte:
         status_code = hte.get_status_code()
