@@ -50,7 +50,36 @@ app.config.from_pyfile('app.cfg')
 if app.config['ENABLE_CORS']:
     CORS(app)
 
+####################################################################################################
+## Register error handlers
+####################################################################################################
 
+# Error handler for 400 Bad Request with custom error message
+@app.errorhandler(400)
+def http_bad_request(e):
+    return jsonify(error=str(e)), 400
+
+# Error handler for 401 Unauthorized with custom error message
+@app.errorhandler(401)
+def http_unauthorized(e):
+    return jsonify(error=str(e)), 401
+
+# Error handler for 403 Forbidden with custom error message
+@app.errorhandler(403)
+def http_forbidden(e):
+    return jsonify(error=str(e)), 403
+
+# Error handler for 404 Not Found with custom error message
+@app.errorhandler(404)
+def http_not_found(e):
+    return jsonify(error=str(e)), 404
+
+# Error handler for 500 Internal Server Error with custom error message
+@app.errorhandler(500)
+def http_internal_server_error(e):
+    return jsonify(error=str(e)), 500
+
+    
 ####################################################################################################
 ## AuthHelper initialization
 ####################################################################################################
@@ -508,6 +537,7 @@ def create_derived_dataset():
         abort(400, jsonify( { 'error': 'This request requires json in the body' } ))
     
     json_data = request.get_json()
+
     logger.info("++++++++++Calling /datasets/derived")
     logger.info("++++++++++Request:" + json.dumps(json_data))
 
@@ -1245,6 +1275,7 @@ err_msg : str
 """
 def bad_request_error(err_msg):
     abort(400, description = err_msg)
+
 
 """
 Throws error for 500 Internal Server Error with message
