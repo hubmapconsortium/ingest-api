@@ -69,11 +69,14 @@ class Dataset(object):
         auth_header = {'Authorization': 'Bearer ' + nexus_token}
         app_header = {'X-Hubmap-Application': 'ingest-api'}
 
+        source_dataset_uuids = json_data['source_dataset_uuids']
+
         # All of the source datasets come from the same data provider
         # Get the group_uuid based on the first source dataset via entity-api
         first_source_uuid = source_dataset_uuids[0]
         get_url = file_helper.ensureTrailingSlashURL(self.confdata['ENTITY_WEBSERVICE_URL']) + 'entities/' + first_source_uuid
         response = requests.get(get_url, headers = auth_header, verify = False)
+
         if response.status_code != 200:
             raise HTTPException("Error retrieving source dataset " + first_source_uuid, response.status_code)
         
@@ -85,7 +88,7 @@ class Dataset(object):
         derived_dataset_to_post = {
             'title': json_data['derived_dataset_name'],
             'data_types': json_data['derived_dataset_types'],
-            'direct_ancestor_uuids': json_data['source_dataset_uuids'],
+            'direct_ancestor_uuids': source_dataset_uuids,
             'contains_human_genetic_sequences': False,
             'group_uuid': first_source_dataset['group_uuid']
         }
@@ -94,11 +97,12 @@ class Dataset(object):
         
         # Merge the auth_header and app_header for creating new Dataset
         response = requests.post(post_url, json=derived_dataset_to_post, headers = {**auth_header, **app_header}, verify = False)
+        
         if response.status_code != 200:
             raise HTTPException("Error creating derived dataset: " + response.text, response.status_code)
 
         derived_dataset = response.json()
-        
+
         file_help = IngestFileHelper(self.confdata)
         sym_path = os.path.join(str(self.confdata['HUBMAP_WEBSERVICE_FILEPATH']), derived_dataset['uuid'])
 
