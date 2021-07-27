@@ -528,6 +528,13 @@ Output JSON example:
 @app.route('/datasets/derived', methods=['POST'])
 #@secured(groups="HuBMAP-read")
 def create_derived_dataset():
+    # Token is required
+    nexus_token = None
+    try:
+        nexus_token = AuthHelper.parseAuthorizationTokens(request.headers)
+    except Exception:
+        internal_server_error("Unable to parse globus token from request header")
+
     require_json(request)
     
     json_data = request.json
@@ -560,16 +567,8 @@ def create_derived_dataset():
 
     try:
         dataset = Dataset(app.config)
-
-        # Note: the user who can create the derived dataset doesn't have to be the same person who created the source dataset
-        # Get the nexus token from request headers
-        nexus_token = None
-        try:
-            nexus_token = AuthHelper.parseAuthorizationTokens(request.headers)
-        except:
-            internal_server_error("Unable to parse globus token from request header")
-
         new_record = dataset.create_derived_datastage(nexus_token, json_data)
+        
         return jsonify( new_record ), 201
     except HTTPException as hte:
         status_code = hte.get_status_code()
