@@ -1,7 +1,8 @@
 import unittest
 
-from unittest.mock import Mock, MagicMock
+from unittest.mock import Mock, MagicMock, patch
 from dataset_helper_object import DatasetHelper
+
 
 class TestInit(unittest.TestCase):
 
@@ -9,8 +10,8 @@ class TestInit(unittest.TestCase):
         self.logger = Mock()
         self.logger.info = MagicMock(name='info', return_value=None)
 
-
-    def test_init(self):
+    @patch('dataset_helper_object.DatasetHelper.__init__', return_value=None)
+    def test_init(self, mock_dataset_helper_object_init):
         dataset_helper1 = DatasetHelper()
         self.assertIsInstance(dataset_helper1, object)
         dataset_helper2 = DatasetHelper()
