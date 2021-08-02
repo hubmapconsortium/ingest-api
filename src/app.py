@@ -6,6 +6,7 @@ from uuid import UUID
 import requests
 import argparse
 from pathlib import Path
+from shutil import rmtree # Used by file removal
 from flask import Flask, g, jsonify, abort, request, session, redirect, json, Response
 from flask_cors import CORS
 from globus_sdk import AccessTokenAuthorizer, AuthClient, ConfidentialAppAuthClient
@@ -24,13 +25,14 @@ from hubmap_commons import file_helper as commons_file_helper
 from hubmap_commons.hubmap_const import HubmapConst
 
 # Local modules
-from dataset import Dataset
-from dataset_helper_object import DatasetHelper
 from specimen import Specimen
 from ingest_file_helper import IngestFileHelper
 from file_upload_helper import UploadFileHelper
 import app_manager
 from api.entity_api import EntityApi
+from dataset import Dataset
+from dataset_helper_object import DatasetHelper
+from datacite_doi_helper_object import DataCiteDoiHelper
 
 
 # Set logging fromat and level (default is warning)
@@ -348,7 +350,14 @@ def upload_file():
         internal_server_error(msg)
 
 """
-File commit triggered by entity-api trigger method for Donor and Sample
+File commit triggered by entity-api trigger method for Donor/Sample/Dataset
+
+Donor: image files
+Sample: image files and metadata files
+Dataset: only the one thumbnail file
+
+This call also creates the symbolic from the file uuid dir under uploads
+to the assets dir so the uploaded files can be exposed via gateway's file assets service
 
 Returns
 -------
@@ -368,18 +377,40 @@ def commit_file():
     user_token = json_data_dict['user_token']
 
     file_uuid_info = file_upload_helper_instance.commit_file(temp_file_id, entity_uuid, user_token)
+    filename = file_uuid_info['filename']
+    file_uuid = file_uuid_info['file_uuid']
+
+    # Link the uploaded file uuid dir to assets
+    # /hive/hubmap/hm_uploads/<entity_uuid>/<file_uuid>/<filename> (for PROD)
+    source_file_path = os.path.join(str(app.config['FILE_UPLOAD_DIR']), entity_uuid, file_uuid, filename)
+    # /hive/hubmap/assets/<file_uuid>/<filename> (for PROD)
+    target_file_dir = os.path.join(str(app.config['HUBMAP_WEBSERVICE_FILEPATH']), file_uuid)
+    target_file_path = os.path.join(target_file_dir, filename)
+
+    # Create the file_uuid directory under assets dir
+    # and a symbolic link to the uploaded file
+    try:
+        Path(target_file_dir).mkdir(parents=True, exist_ok=True)
+        os.symlink(source_file_path, target_file_path)
+    except Exception as e:
+        logger.exception(f"Failed to create the symbolic link from {uploaded_dir} to {assets_symbolic_dir}")
 
     # Send back the updated file_uuid_info
     return jsonify(file_uuid_info)
 
 """
-File removal triggered by entity-api trigger method for Donor and Sample
+File removal triggered by entity-api trigger method for Donor/Sample/Dataset
 during entity update
+
+Donor: image files
+Sample: image files and metadata files
+Dataset: only the one thumbnail file
 
 Returns
 -------
 json
     A JSON list containing the updated files info
+    It's an empty list for Dataset since there's only one thumbnail file
 """
 @app.route('/file-remove', methods=['POST'])
 def remove_file():
@@ -395,12 +426,19 @@ def remove_file():
 
     # `upload_dir` is already normalized with trailing slash
     entity_upload_dir = file_upload_helper_instance.upload_dir + entity_uuid + os.sep
-    
+
     # Remove the physical files from the file system
     for file_uuid in file_uuids:
         # Get back the updated files_info_list
         files_info_list = file_upload_helper_instance.remove_file(entity_upload_dir, file_uuid, files_info_list)
     
+        # Also remove the dir contains the symlink to the uploaded file under assets
+        # /hive/hubmap/assets/<file_uuid> (for PROD)
+        assets_file_dir = os.path.join(str(app.config['HUBMAP_WEBSERVICE_FILEPATH']), file_uuid)
+        # Delete an entire directory tree
+        # path must point to a directory (but not a symbolic link to a directory)
+        rmtree(assets_file_dir)
+
     # Send back the updated files_info_list
     return jsonify(files_info_list)
 
@@ -543,7 +581,7 @@ def create_datastage():
         logger.error(e, exc_info=True)
         return Response("Unexpected error while creating a dataset: " + str(e) + "  Check the logs", 500)        
 
-
+# Needs to be triggered in the workflow or manually?!
 @app.route('/datasets/<identifier>/publish', methods = ['PUT'])
 @secured(groups="HuBMAP-read")
 def publish_datastage(identifier):
@@ -555,24 +593,23 @@ def publish_datastage(identifier):
         if isinstance(user_info, Response):
             return user_info
         
-        if not 'hmgroupids' in user_info:
+        if 'hmgroupids' not in user_info:
             return Response("User has no valid group information to authorize publication.", 403)
-        if not data_admin_group_uuid in user_info['hmgroupids']:
+        if data_admin_group_uuid not in user_info['hmgroupids']:
             return Response("User must be a member of the HuBMAP Data Admin group to publish data.", 403)
 
-
-        if identifier == None or len(identifier) == 0:
+        if identifier is None or len(identifier) == 0:
             abort(400, jsonify( { 'error': 'identifier parameter is required to publish a dataset' } ))
 
-
         r = requests.get(app.config['UUID_WEBSERVICE_URL'] + "/" + identifier, headers={'Authorization': request.headers["AUTHORIZATION"]})
-        if r.ok == False:
+        if r.ok is False:
             raise ValueError("Cannot find specimen with identifier: " + identifier)
         dataset_uuid = json.loads(r.text)['hm_uuid']
 
         suspend_indexing_and_acls = string_helper.isYes(request.args.get('suspend-indexing-and-acls'))
         no_indexing_and_acls = False
-        if suspend_indexing_and_acls: no_indexing_and_acls = True 
+        if suspend_indexing_and_acls:
+            no_indexing_and_acls = True
 
         donors_to_reindex = []
         with neo4j_driver_instance.session() as neo_session:
@@ -595,17 +632,26 @@ def publish_datastage(identifier):
                 entity_type = node['entity_type']
                 data_access_level = node['data_access_level']
                 status = node['status']
-                if entity_type == 'Sample':                        
-                    #if this sample is already set to public, no need to set again
-                    if not data_access_level == 'public':
+                if entity_type == 'Sample':
+                    if data_access_level != 'public':
                         uuids_for_public.append(uuid)
                 elif entity_type == 'Donor':
                     donor_uuid = uuid
                     donors_to_reindex.append(uuid)
-                    if not data_access_level == 'public':
+                    if data_access_level != 'public':
                         uuids_for_public.append(uuid)
                 elif entity_type == 'Dataset':
-                    if not status == 'Published':
+                    if status == 'Published':
+                        pass # TODO: Enable the commented code once the integration work with pipeline has been completed for story #354.
+                        # nexus_token = app_manager.nexus_token_from_request_headers(request.headers)
+                        # dataset_helper = DatasetHelper()
+                        # dataset_title = dataset_helper.generate_dataset_title(node, nexus_token)
+                        #
+                        # datacite_doi_helper = DataCiteDoiHelper()
+                        # datacite_doi_helper.create_dataset_draft_doi(node, dataset_title)
+                        # # This will make the draft DQI created above 'findable'....
+                        # datacite_doi_helper.move_doi_state_from_draft_to_findable(node, nexus_token)
+                    else:
                         return Response(f"{dataset_uuid} has an ancestor dataset that has not been Published. Will not Publish. Ancestor dataset is: {uuid}", 400)
             
             if donor_uuid is None:
@@ -751,18 +797,19 @@ def update_ingest_status():
         entity_api = EntityApi(app_manager.nexus_token_from_request_headers(request.headers),
                                commons_file_helper.removeTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']))
 
-        return app_manager.update_ingest_status_and_title(app.config, request.json, request.headers, entity_api)
-    
+        return app_manager.update_ingest_status_title_thumbnail(app.config, 
+                                                                request.json, 
+                                                                request.headers, 
+                                                                entity_api,
+                                                                file_upload_helper_instance)
     except HTTPException as hte:
         return Response(hte.get_description(), hte.get_status_code())
-    
     except ValueError as ve:
         logger.error(str(ve))
         return jsonify({'error' : str(ve)}), 400
-        
     except Exception as e:
         logger.error(e, exc_info=True)
-        return Response("Unexpected error while saving dataset: " + str(e), 500)        
+        return Response("Unexpected error while saving dataset: " + str(e), 500)     
 
 
 @app.route('/datasets/<uuid>/submit', methods = ['PUT'])

@@ -7,10 +7,10 @@ import requests
 import logging
 from flask import Flask
 import urllib.request
+from pathlib import Path
+from shutil import copy2
 from api.entity_api import EntityApi
 from api.search_api import SearchApi
-
-import pprint
 
 # Suppress InsecureRequestWarning warning when requesting status on https with ssl cert verify disabled
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
@@ -38,10 +38,6 @@ def load_flask_instance_config():
                 instance_relative_config=True)
     app.config.from_pyfile('app.cfg')
 
-    # Remove trailing slash / from URL base to avoid "//" caused by config with trailing slash
-    app.config['ENTITY_WEBSERVICE_URL'] = app.config['ENTITY_WEBSERVICE_URL'].strip('/')
-    app.config['SEARCH_WEBSERVICE_URL'] = app.config['SEARCH_WEBSERVICE_URL'].strip('/')
-
     return app.config
 
 
@@ -68,6 +64,8 @@ class DatasetHelper:
 
     # This is the business logic for an endpoint that is used by the ingress-validation-tests package to validate
     # the data needed to produce a title from data found in a dataset using generate_dataset_title below.
+    # Note: This is a list of dataset_uuid(s) that actually pass validation requirements:
+    # ead5cc01250b4f9ea73dd91503c313a5
     def verify_dataset_title_info(self, dataset_uuid: str, user_token: str) -> array:
         entity_api = EntityApi(user_token, _entity_api_url)
         search_api = SearchApi(user_token, _search_api_url)
@@ -195,7 +193,7 @@ class DatasetHelper:
 
         return generated_title
 
-    def get_assay_type_description(self, search_api: object, data_types: array) -> str:
+    def get_assay_type_description(self, search_api: SearchApi, data_types: array) -> str:
         assay_types = []
         assay_type_desc = ''
 
@@ -243,7 +241,7 @@ class DatasetHelper:
         organ_types_dict = self.get_organ_types_dict()
         return organ_types_dict[organ_code]['description'].lower()
 
-    def get_dataset_ancestors(self, entity_api: object, dataset_uuid: str) -> object:
+    def get_dataset_ancestors(self, entity_api: EntityApi, dataset_uuid: str) -> object:
         response = entity_api.get_ancestors(dataset_uuid)
         if response.status_code == 200:
             return response.json()
@@ -261,13 +259,101 @@ class DatasetHelper:
 
             raise requests.exceptions.RequestException(response.text)
 
+    # Added by Zhou for handling dataset thumbnail file
+    # - delete exisiting 'thumbnail_file' via entity-api if already exists
+    # - copy the original thumbnail file to upload temp dir
+    def handle_thumbnail_file(self, thumbnail_file_abs_path: str, entity_api: EntityApi, dataset_uuid: str,
+                              extra_headers: dict, temp_file_id: str, file_upload_temp_dir: str):
+        # Delete the old thumbnail file from Neo4j before updating with new one
+        # First retrieve the exisiting thumbnail file uuid
+        response = entity_api.get_entities(dataset_uuid)
+        
+        # Invoke .raise_for_status(), an HTTPError will be raised with certain status codes
+        response.raise_for_status()
+
+        if response.status_code != 200:
+            err_msg = f"Failed to query the dataset of uuid {dataset_uuid} while calling EntityApi.get_entities() status code:{response.status_code}  message:{response.text}"
+            logger.error(err_msg)
+            # Bubble up the error message
+            raise requests.exceptions.RequestException(err_msg)
+
+        entity_dict = response.json()
+
+        logger.debug('=======EntityApi.get_entities() resulting entity_dict=======')
+        logger.debug(entity_dict)
+
+        # Easier to ask for forgiveness than permission (EAFP)
+        # Rather than checking key existence at every level
+        try:
+            thumbnail_file_uuid = entity_dict['thumbnail_file']['file_uuid']
+
+            # To remove the existing thumbnail file, just pass the file uuid as a string
+            put_data = {
+                'thumbnail_file_to_remove': thumbnail_file_uuid
+            }
+
+            response = entity_api.put_entities(dataset_uuid, put_data, extra_headers)
+
+            # Invoke .raise_for_status(), an HTTPError will be raised with certain status codes
+            response.raise_for_status()
+
+            if response.status_code != 200:
+                err_msg = f"Failed to remove the existing thumbnail file for dataset of uuid {dataset_uuid} while calling EntityApi.put_entities() status code:{response.status_code}  message:{response.text}"
+                logger.error(err_msg)
+                # Bubble up the error message
+                raise requests.exceptions.RequestException(err_msg)
+
+            logger.info(f"Successfully removed the existing thumbnail file of the dataset uuid {dataset_uuid}")
+        except KeyError:
+            logger.info(f"No existing thumbnail file found for the dataset uuid {dataset_uuid}")
+            pass
+
+        entity_dict = response.json()
+
+        logger.debug('=======EntityApi.put_entities() resulting entity_dict=======')
+        logger.debug(entity_dict)
+
+        # Create the temp file dir under the temp uploads for the thumbnail
+        # /hive/hubmap/hm_uploads_tmp/<temp_file_id> (for PROD)
+        temp_file_dir = os.path.join(file_upload_temp_dir, temp_file_id)
+
+        try:
+            Path(temp_file_dir).mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            logger.exception(f"Failed to create the thumbnail temp upload dir {temp_file_dir} for thumbnail file attched to Dataset {dataset_uuid}")
+
+        # Then copy the source thumbnail file to the temp file dir
+        # shutil.copy2 is identical to shutil.copy() method
+        # but it also try to preserves the file's metadata
+        copy2(thumbnail_file_abs_path, temp_file_dir)
+
+
+def _generate_test_title(dataset_helper: object, entity_api: EntityApi) -> str:
+    response = entity_api.get_entities(dataset_uuid)
+    if response.status_code == 200:
+        dataset = response.json()
+
+        try:
+            return dataset_helper.generate_dataset_title(dataset, user_token)
+        except requests.exceptions.RequestException as e:
+            logger.exception(e)
+    else:
+        msg = f"Unable to query the target dataset with uuid: {dataset_uuid}"
+
+        # Log the full stack trace, prepend a line with our message
+        logger.exception(msg)
+
+        logger.debug("======status code from entity-api======")
+        logger.debug(response.status_code)
+
+        logger.debug("======response text from entity-api======")
+        logger.debug(response.text)
 
 # Running this python file as a script
 # python3 -m dataset_helper <user_token> <dataset_uuid>
 if __name__ == "__main__":
     try:
         user_token = sys.argv[1]
-
         try:
             dataset_uuid = sys.argv[2]
         except IndexError as e:
@@ -282,24 +368,7 @@ if __name__ == "__main__":
         sys.exit(msg)
 
     dataset_helper = DatasetHelper()
-
     entity_api = EntityApi(user_token, _entity_api_url)
-    response = entity_api.get_entities(dataset_uuid)
-    if response.status_code == 200:
-        dataset = response.json()
 
-        try:
-            title = dataset_helper.generate_dataset_title(dataset, user_token)
-        except requests.exceptions.RequestException as e:
-            logger.exception(e)
-    else:
-        msg = f"Unable to query the target dataset with uuid: {dataset_uuid}"
-
-        # Log the full stack trace, prepend a line with our message
-        logger.exception(msg)
-
-        logger.debug("======status code from entity-api======")
-        logger.debug(response.status_code)
-
-        logger.debug("======response text from entity-api======")
-        logger.debug(response.text)
+    title = _generate_test_title(dataset_helper, entity_api)
+    print(f'TITLE: {title}')
