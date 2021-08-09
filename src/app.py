@@ -50,6 +50,30 @@ app.config.from_pyfile('app.cfg')
 if app.config['ENABLE_CORS']:
     CORS(app)
 
+####################################################################################################
+## Register error handlers
+####################################################################################################
+
+# Error handler for 400 Bad Request with custom error message
+@app.errorhandler(400)
+def http_bad_request(e):
+    return jsonify(error=str(e)), 400
+
+# Error handler for 401 Unauthorized with custom error message
+@app.errorhandler(401)
+def http_unauthorized(e):
+    return jsonify(error=str(e)), 401
+
+# Error handler for 404 Not Found with custom error message
+@app.errorhandler(404)
+def http_not_found(e):
+    return jsonify(error=str(e)), 404
+
+# Error handler for 500 Internal Server Error with custom error message
+@app.errorhandler(500)
+def http_internal_server_error(e):
+    return jsonify(error=str(e)), 500
+
 
 ####################################################################################################
 ## AuthHelper initialization
@@ -485,16 +509,25 @@ def get_entity(entity_uuid):
 
 # Create derived dataset
 """
-Input JSON example:
+Input JSON example with "source_dataset_uuid" being an array of uuids:
 {
-"source_dataset_uuid":"e517ce652d3c4f22ace7f21fd64208ac",
+"source_dataset_uuid":["6e24ba7b41725e4b06630192476f8364", "hyt0tse652d3c4f22ace7f21fd64208ac"],
+"derived_dataset_name":"Test derived dataset 1",
+"derived_dataset_types":["QX11", "xxx"]
+}
+
+OR with "source_dataset_uuid" being a single uuid string to support past cases:
+
+{
+"source_dataset_uuid": "6e24ba7b41725e4b06630192476f8364",
 "derived_dataset_name":"Test derived dataset 1",
 "derived_dataset_types":["QX11", "xxx"]
 }
 
 Output JSON example:
 {
-    "derived_dataset_uuid": "2ecc257c3fd1875be08a12ff654f1264",
+    "derived_dataset_uuid": "78462470866bdda77deaaebe21ae7151",
+    "full_path": "/hive/hubmap-dev/data/consortium/IEC Testing Group/78462470866bdda77deaaebe21ae7151",
     "group_display_name": "IEC Testing Group",
     "group_uuid": "5bd084c8-edc2-11e8-802f-0e368f3075e8"
 }
@@ -502,44 +535,66 @@ Output JSON example:
 @app.route('/datasets/derived', methods=['POST'])
 #@secured(groups="HuBMAP-read")
 def create_derived_dataset():
-    if not request.is_json:
-        abort(400, jsonify( { 'error': 'This request requires json in the body' } ))
+    # Token is required
+    nexus_token = None
+    try:
+        nexus_token = AuthHelper.parseAuthorizationTokens(request.headers)
+    except Exception:
+        internal_server_error("Unable to parse globus token from request header")
+
+    require_json(request)
     
-    json_data = request.get_json()
+    json_data = request.json
+
     logger.info("++++++++++Calling /datasets/derived")
     logger.info("++++++++++Request:" + json.dumps(json_data))
 
-    if 'source_dataset_uuid' not in json_data:
-        abort(400, jsonify( { 'error': "The 'source_dataset_uuid' property is required." } ))
+    if 'source_dataset_uuids' not in json_data:
+        bad_request_error("The 'source_dataset_uuids' property is required.")
     
     if 'derived_dataset_name' not in json_data:
-        abort(400, jsonify( { 'error': "The 'derived_dataset_name' property is required." } ))
+        bad_request_error("The 'derived_dataset_name' property is required.")
 
     if 'derived_dataset_types' not in json_data:
-        abort(400, jsonify( { 'error': "The 'derived_dataset_types' property is required." } ))
+        bad_request_error("The 'derived_dataset_types' property is required.")
 
-    # Ensure the data types is an array
+    # source_dataset_uuids can either be a single uuid string OR a json array
+    if not isinstance(json_data['source_dataset_uuids'], (str, list)):
+        bad_request_error("The 'source_dataset_uuids' must either be a json string or an array")
+
+    # Ensure the derived_dataset_types is json array
     if not isinstance(json_data['derived_dataset_types'], list):
-        abort(400, jsonify( { 'error': "The 'derived_dataset_types' values must be an json array" } ))
+        bad_request_error("The 'derived_dataset_types' must be a json array")
+
+    # Ensure the arrays are not empty
+    if isinstance(json_data['source_dataset_uuids'], list) and len(json_data['source_dataset_uuids']) == 0:
+        bad_request_error("The 'source_dataset_uuids' can not be an empty array")
+
+    if len(json_data['derived_dataset_types']) == 0:
+        bad_request_error("The 'derived_dataset_types' can not be an empty array")
 
     try:
         dataset = Dataset(app.config)
-
-        # Note: the user who can create the derived dataset doesn't have to be the same person who created the source dataset
-        # Get the nexus token from request headers
-        nexus_token = None
-        try:
-            nexus_token = AuthHelper.parseAuthorizationTokens(request.headers)
-        except:
-            raise ValueError("Unable to parse globus token from request header")
-
         new_record = dataset.create_derived_datastage(nexus_token, json_data)
+
         return jsonify( new_record ), 201
     except HTTPException as hte:
-        return Response(hte.get_description(), hte.get_status_code())
+        status_code = hte.get_status_code()
+        response_text = hte.get_description()
+
+        if status_code == 400:
+            bad_request_error(response_text)
+        elif status_code == 401:
+            unauthorized_error(response_text)
+        elif status_code == 404:
+            not_found_error(response_text)
+        elif status_code == 500:
+            internal_server_error(response_text)
+        else:
+            return Response(response_text, status_code)
     except Exception as e:
         logger.error(e, exc_info=True)
-        return Response("Unexpected error while creating derived dataset: " + str(e), 500)        
+        internal_server_error("Unexpected error while creating derived dataset: " + str(e))        
 
 
 @app.route('/datasets', methods=['POST'])
@@ -1225,7 +1280,6 @@ def require_json(request):
 
 """
 Throws error for 400 Bad Reqeust with message
-
 Parameters
 ----------
 err_msg : str
@@ -1233,6 +1287,26 @@ err_msg : str
 """
 def bad_request_error(err_msg):
     abort(400, description = err_msg)
+
+"""
+Throws error for 401 Unauthorized with message
+Parameters
+----------
+err_msg : str
+    The custom error message to return to end users
+"""
+def unauthorized_error(err_msg):
+    abort(401, description = err_msg)
+
+"""
+Throws error for 404 Not Found with message
+Parameters
+----------
+err_msg : str
+    The custom error message to return to end users
+"""
+def not_found_error(err_msg):
+    abort(404, description = err_msg)
 
 """
 Throws error for 500 Internal Server Error with message
