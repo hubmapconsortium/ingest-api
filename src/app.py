@@ -2,7 +2,6 @@ import os
 import sys
 import logging
 from uuid import UUID
-
 import requests
 import argparse
 from pathlib import Path
@@ -35,8 +34,8 @@ from dataset_helper_object import DatasetHelper
 from datacite_doi_helper_object import DataCiteDoiHelper
 
 
-# Set logging fromat and level (default is warning)
-# All the API logging is forwarded to the uWSGI server and gets written into the log file `uwsgo-entity-api.log`
+# Set logging format and level (default is warning)
+# All the API logging is forwarded to the uWSGI server and gets written into the log file `uwsgi-ingest-api.log`
 # Log rotation is handled via logrotate on the host system with a configuration file
 # Do NOT handle log file and rotation via the Python logging to avoid issues with multi-worker processes
 logging.basicConfig(format='[%(asctime)s] %(levelname)s in %(module)s: %(message)s', level=logging.DEBUG, datefmt='%Y-%m-%d %H:%M:%S')
@@ -99,7 +98,7 @@ except Exception:
 ####################################################################################################
 
 # The neo4j_driver (from commons package) is a singleton module
-# This neo4j_driver_instance will be used for application-specifc neo4j queries
+# This neo4j_driver_instance will be used for application-specific neo4j queries
 # as well as being passed to the schema_manager
 try:
     neo4j_driver_instance = neo4j_driver.instance(app.config['NEO4J_SERVER'], 
@@ -417,7 +416,7 @@ def commit_file():
         Path(target_file_dir).mkdir(parents=True, exist_ok=True)
         os.symlink(source_file_path, target_file_path)
     except Exception as e:
-        logger.exception(f"Failed to create the symbolic link from {uploaded_dir} to {assets_symbolic_dir}")
+        logger.exception(f"Failed to create the symbolic link from {source_file_path} to {target_file_path}")
 
     # Send back the updated file_uuid_info
     return jsonify(file_uuid_info)
