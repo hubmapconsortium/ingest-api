@@ -10,27 +10,52 @@ This application is written in Flask and it includes an **app.cfg.example** file
 
 This assumes you are developing the code with the Flask development server and you have access to the remote neo4j database.
 
+### Generate the BUILD file
+
+In the project root directory:
+
+````
+./generate-build-version.sh
+````
+
 ### Install dependencies
 
+Create a new Python 3.x virtual environment:
+
 ````
-sudo pip3 install -r requirements.txt
+python3 -m venv venv-hm-ingest-api
+source venv-hm-ingest-api/bin/activate
 ````
 
-Note: if you need to use a modified version of the [HuBMAP commons] dependency, download the code and make changes, then install the dependency using `src/requirements_dev.txt` and make sure the local file system path is specified correctly.
+Upgrade pip:
+````
+python3 -m pip install --upgrade pip
+````
 
-### Start Flask development server
+Then install the dependencies with using the `master` branch code of commons:
+
+````
+export COMMONS_BRANCH=master
+pip install -r requirements.txt
+````
+
+### Start the server
+
+Either methods below will run the search-api web service at `http://localhost:5005`. Choose one:
+
+#### Directly via Python
+
+````
+python3 app.py
+````
+
+#### With the Flask Development Server
 
 ````
 cd src
 export FLASK_APP=app.py
 export FLASK_ENV=development
-flask run
-````
-
-This code runs by default on port 5000. You can change the port using a `-p` or `--port` switch at command line. For instance:
-
-````
-flask run -p 5001
+python3 -m flask run -p 5000
 ````
 
 ## Docker development and deployment environments
