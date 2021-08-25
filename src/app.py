@@ -1,7 +1,11 @@
 import os
 import sys
 import logging
+import requests
+import re
+import json
 from uuid import UUID
+import csv
 import requests
 import argparse
 from pathlib import Path
@@ -1018,7 +1022,7 @@ def create_uploadstage():
         logger.error(e, exc_info=True)
         return Response("Unexpected error while creating a upload: " + str(e) + "  Check the logs", 500)        
 
-#method to validate an Upload
+#method to zte an Upload
 #saves the upload then calls the validate workflow via
 #AirFlow interface 
 @app.route('/uploads/<upload_uuid>/validate', methods=['PUT'])
@@ -1263,12 +1267,136 @@ def allowable_edit_states(hmuuid):
         abort(400, msg)
 
 ########################################################################################################################
-#New method in progress by Derek Furst
+## New methods in progress by Derek Furst
 ########################################################################################################################
-@app.route('/samples/bulk', methods = ['POST'])
-def create_donors_from_bulk():
-    print()
+@app.route('/donors/bulk-upload', methods = ['POST'])
+def bulk_donors_upload_and_validate():
+    if 'file' not in request.files:
+        bad_request_error('No file part')
+    file = request.files['file']
+    if file.filename == '':
+        bad_request_error('No selected file')
+    file_contents = file.read()
 
+    #uses csv.DictReader to add functionality to tsv file. Can do operations on rows and headers.
+    records = []
+    headers = []
+    reader = csv.DictReader(file_contents, delimiter='\t')
+    first = True
+    for row in reader:
+        data_row = {}
+        for key in row.keys():
+            if first: headers.append(key)
+            data_row[key] = row[key]
+        records.append(data_row)
+        if first: first = False
+    validfile = validate_tsv(headers, records)
+    if validfile == True:
+        try:
+            temp_id = file_upload_helper_instance.save_temp_file(file)
+            return temp_id, "200: File uploaded" #The exact format of the return to be determined
+        except Exception:
+            msg = "Failed to upload files"
+            logger.exception(msg)
+            internal_server_error(msg)
+            return "400: File valid but failed to upload"
+    if type(validfile) == list:
+        return_validfile = ', '.join(validfile)
+        return f"400: {return_validfile}" #The exact format of the return to be determined
+
+
+@app.route('/donors/bulk', methods=['POST'])
+def create_donors_from_bulk():
+    request_data = request.get_json()
+    token = str(request.headers["AUTHORIZATION"])[7:]
+    header = {'Authorization': 'Bearer ' + token}
+    temp_id = request_data['temp_id']
+    include_group = False
+    group_uuid = ''
+    if "group_uuid" in request_data:
+        group_uuid = request_data['group_uuid']
+        include_group = True
+    temp_dir = app.config['FILE_UPLOAD_TEMP_DIR']
+    tsv_directory = temp_dir + temp_id + os.sep
+    if not os.path.exists(tsv_directory):
+        raise Exception("Temporary file with id " + temp_id + " does not have a temp directory.")
+    fcount = 0
+    temp_file_name = None
+    for tfile in os.listdir(tsv_directory):
+        fcount = fcount + 1
+        temp_file_name = tfile
+    if fcount == 0:
+        raise Exception("File not found for temporary file with id " + temp_id)
+    if fcount > 1:
+        raise Exception("Multiple files found in temporary file path for temp file id " + temp_id)
+    tsvfile_name = tsv_directory + temp_file_name
+    with open(tsvfile_name, newline= '') as tsvfile:
+        records = []
+        headers = []
+        reader = csv.DictReader(tsvfile, delimiter='\t')
+        first = True
+        for row in reader:
+            data_row = {}
+            for key in row.keys():
+                if first:
+                    headers.append(key)
+                data_row[key] = row[key]
+            records.append(data_row)
+            if first:
+                first = False
+    validfile = validate_tsv(headers, records)
+    if type(validfile) == list:
+        return_validfile = ', '.join(validfile)
+        return f"400: {return_validfile}"
+    response = {}
+    row_num = 1
+    if validfile:
+        for item in records:
+            donor_info = {}
+            if include_group:
+                item['group_uuid'] = group_uuid
+            #output_json = json.dumps(item)
+            #resp = requests.put(url, headers=header, data=json.dumps(update_recd))
+            r = requests.post(app.config['ENTITY_WEBSERVICE_URL']+ '/entities/donor', headers=header, json=item)
+            donor_info[r.status_code] = item
+            response[row_num] = donor_info
+        return response
+
+
+#Validates a bulk tsv file containing multiple donors. A valid tsv of donors must have certain fields, and all fields have certain accepted values. Returns "true" if valid. If invalid, returns a list of strings of various error messages
+def validate_tsv(headers, records):
+    error_msg = []
+    file_is_valid = True
+    if not 'lab_name' in headers:
+        file_is_valid = False
+        error_msg.append("lab_name required")
+    if not 'selection_protocol' in headers:
+        file_is_valid = False
+        error_msg.append("selection_protocol is required")
+    for data_row in records:
+        if len(data_row['lab_name'])>1024 or len(data_row['lab_name'])<1:
+            file_is_valid = False
+            error_msg.append("lab_name must be fewer than 1024 characters")
+        protocol = data_row['selection_protocol']
+        pattern1 = re.match('https://dx.doi.org/[0-9]{2}.[0-9]{4}/protocols.io.[\w]*', protocol)
+        pattern2 = re.match('[0-9]{2}.[0-9]{4}/protocols.io.[\w]*', protocol)
+        if pattern2 == False and pattern1 == False:
+            file_is_valid = False
+            error_msg.append("selection_protocol must either be of the format https://dx.doi.org/##.####/protocols.io or ##.####/protocols.io")
+        description = data_row['description']
+        pattern3 = re.match('[\w]*', description)
+        if pattern3 == False or len(description)>10000:
+            file_is_valid = False
+            error_msg.append("description must be fewer than 10,000 characters")
+        lab_id = data_row['lab_id']
+        pattern4 = re.match('[\w]*', lab_id)
+        if pattern4 == False or len(lab_id)>1024:
+            file_is_valid = False
+            error_msg.append("lab_id must be fewer than 1024 characters")
+    if file_is_valid:
+        return file_is_valid
+    if file_is_valid == False:
+        return error_msg
 
 ####################################################################################################
 ## Internal Functions
