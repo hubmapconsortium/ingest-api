@@ -113,8 +113,7 @@ class TestGenerateDatasetTitle(unittest.TestCase):
         result = self.dataset_helper.generate_dataset_title(self.dataset, self.user_token)
 
         self.assertTrue(type(result) is str)
-        #  f"{assay_type_desc} data from the {organ_desc} of a {age}-year-old {race} {sex}"
-        self.assertEqual(result, 'Imaging Mass Cytometry and Bulk RNA-seq data from the aorta of a <age>-year-old <race> <sex>')
+        self.assertEqual(result, 'Imaging Mass Cytometry and Bulk RNA-seq data from the aorta of a donor of unknown age, race and sex')
         mock_get_assaytype.assert_called()
         mock_get_ancestors.assert_called()
         mock_url_open.assert_called()
