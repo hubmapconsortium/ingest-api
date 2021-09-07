@@ -1268,9 +1268,7 @@ def allowable_edit_states(hmuuid):
             msg += str(x)
         abort(400, msg)
 
-########################################################################################################################
-## New methods in progress by Derek Furst
-########################################################################################################################
+
 @app.route('/donors/bulk-upload', methods = ['POST'])
 def bulk_donors_upload_and_validate():
     file_does_not_exist = False
@@ -1552,7 +1550,7 @@ def create_samples_from_bulk():
                     if include_group:
                         item['group_uuid'] = group_uuid
                     r = requests.post(commons_file_helper.ensureTrailingSlashURL(
-                        app.config['ENTITY_WEBSERVICE_URL']) + 'entities/donor', headers=header, json=item)
+                        app.config['ENTITY_WEBSERVICE_URL']) + 'entities/sample', headers=header, json=item)
                     entity_response[row_num] = r.json()
                     row_num = row_num + 1
                 # return jsonify(response)
