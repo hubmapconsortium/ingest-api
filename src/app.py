@@ -1400,6 +1400,12 @@ def create_donors_from_bulk():
             row_num = 1
             if validfile == True:
                 for item in records:
+                    item['lab_donor_id'] = item['lab_id']
+                    del item['lab_id']
+                    item['label'] = item['lab_name']
+                    del item['lab_name']
+                    item['protocol_url'] = item['selection_protocol']
+                    del item['selection_protocol']
                     if include_group:
                         item['group_uuid'] = group_uuid
                     r = requests.post(commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/donor', headers=header, json=item)
@@ -1547,6 +1553,16 @@ def create_samples_from_bulk():
             row_num = 1
             if validfile == True:
                 for item in records:
+                    item['direct_ancestor_uuid'] = item['source_id']
+                    del item['source_id']
+                    item['lab_tissue_sample_id'] = item['lab_id']
+                    del item['lab_id']
+                    item['specimen_type'] = item['sample_type']
+                    del item['sample_type']
+                    item['organ'] = item['organ_type']
+                    del item['organ_type']
+                    item['protocol_url'] = item['sample_protocol']
+                    del item['sample_protocol']
                     if include_group:
                         item['group_uuid'] = group_uuid
                     r = requests.post(commons_file_helper.ensureTrailingSlashURL(
@@ -1646,7 +1662,7 @@ def validate_samples(headers, records, header):
             # validate sample_protocol
             protocol = data_row['sample_protocol']
             selection_protocol_pattern1 = re.match('^https://dx\.doi\.org/[\d]+\.[\d]+/protocols\.io\.[\w]*', protocol)
-            selection_protocol_pattern2 = re.match('^[\d]{2}\.[\d]{4}/protocols\.io\.[\w]*', protocol)
+            selection_protocol_pattern2 = re.match('^[\d]+\.[\d]+/protocols\.io\.[\w]*', protocol)
             if selection_protocol_pattern2 is None and selection_protocol_pattern1 is None:
                 file_is_valid = False
                 error_msg.append(
