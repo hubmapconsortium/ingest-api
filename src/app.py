@@ -1552,6 +1552,7 @@ def create_samples_from_bulk():
             entity_response = {}
             row_num = 1
             if validfile == True:
+                entity_failure = False
                 for item in records:
                     item['direct_ancestor_uuid'] = item['source_id']
                     del item['source_id']
@@ -1569,8 +1570,15 @@ def create_samples_from_bulk():
                         app.config['ENTITY_WEBSERVICE_URL']) + 'entities/sample', headers=header, json=item)
                     entity_response[row_num] = r.json()
                     row_num = row_num + 1
+                    if r.status_code > 399:
+                        entity_failure = True
                 # return jsonify(response)
-                response = {"status": "success", "data": entity_response}
+                response_status = ""
+                if entity_failure is True:
+                    response_status = "failure - one or more entries failed to be created"
+                else:
+                    response_status = "success"
+                response = {"status": response_status, "data": entity_response}
                 return Response(json.dumps(response, sort_keys=True), 201, mimetype='application/json')
 
 def validate_samples(headers, records, header):
@@ -1598,8 +1606,8 @@ def validate_samples(headers, records, header):
     #     error_msg.append("rui_location field is required")
 
     required_headers = ['source_id', 'lab_id', 'sample_type', 'organ_type', 'sample_protocol', 'description', 'rui_location']
-    for field in headers:
-        if not field in required_headers:
+    for field in required_headers:
+        if field not in headers:
             file_is_valid = False
             error_msg.append(f"{field} is a required field")
 
@@ -1625,14 +1633,13 @@ def validate_samples(headers, records, header):
             sample_type = data_row['sample_type']
             if rui_is_blank is False and sample_type.lower() == 'organ':
                 file_is_valid = False
-                error_msg.append(f"Row Number: {rownum}. If rui_location field is blank, sample type cannot be organ")
+                error_msg.append(f"Row Number: {rownum}. If rui_location field is not blank, sample type cannot be organ")
             with urllib.request.urlopen(
                     'https://raw.githubusercontent.com/hubmapconsortium/search-api/master/src/search-schema/data/definitions/enums/tissue_sample_types.yaml') as urlfile:
                 sample_resource_file = yaml.load(urlfile, Loader=yaml.FullLoader)
                 if sample_type.lower() not in sample_resource_file:
                     file_is_valid = False
-                    error_msg.append(
-                        f"Row Number: {rownum}. sample_type value must be a sample code listed in tissue sample type files (https://raw.githubusercontent.com/hubmapconsortium/search-api/master/src/search-schema/data/definitions/enums/tissue_sample_types.yaml)")
+                    error_msg.append(f"Row Number: {rownum}. sample_type value must be a sample code listed in tissue sample type files (https://raw.githubusercontent.com/hubmapconsortium/search-api/master/src/search-schema/data/definitions/enums/tissue_sample_types.yaml)")
 
             # validate organ_type
             organ_type = data_row['organ_type']
@@ -1657,7 +1664,7 @@ def validate_samples(headers, records, header):
             description = data_row['description']
             if len(description) > 10000:
                 file_is_valid = False
-                error_msg.append(f"Row Number: {data_row}. Description must be fewer than 10,000 characters")
+                error_msg.append(f"Row Number: {rownum}. Description must be fewer than 10,000 characters")
 
             # validate sample_protocol
             protocol = data_row['sample_protocol']
@@ -1737,8 +1744,8 @@ def validate_donors(headers, records):
     #     error_msg.append("lab_id field is required") #if any of this fails, just stop
 
     required_headers = ['lab_name', 'selection_protocol', 'description', 'lab_id']
-    for field in headers:
-        if not field in required_headers:
+    for field in required_headers:
+        if field not in headers:
             file_is_valid = False
             error_msg.append(f"{field} is a required field")
     rownum = 1
@@ -1769,7 +1776,7 @@ def validate_donors(headers, records):
             description = data_row['description']
             if len(description) > 10000:
                 file_is_valid = False
-                error_msg.append(f"Row Number: {data_row}. Description must be fewer than 10,000 characters")
+                error_msg.append(f"Row Number: {rownum}. Description must be fewer than 10,000 characters")
 
             #validate lab_id
             lab_id = data_row['lab_id']
