@@ -105,7 +105,7 @@ try:
                                                   app.config['NEO4J_USERNAME'], 
                                                   app.config['NEO4J_PASSWORD'])
 
-    logger.info("Initialized neo4j_driver module successfully :)")
+    logger.info("Initialized neo4j_driver module successfully :) " + app.config['NEO4J_SERVER'])
 except Exception:
     msg = "Failed to initialize the neo4j_driver module"
     # Log the full stack trace, prepend a line with our message
@@ -1151,6 +1151,7 @@ def get_specimen_ingest_group_ids(identifier):
 @app.route('/entities/<hmuuid>/allowable-edit-states', methods = ['GET'])
 @secured(groups="HuBMAP-read")
 def allowable_edit_states(hmuuid):
+    logger.info("***** HI THERE ******************")
     #if no uuid provided send back a 400
     if hmuuid == None or len(hmuuid) == 0:
         abort(400, jsonify( { 'error': 'hmuuid (HuBMAP UUID) parameter is required.' } ))
@@ -1168,7 +1169,7 @@ def allowable_edit_states(hmuuid):
             #here because standard list (len, [idx]) operators don't work with
             #the neo4j record list object
             count = 0
-            r_val = {"has_write_priv":False, "has_submit_priv":False, "has_publish_priv":False }
+            r_val = {"has_write_priv":False, "has_submit_priv":False, "has_publish_priv":False, "has_admin_priv": False}
             for record in recds:
                 count = count + 1
                 if record.get('e.group_uuid', None) != None:
@@ -1182,7 +1183,35 @@ def allowable_edit_states(hmuuid):
                     data_access_level = record.get('e.data_access_level', None)
                     entity_type = record.get('e.entity_type', None)
                     status = record.get('e.status', None)
-                                        
+                    status = status.lower().strip()
+
+                    #compare the group_uuid in the entity to the users list of groups
+                    #if the user is a member of the HuBMAP-Data-Admin group,
+                    #they have write access to everything and the ability to submit datasets and uploads
+
+                    if data_admin_group_uuid in user_info['hmgroupids']:
+
+                        r_val['has_admin_priv'] = True
+                        if not status == 'processing':
+                            r_val['has_write_priv'] = True
+                        if entity_type == 'dataset':
+                            if status == 'new':
+                                r_val['has_submit_priv'] = True
+                            elif status == 'qa':
+                                r_val['has_publish_priv'] = True
+                        if entity_type == 'upload':
+                            if status in ['new', 'invalid', 'valid', 'error']:
+                                r_val['has_submit_priv'] = True
+                    #if in the users list of groups return true otherwise false
+                    elif group_uuid in user_info['hmgroupids']:
+                        if not status == 'processing':
+                            r_val['has_write_priv'] = True
+                    #if the user is a data_curator they are allowed to save/validate Uploads
+                    elif data_curator_group_uuid in user_info['hmgroupids'] and entity_type == 'upload' and not status == 'processing':
+                        r_val['has_write_priv'] = True
+                    else:
+                        r_val['has_write_priv'] = False
+                        
                     if isBlank(group_uuid):
                         msg = f"ERROR: unable to obtain a group_uuid from database for entity uuid:{hmuuid} during a call to allowable-edit-states"
                         logger.error(msg)
@@ -1210,7 +1239,7 @@ def allowable_edit_states(hmuuid):
                             msg = f"ERROR: unable to obtain status field from db for {entity_type} with uuid:{hmuuid} during a call to allowable-edit-states"
                             logger.error(msg)
                             return Response(msg, 500)
-                        status = status.lower().strip()
+                        
                         if status == 'published' or status == 'reorganized':
                             return Response(json.dumps(r_val), 200, mimetype='application/json')
                     #if the entity is public, no write allowed
@@ -1221,29 +1250,7 @@ def allowable_edit_states(hmuuid):
                     else:
                         return Response("Invalid data type " + entity_type + ".", 400)
 
-                    #compare the group_uuid in the entity to the users list of groups
-                    #if the user is a member of the HuBMAP-Data-Admin group,
-                    #they have write access to everything and the ability to submit datasets and uploads
-                    if data_admin_group_uuid in user_info['hmgroupids']:
-                        if not status == 'processing':
-                            r_val['has_write_priv'] = True
-                        if entity_type == 'dataset':
-                            if status == 'new':
-                                r_val['has_submit_priv'] = True
-                            elif status == 'qa':
-                                r_val['has_publish_priv'] = True
-                        if entity_type == 'upload':
-                            if status in ['new', 'invalid', 'valid', 'error']:
-                                r_val['has_submit_priv'] = True
-                    #if in the users list of groups return true otherwise false
-                    elif group_uuid in user_info['hmgroupids']:
-                        if not status == 'processing':
-                            r_val['has_write_priv'] = True
-                    #if the user is a data_curator they are allowed to save/validate Uploads
-                    elif data_curator_group_uuid in user_info['hmgroupids'] and entity_type == 'upload' and not status == 'processing':
-                        r_val['has_write_priv'] = True
-                    else:
-                        r_val['has_write_priv'] = False
+                    # USER CHECK WAS HERE
                 else:
                     return Response("Entity group uuid not found", 400)
                 
