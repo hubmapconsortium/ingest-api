@@ -1564,6 +1564,11 @@ def create_samples_from_bulk():
                     del item['organ_type']
                     item['protocol_url'] = item['sample_protocol']
                     del item['sample_protocol']
+                    if item['rui_location'] == '':
+                        del item['rui_location']
+                    else:
+                        rui_location_json = json.loads(item['rui_location'])
+                        item['rui_location'] = rui_location_json
                     if include_group:
                         item['group_uuid'] = group_uuid
                     r = requests.post(commons_file_helper.ensureTrailingSlashURL(
