@@ -1564,6 +1564,8 @@ def create_samples_from_bulk():
                     del item['organ_type']
                     item['protocol_url'] = item['sample_protocol']
                     del item['sample_protocol']
+                    if item['organ'] == '':
+                        del item['organ']
                     if item['rui_location'] == '':
                         del item['rui_location']
                     else:

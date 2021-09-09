@@ -408,6 +408,37 @@ paths:
           description: The user's token has expired or the user did not supply a valid token
         '500':
           description: Internal error
+  /donors/bulk-upload:
+    post:
+      summary: "Upload a tsv file containing multiple donor records to temporary stage. On success the file will be staged and a temporary id will be returned to reference the staged file by. Each record in the tsv are validated to verify that they are acceptable values for a donor and all necessary fields are included. Temporary id is only provided if all donor records in the tsv are valid."
+      requestBody:
+        content:
+          multipart/form-data:
+      responses:
+  /donors/bulk:
+    post:
+      summary:
+      requestBody:
+        content:
+          application/json:
+      responses:
+  /samples/bulk-upload:
+    post:
+      summary:
+      requestBody:
+        content:
+          multipart/form-data:
+      responses:
+  /samples/bulk:
+    post:
+      summary:
+      requestBody:
+        content:
+          application/json:
+      responses:
+
+
+
 
 
 servers:
