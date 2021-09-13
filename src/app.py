@@ -1706,8 +1706,11 @@ def validate_samples(headers, records, header):
             if len(source_id) < 1:
                 file_is_valid = False
                 error_msg.append(f"Row Number: {rownum}. source_id cannot be blank")
-            url = "https://uuid-api.dev.hubmapconsortium.org/hmuuid/" + source_id
+            url = commons_file_helper.ensureTrailingSlashURL(app.config(['UUID_WEBSERVICE_URL'])) + 'hmuuid/' + source_id
+            #url = "https://uuid-api.dev.hubmapconsortium.org/hmuuid/" + source_id
             resp = requests.get(url, headers=header)
+            resp_dict = resp.json()
+            data_row['source_id'] = resp_dict['hm_uuid']
             if resp.status_code == 404:
                 file_is_valid = False
                 error_msg.append(f"Row Number: {rownum}. Unable to verify source_id exists")
