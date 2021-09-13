@@ -1706,27 +1706,31 @@ def validate_samples(headers, records, header):
             if len(source_id) < 1:
                 file_is_valid = False
                 error_msg.append(f"Row Number: {rownum}. source_id cannot be blank")
-            url = commons_file_helper.ensureTrailingSlashURL(app.config(['UUID_WEBSERVICE_URL'])) + 'hmuuid/' + source_id
-            #url = "https://uuid-api.dev.hubmapconsortium.org/hmuuid/" + source_id
-            resp = requests.get(url, headers=header)
-            resp_dict = resp.json()
-            data_row['source_id'] = resp_dict['hm_uuid']
-            if resp.status_code == 404:
-                file_is_valid = False
-                error_msg.append(f"Row Number: {rownum}. Unable to verify source_id exists")
-            if resp.status_code == 400:
-                file_is_valid = False
-                error_msg.append(f"Row Number: {rownum}. {source_id} is not a valid id format")
-            if resp.status_code < 300:
-                if sample_type.lower() == 'organ' and resp.json()['type'].lower() != 'donor':
+            if len(source_id) > 0:
+                url = commons_file_helper.ensureTrailingSlashURL(app.config['UUID_WEBSERVICE_URL']) + source_id
+                #url = "https://uuid-api.dev.hubmapconsortium.org/hmuuid/" + source_id
+                resp = requests.get(url, headers=header)
+                if resp.status_code == 404:
                     file_is_valid = False
-                    error_msg.append(f"Row Number: {rownum}. If sample type is organ, source_id must point to a donor")
-                if sample_type.lower() != 'organ' and resp.json()['type'].lower() != 'sample':
+                    error_msg.append(f"Row Number: {rownum}. Unable to verify source_id exists")
+                if resp.status_code == 401:
                     file_is_valid = False
-                    error_msg.append(f"Row Number: {rownum}. If sample type is not organ, source_id must point to a sample")
-                if rui_is_blank == False and resp.json()['type'].lower() == 'donor':
+                    error_msg.append(f"Row Number: {rownum}. Unauthorized. Cannot access UUID-api")
+                if resp.status_code == 400:
                     file_is_valid = False
-                    error_msg.append(f"Row Number: {rownum}. If rui_location is blank, source_id cannot be a donor")
+                    error_msg.append(f"Row Number: {rownum}. {source_id} is not a valid id format")
+                if resp.status_code < 300:
+                    resp_dict = resp.json()
+                    data_row['source_id'] = resp_dict['hm_uuid']
+                    if sample_type.lower() == 'organ' and resp.json()['type'].lower() != 'donor':
+                        file_is_valid = False
+                        error_msg.append(f"Row Number: {rownum}. If sample type is organ, source_id must point to a donor")
+                    if sample_type.lower() != 'organ' and resp.json()['type'].lower() != 'sample':
+                        file_is_valid = False
+                        error_msg.append(f"Row Number: {rownum}. If sample type is not organ, source_id must point to a sample")
+                    if rui_is_blank == False and resp.json()['type'].lower() == 'donor':
+                        file_is_valid = False
+                        error_msg.append(f"Row Number: {rownum}. If rui_location is blank, source_id cannot be a donor")
 
             rownum = rownum + 1
 
