@@ -134,9 +134,12 @@ class DatasetHelper:
         search_api = SearchApi(user_token, _search_api_url)
 
         organ_desc = '<organ_desc>'
-        age = '<age>'
-        race = '<race>'
-        sex = '<sex>'
+        # age = '<age>'
+        # race = '<race>'
+        # sex = '<sex>'
+        age = None
+        race = None
+        sex = None
 
         # Parse assay_type from the Dataset
         try:
@@ -186,7 +189,26 @@ class DatasetHelper:
                     except KeyError:
                         pass
 
-        generated_title = f"{assay_type_desc} data from the {organ_desc} of a {age}-year-old {race} {sex}"
+        age_race_sex_info = None
+
+        if (age is None) and (race is not None) and (sex is not None):
+            age_race_sex_info = f"{race} {sex} of unknown age"
+        elif (race is None) and (age is not None) and (sex is not None):
+            age_race_sex_info = f"{age}-year-old {sex} of unknown race"
+        elif (sex is None) and (age is not None) and (race is not None):
+            age_race_sex_info = f"{age}-year-old {race} donor of unknown sex"
+        elif (age is None) and (race is None) and (sex is not None):
+            age_race_sex_info = f"{sex} donor of unknown age and race"
+        elif (age is None) and (sex is None) and (race is not None):
+            age_race_sex_info = f"{race} donor of unknown age and sex"
+        elif (race is None) and (sex is None) and (age is not None):
+            age_race_sex_info = f"{age}-year-old donor of unknown race and sex"
+        elif (age is None) and (race is None) and (sex is None):
+            age_race_sex_info = "donor of unknown age, race and sex"
+        else:
+            age_race_sex_info = f"{age}-year-old {race} {sex}"
+
+        generated_title = f"{assay_type_desc} data from the {organ_desc} of a {age_race_sex_info}"
 
         logger.debug("===========Auto generated Title===========")
         logger.debug(generated_title)
