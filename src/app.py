@@ -620,7 +620,7 @@ def create_datastage():
         ingest_helper = IngestFileHelper(app.config)
         requested_group_uuid = auth_helper.get_write_group_uuid(token, requested_group_uuid)
         dataset_request['group_uuid'] = requested_group_uuid            
-        post_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + '/entities/dataset'
+        post_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/dataset'
         response = requests.post(post_url, json = dataset_request, headers = {'Authorization': 'Bearer ' + token, 'X-Hubmap-Application':'ingest-api' }, verify = False)
         if response.status_code != 200:
             return Response(response.text, response.status_code)
@@ -1005,7 +1005,7 @@ def create_uploadstage():
         ingest_helper = IngestFileHelper(app.config)
         requested_group_uuid = auth_helper.get_write_group_uuid(token, requested_group_uuid)
         upload_request['group_uuid'] = requested_group_uuid            
-        post_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + '/entities/upload'
+        post_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/upload'
         response = requests.post(post_url, json = upload_request, headers = {'Authorization': 'Bearer ' + token, 'X-Hubmap-Application':'ingest-api' }, verify = False)
         if response.status_code != 200:
             return Response(response.text, response.status_code)
