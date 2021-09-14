@@ -133,10 +133,9 @@ class DatasetHelper:
         entity_api = EntityApi(user_token, _entity_api_url)
         search_api = SearchApi(user_token, _search_api_url)
 
+        # Assume organ_desc is always available, otherwise will throw parsing error
         organ_desc = '<organ_desc>'
-        # age = '<age>'
-        # race = '<race>'
-        # sex = '<sex>'
+
         age = None
         race = None
         sex = None
@@ -159,8 +158,7 @@ class DatasetHelper:
                 # 'specimen_type' is a key in search-api/src/search-schema/data/definitions/enums/tissue_sample_types.yaml
 
                 if ancestor['entity_type'] == 'Sample':
-                    if 'specimen_type' in ancestor and ancestor['specimen_type'].lower() == 'organ' and \
-                            'organ' in ancestor:
+                    if 'specimen_type' in ancestor and ancestor['specimen_type'].lower() == 'organ' and 'organ' in ancestor:
                         try:
                             # ancestor['organ'] is the two-letter code only set if sample_type == organ.
                             # Convert the two-letter code to a description
@@ -350,29 +348,9 @@ class DatasetHelper:
         copy2(thumbnail_file_abs_path, temp_file_dir)
 
 
-def _generate_test_title(dataset_helper: object, entity_api: EntityApi) -> str:
-    response = entity_api.get_entities(dataset_uuid)
-    if response.status_code == 200:
-        dataset = response.json()
-
-        try:
-            return dataset_helper.generate_dataset_title(dataset, user_token)
-        except requests.exceptions.RequestException as e:
-            logger.exception(e)
-    else:
-        msg = f"Unable to query the target dataset with uuid: {dataset_uuid}"
-
-        # Log the full stack trace, prepend a line with our message
-        logger.exception(msg)
-
-        logger.debug("======status code from entity-api======")
-        logger.debug(response.status_code)
-
-        logger.debug("======response text from entity-api======")
-        logger.debug(response.text)
 
 # Running this python file as a script
-# python3 -m dataset_helper <user_token> <dataset_uuid>
+# python3 -m dataset_helper_object <user_token> <dataset_uuid>
 if __name__ == "__main__":
     try:
         user_token = sys.argv[1]
@@ -392,5 +370,23 @@ if __name__ == "__main__":
     dataset_helper = DatasetHelper()
     entity_api = EntityApi(user_token, _entity_api_url)
 
-    title = _generate_test_title(dataset_helper, entity_api)
-    print(f'TITLE: {title}')
+    response = entity_api.get_entities(dataset_uuid)
+    if response.status_code == 200:
+        dataset = response.json()
+
+        try:
+            title = dataset_helper.generate_dataset_title(dataset, user_token)
+            logger.debug(f"TITLE: {title}")
+        except requests.exceptions.RequestException as e:
+            logger.exception(e)
+    else:
+        msg = f"Unable to query the target dataset with uuid: {dataset_uuid}"
+
+        # Log the full stack trace, prepend a line with our message
+        logger.exception(msg)
+
+        logger.debug("======status code from entity-api======")
+        logger.debug(response.status_code)
+
+        logger.debug("======response text from entity-api======")
+        logger.debug(response.text)
