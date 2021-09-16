@@ -69,11 +69,15 @@ class IngestFileHelper:
     def create_dataset_directory(self, dataset_record, group_uuid, dataset_uuid):
         if dataset_record['contains_human_genetic_sequences']:
             access_level = 'protected'
+            asset_link_dir = None
         else:
             access_level = 'consortium'
+            #if the dataset is consortium level provide the path in the assets directory
+            #to link it to, if protected don't link into assets directory (above set to None)
+            asset_link_dir = os.path.join(str(self.appconfig['HUBMAP_WEBSERVICE_FILEPATH']), dataset_record['uuid'])
             
         new_directory_path = self.get_dataset_directory_absolute_path(dataset_record, group_uuid, dataset_uuid)
-        IngestFileHelper.make_directory(new_directory_path, None)
+        IngestFileHelper.make_directory(new_directory_path, asset_link_dir)
         try:
             if dataset_record['contains_human_genetic_sequences']:
                 access_level = 'protected'
