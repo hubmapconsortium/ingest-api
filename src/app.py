@@ -1024,7 +1024,7 @@ def create_uploadstage():
         logger.error(e, exc_info=True)
         return Response("Unexpected error while creating a upload: " + str(e) + "  Check the logs", 500)        
 
-#method to zte an Upload
+#method to validate an Upload
 #saves the upload then calls the validate workflow via
 #AirFlow interface 
 @app.route('/uploads/<upload_uuid>/validate', methods=['PUT'])
@@ -1274,12 +1274,12 @@ def bulk_donors_upload_and_validate():
     file_does_not_exist = False
     file_does_not_exist_msg = ''
     if 'file' not in request.files:
-        bad_request_error('No file part')
         file_does_not_exist = True
         file_does_not_exist_msg = 'No file part'
+        #bad_request_error('No file part')
     file = request.files['file']
     if file.filename == '':
-        bad_request_error('No selected file')
+        #bad_request_error('No selected file')
         file_does_not_exist = True
         file_does_not_exist_msg = "No selected file"
     if file_does_not_exist is True:
@@ -1318,7 +1318,7 @@ def bulk_donors_upload_and_validate():
             if unsuccessful_upload is True:
                 msg = "Failed to upload files"
                 logger.exception(msg)
-                internal_server_error(msg)
+                #internal_server_error(msg)
                 response_body = {"status": "error", "data": {"File valid but upload failed": unsuccessful_upload_msg}}
                 return Response(json.dumps(response_body, sort_keys=True), 500, mimetype='application/json')
         if type(validfile) == list:
@@ -1338,11 +1338,9 @@ def create_donors_from_bulk():
     token = str(request.headers["AUTHORIZATION"])[7:]
     header = {'Authorization': 'Bearer ' + token}
     temp_id = request_data['temp_id']
-    include_group = False
-    group_uuid = ''
+    group_uuid = None
     if "group_uuid" in request_data:
         group_uuid = request_data['group_uuid']
-        include_group = True
     temp_dir = app.config['FILE_UPLOAD_TEMP_DIR']
     tsv_directory = commons_file_helper.ensureTrailingSlash(temp_dir) + temp_id + os.sep
     file_not_found = False
@@ -1406,7 +1404,7 @@ def create_donors_from_bulk():
                     del item['lab_name']
                     item['protocol_url'] = item['selection_protocol']
                     del item['selection_protocol']
-                    if include_group:
+                    if group_uuid is not None:
                         item['group_uuid'] = group_uuid
                     r = requests.post(commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/donor', headers=header, json=item)
                     entity_response[row_num] = r.json()
@@ -1422,12 +1420,12 @@ def bulk_samples_upload_and_validate():
     file_does_not_exist = False
     file_does_not_exist_msg = ''
     if 'file' not in request.files:
-        bad_request_error('No file part')
+        #bad_request_error('No file part')
         file_does_not_exist = True
         file_does_not_exist_msg = 'No file part'
     file = request.files['file']
     if file.filename == '':
-        bad_request_error('No selected file')
+        #bad_request_error('No selected file')
         file_does_not_exist = True
         file_does_not_exist_msg = "No selected file"
     if file_does_not_exist is True:
@@ -1471,7 +1469,7 @@ def bulk_samples_upload_and_validate():
             if unsuccessful_upload is True:
                 msg = "Failed to upload files"
                 logger.exception(msg)
-                internal_server_error(msg)
+                #internal_server_error(msg)
                 response_body = {"status": "error", "data": {"File valid but upload failed": unsuccessful_upload_msg}}
                 return Response(json.dumps(response_body, sort_keys=True), 500, mimetype='application/json')
         if type(validfile) == list:
