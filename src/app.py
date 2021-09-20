@@ -1145,7 +1145,8 @@ def get_specimen_ingest_group_ids(identifier):
 #                  {
 #                      "has_write_priv": true,
 #                      "has_submit_priv": false,
-#                      "has_publish_priv": false
+#                      "has_publish_priv": false,
+#                      "has_admin_priv": false
 #                  }
 
 @app.route('/entities/<hmuuid>/allowable-edit-states', methods = ['GET'])
@@ -1168,7 +1169,7 @@ def allowable_edit_states(hmuuid):
             #here because standard list (len, [idx]) operators don't work with
             #the neo4j record list object
             count = 0
-            r_val = {"has_write_priv":False, "has_submit_priv":False, "has_publish_priv":False }
+            r_val = {"has_write_priv":False, "has_submit_priv":False, "has_publish_priv":False, "has_admin_priv":False }
             for record in recds:
                 count = count + 1
                 if record.get('e.group_uuid', None) != None:
@@ -1225,6 +1226,7 @@ def allowable_edit_states(hmuuid):
                     #if the user is a member of the HuBMAP-Data-Admin group,
                     #they have write access to everything and the ability to submit datasets and uploads
                     if data_admin_group_uuid in user_info['hmgroupids']:
+                        r_val['has_admin_priv'] = True
                         if not status == 'processing':
                             r_val['has_write_priv'] = True
                         if entity_type == 'dataset':
