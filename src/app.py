@@ -1189,6 +1189,10 @@ def allowable_edit_states(hmuuid):
                     data_access_level = record.get('e.data_access_level', None)
                     entity_type = record.get('e.entity_type', None)
                     status = record.get('e.status', None)
+
+                    # if user is in the data admin group
+                    if data_admin_group_uuid in user_info['hmgroupids']:
+                        r_val['has_admin_priv'] = True
                                         
                     if isBlank(group_uuid):
                         msg = f"ERROR: unable to obtain a group_uuid from database for entity uuid:{hmuuid} during a call to allowable-edit-states"
@@ -1232,7 +1236,6 @@ def allowable_edit_states(hmuuid):
                     #if the user is a member of the HuBMAP-Data-Admin group,
                     #they have write access to everything and the ability to submit datasets and uploads
                     if data_admin_group_uuid in user_info['hmgroupids']:
-                        r_val['has_admin_priv'] = True
                         if not status == 'processing':
                             r_val['has_write_priv'] = True
                         if entity_type == 'dataset':
