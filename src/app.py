@@ -9,6 +9,8 @@ from uuid import UUID
 import yaml
 import csv
 import requests
+# Don't confuse urllib (Python native library) with urllib3 (3rd-party library, requests also uses urllib3)
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
 import argparse
 from pathlib import Path
 from shutil import rmtree # Used by file removal
@@ -50,6 +52,9 @@ logger = logging.getLogger(__name__)
 # Specify the absolute path of the instance folder and use the config file relative to the instance path
 app = Flask(__name__, instance_path=os.path.join(os.path.abspath(os.path.dirname(__file__)), 'instance'), instance_relative_config=True)
 app.config.from_pyfile('app.cfg')
+
+# Suppress InsecureRequestWarning warning when requesting status on https with ssl cert verify disabled
+requests.packages.urllib3.disable_warnings(category = InsecureRequestWarning)
 
 # Enable/disable CORS from configuration based on docker or non-docker deployment
 if app.config['ENABLE_CORS']:
@@ -1047,13 +1052,15 @@ def validate_upload(upload_uuid):
     #pipeline will update the status when finished
     upload_changes['status'] = 'Processing'
     update_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/' + upload_uuid
-    resp = requests.put(update_url, headers=http_headers, json=upload_changes)
+    # Disable ssl certificate verification
+    resp = requests.put(update_url, headers=http_headers, json=upload_changes, verify = False)
     if resp.status_code >= 300:
         return Response(resp.text, resp.status_code)
     
     #call the AirFlow validation workflow
     validate_url = commons_file_helper.ensureTrailingSlashURL(app.config['INGEST_PIPELINE_URL']) + 'uploads/' + upload_uuid + "/validate"
-    resp = requests.put(validate_url, headers=http_headers, json=upload_changes)
+    # Disable ssl certificate verification
+    resp = requests.put(validate_url, headers=http_headers, json=upload_changes, verify = False)
     if resp.status_code >= 300:
         return Response(resp.text, resp.status_code)
     
