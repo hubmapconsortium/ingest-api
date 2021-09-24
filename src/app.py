@@ -1063,6 +1063,8 @@ def validate_upload(upload_uuid):
     resp = requests.put(validate_url, headers=http_headers, json=upload_changes, verify = False)
     if resp.status_code >= 300:
         return Response(resp.text, resp.status_code)
+
+    return(Response("Upload updated successfully", 200))
     
 
 @app.route('/metadata/usergroups', methods = ['GET'])
