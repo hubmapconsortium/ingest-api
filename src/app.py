@@ -1047,13 +1047,13 @@ def validate_upload(upload_uuid):
     #pipeline will update the status when finished
     upload_changes['status'] = 'Processing'
     update_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/' + upload_uuid
-    resp = requests.put(update_url, headers=http_headers)
+    resp = requests.put(update_url, headers=http_headers, json=upload_changes)
     if resp.status_code >= 300:
         return Response(resp.text, resp.status_code)
     
     #call the AirFlow validation workflow
     validate_url = commons_file_helper.ensureTrailingSlashURL(app.config['INGEST_PIPELINE_URL']) + 'uploads/' + upload_uuid + "/validate"
-    resp = requests.put(validate_url, headers=http_headers)
+    resp = requests.put(validate_url, headers=http_headers, json=upload_changes)
     if resp.status_code >= 300:
         return Response(resp.text, resp.status_code)
     
