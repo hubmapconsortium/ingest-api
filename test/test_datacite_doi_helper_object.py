@@ -147,9 +147,7 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
             return r
         mock_post.side_effect = [resp1()]
 
-        dataset_title_string = "Dataset Title String"
-
-        self.datacite_doi_helper.create_dataset_draft_doi(self.dataset, dataset_title_string)
+        self.datacite_doi_helper.create_dataset_draft_doi(self.dataset)
 
         mock_post.assert_called()
         args = mock_post.call_args_list[-1]
@@ -171,7 +169,6 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
         self.assertEqual(len(data_attributes.keys()), 9)
         self.assertEqual(data_attributes['event'], 'register')
         self.assertEqual(data_attributes['doi'], f"{self.hubmap_prefix}/{self.hubmap_id}")
-        self.assertEqual(data_attributes['titles'][0]['title'], dataset_title_string)
         self.assertEqual(data_attributes['publisher'], 'HuBMAP Consortium')
         self.assertEqual(data_attributes['publicationYear'], int(datetime.now().year))
         self.assertEqual(data_attributes['types']['resourceTypeGeneral'], 'Dataset')
@@ -231,7 +228,7 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
         mock_add_new_doi.side_effect = [resp1()]
 
         self.assertRaises(requests.RequestException,
-                          self.datacite_doi_helper.create_dataset_draft_doi, self.dataset, "Dataset Title String")
+                          self.datacite_doi_helper.create_dataset_draft_doi, self.dataset)
         mock_add_new_doi.assert_called()
 
     @patch('datacite_doi_helper_object.EntityApi.put_entities')
@@ -269,7 +266,7 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
 
         self.assertRaises(requests.RequestException,
                           self.datacite_doi_helper.move_doi_state_from_draft_to_findable,
-                          self.dataset, "Dataset Title String")
+                          self.dataset)
         mock_update_doi_event_publish.assert_called()
         mock_put_entities.assert_not_called()
 
@@ -292,6 +289,6 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
 
         self.assertRaises(requests.RequestException,
                           self.datacite_doi_helper.move_doi_state_from_draft_to_findable,
-                          self.dataset, "Dataset Title String")
+                          self.dataset)
         mock_update_doi_event_publish.assert_called()
         mock_put_entities.assert_called()
