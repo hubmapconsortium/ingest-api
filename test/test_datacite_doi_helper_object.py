@@ -169,6 +169,7 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
         self.assertEqual(len(data_attributes.keys()), 9)
         self.assertEqual(data_attributes['event'], 'register')
         self.assertEqual(data_attributes['doi'], f"{self.hubmap_prefix}/{self.hubmap_id}")
+        self.assertEqual(data_attributes['titles'][0]['title'], "Dataset Title String")
         self.assertEqual(data_attributes['publisher'], 'HuBMAP Consortium')
         self.assertEqual(data_attributes['publicationYear'], int(datetime.now().year))
         self.assertEqual(data_attributes['types']['resourceTypeGeneral'], 'Dataset')
@@ -228,7 +229,7 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
         mock_add_new_doi.side_effect = [resp1()]
 
         self.assertRaises(requests.RequestException,
-                          self.datacite_doi_helper.create_dataset_draft_doi, self.dataset)
+                          self.datacite_doi_helper.create_dataset_draft_doi, self.dataset, "Dataset Title String")
         mock_add_new_doi.assert_called()
 
     @patch('datacite_doi_helper_object.EntityApi.put_entities')
