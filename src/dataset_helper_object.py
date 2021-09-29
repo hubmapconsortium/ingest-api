@@ -129,7 +129,7 @@ class DatasetHelper:
         return rslt
 
 
-''' Commented out by Zhou 9/29/2021 - Move dataset title generation to entity-api via on_read_trigger
+    ''' Commented out by Zhou 9/29/2021 - Move dataset title generation to entity-api via on_read_trigger
 
     # Note: verify_dataset_title_info checks information used here and so if this is changed that should be updated.
     def generate_dataset_title(self, dataset: object, user_token: str) -> str:
@@ -215,10 +215,10 @@ class DatasetHelper:
         logger.debug(generated_title)
 
         return generated_title
-'''
+    '''
 
 
-''' Commented out by Zhou 9/29/2021 - Move dataset title generation to entity-api via on_read_trigger
+    ''' Commented out by Zhou 9/29/2021 - Move dataset title generation to entity-api via on_read_trigger
     def get_assay_type_description(self, search_api: SearchApi, data_types: array) -> str:
         assay_types = []
         assay_type_desc = ''
@@ -262,18 +262,18 @@ class DatasetHelper:
             raise ValueError(msg)
 
         return assay_type_desc
-'''
+    '''
 
 
-''' Commented out by Zhou 9/29/2021 - Move dataset title generation to entity-api via on_read_trigger
+    ''' Commented out by Zhou 9/29/2021 - Move dataset title generation to entity-api via on_read_trigger
     def get_organ_description(self, organ_code: str) -> str:
         organ_types_dict = self.get_organ_types_dict()
         return organ_types_dict[organ_code]['description'].lower()
-'''
+    '''
 
 
 
-''' Commented out by Zhou 9/29/2021 - Move dataset title generation to entity-api via on_read_trigger
+    ''' Commented out by Zhou 9/29/2021 - Move dataset title generation to entity-api via on_read_trigger
     def get_dataset_ancestors(self, entity_api: EntityApi, dataset_uuid: str) -> object:
         response = entity_api.get_ancestors(dataset_uuid)
         if response.status_code == 200:
@@ -291,7 +291,7 @@ class DatasetHelper:
             logger.debug(response.text)
 
             raise requests.exceptions.RequestException(response.text)
-'''
+    '''
 
 
 
