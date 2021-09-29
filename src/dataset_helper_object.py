@@ -128,6 +128,9 @@ class DatasetHelper:
 
         return rslt
 
+
+''' Commented out by Zhou 9/29/2021 - Move dataset title generation to entity-api via on_read_trigger
+
     # Note: verify_dataset_title_info checks information used here and so if this is changed that should be updated.
     def generate_dataset_title(self, dataset: object, user_token: str) -> str:
         entity_api = EntityApi(user_token, _entity_api_url)
@@ -212,6 +215,9 @@ class DatasetHelper:
         logger.debug(generated_title)
 
         return generated_title
+'''
+
+
 
     def get_assay_type_description(self, search_api: SearchApi, data_types: array) -> str:
         assay_types = []
@@ -347,46 +353,3 @@ class DatasetHelper:
         # but it also try to preserves the file's metadata
         copy2(thumbnail_file_abs_path, temp_file_dir)
 
-
-
-# Running this python file as a script
-# python3 -m dataset_helper_object <user_token> <dataset_uuid>
-if __name__ == "__main__":
-    try:
-        user_token = sys.argv[1]
-        try:
-            dataset_uuid = sys.argv[2]
-        except IndexError as e:
-            msg = "Missing dataset uuid argument"
-            # Log the full stack trace, prepend a line with our message
-            logger.exception(msg)
-            sys.exit(msg)
-    except IndexError as e:
-        msg = "Missing user token argument"
-        # Log the full stack trace, prepend a line with our message
-        logger.exception(msg)
-        sys.exit(msg)
-
-    dataset_helper = DatasetHelper()
-    entity_api = EntityApi(user_token, _entity_api_url)
-
-    response = entity_api.get_entities(dataset_uuid)
-    if response.status_code == 200:
-        dataset = response.json()
-
-        try:
-            title = dataset_helper.generate_dataset_title(dataset, user_token)
-            logger.debug(f"TITLE: {title}")
-        except requests.exceptions.RequestException as e:
-            logger.exception(e)
-    else:
-        msg = f"Unable to query the target dataset with uuid: {dataset_uuid}"
-
-        # Log the full stack trace, prepend a line with our message
-        logger.exception(msg)
-
-        logger.debug("======status code from entity-api======")
-        logger.debug(response.status_code)
-
-        logger.debug("======response text from entity-api======")
-        logger.debug(response.text)
