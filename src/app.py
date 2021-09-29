@@ -708,12 +708,11 @@ def publish_datastage(identifier):
                 elif entity_type == 'Dataset':
                     if status == 'Published':
                         pass # TODO: Enable the commented code once the integration work with pipeline has been completed for story #354.
+                        # Note: moved dataset title auto generation to entity-api - Zhou 9/29/2021
+
                         # nexus_token = app_manager.nexus_token_from_request_headers(request.headers)
-                        # dataset_helper = DatasetHelper()
-                        # dataset_title = dataset_helper.generate_dataset_title(node, nexus_token)
-                        #
                         # datacite_doi_helper = DataCiteDoiHelper()
-                        # datacite_doi_helper.create_dataset_draft_doi(node, dataset_title)
+                        # datacite_doi_helper.create_dataset_draft_doi(node)
                         # # This will make the draft DQI created above 'findable'....
                         # datacite_doi_helper.move_doi_state_from_draft_to_findable(node, nexus_token)
                     else:

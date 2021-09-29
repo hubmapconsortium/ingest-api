@@ -117,19 +117,17 @@ class DataCiteDoiHelper:
     ----------
     dataset: dict
         The dataset dict to be published
-    dataset_title: str
-        The dataset title, either from dataset.title or an auto generated one
 
     Returns
     -------
     dict
         The registered DOI details
     """
-    def create_dataset_draft_doi(self, dataset: dict, dataset_title: str) -> object:
+    def create_dataset_draft_doi(self, dataset: dict) -> object:
         if ('entity_type' in dataset) and (dataset['entity_type'] == 'Dataset'):
             datacite_api = DataCiteApi(self.datacite_repository_id, self.datacite_repository_password,
                                        self.datacite_hubmap_prefix, self.datacite_api_url, self.entity_api_url)
-            response = datacite_api.add_new_doi(dataset['hubmap_id'], dataset['uuid'], dataset_title,
+            response = datacite_api.add_new_doi(dataset['hubmap_id'], dataset['uuid'],
                                                 self.build_doi_contributors(dataset),
                                                 self.build_doi_creators(dataset))
 
@@ -294,11 +292,10 @@ if __name__ == "__main__":
         logger.debug(dataset)
 
         dataset_helper = DatasetHelper()
-        dataset_title = dataset_helper.generate_dataset_title(dataset, user_token)
 
         data_cite_doi_helper = DataCiteDoiHelper()
         try:
-            data_cite_doi_helper.create_dataset_draft_doi(dataset, dataset_title)
+            data_cite_doi_helper.create_dataset_draft_doi(dataset)
         except requests.exceptions.RequestException as e:
             pass
         try:

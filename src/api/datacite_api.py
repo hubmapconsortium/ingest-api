@@ -34,7 +34,7 @@ class DataCiteApi:
     # https://support.datacite.org/reference/dois-2#post_dois
     # and https://docs.python.org/3/library/typing.html
     def add_new_doi(self,
-                    dataset_hubmap_id: str, dataset_uuid: str, dataset_title: str,
+                    dataset_hubmap_id: str, dataset_uuid: str,
                     contributors: list, creators: list) -> object:
         publisher = 'HuBMAP Consortium'
         publication_year = int(datetime.now().year)
