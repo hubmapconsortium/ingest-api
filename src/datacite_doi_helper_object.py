@@ -127,8 +127,11 @@ class DataCiteDoiHelper:
         if ('entity_type' in dataset) and (dataset['entity_type'] == 'Dataset'):
             datacite_api = DataCiteApi(self.datacite_repository_id, self.datacite_repository_password,
                                        self.datacite_hubmap_prefix, self.datacite_api_url, self.entity_api_url)
-            response = datacite_api.add_new_doi(dataset['hubmap_id'], dataset['uuid'],
-                                                self.build_doi_contributors(dataset), dataset['title'],
+            
+            response = datacite_api.add_new_doi(dataset['hubmap_id'], 
+                                                dataset['uuid'],
+                                                self.build_doi_contributors(dataset), 
+                                                dataset['title'],
                                                 self.build_doi_creators(dataset))
 
             if response.status_code == 201:

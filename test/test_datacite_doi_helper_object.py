@@ -37,7 +37,7 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
             "last_modified_timestamp": 1621538119292,
             "description": "Periodic acid-Schiff stained microscopy collected from the right kidney of a 66 year old White male donor by the Biomolecular Multimodal Imaging Center (BIOMC) at Vanderbilt University. BIOMIC is a Tissue Mapping Center that is part of the NIH funded Human Biomolecular Atlas Program (HuBMAP). Brightfield microscopy images of formalin-fixed paraffin-embedded (FFPE) tissue sections were collected with a Leica BioSystems SCN-400. Support was provided by the NIH Common Fund and National Institute of Diabetes and Digestive and Kidney Diseases (U54 DK120058). Tissue was collected through the Cooperative Human Tissue Network with support provided by the NIH National Cancer Institute (5 UM1 CA183727-08).",
             "group_uuid": "73bb26e4-ed43-11e8-8f19-0a7c1eab007a",
-            "title": "VAN0032-RK-5-6-PAS",
+            "title": "Dataset Title String",
             "uuid": self.uuid,
             "ingest_id": "8690897fced9931da34d66d669c1d698_scan.and.begin.processing_2021-05-15T00:01:08.033754-04:00",
             "lab_dataset_id": "VAN0032-RK-5-6-PAS",
@@ -229,7 +229,7 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
         mock_add_new_doi.side_effect = [resp1()]
 
         self.assertRaises(requests.RequestException,
-                          self.datacite_doi_helper.create_dataset_draft_doi, self.dataset, "Dataset Title String")
+                          self.datacite_doi_helper.create_dataset_draft_doi, self.dataset)
         mock_add_new_doi.assert_called()
 
     @patch('datacite_doi_helper_object.EntityApi.put_entities')
@@ -267,7 +267,7 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
 
         self.assertRaises(requests.RequestException,
                           self.datacite_doi_helper.move_doi_state_from_draft_to_findable,
-                          self.dataset)
+                          self.dataset, "Dataset Title String")
         mock_update_doi_event_publish.assert_called()
         mock_put_entities.assert_not_called()
 
@@ -290,6 +290,6 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
 
         self.assertRaises(requests.RequestException,
                           self.datacite_doi_helper.move_doi_state_from_draft_to_findable,
-                          self.dataset)
+                          self.dataset, "User Token String")
         mock_update_doi_event_publish.assert_called()
         mock_put_entities.assert_called()
