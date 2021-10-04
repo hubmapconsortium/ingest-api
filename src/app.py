@@ -476,22 +476,27 @@ def remove_file():
     # Send back the updated files_info_list
     return jsonify(files_info_list)
 
-
+@app.route('/uploads/<ds_uuid>/file-system-abs-path', methods = ['GET'])
 @app.route('/datasets/<ds_uuid>/file-system-abs-path', methods = ['GET'])
 def get_file_system_absolute_path(ds_uuid):
     try:
         dset = __get_entity(ds_uuid, auth_header = request.headers.get("AUTHORIZATION"))
         ent_type = __get_dict_prop(dset, 'entity_type')
         group_uuid = __get_dict_prop(dset, 'group_uuid')
-        is_phi = __get_dict_prop(dset, 'contains_human_genetic_sequences')
-        if ent_type is None or not ent_type.lower().strip() == 'dataset':
-            return Response(f"Entity with uuid:{ds_uuid} is not a Dataset", 400)
-        if group_uuid is None:
-            return Response(f"Error: Unable to find group uuid on dataset {ds_uuid}", 400)
-        if is_phi is None:
-            return Response(f"Error: contains_human_genetic_sequences is not set on dataset {ds_uuid}", 400)
+        if ent_type is None or ent_type.strip() == '':
+            return Response(f"Entity with uuid:{ds_uuid} needs to be a Dataset or Upload.", 400)
         ingest_helper = IngestFileHelper(app.config)
-        path = ingest_helper.get_dataset_directory_absolute_path(dset, group_uuid, ds_uuid)
+        if ent_type.lower().strip() == 'upload':
+            path = ingest_helper.get_upload_directory_abs_path(group_uuid = group_uuid, upload_uuid = ds_uuid)
+        else:
+            is_phi = __get_dict_prop(dset, 'contains_human_genetic_sequences')
+            if ent_type is None or not ent_type.lower().strip() == 'dataset':
+                return Response(f"Entity with uuid:{ds_uuid} is not a Dataset or Upload", 400)
+            if group_uuid is None:
+                return Response(f"Error: Unable to find group uuid on dataset {ds_uuid}", 400)
+            if is_phi is None:
+                return Response(f"Error: contains_human_genetic_sequences is not set on dataset {ds_uuid}", 400)
+            path = ingest_helper.get_dataset_directory_absolute_path(dset, group_uuid, ds_uuid)
         return jsonify ({'path': path}), 200    
     except HTTPException as hte:
         return Response(f"Error while getting file-system-abs-path for {ds_uuid}: " + hte.get_description(), hte.get_status_code())
