@@ -408,6 +408,159 @@ paths:
           description: The user's token has expired or the user did not supply a valid token
         '500':
           description: Internal error
+  /donors/bulk-upload:
+    post:
+      summary: "Upload a tsv file containing multiple donor records to temporary stage. On success the file will be staged and a temporary id will be returned to reference the staged file by. Each record in the tsv are validated to verify that they are acceptable values for a donor and all necessary fields are included. Temporary id is only provided if all donor records in the tsv are valid."
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: File uploaded, temp directory and temp_id created.
+          content:
+            application/json:
+              schema:
+                properties:
+                  temp_id:
+                    type: string
+        '400':
+          description: File not upload failed or file contains invalid donors
+          content:
+            application/json:
+              schema:
+                properties:
+                  status:
+                    type: string
+                  message:
+                    type: string
+        '401':
+          description: The user's token has expired or the user did not have authorization
+        '500':
+          description: Internal error
+  /donors/bulk:
+    post:
+      summary: "Confirm that you want to create donors from the previously uploaded tsv file. Donors are validated once more and then if valid, new donors are created via the entity api"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                temp_id:
+                  type: string
+                  items:
+                    - $ref: '#/components/schemas/temp_id'
+                group_uuid:
+                  type: string
+                  items:
+                    - $ref: '#/components/schemas/group_uuid'
+      responses:
+        '200':
+          description: The samples in the tsv file were successfully created.
+          content:
+            application/json:
+              schema:
+                properties:
+                  status:
+                    type: string
+                  data:
+                    type: json
+        '400':
+          description: File not found for given temp_id
+          content:
+            application/json:
+              schema:
+                properties:
+                  status:
+                    type: string
+                  message:
+                    type: string
+        '401':
+          description: The user's token has expired or the user did not have authorization
+        '500':
+          description: Internal error
+  /samples/bulk-upload:
+    post:
+      summary: "Upload a tsv file containing multiple donor records to temporary stage. On success the file will be staged and a temporary id will be returned to reference the staged file by. Each record in the tsv are validated to verify that they are acceptable values for a donor and all necessary fields are included. Temporary id is only provided if all donor records in the tsv are valid."
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: File uploaded, temp directory and temp_id created.
+          content:
+            application/json:
+              schema:
+                properties:
+                  temp_id:
+                    type: string
+        '400':
+          description: File not upload failed or file contains invalid donors
+          content:
+            application/json:
+              schema:
+                properties:
+                  status:
+                    type: string
+                  message:
+                    type: string
+  /samples/bulk:
+    post:
+      summary: "Confirm that you want to create donors from the previously uploaded tsv file. Donors are validated once more and then if valid, new donors are created via the entity api"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                temp_id:
+                  type: string
+                  items:
+                    - $ref: '#/components/schemas/temp_id'
+                group_uuid:
+                  type: string
+                  items:
+                    - $ref: '#/components/schemas/group_uuid'
+      responses:
+        '200':
+          description: The samples in the tsv file were successfully created.
+          content:
+            application/json:
+              schema:
+                properties:
+                  status:
+                    type: string
+                  data:
+                    type: json
+        '400':
+          description: File not found for given temp_id
+          content:
+            application/json:
+              schema:
+                properties:
+                  status:
+                    type: string
+                  message:
+                    type: string
+        '401':
+          description: The user's token has expired or the user did not have authorization
+        '500':
+          description: Internal error
+
+
+
 
 
 servers:

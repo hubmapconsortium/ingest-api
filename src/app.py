@@ -1,8 +1,16 @@
 import os
 import sys
 import logging
-from uuid import UUID
+import urllib.request
 import requests
+import re
+import json
+from uuid import UUID
+import yaml
+import csv
+import requests
+# Don't confuse urllib (Python native library) with urllib3 (3rd-party library, requests also uses urllib3)
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
 import argparse
 from pathlib import Path
 from shutil import rmtree # Used by file removal
@@ -44,6 +52,9 @@ logger = logging.getLogger(__name__)
 # Specify the absolute path of the instance folder and use the config file relative to the instance path
 app = Flask(__name__, instance_path=os.path.join(os.path.abspath(os.path.dirname(__file__)), 'instance'), instance_relative_config=True)
 app.config.from_pyfile('app.cfg')
+
+# Suppress InsecureRequestWarning warning when requesting status on https with ssl cert verify disabled
+requests.packages.urllib3.disable_warnings(category = InsecureRequestWarning)
 
 # Enable/disable CORS from configuration based on docker or non-docker deployment
 if app.config['ENABLE_CORS']:
@@ -1018,9 +1029,45 @@ def create_uploadstage():
         logger.error(e, exc_info=True)
         return Response("Unexpected error while creating a upload: " + str(e) + "  Check the logs", 500)        
 
+
+#method to change the status of an Upload to "submitted"
+#will also save any changes to title or description that are passed in
+@app.route('/uploads/<upload_uuid>/submit', methods=['PUT'])
+def submit_upload(upload_uuid):
+    if not request.is_json:
+        return Response("json request required", 400)
+
+    upload_changes = request.json
+    upload_changes['status'] = 'Submitted'
+    
+    #get auth info to use in other calls
+    #add the app specific header info
+    http_headers = {
+        'Authorization': request.headers["AUTHORIZATION"], 
+        'Content-Type': 'application/json',
+        'X-Hubmap-Application':'ingest-api'
+    } 
+
+    update_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/' + upload_uuid
+    # Disable ssl certificate verification
+    resp = requests.put(update_url, headers=http_headers, json=upload_changes, verify = False)
+    if resp.status_code >= 300:
+        return Response(resp.text, resp.status_code)
+    
+    #disable validations stuff for now...
+    ##call the AirFlow validation workflow
+    #validate_url = commons_file_helper.ensureTrailingSlashURL(app.config['INGEST_PIPELINE_URL']) + 'uploads/' + upload_uuid + "/validate"
+    ## Disable ssl certificate verification
+    #resp = requests.put(validate_url, headers=http_headers, json=upload_changes, verify = False)
+    #if resp.status_code >= 300:
+    #    return Response(resp.text, resp.status_code)
+
+    return(Response("Upload updated successfully", 200))
+
 #method to validate an Upload
 #saves the upload then calls the validate workflow via
 #AirFlow interface 
+#changed- 9/29/2021 only does a save for now-- connected to the "Save" button in the URL.
 @app.route('/uploads/<upload_uuid>/validate', methods=['PUT'])
 def validate_upload(upload_uuid):
     if not request.is_json:
@@ -1030,22 +1077,35 @@ def validate_upload(upload_uuid):
     
     #get auth info to use in other calls
     #add the app specific header info
-    auth_headers = {'Authorization': request.headers["AUTHORIZATION"], 'X-Hubmap-Application':'ingest-api'} 
+    http_headers = {
+        'Authorization': request.headers["AUTHORIZATION"], 
+        'Content-Type': 'application/json',
+        'X-Hubmap-Application':'ingest-api'
+    } 
 
     #update the Upload with any changes from the request
     #and change the status to "Processing", the validate
     #pipeline will update the status when finished
-    upload_changes['status'] = 'Processing'
+
+    #this line disabled because we aren't calling validate-- needs to be enabled again when we
+    #run the pipeline validation
+    #upload_changes['status'] = 'Processing'
     update_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/' + upload_uuid
-    resp = requests.put(update_url, headers=auth_headers)
+    
+    # Disable ssl certificate verification
+    resp = requests.put(update_url, headers=http_headers, json=upload_changes, verify = False)
     if resp.status_code >= 300:
         return Response(resp.text, resp.status_code)
     
-    #call the AirFlow validation workflow
-    validate_url = commons_file_helper.ensureTrailingSlashURL(app.config['INGEST_PIPELINE_URL']) + 'uploads/' + upload_uuid + "/validate"
-    resp = requests.put(validate_url, headers=auth_headers)
-    if resp.status_code >= 300:
-        return Response(resp.text, resp.status_code)
+    #disable validations stuff for now...
+    ##call the AirFlow validation workflow
+    #validate_url = commons_file_helper.ensureTrailingSlashURL(app.config['INGEST_PIPELINE_URL']) + 'uploads/' + upload_uuid + "/validate"
+    ## Disable ssl certificate verification
+    #resp = requests.put(validate_url, headers=http_headers, json=upload_changes, verify = False)
+    #if resp.status_code >= 300:
+    #    return Response(resp.text, resp.status_code)
+
+    return(Response("Upload updated successfully", 200))
     
 
 @app.route('/metadata/usergroups', methods = ['GET'])
@@ -1145,7 +1205,8 @@ def get_specimen_ingest_group_ids(identifier):
 #                  {
 #                      "has_write_priv": true,
 #                      "has_submit_priv": false,
-#                      "has_publish_priv": false
+#                      "has_publish_priv": false,
+#                      "has_admin_priv": false
 #                  }
 
 @app.route('/entities/<hmuuid>/allowable-edit-states', methods = ['GET'])
@@ -1168,7 +1229,7 @@ def allowable_edit_states(hmuuid):
             #here because standard list (len, [idx]) operators don't work with
             #the neo4j record list object
             count = 0
-            r_val = {"has_write_priv":False, "has_submit_priv":False, "has_publish_priv":False }
+            r_val = {"has_write_priv":False, "has_submit_priv":False, "has_publish_priv":False, "has_admin_priv":False  }
             for record in recds:
                 count = count + 1
                 if record.get('e.group_uuid', None) != None:
@@ -1182,6 +1243,10 @@ def allowable_edit_states(hmuuid):
                     data_access_level = record.get('e.data_access_level', None)
                     entity_type = record.get('e.entity_type', None)
                     status = record.get('e.status', None)
+
+                    # if user is in the data admin group
+                    if data_admin_group_uuid in user_info['hmgroupids']:
+                        r_val['has_admin_priv'] = True
                                         
                     if isBlank(group_uuid):
                         msg = f"ERROR: unable to obtain a group_uuid from database for entity uuid:{hmuuid} during a call to allowable-edit-states"
@@ -1262,6 +1327,543 @@ def allowable_edit_states(hmuuid):
             msg += str(x)
         abort(400, msg)
 
+
+@app.route('/donors/bulk-upload', methods = ['POST'])
+def bulk_donors_upload_and_validate():
+    file_does_not_exist = False
+    file_does_not_exist_msg = ''
+    if 'file' not in request.files:
+        file_does_not_exist = True
+        file_does_not_exist_msg = 'No file part'
+        #bad_request_error('No file part')
+    file = request.files['file']
+    if file.filename == '':
+        #bad_request_error('No selected file')
+        file_does_not_exist = True
+        file_does_not_exist_msg = "No selected file"
+    if file_does_not_exist is True:
+        response_body = {"status": "fail", "message": file_does_not_exist_msg}
+        return Response(json.dumps(response_body, sort_keys=True), 400, mimetype='application/json')
+    if file_does_not_exist is False:
+        unsuccessful_upload = False
+        unsuccessful_upload_msg = ''
+        try:
+            temp_id = file_upload_helper_instance.save_temp_file(file)
+        except Exception as e:
+            unsuccessful_upload = True
+            unsuccessful_upload_msg = str(e)
+        # uses csv.DictReader to add functionality to tsv file. Can do operations on rows and headers.
+        records = []
+        headers = []
+        file_location = commons_file_helper.ensureTrailingSlash(app.config['FILE_UPLOAD_TEMP_DIR']) + temp_id + os.sep + file.filename
+        with open(file_location, newline='') as tsvfile:
+            reader = csv.DictReader(tsvfile, delimiter='\t')
+            first = True
+            for row in reader:
+                data_row = {}
+                for key in row.keys():
+                    if first: headers.append(key)
+                    data_row[key] = row[key]
+                records.append(data_row)
+                if first: first = False
+        validfile = validate_donors(headers, records)
+        if validfile == True:
+            if unsuccessful_upload is False:
+                valid_response = {}
+                #valid_response['Response'] = "Tsv file valid. File uploaded succesffuly"
+                valid_response['temp_id'] = temp_id
+                return Response(json.dumps(valid_response, sort_keys=True), 201, mimetype='application/json')
+                #return jsonify(valid_response)
+            if unsuccessful_upload is True:
+                msg = "Failed to upload files"
+                logger.exception(msg)
+                #internal_server_error(msg)
+                response_body = {"status": "error", "data": {"File valid but upload failed": unsuccessful_upload_msg}}
+                return Response(json.dumps(response_body, sort_keys=True), 500, mimetype='application/json')
+        if type(validfile) == list:
+            return_validfile = {}
+            error_num = 0
+            for item in validfile:
+                return_validfile[str(error_num)] = str(item)
+                error_num = error_num + 1
+            #return_validfile = ', '.join(validfile)
+            response_body = {"status": "fail", "data": return_validfile}
+            return Response(json.dumps(response_body, sort_keys=True), 400, mimetype='application/json')  # The exact format of the return to be determined
+
+
+@app.route('/donors/bulk', methods=['POST'])
+def create_donors_from_bulk():
+    request_data = request.get_json()
+    token = str(request.headers["AUTHORIZATION"])[7:]
+    header = {'Authorization': 'Bearer ' + token}
+    temp_id = request_data['temp_id']
+    group_uuid = None
+    if "group_uuid" in request_data:
+        group_uuid = request_data['group_uuid']
+    temp_dir = app.config['FILE_UPLOAD_TEMP_DIR']
+    tsv_directory = commons_file_helper.ensureTrailingSlash(temp_dir) + temp_id + os.sep
+    file_not_found = False
+    if not os.path.exists(tsv_directory):
+        file_not_found = True
+        #raise Exception("Temporary file with id " + temp_id + " does not have a temp directory.")
+        return_body = {"status": "fail", "message": f"Temporary file with id {temp_id} does not have a temp directory"}
+        return Response(json.dumps(return_body, sort_keys=True), 400, mimetype='application/json')
+    if file_not_found is False:
+        fcount = 0
+        temp_file_name = None
+        for tfile in os.listdir(tsv_directory):
+            fcount = fcount + 1
+            temp_file_name = tfile
+        incorrect_file_count = False
+        incorrect_file_count_message = ""
+        if fcount == 0:
+            #raise Exception("File not found for temporary file with id " + temp_id) #how are these getting passed to the front end?
+            incorrect_file_count = True
+            incorrect_file_count_message = f"File not found in temporary directory /{temp_id}"
+        if fcount > 1:
+            #raise Exception("Multiple files found in temporary file path for temp file id " + temp_id)
+            incorrect_file_count = True
+            incorrect_file_count_message = f"Multiple files found in temporary file path /{temp_id}"
+        if incorrect_file_count:
+            return_response = {"status": "fail", "message": incorrect_file_count_message}
+            return Response(json.dumps(return_response, sort_keys=True), 400, mimetype='application/json')
+        if incorrect_file_count is False:
+            tsvfile_name = tsv_directory + temp_file_name
+            records = []
+            headers = []
+            with open(tsvfile_name, newline= '') as tsvfile:
+                reader = csv.DictReader(tsvfile, delimiter='\t')
+                first = True
+                for row in reader:
+                    data_row = {}
+                    for key in row.keys():
+                        if first:
+                            headers.append(key)
+                        data_row[key] = row[key]
+                    records.append(data_row)
+                    if first:
+                        first = False
+            validfile = validate_donors(headers, records)
+            if type(validfile) == list:
+                return_validfile = {}
+                error_num = 0
+                for item in validfile:
+                    return_validfile[str(error_num)] = str(item)
+                    error_num = error_num + 1
+                # return_validfile = ', '.join(validfile)
+                response_body = {"status": "fail", "data": return_validfile}
+                return Response(json.dumps(response_body, sort_keys=True), 400, mimetype='application/json')
+            entity_response = {}
+            row_num = 1
+            if validfile == True:
+                for item in records:
+                    item['lab_donor_id'] = item['lab_id']
+                    del item['lab_id']
+                    item['label'] = item['lab_name']
+                    del item['lab_name']
+                    item['protocol_url'] = item['selection_protocol']
+                    del item['selection_protocol']
+                    if group_uuid is not None:
+                        item['group_uuid'] = group_uuid
+                    r = requests.post(commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/donor', headers=header, json=item)
+                    entity_response[row_num] = r.json()
+                    row_num = row_num + 1
+                #return jsonify(response)
+                response = {"status": "success", "data": entity_response}
+                return Response(json.dumps(response, sort_keys=True),201, mimetype='application/json')
+
+@app.route('/samples/bulk-upload', methods=['POST'])
+def bulk_samples_upload_and_validate():
+    token = str(request.headers["AUTHORIZATION"])[7:]
+    header = {'Authorization': 'Bearer ' + token}
+    file_does_not_exist = False
+    file_does_not_exist_msg = ''
+    if 'file' not in request.files:
+        #bad_request_error('No file part')
+        file_does_not_exist = True
+        file_does_not_exist_msg = 'No file part'
+    file = request.files['file']
+    if file.filename == '':
+        #bad_request_error('No selected file')
+        file_does_not_exist = True
+        file_does_not_exist_msg = "No selected file"
+    if file_does_not_exist is True:
+        response_body = {"status": "fail", "message": file_does_not_exist_msg}
+        return Response(json.dumps(response_body, sort_keys=True), 400, mimetype='application/json')
+    temp_id = ''
+    if file_does_not_exist is False:
+        unsuccessful_upload = False
+        unsuccessful_upload_msg = ''
+        try:
+            temp_id = file_upload_helper_instance.save_temp_file(file)
+        except Exception as e:
+            unsuccessful_upload = True
+            unsuccessful_upload_msg = str(e)
+
+        # uses csv.DictReader to add functionality to tsv file. Can do operations on rows and headers.
+        records = []
+        headers = []
+        file_location = commons_file_helper.ensureTrailingSlash(
+            app.config['FILE_UPLOAD_TEMP_DIR']) + temp_id + os.sep + file.filename
+        with open(file_location, newline='') as tsvfile:
+            reader = csv.DictReader(tsvfile, delimiter='\t')
+            first = True
+            for row in reader:
+                data_row = {}
+                for key in row.keys():
+                    if first:
+                        headers.append(key)
+                    data_row[key] = row[key]
+                records.append(data_row)
+                if first:
+                    first = False
+        validfile = validate_samples(headers, records, header)
+        if validfile == True:
+            if unsuccessful_upload is False:
+                valid_response = {}
+                # valid_response['Response'] = "Tsv file valid. File uploaded succesffuly"
+                valid_response['temp_id'] = temp_id
+                return Response(json.dumps(valid_response, sort_keys=True), 201, mimetype='application/json')
+                # return jsonify(valid_response)
+            if unsuccessful_upload is True:
+                msg = "Failed to upload files"
+                logger.exception(msg)
+                #internal_server_error(msg)
+                response_body = {"status": "error", "data": {"File valid but upload failed": unsuccessful_upload_msg}}
+                return Response(json.dumps(response_body, sort_keys=True), 500, mimetype='application/json')
+        if type(validfile) == list:
+            return_validfile = {}
+            error_num = 0
+            for item in validfile:
+                return_validfile[str(error_num)] = str(item)
+                error_num = error_num + 1
+            # return_validfile = ', '.join(validfile)
+            response_body = {"status": "fail", "data": return_validfile}
+            return Response(json.dumps(response_body, sort_keys=True), 400,
+                            mimetype='application/json')  # The exact format of the return to be determined
+
+@app.route('/samples/bulk', methods=['POST'])
+def create_samples_from_bulk():
+    request_data = request.get_json()
+    token = str(request.headers["AUTHORIZATION"])[7:]
+    header = {'Authorization': 'Bearer ' + token}
+    temp_id = request_data['temp_id']
+    include_group = False
+    group_uuid = ''
+    if "group_uuid" in request_data:
+        group_uuid = request_data['group_uuid']
+        include_group = True
+    temp_dir = app.config['FILE_UPLOAD_TEMP_DIR']
+    tsv_directory = commons_file_helper.ensureTrailingSlash(temp_dir) + temp_id + os.sep
+    file_not_found = False
+    if not os.path.exists(tsv_directory):
+        file_not_found = True
+        # raise Exception("Temporary file with id " + temp_id + " does not have a temp directory.")
+        return_body = {"status": "fail", "message": f"Temporary file with id {temp_id} does not have a temp directory"}
+        return Response(json.dumps(return_body, sort_keys=True), 400, mimetype='application/json')
+    if file_not_found is False:
+        fcount = 0
+        temp_file_name = None
+        for tfile in os.listdir(tsv_directory):
+            fcount = fcount + 1
+            temp_file_name = tfile
+        incorrect_file_count = False
+        incorrect_file_count_message = ""
+        if fcount == 0:
+            # raise Exception("File not found for temporary file with id " + temp_id) #how are these getting passed to the front end?
+            incorrect_file_count = True
+            incorrect_file_count_message = f"File not found in temporary directory /{temp_id}"
+        if fcount > 1:
+            # raise Exception("Multiple files found in temporary file path for temp file id " + temp_id)
+            incorrect_file_count = True
+            incorrect_file_count_message = f"Multiple files found in temporary file path /{temp_id}"
+        if incorrect_file_count:
+            return_response = {"status": "fail", "message": incorrect_file_count_message}
+            return Response(json.dumps(return_response, sort_keys=True), 400, mimetype='application/json')
+        if incorrect_file_count is False:
+            tsvfile_name = tsv_directory + temp_file_name
+            records = []
+            headers = []
+            with open(tsvfile_name, newline='') as tsvfile:
+                reader = csv.DictReader(tsvfile, delimiter='\t')
+                first = True
+                for row in reader:
+                    data_row = {}
+                    for key in row.keys():
+                        if first:
+                            headers.append(key)
+                        data_row[key] = row[key]
+                    records.append(data_row)
+                    if first:
+                        first = False
+            validfile = validate_samples(headers, records, header)
+            if type(validfile) == list:
+                return_validfile = {}
+                error_num = 0
+                for item in validfile:
+                    return_validfile[str(error_num)] = str(item)
+                    error_num = error_num + 1
+                # return_validfile = ', '.join(validfile)
+                response_body = {"status": "fail", "data": return_validfile}
+                return Response(json.dumps(response_body, sort_keys=True), 400, mimetype='application/json')
+            entity_response = {}
+            row_num = 1
+            if validfile == True:
+                entity_failure = False
+                for item in records:
+                    item['direct_ancestor_uuid'] = item['source_id']
+                    del item['source_id']
+                    item['lab_tissue_sample_id'] = item['lab_id']
+                    del item['lab_id']
+                    item['specimen_type'] = item['sample_type']
+                    del item['sample_type']
+                    item['organ'] = item['organ_type']
+                    del item['organ_type']
+                    item['protocol_url'] = item['sample_protocol']
+                    del item['sample_protocol']
+                    if item['organ'] == '':
+                        del item['organ']
+                    if item['rui_location'] == '':
+                        del item['rui_location']
+                    else:
+                        rui_location_json = json.loads(item['rui_location'])
+                        item['rui_location'] = rui_location_json
+                    if include_group:
+                        item['group_uuid'] = group_uuid
+                    r = requests.post(commons_file_helper.ensureTrailingSlashURL(
+                        app.config['ENTITY_WEBSERVICE_URL']) + 'entities/sample', headers=header, json=item)
+                    entity_response[row_num] = r.json()
+                    row_num = row_num + 1
+                    if r.status_code > 399:
+                        entity_failure = True
+                # return jsonify(response)
+                response_status = ""
+                if entity_failure is True:
+                    response_status = "failure - one or more entries failed to be created"
+                else:
+                    response_status = "success"
+                response = {"status": response_status, "data": entity_response}
+                return Response(json.dumps(response, sort_keys=True), 201, mimetype='application/json')
+
+def validate_samples(headers, records, header):
+    error_msg = []
+    file_is_valid = True
+    # if not 'source_id' in headers:
+    #     file_is_valid = False
+    #     error_msg.append("source_id field is required")
+    # if not 'lab_id' in headers:
+    #     file_is_valid = False
+    #     error_msg.append("lab_id field is required")
+    # if not 'sample_type' in headers:
+    #     file_is_valid = False
+    #     error_msg.append("sample_type field is required")
+    # if not 'organ_type' in headers:
+    #     file_is_valid = False
+    # if not 'sample_protocol' in headers:
+    #     file_is_valid = False
+    #     error_msg.append("sample_protocol field is required")
+    # if not 'description' in headers:
+    #     file_is_valid = False
+    #     error_msg.append("sample_protocol field is required")
+    # if not 'rui_location' in headers:
+    #     file_is_valid = False
+    #     error_msg.append("rui_location field is required")
+
+    required_headers = ['source_id', 'lab_id', 'sample_type', 'organ_type', 'sample_protocol', 'description', 'rui_location']
+    for field in required_headers:
+        if field not in headers:
+            file_is_valid = False
+            error_msg.append(f"{field} is a required field")
+
+    rownum = 1
+    if file_is_valid is True:
+        for data_row in records:
+
+            # validate rui_location
+            rui_is_blank = True
+            rui_location = data_row['rui_location']
+            if len(rui_location) > 0:
+                rui_is_blank = False
+                if "\n" in rui_location:
+                    file_is_valid = False
+                    error_msg.append(f"Row Number: {rownum}. rui_location must contain no line breaks")
+                try:
+                    rui_location_dict = json.loads(rui_location)
+                except:
+                    file_is_valid = False
+                    error_msg.append(f"Row Number: {rownum}. rui_location must be a valid json file")
+
+            # validate sample_type
+            sample_type = data_row['sample_type']
+            if rui_is_blank is False and sample_type.lower() == 'organ':
+                file_is_valid = False
+                error_msg.append(f"Row Number: {rownum}. If rui_location field is not blank, sample type cannot be organ")
+            with urllib.request.urlopen(
+                    'https://raw.githubusercontent.com/hubmapconsortium/search-api/master/src/search-schema/data/definitions/enums/tissue_sample_types.yaml') as urlfile:
+                sample_resource_file = yaml.load(urlfile, Loader=yaml.FullLoader)
+                if sample_type.lower() not in sample_resource_file:
+                    file_is_valid = False
+                    error_msg.append(f"Row Number: {rownum}. sample_type value must be a sample code listed in tissue sample type files (https://raw.githubusercontent.com/hubmapconsortium/search-api/master/src/search-schema/data/definitions/enums/tissue_sample_types.yaml)")
+
+            # validate organ_type
+            organ_type = data_row['organ_type']
+            if sample_type.lower() != "organ":
+                if len(organ_type) > 0:
+                    file_is_valid = False
+                    error_msg.append(f"Row Number: {rownum}. organ_type field must be blank if sample_type is not 'organ'")
+            if sample_type.lower() == "organ":
+                if len(organ_type) < 1:
+                    file_is_valid = False
+                    error_msg.append(f"Row Number: {rownum}. organ_type field is required if sample_type is 'organ'")
+            with urllib.request.urlopen(
+                    'https://raw.githubusercontent.com/hubmapconsortium/search-api/master/src/search-schema/data/definitions/enums/organ_types.yaml') as urlfile:
+                organ_resource_file = yaml.load(urlfile, Loader=yaml.FullLoader)
+                if len(organ_type) > 0:
+                    if organ_type.upper() not in organ_resource_file:
+                        file_is_valid = False
+                        error_msg.append(
+                            f"Row Number: {rownum}. organ_type value must be a sample code listed in tissue sample type files (https://raw.githubusercontent.com/hubmapconsortium/search-api/master/src/search-schema/data/definitions/enums/organ_types.yaml)")
+
+            # validate description
+            description = data_row['description']
+            if len(description) > 10000:
+                file_is_valid = False
+                error_msg.append(f"Row Number: {rownum}. Description must be fewer than 10,000 characters")
+
+            # validate sample_protocol
+            protocol = data_row['sample_protocol']
+            selection_protocol_pattern1 = re.match('^https://dx\.doi\.org/[\d]+\.[\d]+/protocols\.io\.[\w]*', protocol)
+            selection_protocol_pattern2 = re.match('^[\d]+\.[\d]+/protocols\.io\.[\w]*', protocol)
+            if selection_protocol_pattern2 is None and selection_protocol_pattern1 is None:
+                file_is_valid = False
+                error_msg.append(
+                    f"Row Number: {rownum}. sample_protocol must either be of the format https://dx.doi.org/##.####/protocols.io.* or ##.####/protocols.io.*")
+            if len(protocol) < 1:
+                file_is_valid = False
+                error_msg.append(f"row Number: {rownum}. sample_protocol is a required filed and cannot be blank.")
+
+            # validate lab_id
+            lab_id = data_row['lab_id']
+            # lab_id_pattern = re.match('^\w*$', lab_id)
+            if len(lab_id) > 1024:
+                file_is_valid = False
+                error_msg.append(f"Row Number: {rownum}. lab_id must be fewer than 1024 characters")
+            # if lab_id_pattern is None:
+            #     file_is_valid = False
+            #     error_msg.append(f"Row Number: {rownum}. if lab_id is given, it must be an alphanumeric string")
+            if len(lab_id) < 1:
+                file_is_valid = False
+                error_msg.append(f"Row Number: {rownum}. lab_id value cannot be blank")
+
+            # validate source_id
+            source_id = data_row['source_id']
+            # hubmap_id_pattern = re.match('[A-Z]{3}[\d]{3}\.[A-Z]{4}\.[\d]{3}', source_id)
+            # hubmap_uuid_pattern = re.match('([a-f]|[0-9]){32}', source_id)
+            # hubmap_doi_pattern = re.match('[\d]{2}\.[\d]{4}/[A-Z]{3}[\d]{3}\.[A-Z]{4}\.[\d]{3}', source_id)
+            if len(source_id) < 1:
+                file_is_valid = False
+                error_msg.append(f"Row Number: {rownum}. source_id cannot be blank")
+            if len(source_id) > 0:
+                url = commons_file_helper.ensureTrailingSlashURL(app.config['UUID_WEBSERVICE_URL']) + source_id
+                #url = "https://uuid-api.dev.hubmapconsortium.org/hmuuid/" + source_id
+                resp = requests.get(url, headers=header)
+                if resp.status_code == 404:
+                    file_is_valid = False
+                    error_msg.append(f"Row Number: {rownum}. Unable to verify source_id exists")
+                if resp.status_code == 401:
+                    file_is_valid = False
+                    error_msg.append(f"Row Number: {rownum}. Unauthorized. Cannot access UUID-api")
+                if resp.status_code == 400:
+                    file_is_valid = False
+                    error_msg.append(f"Row Number: {rownum}. {source_id} is not a valid id format")
+                if resp.status_code < 300:
+                    resp_dict = resp.json()
+                    data_row['source_id'] = resp_dict['hm_uuid']
+                    if sample_type.lower() == 'organ' and resp.json()['type'].lower() != 'donor':
+                        file_is_valid = False
+                        error_msg.append(f"Row Number: {rownum}. If sample type is organ, source_id must point to a donor")
+                    if sample_type.lower() != 'organ' and resp.json()['type'].lower() != 'sample':
+                        file_is_valid = False
+                        error_msg.append(f"Row Number: {rownum}. If sample type is not organ, source_id must point to a sample")
+                    if rui_is_blank == False and resp.json()['type'].lower() == 'donor':
+                        file_is_valid = False
+                        error_msg.append(f"Row Number: {rownum}. If rui_location is blank, source_id cannot be a donor")
+
+            rownum = rownum + 1
+
+    if file_is_valid:
+        return file_is_valid
+    if file_is_valid == False:
+        return error_msg
+
+
+#Validates a bulk tsv file containing multiple donors. A valid tsv of donors must have certain fields, and all fields have certain accepted values. Returns "true" if valid. If invalid, returns a list of strings of various error messages
+def validate_donors(headers, records):
+    error_msg = []
+    file_is_valid = True
+    # if not 'lab_name' in headers:
+    #     file_is_valid = False
+    #     error_msg.append("lab_name field is required")
+    # if not 'selection_protocol' in headers:
+    #     file_is_valid = False
+    #     error_msg.append("selection_protocol field is required")
+    # if not 'description' in headers:
+    #     file_is_valid = False
+    #     error_msg.append("description field is required")
+    # if not 'lab_id' in headers:
+    #     file_is_valid = False
+    #     error_msg.append("lab_id field is required") #if any of this fails, just stop
+
+    required_headers = ['lab_name', 'selection_protocol', 'description', 'lab_id']
+    for field in required_headers:
+        if field not in headers:
+            file_is_valid = False
+            error_msg.append(f"{field} is a required field")
+    rownum = 1
+    if file_is_valid is True:
+        for data_row in records:
+
+            #validate lab_name
+            if len(data_row['lab_name']) > 1024:
+                file_is_valid = False
+                error_msg.append(f"Row Number: {rownum}. lab_name must be fewer than 1024 characters")
+            if len(data_row['lab_name']) < 1:
+                file_is_valid = False
+                error_msg.append(f"Row Number: {rownum}. lab_name must have 1 or more characters")
+            # lab_name_pattern = re.match('^\w*$')
+            # if lab_name_pattern == None:
+            #     file_is_valid = False
+            #     error_msg.append(f"Row Number: {rownum}. lab_name must be an alphanumeric string")
+
+            #validate selection_protocol
+            protocol = data_row['selection_protocol']
+            selection_protocol_pattern1 = re.match('^https://dx\.doi\.org/[\d]+\.[\d]+/protocols\.io\.[\w]*', protocol)
+            selection_protocol_pattern2 = re.match('^[\d]+\.[\d]+/protocols\.io\.[\w]*', protocol)
+            if selection_protocol_pattern2 is None and selection_protocol_pattern1 is None:
+                file_is_valid = False
+                error_msg.append(f"Row Number: {rownum}. selection_protocol must either be of the format https://dx.doi.org/##.####/protocols.io.* or ##.####/protocols.io.*")
+
+            #validate description
+            description = data_row['description']
+            if len(description) > 10000:
+                file_is_valid = False
+                error_msg.append(f"Row Number: {rownum}. Description must be fewer than 10,000 characters")
+
+            #validate lab_id
+            lab_id = data_row['lab_id']
+            #lab_id_pattern = re.match('^\w*$', lab_id)
+            if len(lab_id) > 1024:
+                file_is_valid = False
+                error_msg.append(f"Row Number: {rownum}. lab_id must be fewer than 1024 characters")
+            #if lab_id_pattern is None:
+            #    file_is_valid = False
+            #    error_msg.append(f"Row Number: {rownum}. if lab_id is given, it must be an alphanumeric string")
+            rownum = rownum + 1
+
+    if file_is_valid:
+        return file_is_valid
+    if file_is_valid == False:
+        return error_msg
 
 ####################################################################################################
 ## Internal Functions
