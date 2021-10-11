@@ -718,7 +718,7 @@ def publish_datastage(identifier):
                         # nexus_token = app_manager.nexus_token_from_request_headers(request.headers)
                         # datacite_doi_helper = DataCiteDoiHelper()
                         # datacite_doi_helper.create_dataset_draft_doi(node)
-                        # # This will make the draft DQI created above 'findable'....
+                        # # This will make the draft DOI created above 'findable'....
                         # datacite_doi_helper.move_doi_state_from_draft_to_findable(node, nexus_token)
                     else:
                         return Response(f"{dataset_uuid} has an ancestor dataset that has not been Published. Will not Publish. Ancestor dataset is: {uuid}", 400)
