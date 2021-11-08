@@ -1775,10 +1775,12 @@ def validate_samples(headers, records, header):
                 source_dict = {}
                 source_saved = False
                 resp_status_code = False
-                for item in valid_source_ids:
-                    if item['source_id'] == source_id:
-                        source_dict = item
-                        source_saved = True
+                if len(valid_source_ids) > 0:
+                    for item in valid_source_ids:
+                        if item['source_id']:
+                            if item['source_id'] == source_id:
+                                source_dict = item
+                                source_saved = True
                 if source_saved is False:
                     url = commons_file_helper.ensureTrailingSlashURL(app.config['UUID_WEBSERVICE_URL']) + source_id
                     # url = "https://uuid-api.dev.hubmapconsortium.org/hmuuid/" + source_id
