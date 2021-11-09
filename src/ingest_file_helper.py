@@ -49,6 +49,9 @@ class IngestFileHelper:
 
         return self.__dataset_directory_absolute_path(access_level, group_uuid, dataset_uuid, published)
 
+    def get_upload_directory_abs_path(self, group_uuid, upload_uuid):
+        return self.__dataset_directory_absolute_path('protected', group_uuid, upload_uuid, False)
+    
     def __dataset_directory_absolute_path(self, access_level, group_uuid, dataset_uuid, published):
         grp_name = AuthHelper.getGroupDisplayName(group_uuid)
         if access_level == 'protected':

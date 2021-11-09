@@ -478,22 +478,27 @@ def remove_file():
     # Send back the updated files_info_list
     return jsonify(files_info_list)
 
-
+@app.route('/uploads/<ds_uuid>/file-system-abs-path', methods = ['GET'])
 @app.route('/datasets/<ds_uuid>/file-system-abs-path', methods = ['GET'])
 def get_file_system_absolute_path(ds_uuid):
     try:
         dset = __get_entity(ds_uuid, auth_header = request.headers.get("AUTHORIZATION"))
         ent_type = __get_dict_prop(dset, 'entity_type')
         group_uuid = __get_dict_prop(dset, 'group_uuid')
-        is_phi = __get_dict_prop(dset, 'contains_human_genetic_sequences')
-        if ent_type is None or not ent_type.lower().strip() == 'dataset':
-            return Response(f"Entity with uuid:{ds_uuid} is not a Dataset", 400)
-        if group_uuid is None:
-            return Response(f"Error: Unable to find group uuid on dataset {ds_uuid}", 400)
-        if is_phi is None:
-            return Response(f"Error: contains_human_genetic_sequences is not set on dataset {ds_uuid}", 400)
+        if ent_type is None or ent_type.strip() == '':
+            return Response(f"Entity with uuid:{ds_uuid} needs to be a Dataset or Upload.", 400)
         ingest_helper = IngestFileHelper(app.config)
-        path = ingest_helper.get_dataset_directory_absolute_path(dset, group_uuid, ds_uuid)
+        if ent_type.lower().strip() == 'upload':
+            path = ingest_helper.get_upload_directory_abs_path(group_uuid = group_uuid, upload_uuid = ds_uuid)
+        else:
+            is_phi = __get_dict_prop(dset, 'contains_human_genetic_sequences')
+            if ent_type is None or not ent_type.lower().strip() == 'dataset':
+                return Response(f"Entity with uuid:{ds_uuid} is not a Dataset or Upload", 400)
+            if group_uuid is None:
+                return Response(f"Error: Unable to find group uuid on dataset {ds_uuid}", 400)
+            if is_phi is None:
+                return Response(f"Error: contains_human_genetic_sequences is not set on dataset {ds_uuid}", 400)
+            path = ingest_helper.get_dataset_directory_absolute_path(dset, group_uuid, ds_uuid)
         return jsonify ({'path': path}), 200    
     except HTTPException as hte:
         return Response(f"Error while getting file-system-abs-path for {ds_uuid}: " + hte.get_description(), hte.get_status_code())
@@ -710,13 +715,12 @@ def publish_datastage(identifier):
                 elif entity_type == 'Dataset':
                     if status == 'Published':
                         pass # TODO: Enable the commented code once the integration work with pipeline has been completed for story #354.
+                        # Note: moved dataset title auto generation to entity-api - Zhou 9/29/2021
+
                         # nexus_token = app_manager.nexus_token_from_request_headers(request.headers)
-                        # dataset_helper = DatasetHelper()
-                        # dataset_title = dataset_helper.generate_dataset_title(node, nexus_token)
-                        #
                         # datacite_doi_helper = DataCiteDoiHelper()
-                        # datacite_doi_helper.create_dataset_draft_doi(node, dataset_title)
-                        # # This will make the draft DQI created above 'findable'....
+                        # datacite_doi_helper.create_dataset_draft_doi(node)
+                        # # This will make the draft DOI created above 'findable'....
                         # datacite_doi_helper.move_doi_state_from_draft_to_findable(node, nexus_token)
                     else:
                         return Response(f"{dataset_uuid} has an ancestor dataset that has not been Published. Will not Publish. Ancestor dataset is: {uuid}", 400)
@@ -1647,6 +1651,7 @@ def create_samples_from_bulk():
                 response = {"status": response_status, "data": entity_response}
                 return Response(json.dumps(response, sort_keys=True), 201, mimetype='application/json')
 
+
 def validate_samples(headers, records, header):
     error_msg = []
     file_is_valid = True
@@ -1677,7 +1682,16 @@ def validate_samples(headers, records, header):
             file_is_valid = False
             error_msg.append(f"{field} is a required field")
 
+    with urllib.request.urlopen(
+            'https://raw.githubusercontent.com/hubmapconsortium/search-api/master/src/search-schema/data/definitions/enums/tissue_sample_types.yaml') as urlfile:
+        sample_resource_file = yaml.load(urlfile, Loader=yaml.FullLoader)
+
+    with urllib.request.urlopen(
+            'https://raw.githubusercontent.com/hubmapconsortium/search-api/master/src/search-schema/data/definitions/enums/organ_types.yaml') as urlfile:
+        organ_resource_file = yaml.load(urlfile, Loader=yaml.FullLoader)
+
     rownum = 1
+    valid_source_ids = []
     if file_is_valid is True:
         for data_row in records:
 
@@ -1700,12 +1714,9 @@ def validate_samples(headers, records, header):
             if rui_is_blank is False and sample_type.lower() == 'organ':
                 file_is_valid = False
                 error_msg.append(f"Row Number: {rownum}. If rui_location field is not blank, sample type cannot be organ")
-            with urllib.request.urlopen(
-                    'https://raw.githubusercontent.com/hubmapconsortium/search-api/master/src/search-schema/data/definitions/enums/tissue_sample_types.yaml') as urlfile:
-                sample_resource_file = yaml.load(urlfile, Loader=yaml.FullLoader)
-                if sample_type.lower() not in sample_resource_file:
-                    file_is_valid = False
-                    error_msg.append(f"Row Number: {rownum}. sample_type value must be a sample code listed in tissue sample type files (https://raw.githubusercontent.com/hubmapconsortium/search-api/master/src/search-schema/data/definitions/enums/tissue_sample_types.yaml)")
+            if sample_type.lower() not in sample_resource_file:
+                file_is_valid = False
+                error_msg.append(f"Row Number: {rownum}. sample_type value must be a sample code listed in tissue sample type files (https://raw.githubusercontent.com/hubmapconsortium/search-api/master/src/search-schema/data/definitions/enums/tissue_sample_types.yaml)")
 
             # validate organ_type
             organ_type = data_row['organ_type']
@@ -1717,14 +1728,11 @@ def validate_samples(headers, records, header):
                 if len(organ_type) < 1:
                     file_is_valid = False
                     error_msg.append(f"Row Number: {rownum}. organ_type field is required if sample_type is 'organ'")
-            with urllib.request.urlopen(
-                    'https://raw.githubusercontent.com/hubmapconsortium/search-api/master/src/search-schema/data/definitions/enums/organ_types.yaml') as urlfile:
-                organ_resource_file = yaml.load(urlfile, Loader=yaml.FullLoader)
-                if len(organ_type) > 0:
-                    if organ_type.upper() not in organ_resource_file:
-                        file_is_valid = False
-                        error_msg.append(
-                            f"Row Number: {rownum}. organ_type value must be a sample code listed in tissue sample type files (https://raw.githubusercontent.com/hubmapconsortium/search-api/master/src/search-schema/data/definitions/enums/organ_types.yaml)")
+            if len(organ_type) > 0:
+                if organ_type.upper() not in organ_resource_file:
+                    file_is_valid = False
+                    error_msg.append(
+                        f"Row Number: {rownum}. organ_type value must be a sample code listed in tissue sample type files (https://raw.githubusercontent.com/hubmapconsortium/search-api/master/src/search-schema/data/definitions/enums/organ_types.yaml)")
 
             # validate description
             description = data_row['description']
@@ -1766,28 +1774,43 @@ def validate_samples(headers, records, header):
                 file_is_valid = False
                 error_msg.append(f"Row Number: {rownum}. source_id cannot be blank")
             if len(source_id) > 0:
-                url = commons_file_helper.ensureTrailingSlashURL(app.config['UUID_WEBSERVICE_URL']) + source_id
-                #url = "https://uuid-api.dev.hubmapconsortium.org/hmuuid/" + source_id
-                resp = requests.get(url, headers=header)
-                if resp.status_code == 404:
-                    file_is_valid = False
-                    error_msg.append(f"Row Number: {rownum}. Unable to verify source_id exists")
-                if resp.status_code == 401:
-                    file_is_valid = False
-                    error_msg.append(f"Row Number: {rownum}. Unauthorized. Cannot access UUID-api")
-                if resp.status_code == 400:
-                    file_is_valid = False
-                    error_msg.append(f"Row Number: {rownum}. {source_id} is not a valid id format")
-                if resp.status_code < 300:
-                    resp_dict = resp.json()
-                    data_row['source_id'] = resp_dict['hm_uuid']
-                    if sample_type.lower() == 'organ' and resp.json()['type'].lower() != 'donor':
+                source_dict = {}
+                source_saved = False
+                resp_status_code = False
+                if len(valid_source_ids) > 0:
+                    for item in valid_source_ids:
+                        if item['hm_uuid'] or item['hubmap_id']:
+                            if source_id == item['hm_uuid'] or source_id == item['hubmap_id']:
+                                source_dict = item
+                                source_saved = True
+                if source_saved is False:
+                    url = commons_file_helper.ensureTrailingSlashURL(app.config['UUID_WEBSERVICE_URL']) + source_id
+                    # url = "https://uuid-api.dev.hubmapconsortium.org/hmuuid/" + source_id
+                    resp = requests.get(url, headers=header)
+                    if resp.status_code == 404:
                         file_is_valid = False
-                        error_msg.append(f"Row Number: {rownum}. If sample type is organ, source_id must point to a donor")
-                    if sample_type.lower() != 'organ' and resp.json()['type'].lower() != 'sample':
+                        error_msg.append(f"Row Number: {rownum}. Unable to verify source_id exists")
+                    if resp.status_code == 401:
                         file_is_valid = False
-                        error_msg.append(f"Row Number: {rownum}. If sample type is not organ, source_id must point to a sample")
-                    if rui_is_blank == False and resp.json()['type'].lower() == 'donor':
+                        error_msg.append(f"Row Number: {rownum}. Unauthorized. Cannot access UUID-api")
+                    if resp.status_code == 400:
+                        file_is_valid = False
+                        error_msg.append(f"Row Number: {rownum}. {source_id} is not a valid id format")
+                    if resp.status_code < 300:
+                        source_dict = resp.json()
+                        valid_source_ids.append(source_dict)
+                        resp_status_code = True
+                if source_saved or resp_status_code:
+                    data_row['source_id'] = source_dict['hm_uuid']
+                    if sample_type.lower() == 'organ' and source_dict['type'].lower() != 'donor':
+                        file_is_valid = False
+                        error_msg.append(
+                            f"Row Number: {rownum}. If sample type is organ, source_id must point to a donor")
+                    if sample_type.lower() != 'organ' and source_dict['type'].lower() != 'sample':
+                        file_is_valid = False
+                        error_msg.append(
+                            f"Row Number: {rownum}. If sample type is not organ, source_id must point to a sample")
+                    if rui_is_blank is False and source_dict['type'].lower() == 'donor':
                         file_is_valid = False
                         error_msg.append(f"Row Number: {rownum}. If rui_location is blank, source_id cannot be a donor")
 

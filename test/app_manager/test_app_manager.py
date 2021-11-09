@@ -35,7 +35,6 @@ class TestAppManager(unittest.TestCase):
 
         self.assertTrue('title' in result)
         self.assertEqual(result['title'], 'Dataset Title String')
-        self.dataset_helper.generate_dataset_title.assert_called()
         self.assertEqual(len(result), 4)
 
     def update_ingest_status_with_not_status_qa(self):
@@ -52,7 +51,6 @@ class TestAppManager(unittest.TestCase):
                                                                   MagicMock())
 
         self.assertFalse('title' in result)
-        self.dataset_helper.generate_dataset_title.assert_not_called()
         self.assertEqual(len(result), 3)
 
 if __name__ == "__main__":
