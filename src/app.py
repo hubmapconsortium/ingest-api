@@ -263,7 +263,7 @@ def login():
     # starting a Globus Auth login flow.
     # Redirect out to Globus Auth
     if 'code' not in request.args:                                        
-        auth_uri = confidential_app_auth_client.oauth2_get_authorize_url(additional_params={"scope": "openid profile email urn:globus:auth:scope:transfer.api.globus.org:all urn:globus:auth:scope:auth.globus.org:view_identities urn:globus:auth:scope:nexus.api.globus.org:groups" })
+        auth_uri = confidential_app_auth_client.oauth2_get_authorize_url(additional_params={"scope": "openid profile email urn:globus:auth:scope:transfer.api.globus.org:all urn:globus:auth:scope:auth.globus.org:view_identities urn:globus:auth:scope:nexus.api.globus.org:groups urn:globus:auth:scope:groups.api.globus.org:all" })
         return redirect(auth_uri)
     # If we do have a "code" param, we're coming back from Globus Auth
     # and can start the process of exchanging an auth code for a token.
@@ -276,6 +276,7 @@ def login():
         auth_token = token_response.by_resource_server['auth.globus.org']['access_token']
         nexus_token = token_response.by_resource_server['nexus.api.globus.org']['access_token']
         transfer_token = token_response.by_resource_server['transfer.api.globus.org']['access_token']
+        groups_token = token_response.by_resource_server['groups.api.globus.org']['access_token']
         # Also get the user info (sub, email, name, preferred_username) using the AuthClient with the auth token
         user_info = get_user_info(auth_token)
         
@@ -286,6 +287,7 @@ def login():
             'auth_token': auth_token,
             'nexus_token': nexus_token,
             'transfer_token': transfer_token,
+            'groups_token': groups_token
         }
 
         # Turns json dict into a str
