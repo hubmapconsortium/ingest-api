@@ -1777,8 +1777,8 @@ def validate_samples(headers, records, header):
                 resp_status_code = False
                 if len(valid_source_ids) > 0:
                     for item in valid_source_ids:
-                        if item['source_id']:
-                            if item['source_id'] == source_id:
+                        if item['hm_uuid'] or item['hubmap_id']:
+                            if source_id == item['hm_uuid'] or source_id == item['hubmap_id']:
                                 source_dict = item
                                 source_saved = True
                 if source_saved is False:
