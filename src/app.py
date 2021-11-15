@@ -1649,6 +1649,7 @@ def create_samples_from_bulk():
                 response = {"status": response_status, "data": entity_response}
                 return Response(json.dumps(response, sort_keys=True), 201, mimetype='application/json')
 
+
 def validate_samples(headers, records, header):
     error_msg = []
     file_is_valid = True
@@ -1679,7 +1680,16 @@ def validate_samples(headers, records, header):
             file_is_valid = False
             error_msg.append(f"{field} is a required field")
 
+    with urllib.request.urlopen(
+            'https://raw.githubusercontent.com/hubmapconsortium/search-api/master/src/search-schema/data/definitions/enums/tissue_sample_types.yaml') as urlfile:
+        sample_resource_file = yaml.load(urlfile, Loader=yaml.FullLoader)
+
+    with urllib.request.urlopen(
+            'https://raw.githubusercontent.com/hubmapconsortium/search-api/master/src/search-schema/data/definitions/enums/organ_types.yaml') as urlfile:
+        organ_resource_file = yaml.load(urlfile, Loader=yaml.FullLoader)
+
     rownum = 1
+    valid_source_ids = []
     if file_is_valid is True:
         for data_row in records:
 
@@ -1702,12 +1712,9 @@ def validate_samples(headers, records, header):
             if rui_is_blank is False and sample_type.lower() == 'organ':
                 file_is_valid = False
                 error_msg.append(f"Row Number: {rownum}. If rui_location field is not blank, sample type cannot be organ")
-            with urllib.request.urlopen(
-                    'https://raw.githubusercontent.com/hubmapconsortium/search-api/master/src/search-schema/data/definitions/enums/tissue_sample_types.yaml') as urlfile:
-                sample_resource_file = yaml.load(urlfile, Loader=yaml.FullLoader)
-                if sample_type.lower() not in sample_resource_file:
-                    file_is_valid = False
-                    error_msg.append(f"Row Number: {rownum}. sample_type value must be a sample code listed in tissue sample type files (https://raw.githubusercontent.com/hubmapconsortium/search-api/master/src/search-schema/data/definitions/enums/tissue_sample_types.yaml)")
+            if sample_type.lower() not in sample_resource_file:
+                file_is_valid = False
+                error_msg.append(f"Row Number: {rownum}. sample_type value must be a sample code listed in tissue sample type files (https://raw.githubusercontent.com/hubmapconsortium/search-api/master/src/search-schema/data/definitions/enums/tissue_sample_types.yaml)")
 
             # validate organ_type
             organ_type = data_row['organ_type']
@@ -1719,14 +1726,11 @@ def validate_samples(headers, records, header):
                 if len(organ_type) < 1:
                     file_is_valid = False
                     error_msg.append(f"Row Number: {rownum}. organ_type field is required if sample_type is 'organ'")
-            with urllib.request.urlopen(
-                    'https://raw.githubusercontent.com/hubmapconsortium/search-api/master/src/search-schema/data/definitions/enums/organ_types.yaml') as urlfile:
-                organ_resource_file = yaml.load(urlfile, Loader=yaml.FullLoader)
-                if len(organ_type) > 0:
-                    if organ_type.upper() not in organ_resource_file:
-                        file_is_valid = False
-                        error_msg.append(
-                            f"Row Number: {rownum}. organ_type value must be a sample code listed in tissue sample type files (https://raw.githubusercontent.com/hubmapconsortium/search-api/master/src/search-schema/data/definitions/enums/organ_types.yaml)")
+            if len(organ_type) > 0:
+                if organ_type.upper() not in organ_resource_file:
+                    file_is_valid = False
+                    error_msg.append(
+                        f"Row Number: {rownum}. organ_type value must be a sample code listed in tissue sample type files (https://raw.githubusercontent.com/hubmapconsortium/search-api/master/src/search-schema/data/definitions/enums/organ_types.yaml)")
 
             # validate description
             description = data_row['description']
@@ -1768,28 +1772,43 @@ def validate_samples(headers, records, header):
                 file_is_valid = False
                 error_msg.append(f"Row Number: {rownum}. source_id cannot be blank")
             if len(source_id) > 0:
-                url = commons_file_helper.ensureTrailingSlashURL(app.config['UUID_WEBSERVICE_URL']) + source_id
-                #url = "https://uuid-api.dev.hubmapconsortium.org/hmuuid/" + source_id
-                resp = requests.get(url, headers=header)
-                if resp.status_code == 404:
-                    file_is_valid = False
-                    error_msg.append(f"Row Number: {rownum}. Unable to verify source_id exists")
-                if resp.status_code == 401:
-                    file_is_valid = False
-                    error_msg.append(f"Row Number: {rownum}. Unauthorized. Cannot access UUID-api")
-                if resp.status_code == 400:
-                    file_is_valid = False
-                    error_msg.append(f"Row Number: {rownum}. {source_id} is not a valid id format")
-                if resp.status_code < 300:
-                    resp_dict = resp.json()
-                    data_row['source_id'] = resp_dict['hm_uuid']
-                    if sample_type.lower() == 'organ' and resp.json()['type'].lower() != 'donor':
+                source_dict = {}
+                source_saved = False
+                resp_status_code = False
+                if len(valid_source_ids) > 0:
+                    for item in valid_source_ids:
+                        if item['hm_uuid'] or item['hubmap_id']:
+                            if source_id == item['hm_uuid'] or source_id == item['hubmap_id']:
+                                source_dict = item
+                                source_saved = True
+                if source_saved is False:
+                    url = commons_file_helper.ensureTrailingSlashURL(app.config['UUID_WEBSERVICE_URL']) + source_id
+                    # url = "https://uuid-api.dev.hubmapconsortium.org/hmuuid/" + source_id
+                    resp = requests.get(url, headers=header)
+                    if resp.status_code == 404:
                         file_is_valid = False
-                        error_msg.append(f"Row Number: {rownum}. If sample type is organ, source_id must point to a donor")
-                    if sample_type.lower() != 'organ' and resp.json()['type'].lower() != 'sample':
+                        error_msg.append(f"Row Number: {rownum}. Unable to verify source_id exists")
+                    if resp.status_code == 401:
                         file_is_valid = False
-                        error_msg.append(f"Row Number: {rownum}. If sample type is not organ, source_id must point to a sample")
-                    if rui_is_blank == False and resp.json()['type'].lower() == 'donor':
+                        error_msg.append(f"Row Number: {rownum}. Unauthorized. Cannot access UUID-api")
+                    if resp.status_code == 400:
+                        file_is_valid = False
+                        error_msg.append(f"Row Number: {rownum}. {source_id} is not a valid id format")
+                    if resp.status_code < 300:
+                        source_dict = resp.json()
+                        valid_source_ids.append(source_dict)
+                        resp_status_code = True
+                if source_saved or resp_status_code:
+                    data_row['source_id'] = source_dict['hm_uuid']
+                    if sample_type.lower() == 'organ' and source_dict['type'].lower() != 'donor':
+                        file_is_valid = False
+                        error_msg.append(
+                            f"Row Number: {rownum}. If sample type is organ, source_id must point to a donor")
+                    if sample_type.lower() != 'organ' and source_dict['type'].lower() != 'sample':
+                        file_is_valid = False
+                        error_msg.append(
+                            f"Row Number: {rownum}. If sample type is not organ, source_id must point to a sample")
+                    if rui_is_blank is False and source_dict['type'].lower() == 'donor':
                         file_is_valid = False
                         error_msg.append(f"Row Number: {rownum}. If rui_location is blank, source_id cannot be a donor")
 
