@@ -263,7 +263,7 @@ def login():
     # starting a Globus Auth login flow.
     # Redirect out to Globus Auth
     if 'code' not in request.args:                                        
-        auth_uri = confidential_app_auth_client.oauth2_get_authorize_url(additional_params={"scope": "openid profile email urn:globus:auth:scope:transfer.api.globus.org:all urn:globus:auth:scope:auth.globus.org:view_identities urn:globus:auth:scope:nexus.api.globus.org:groups" })
+        auth_uri = confidential_app_auth_client.oauth2_get_authorize_url(additional_params={"scope": "openid profile email urn:globus:auth:scope:transfer.api.globus.org:all urn:globus:auth:scope:auth.globus.org:view_identities urn:globus:auth:scope:nexus.api.globus.org:groups urn:globus:auth:scope:groups.api.globus.org:all" })
         return redirect(auth_uri)
     # If we do have a "code" param, we're coming back from Globus Auth
     # and can start the process of exchanging an auth code for a token.
@@ -274,8 +274,9 @@ def login():
         
         # Get all Bearer tokens
         auth_token = token_response.by_resource_server['auth.globus.org']['access_token']
-        nexus_token = token_response.by_resource_server['nexus.api.globus.org']['access_token']
+        #nexus_token = token_response.by_resource_server['nexus.api.globus.org']['access_token']
         transfer_token = token_response.by_resource_server['transfer.api.globus.org']['access_token']
+        groups_token = token_response.by_resource_server['groups.api.globus.org']['access_token']
         # Also get the user info (sub, email, name, preferred_username) using the AuthClient with the auth token
         user_info = get_user_info(auth_token)
         
@@ -284,8 +285,9 @@ def login():
             'email': user_info['email'],
             'globus_id': user_info['sub'],
             'auth_token': auth_token,
-            'nexus_token': nexus_token,
+            #'nexus_token': nexus_token,
             'transfer_token': transfer_token,
+            'groups_token': groups_token
         }
 
         # Turns json dict into a str
@@ -1460,6 +1462,8 @@ def create_donors_from_bulk():
             entity_response = {}
             row_num = 1
             if validfile == True:
+                entity_created = False
+                status_code = 500
                 for item in records:
                     item['lab_donor_id'] = item['lab_id']
                     del item['lab_id']
@@ -1472,9 +1476,14 @@ def create_donors_from_bulk():
                     r = requests.post(commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/donor', headers=header, json=item)
                     entity_response[row_num] = r.json()
                     row_num = row_num + 1
+                    status_code = r.status_code
+                    if r.status_code < 300:
+                        entity_created = True
                 #return jsonify(response)
                 response = {"status": "success", "data": entity_response}
-                return Response(json.dumps(response, sort_keys=True),201, mimetype='application/json')
+                if entity_created:
+                    status_code = 201
+                return Response(json.dumps(response, sort_keys=True), status_code, mimetype='application/json')
 
 @app.route('/samples/bulk-upload', methods=['POST'])
 def bulk_samples_upload_and_validate():
@@ -1679,6 +1688,10 @@ def validate_samples(headers, records, header):
         if field not in headers:
             file_is_valid = False
             error_msg.append(f"{field} is a required field")
+    for field in headers:
+        if field not in required_headers:
+            file_is_valid = False
+            error_msg.append(f"{field} is not an accepted field")
 
     with urllib.request.urlopen(
             'https://raw.githubusercontent.com/hubmapconsortium/search-api/master/src/search-schema/data/definitions/enums/tissue_sample_types.yaml') as urlfile:
@@ -1842,6 +1855,10 @@ def validate_donors(headers, records):
         if field not in headers:
             file_is_valid = False
             error_msg.append(f"{field} is a required field")
+    for field in headers:
+        if field not in required_headers:
+            file_is_valid = False
+            error_msg.append(f"{field} is not an accepted field")
     rownum = 1
     if file_is_valid is True:
         for data_row in records:
