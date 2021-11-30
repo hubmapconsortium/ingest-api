@@ -429,6 +429,7 @@ paths:
                 properties:
                   temp_id:
                     type: string
+                    example: abcdefghij0123456789
         '400':
           description: File not upload failed or file contains invalid donors
           content:
@@ -454,12 +455,10 @@ paths:
               properties:
                 temp_id:
                   type: string
-                  items:
-                    $ref: '#/components/schemas/temp_id'
+                  example: abcdefghij0123456789
                 group_uuid:
                   type: string
-                  items:
-                    $ref: '#/components/schemas/group_uuid'
+                  example: a1b2c3d4-e5f6-g7h8-i9j0-k1l2m3n4o5p6
       responses:
         '200':
           description: The samples in the tsv file were successfully created.
@@ -470,7 +469,14 @@ paths:
                   status:
                     type: string
                   data:
-                    type: json
+                    type: object
+                    properties:
+                      entity_response:
+                        type: object
+                        properties:
+                          specimen:
+                            $ref: '#/components/schemas/Specimen'
+
         '400':
           description: File not found for given temp_id
           content:
@@ -506,6 +512,7 @@ paths:
                 properties:
                   temp_id:
                     type: string
+                    example: abcdefghij0123456789
         '400':
           description: File not upload failed or file contains invalid donors
           content:
@@ -527,12 +534,10 @@ paths:
               properties:
                 temp_id:
                   type: string
-                  items:
-                    $ref: '#/components/schemas/temp_id'
+                  example: abcdefghij0123456789
                 group_uuid:
                   type: string
-                  items:
-                    $ref: '#/components/schemas/group_uuid'
+                  example: a1b2c3d4-e5f6-g7h8-i9j0-k1l2m3n4o5p6
       responses:
         '200':
           description: The samples in the tsv file were successfully created.
@@ -543,7 +548,13 @@ paths:
                   status:
                     type: string
                   data:
-                    type: json
+                    type: object
+                    properties:
+                      entity_response:
+                        type: object
+                        properties:
+                          specimen:
+                            $ref: '#/components/schemas/Specimen'
         '400':
           description: File not found for given temp_id
           content:
