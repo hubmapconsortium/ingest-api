@@ -2,7 +2,7 @@ openapi: 3.0.0
 info:
   description: |
     A restful web service exposing calls needed for the Ingest UI React application.
-  version: 2.0.18
+  version: 2.0.20
   title: HuBMAP Ingest API
   contact:
     name: HuBMAP Help Desk
@@ -393,11 +393,11 @@ paths:
                 file_uuids:
                   type: array
                   items:
-                    - $ref: '#/components/schemas/file_uuid'
+                    $ref: '#/components/schemas/file_uuid'
                 files_info_list:
                   type: array
                   items:
-                    - $ref: '#/components/schemas/file_info'
+                    $ref: '#/components/schemas/file_info'
                   
       responses:
         '200':
@@ -455,11 +455,11 @@ paths:
                 temp_id:
                   type: string
                   items:
-                    - $ref: '#/components/schemas/temp_id'
+                    $ref: '#/components/schemas/temp_id'
                 group_uuid:
                   type: string
                   items:
-                    - $ref: '#/components/schemas/group_uuid'
+                    $ref: '#/components/schemas/group_uuid'
       responses:
         '200':
           description: The samples in the tsv file were successfully created.
@@ -528,11 +528,11 @@ paths:
                 temp_id:
                   type: string
                   items:
-                    - $ref: '#/components/schemas/temp_id'
+                    $ref: '#/components/schemas/temp_id'
                 group_uuid:
                   type: string
                   items:
-                    - $ref: '#/components/schemas/group_uuid'
+                    $ref: '#/components/schemas/group_uuid'
       responses:
         '200':
           description: The samples in the tsv file were successfully created.
