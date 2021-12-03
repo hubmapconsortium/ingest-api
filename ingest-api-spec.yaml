@@ -52,11 +52,9 @@ paths:
           content:
             application/json:
               schema:
-                properties:
-                  datasets:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Dataset'
+                type: array
+                items:
+                  $ref: '#/components/schemas/Dataset'
         "400":
           description: The user sent a bad parameter (e.g. a nonexistent group name) or there was a system error
         "401":
@@ -102,9 +100,7 @@ paths:
           content:
             application/json:
               schema:
-                properties:
-                  dataset:
-                    $ref: "#/components/schemas/Dataset"
+                $ref: "#/components/schemas/Dataset"
         "400":
           description: Missing dataset identifier or identifier cannot be found
         "401":
@@ -147,11 +143,9 @@ paths:
           content:
             application/json:
               schema:
-                properties:
-                  collections:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Collection'
+                type: array
+                items:
+                  $ref: '#/components/schemas/Collection'
         "400":
           description: There was a system error
         "401":
@@ -187,133 +181,28 @@ paths:
           content:
             application/json:
               schema:
-                properties:
-                  collection:
-                    $ref: "#/components/schemas/Collection"
+                $ref: "#/components/schemas/Collection"
         "400":
           description: Missing collection identifier or identifier cannot be found or a system error
         "401":
           description: User's token is not valid
-  /specimens:
-    put:
-      tags:
-        - specimen
-      summary: Modify a specimen
-      operationId: editSpecimen
-      responses:
-        "201":
-          description: successful operation
-          content:
-            application/json:
-              schema:
-                properties:
-                  uuid:
-                    type: string
-                    example: 6dba271c5c0bbd09f8b73784c2c40f95
-        "400":
-          description: There was a system error or an error in the data submitted
-        "401":
-          description: User's token is not valid
-    post:
-      tags:
-        - specimen
-      summary: Creates a new HuBMAP specimen.
-      operationId: addSpecimen
-      responses:
-        "201":
-          description: successful created
-          content:
-            application/json:
-              schema:
-                properties:
-                  new_samples:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Specimen'
-        "400":
-          description: a system error occurred
-        "401":
-          description: User is not authorized to create specimens or user's group information cannot be determined
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/Specimen"
-          application/xml:
-            schema:
-              $ref: "#/components/schemas/Specimen"
-        description: Dataset object that needs to be created
-        required: true  
-  "/specimens/{identifier}":
+  "/specimens/{identifier}/ingest-group-ids":
     get:
       tags:
         - specimen
-      summary: Get a single specimen by identifier
-      operationId: getSpecimen
+      summary: Get groups ids for a single specimen by identifier
       parameters:
         - name: identifier
           in: path
-          description: The unique identifier of specimen.  this identifier can be a UUID, Display DOI (HBM365.KSBD.575) or DOI (365KSBD575).
+          description: The unique identifier of specimen. This identifier can be a UUID, Display DOI (HBM365.KSBD.575) or DOI (365KSBD575).
           required: true
           schema:
             type: string
       responses:
         "200":
           description: successful operation
-          content:
-            application/json:
-              schema:
-                properties:
-                  specimen:
-                    $ref: "#/components/schemas/Specimen"
         "400":
           description: Missing specimen identifier or identifier cannot be found or a system error
-        "401":
-          description: User's token is not valid
-  "/specimens/search":
-    get:
-      tags:
-        - specimen
-      summary: Get a list of specimens
-      operationId: getSpecimens
-      parameters:
-        - name: specimen_type
-          in: query
-          description: The unique identifier of specimen.  This identifier can be a UUID, Display DOI (HBM365.KSBD.575) or DOI (365KSBD575).
-          required: false
-          schema:
-            type: string
-        - name: search_term
-          in: query
-          description: The unique identifier of specimen.  this identifier can be a UUID, Display DOI (HBM365.KSBD.575) or DOI (365KSBD575).
-          required: false
-          schema:
-            type: string
-        - name: include_datasets
-          in: query
-          description: The unique identifier of specimen.  this identifier can be a UUID, Display DOI (HBM365.KSBD.575) or DOI (365KSBD575).
-          required: false
-          schema:
-            type: string
-        - name: group
-          in: query
-          description: 'The name of a HuBMAP group (All Groups, IEC Testing Group, Stanford TMC, Vanderbilt TMC, University of Florida TMC, California Institute of Technology TMC, University of California San Diego TMC)'
-          required: false
-          schema:
-            type: string
-      responses:
-        "200":
-          description: successful operation
-          content:
-            application/json:
-              schema:
-                properties:
-                  specimens:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Specimen'
-        "400":
-          description: There was a system error
         "401":
           description: User's token is not valid
   /file-upload:
@@ -393,11 +282,12 @@ paths:
                 file_uuids:
                   type: array
                   items:
-                    $ref: '#/components/schemas/file_uuid'
+                    type: string
+                    description: 'A list of file uuids'
                 files_info_list:
                   type: array
                   items:
-                    $ref: '#/components/schemas/file_info'
+                    $ref: '#/components/schemas/FileInfo'
                   
       responses:
         '200':
@@ -422,24 +312,9 @@ paths:
                   format: binary
       responses:
         '200':
-          description: File uploaded, temp directory and temp_id created.
-          content:
-            application/json:
-              schema:
-                properties:
-                  temp_id:
-                    type: string
-                    example: abcdefghij0123456789
+          description: File uploaded, temp directory and temp_id returned, e.g., abcdefghij0123456789
         '400':
           description: File not upload failed or file contains invalid donors
-          content:
-            application/json:
-              schema:
-                properties:
-                  status:
-                    type: string
-                  message:
-                    type: string
         '401':
           description: The user's token has expired or the user did not have authorization
         '500':
@@ -461,32 +336,9 @@ paths:
                   example: a1b2c3d4-e5f6-g7h8-i9j0-k1l2m3n4o5p6
       responses:
         '200':
-          description: The samples in the tsv file were successfully created.
-          content:
-            application/json:
-              schema:
-                properties:
-                  status:
-                    type: string
-                  data:
-                    type: object
-                    properties:
-                      entity_response:
-                        type: object
-                        properties:
-                          specimen:
-                            $ref: '#/components/schemas/Specimen'
-
+          description: The samples in the tsv file were successfully created
         '400':
           description: File not found for given temp_id
-          content:
-            application/json:
-              schema:
-                properties:
-                  status:
-                    type: string
-                  message:
-                    type: string
         '401':
           description: The user's token has expired or the user did not have authorization
         '500':
@@ -505,24 +357,9 @@ paths:
                   format: binary
       responses:
         '200':
-          description: File uploaded, temp directory and temp_id created.
-          content:
-            application/json:
-              schema:
-                properties:
-                  temp_id:
-                    type: string
-                    example: abcdefghij0123456789
+          description: File uploaded, temp directory and temp_id returned, e.g., abcdefghij0123456789
         '400':
           description: File not upload failed or file contains invalid donors
-          content:
-            application/json:
-              schema:
-                properties:
-                  status:
-                    type: string
-                  message:
-                    type: string
   /samples/bulk:
     post:
       summary: "Confirm that you want to create donors from the previously uploaded tsv file. Donors are validated once more and then if valid, new donors are created via the entity api"
@@ -541,58 +378,19 @@ paths:
       responses:
         '200':
           description: The samples in the tsv file were successfully created.
-          content:
-            application/json:
-              schema:
-                properties:
-                  status:
-                    type: string
-                  data:
-                    type: object
-                    properties:
-                      entity_response:
-                        type: object
-                        properties:
-                          specimen:
-                            $ref: '#/components/schemas/Specimen'
         '400':
           description: File not found for given temp_id
-          content:
-            application/json:
-              schema:
-                properties:
-                  status:
-                    type: string
-                  message:
-                    type: string
         '401':
           description: The user's token has expired or the user did not have authorization
         '500':
           description: Internal error
 
 
-
-
-
 servers:
-  - url: "https://uuid.hubmapconsortium.org/dataingest"
-  - url: "http://uuid.hubmapconsortium.org/dataingest"
+  - url: "https://ingest.api.hubmapconsortium.org/"
 components:
-  securitySchemes:
-    globus_auth:
-      type: oauth2
-      flows:
-        implicit:
-          authorizationUrl: "https://auth.globus.org/v2/oauth2/authorize"
-          scopes:
-            "write:dataset": modify datasets
-            "read:dataset": read datasets
-    api_key:
-      type: apiKey
-      name: api_key
-      in: header
   schemas:
-    file_info:
+    FileInfo:
       type: object
       required:
         - filename
@@ -600,10 +398,10 @@ components:
       properties:
         filename:
           type: string
+          description: "The name of the file."
         file_uuid:
           type: string
-    file_uuid:
-      type: string
+          description: "The HuBMAP unique identifier for the file."
     Dataset:
       type: object
       required:
@@ -632,8 +430,6 @@ components:
         phi:
           type: boolean
           example: false
-      xml:
-        name: DataSet
     Collection:
       type: object
       required:
@@ -660,28 +456,5 @@ components:
           example: Collection
         description:
           type: string
-          example: THis is a description of Collection 1
-      xml:
-        name: Collection
-    Specimen:
-      type: object
-      required:
-        - uuid
-        - doi
-        - display_doi
-        - entity_type
-      properties:
-        uuid:
-          type: string
-          example: a23526eaa92beef971cd013b5c4a1ce5
-        doi:
-          type: string
-          example: 527RQJT662
-        display_doi:
-          type: string
-          example: HBM527.RQJT.662
-        entity_type:
-          type: string
-          example: Sample, Donor
-      xml:
-        name: Specimen
+          example: The description of Collection
+
