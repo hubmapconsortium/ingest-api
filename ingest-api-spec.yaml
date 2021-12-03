@@ -596,7 +596,7 @@ components:
       type: object
       required:
         - filename
-        - file_uuid]
+        - file_uuid
       properties:
         filename:
           type: string
@@ -611,7 +611,7 @@ components:
         - doi
         - display_doi
         - status
-        - entitytype
+        - entity_type
       properties:
         uuid:
           type: string
@@ -624,7 +624,7 @@ components:
           example: HBM569.SKTF.599
         status:
           type: string
-        entitytype:
+        entity_type:
           type: string
           example: Dataset
         collection:
@@ -641,7 +641,7 @@ components:
         - doi
         - display_doi
         - label
-        - entitytype
+        - entity_type
       properties:
         uuid:
           type: string
@@ -655,7 +655,7 @@ components:
         label:
           type: string
           example: Test Collection 1
-        entitytype:
+        entity_type:
           type: string
           example: Collection
         description:
@@ -669,7 +669,7 @@ components:
         - uuid
         - doi
         - display_doi
-        - entitytype
+        - entity_type
       properties:
         uuid:
           type: string
@@ -680,7 +680,7 @@ components:
         display_doi:
           type: string
           example: HBM527.RQJT.662
-        entitytype:
+        entity_type:
           type: string
           example: Sample, Donor
       xml:
