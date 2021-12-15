@@ -1010,8 +1010,8 @@ def create_uploadstage():
             return(auth_tokens)
         elif isinstance(auth_tokens, str):
             token = auth_tokens
-        elif 'nexus_token' in auth_tokens:
-            token = auth_tokens['nexus_token']
+        elif 'groups_token' in auth_tokens:
+            token = auth_tokens['groups_token']
         else:
             return(Response("Valid nexus auth token required", 401))
         
@@ -1095,7 +1095,7 @@ def validate_upload(upload_uuid):
 
     #this line disabled because we aren't calling validate-- needs to be enabled again when we
     #run the pipeline validation
-    #upload_changes['status'] = 'Processing'
+    upload_changes['status'] = 'Processing'
     update_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/' + upload_uuid
     
     # Disable ssl certificate verification
@@ -1105,11 +1105,11 @@ def validate_upload(upload_uuid):
     
     #disable validations stuff for now...
     ##call the AirFlow validation workflow
-    #validate_url = commons_file_helper.ensureTrailingSlashURL(app.config['INGEST_PIPELINE_URL']) + 'uploads/' + upload_uuid + "/validate"
+    validate_url = commons_file_helper.ensureTrailingSlashURL(app.config['INGEST_PIPELINE_URL']) + 'uploads/' + upload_uuid + "/validate"
     ## Disable ssl certificate verification
-    #resp = requests.put(validate_url, headers=http_headers, json=upload_changes, verify = False)
-    #if resp.status_code >= 300:
-    #    return Response(resp.text, resp.status_code)
+    resp = requests.put(validate_url, headers=http_headers, json=upload_changes, verify = False)
+    if resp.status_code >= 300:
+        return Response(resp.text, resp.status_code)
 
     return(Response("Upload updated successfully", 200))
     
@@ -1993,7 +1993,7 @@ if __name__ == '__main__':
         parser = argparse.ArgumentParser()
         parser.add_argument("-p", "--port")
         args = parser.parse_args()
-        port = 5000
+        port = 8484
         if args.port:
             port = int(args.port)
         app.run(port=port, host='0.0.0.0')
