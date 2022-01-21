@@ -570,8 +570,51 @@ paths:
         '500':
           description: Internal error
 
+  /uploads/{identifier}/validate:
+    put:
+      tags:
+        - specimen
+      summary: Validate an upload.
+      operationId: validateUpload
+      parameters:
+        - name: identifier
+          in: path
+          description: The unique identifier of Upload.  this identifier needs to be a valid HuBMAP UUID.
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: successful operation
+        "400":
+          description: There was a system error or an error in the data submitted
+        "401":
+          description: User's token is not valid
+        "500":
+          description: An unexpected error occured
 
-
+  /uploads/{identifier}/reorganize:
+    put:
+      tags:
+        - specimen
+      summary: Reorganize an upload. Creates Datasets from the Upload
+      operationId: reorganizeUpload
+      parameters:
+        - name: identifier
+          in: path
+          description: The unique identifier of Upload.  this identifier needs to be a valid HuBMAP UUID.
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: successful operation
+        "400":
+          description: There was a system error or an error in the data submitted
+        "401":
+          description: User's token is not valid
+        "500":
+          description: An unexpected error occured
 
 
 servers:
