@@ -40,10 +40,15 @@ GLOBUS_PUBLIC_ENDPOINT_UUID = 'a00a00b8-d1d1-4ab9-b915-0bada54c27a3'
 GLOBUS_CONSORTIUM_ENDPOINT_UUID = '3cb7d673-a3db-40e9-8376-f2ead6cb5a45'
 GLOBUS_PROTECTED_ENDPOINT_UUID = 'bdaf8547-aab3-4142-97bd-0a16d5cd9f58'
 
-# File paths of the Globus endpoints (shown are for DEV, change for TEST/STAGE/PROD deployment)
+# Absolute file paths of the Globus endpoints (shown are for DEV, change for TEST/STAGE/PROD deployment)
 GLOBUS_PUBLIC_ENDPOINT_FILEPATH = '/hive/hubmap-dev/data/public'
 GLOBUS_CONSORTIUM_ENDPOINT_FILEPATH = '/hive/hubmap-dev/data/consortium'
 GLOBUS_PROTECTED_ENDPOINT_FILEPATH = '/hive/hubmap-dev/data/protected'
+
+# Relative file paths of the Globus endpoints(shown are for DEV, change for TEST/STAGE/PROD deployment)
+RELATIVE_GLOBUS_PUBLIC_ENDPOINT_FILEPATH = 'public'
+RELATIVE_CONSORTIUM_ENDPOINT_FILEPATH = 'consortium'
+RELATIVE_PROTECTED_ENDPOINT_FILEPATH = 'protected'
 
 # File Access Control List Settings to be used by `setfacl` command
 # Set value to `hubmap` for all the following users and groups on localhost docker mode

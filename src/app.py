@@ -506,6 +506,62 @@ def get_file_system_absolute_path(ds_uuid):
         logger.error(e, exc_info=True)
         return Response(f"Unexpected error while retrieving entity {ds_uuid}: " + str(e), 500)
 
+
+"""
+Retrieve relative paths from a list of uuid's
+
+The gateway treats this path as public accessible
+
+Parameters
+--------
+ds_uuid_list : list
+    ds_uuid : str
+        The HuBMAP ID (e.g. HBM123.ABCD.456) or UUID of target dataset or upload
+
+Returns
+--------
+out_list : json array 
+    path : str
+        The relative path to a Globus file or directory  
+"""
+@app.route('/uploads/rel-path', methods=['GET'])
+@app.route('/datasets/rel-path', methods=['GET'])
+def get_file_system_relative_path():
+    ds_uuid_list = request.json
+    out_list = []
+    print(f"Type of ds_uuid_list is: {type(ds_uuid_list)}")
+    print(f"ds_uuid_list is: {ds_uuid_list}")
+    for ds_uuid in ds_uuid_list:
+        print(f"Type of list item is: {type(ds_uuid)}")
+        print(f"list item is: {ds_uuid}")
+    for ds_uuid in ds_uuid_list:
+        try:
+            dset = __get_entity(ds_uuid, auth_header=request.headers.get("AUTHORIZATION"))
+            ent_type = __get_dict_prop(dset, 'entity_type')
+            group_uuid = __get_dict_prop(dset, 'group_uuid')
+            if ent_type is None or ent_type.strip() == '':
+                return Response(f"Entity with uuid:{ds_uuid} needs to be a Dataset or Upload.", 400)
+            ingest_helper = IngestFileHelper(app.config)
+            if ent_type.lower().strip() == 'upload':
+                path = ingest_helper.get_upload_directory_abs_path(group_uuid=group_uuid, upload_uuid=ds_uuid)
+            else:
+                is_phi = __get_dict_prop(dset, 'contains_human_genetic_sequences')
+                if ent_type is None or not ent_type.lower().strip() == 'dataset':
+                    return Response(f"Entity with uuid:{ds_uuid} is not a Dataset or Upload", 400)
+                if group_uuid is None:
+                    return Response(f"Error: Unable to find group uuid on dataset {ds_uuid}", 400)
+                if is_phi is None:
+                    return Response(f"Error: contains_human_genetic_sequences is not set on dataset {ds_uuid}", 400)
+                path = ingest_helper.get_dataset_directory_relative_path(dset, group_uuid, ds_uuid)
+            out_list.append(path)
+            # return jsonify({'path': path}), 200
+        except HTTPException as hte:
+            return Response(f"Error while getting file-system-abs-path for {ds_uuid}: " + hte.get_description(),
+                            hte.get_status_code())
+        except Exception as e:
+            logger.error(e, exc_info=True)
+            return Response(f"Unexpected error while retrieving entity {ds_uuid}: " + str(e), 500)
+    return jsonify(out_list), 200
 #passthrough method to call mirror method on entity-api
 #this is need by ingest-pipeline that can only call 
 #methods via http (running on the same machine for security reasons)
