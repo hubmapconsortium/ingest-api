@@ -7,7 +7,7 @@ from api.api import Api
 class EntityApi(Api):
 
     def __init__(self, user_token: str, api_url: str):
-        super().__init__(user_token, api_url)
+        super().__init__(user_token, api_url.rstrip('/'))
 
     def post_entities(self, dataset_uuid: str, json: object, extra_headers: dict = {}) -> object:
         return super().request_post(f"/entities/{dataset_uuid}", json, extra_headers)
