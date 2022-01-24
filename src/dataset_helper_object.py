@@ -50,8 +50,8 @@ class DatasetHelper:
 
         if _entity_api_url is None:
             config = load_flask_instance_config()
-            _entity_api_url = config['ENTITY_WEBSERVICE_URL']
-            _search_api_url = config['SEARCH_WEBSERVICE_URL']
+            _entity_api_url = config['ENTITY_WEBSERVICE_URL'].rstrip('/')
+            _search_api_url = config['SEARCH_WEBSERVICE_URL'].rstrip('/')
 
     def get_organ_types_dict(self) -> object:
         yaml_file_url = 'https://raw.githubusercontent.com/hubmapconsortium/search-api/master/src/search-schema/data/definitions/enums/organ_types.yaml'
