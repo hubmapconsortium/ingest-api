@@ -1115,7 +1115,7 @@ def validate_upload(upload_uuid):
 #saves the upload then calls the reorganize workflow via
 #AirFlow interface 
 @app.route('/uploads/<upload_uuid>/reorganize', methods=['PUT'])
-def validate_upload(upload_uuid):
+def reorganize_upload(upload_uuid):
     
     #get auth info to use in other calls
     #add the app specific header info
