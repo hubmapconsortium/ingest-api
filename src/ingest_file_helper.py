@@ -63,6 +63,9 @@ class IngestFileHelper:
 
         return self.__dataset_directory_relative_path(access_level, group_uuid, dataset_uuid, published)
 
+    def get_upload_directory_relative_path(self, group_uuid, upload_uuid):
+        return self.__dataset_directory_relative_path('protected', group_uuid, upload_uuid, False)
+
     def get_upload_directory_abs_path(self, group_uuid, upload_uuid):
         return self.__dataset_directory_absolute_path('protected', group_uuid, upload_uuid, False)
     
@@ -83,16 +86,17 @@ class IngestFileHelper:
     def __dataset_directory_relative_path(self, access_level, group_uuid, dataset_uuid, published):
         grp_name = AuthHelper.getGroupDisplayName(group_uuid)
         if access_level == 'protected':
-            base_dir = self.appconfig['RELATIVE_GLOBUS_PROTECTED_ENDPOINT_FILEPATH']
-            rel_path = str(os.path.join(base_dir, grp_name, dataset_uuid))
+            endpoint_id = self.appconfig['GLOBUS_PROTECTED_ENDPOINT_UUID']
+            rel_path = str(os.path.join(self.appconfig['RELATIVE_GLOBUS_PROTECTED_ENDPOINT_FILEPATH'], grp_name, dataset_uuid))
         elif published or access_level == 'public':
-            base_dir = self.appconfig['RELATIVE_GLOBUS_PUBLIC_ENDPOINT_FILEPATH']
-            rel_path = str(os.path.join(base_dir, dataset_uuid))
+            endpoint_id = self.appconfig['GLOBUS_PUBLIC_ENDPOINT_UUID']
+            rel_path = str(os.path.join(self.appconfig['RELATIVE_GLOBUS_PUBLIC_ENDPOINT_FILEPATH'], dataset_uuid))
         else:
-            base_dir = self.appconfig['RELATIVE_GLOBUS_CONSORTIUM_ENDPOINT_FILEPATH']
-            rel_path = str(os.path.join(base_dir, grp_name, dataset_uuid))
+            endpoint_id = self.appconfig['GLOBUS_CONSORTIUM_ENDPOINT_UUID']
+            rel_path = str(os.path.join(self.appconfig['RELATIVE_GLOBUS_CONSORTIUM_ENDPOINT_FILEPATH'], grp_name, dataset_uuid))
 
-        return rel_path
+        return {"rel_path":rel_path, "globus_endpoint_uuid":endpoint_id}
+
     def dataset_asset_directory_absolute_path(self, dataset_uuid):
         return file_helper.ensureTrailingSlashURL(self.appconfig['HUBMAP_WEBSERVICE_FILEPATH']) + dataset_uuid
 

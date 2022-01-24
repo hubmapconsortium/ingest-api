@@ -508,43 +508,70 @@ def get_file_system_absolute_path(ds_uuid):
 
 
 """
-Retrieve relative paths from a list of uuid's
+Retrieve the path of Datasets or Uploads relative to the Globus endpoint mount point give from a list of entity uuids
+This is a public endpoint, not authorization token is required.
 
-The gateway treats this path as public accessible
-
-Parameters
+Input
 --------
+Input is via POST request body data as a Json array of Upload or Dataset HuBMAP IDs or UUIDs.
+Traditionally this would be a GET method as it isn't posting/creating anything, but we need to
+use the ability to send request body data with this method, even though GET can support a 
+request body with data we've found that our Gateway service (AWS API Gateway) doesn't support
+GET with data.
+
 ds_uuid_list : list
     ds_uuid : str
         The HuBMAP ID (e.g. HBM123.ABCD.456) or UUID of target dataset or upload
+Example: ["HBM123.ABCD.456", "HBM939.ZYES.733", "a9382ce928b32839dbe83746f383ea8"]
 
 Returns
 --------
-out_list : json array 
-    path : str
-        The relative path to a Globus file or directory  
+out_list : json array of json objects with information about the individual
+           entities where the json objects have the following properties:
+                                 id: the id of the dataset as sent in the input
+                        entity_type: The type of entity ("Upload" or "Dataset")
+                           rel_path: the path on the file system where the data for the entity sits relative to the mount point of the Globus endpoint
+               globus_endpoint_uuid: The Globus id of the endpoint where the data can be downloaded
+
+Example:
+   [{
+       "id":"HBM123.ABCD.4564",
+       "entity_type":"Dataset",
+       "rel_path":"/consortium/IEC Testing/db382ce928b32839dbe83746f384e354"
+       "globus_endpoint_uuid":"a935-ce928b328-39dbe83746f3-84bdae"
+    },
+    {
+       "id":"HBM478.BYRE.7748",
+       "entity_type":"Dataset",
+       "rel_path":"/consortium/IEC Testing/db382ce928b32839dbe83746f384e354"
+       "globus_endpoint_uuid":"a935-ce928b328-39dbe83746f3-84bdae"
+    }]
 """
-@app.route('/uploads/rel-path', methods=['GET'])
-@app.route('/datasets/rel-path', methods=['GET'])
+@app.route('/entities/rel-path', methods=['POST'])
 def get_file_system_relative_path():
     ds_uuid_list = request.json
     out_list = []
-    print(f"Type of ds_uuid_list is: {type(ds_uuid_list)}")
-    print(f"ds_uuid_list is: {ds_uuid_list}")
-    for ds_uuid in ds_uuid_list:
-        print(f"Type of list item is: {type(ds_uuid)}")
-        print(f"list item is: {ds_uuid}")
+    #print(f"Type of ds_uuid_list is: {type(ds_uuid_list)}")
+    #print(f"ds_uuid_list is: {ds_uuid_list}")
+    #for ds_uuid in ds_uuid_list:
+    #    print(f"Type of list item is: {type(ds_uuid)}")
+    #    print(f"list item is: {ds_uuid}")
     for ds_uuid in ds_uuid_list:
         try:
-            dset = __get_entity(ds_uuid, auth_header=request.headers.get("AUTHORIZATION"))
-            ent_type = __get_dict_prop(dset, 'entity_type')
+            ent_recd = {}
+            ent_recd['id'] = ds_uuid
+            dset = __get_entity(ds_uuid, auth_header="Bearer " + auth_helper_instance.getProcessSecret())
+            ent_type_m = __get_dict_prop(dset, 'entity_type')
+            ent_recd['entity_type'] = ent_type_m
             group_uuid = __get_dict_prop(dset, 'group_uuid')
-            if ent_type is None or ent_type.strip() == '':
+            if ent_type_m is None or ent_type_m.strip() == '':
                 return Response(f"Entity with uuid:{ds_uuid} needs to be a Dataset or Upload.", 400)
+            ent_type = ent_type_m.lower().strip()
             ingest_helper = IngestFileHelper(app.config)
-            if ent_type.lower().strip() == 'upload':
-                path = ingest_helper.get_upload_directory_abs_path(group_uuid=group_uuid, upload_uuid=ds_uuid)
-            else:
+
+            if ent_type == 'upload':
+                path = ingest_helper.get_upload_directory_relative_path(group_uuid=group_uuid, upload_uuid=dset['uuid'])
+            elif ent_type == 'dataset':
                 is_phi = __get_dict_prop(dset, 'contains_human_genetic_sequences')
                 if ent_type is None or not ent_type.lower().strip() == 'dataset':
                     return Response(f"Entity with uuid:{ds_uuid} is not a Dataset or Upload", 400)
@@ -552,8 +579,12 @@ def get_file_system_relative_path():
                     return Response(f"Error: Unable to find group uuid on dataset {ds_uuid}", 400)
                 if is_phi is None:
                     return Response(f"Error: contains_human_genetic_sequences is not set on dataset {ds_uuid}", 400)
-                path = ingest_helper.get_dataset_directory_relative_path(dset, group_uuid, ds_uuid)
-            out_list.append(path)
+                path = ingest_helper.get_dataset_directory_relative_path(dset, group_uuid, dset['uuid'])
+            else:
+                return Response("Unhandled entity type, must be Upload or Dataset, found " + ent_type_m, 400)
+            ent_recd['rel_path'] = path['rel_path']
+            ent_recd['globus_endpoint_uuid'] = path['globus_endpoint_uuid']
+            out_list.append(ent_recd)
             # return jsonify({'path': path}), 200
         except HTTPException as hte:
             return Response(f"Error while getting file-system-abs-path for {ds_uuid}: " + hte.get_description(),
