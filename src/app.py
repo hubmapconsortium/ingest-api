@@ -1073,7 +1073,6 @@ def submit_upload(upload_uuid):
 #method to validate an Upload
 #saves the upload then calls the validate workflow via
 #AirFlow interface 
-#changed- 9/29/2021 only does a save for now-- connected to the "Save" button in the URL.
 @app.route('/uploads/<upload_uuid>/validate', methods=['PUT'])
 def validate_upload(upload_uuid):
     if not request.is_json:
@@ -1093,7 +1092,6 @@ def validate_upload(upload_uuid):
     #and change the status to "Processing", the validate
     #pipeline will update the status when finished
 
-    #this line disabled because we aren't calling validate-- needs to be enabled again when we
     #run the pipeline validation
     upload_changes['status'] = 'Processing'
     update_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/' + upload_uuid
@@ -1113,6 +1111,43 @@ def validate_upload(upload_uuid):
 
     return(Response("Upload updated successfully", 200))
     
+#method to reorganize an Upload
+#saves the upload then calls the reorganize workflow via
+#AirFlow interface 
+@app.route('/uploads/<upload_uuid>/reorganize', methods=['PUT'])
+def validate_upload(upload_uuid):
+    
+    #get auth info to use in other calls
+    #add the app specific header info
+    http_headers = {
+        'Authorization': request.headers["AUTHORIZATION"], 
+        'Content-Type': 'application/json',
+        'X-Hubmap-Application':'ingest-api'
+    } 
+
+    #update the Upload with any changes from the request
+    #and change the status to "Processing", the validate
+    #pipeline will update the status when finished
+    upload_changes = {}
+    upload_changes['status'] = 'Processing'
+    update_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/' + upload_uuid
+    
+    # Disable ssl certificate verification
+    resp = requests.put(update_url, headers=http_headers, json=upload_changes, verify = False)
+    if resp.status_code >= 300:
+        return Response(resp.text, resp.status_code)
+    
+    #disable validations stuff for now...
+    ##call the AirFlow validation workflow
+    validate_url = commons_file_helper.ensureTrailingSlashURL(app.config['INGEST_PIPELINE_URL']) + 'uploads/' + upload_uuid + "/reorganize"
+    ## Disable ssl certificate verification
+    resp = requests.put(validate_url, headers=http_headers, json=upload_changes, verify = False)
+    if resp.status_code >= 300:
+        return Response(resp.text, resp.status_code)
+
+    return(Response("Upload reorganize started successfully", 200))
+
+
 
 @app.route('/metadata/usergroups', methods = ['GET'])
 @secured(groups="HuBMAP-read")
