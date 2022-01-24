@@ -547,7 +547,7 @@ Example:
        "globus_endpoint_uuid":"a935-ce928b328-39dbe83746f3-84bdae"
     }]
 """
-@app.route('/entities/rel-path', methods=['POST'])
+@app.route('/entities/file-system-rel-path', methods=['POST'])
 def get_file_system_relative_path():
     ds_uuid_list = request.json
     out_list = []
