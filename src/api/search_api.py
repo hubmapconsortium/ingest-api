@@ -10,4 +10,4 @@ class SearchApi(Api):
         super().__init__(user_token, api_url)
 
     def get_assaytype(self, data_type: str) -> object:
-        return super().request_get_public(f"/assaytype/{data_type}")
+        return super().request_get_public(f"assaytype/{data_type}")

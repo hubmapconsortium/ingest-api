@@ -24,7 +24,7 @@ class TestEntityApi(unittest.TestCase):
 
         mock_request_post.assert_called()
         args = mock_request_post.call_args_list[0]
-        self.assertEqual(args[0][0], f"/entities/{dataset_uuid}")
+        self.assertEqual(args[0][0], f"entities/{dataset_uuid}")
         self.assertEqual(args[0][1], json)
         self.assertEqual(args[0][2], {})
 
@@ -37,7 +37,7 @@ class TestEntityApi(unittest.TestCase):
 
         mock_request_post.assert_called()
         args = mock_request_post.call_args_list[0]
-        self.assertEqual(args[0][0], f"/entities/{dataset_uuid}")
+        self.assertEqual(args[0][0], f"entities/{dataset_uuid}")
         self.assertEqual(args[0][1], json)
         self.assertEqual(args[0][2], {'extra_header': 'fun Header'})
 
@@ -50,7 +50,7 @@ class TestEntityApi(unittest.TestCase):
 
         mock_request_put.assert_called()
         args = mock_request_put.call_args_list[0]
-        self.assertEqual(args[0][0], f"/entities/{dataset_uuid}")
+        self.assertEqual(args[0][0], f"entities/{dataset_uuid}")
         self.assertEqual(args[0][1], json)
         self.assertEqual(args[0][2], {})
 
@@ -63,7 +63,7 @@ class TestEntityApi(unittest.TestCase):
 
         mock_request_put.assert_called()
         args = mock_request_put.call_args_list[0]
-        self.assertEqual(args[0][0], f"/entities/{dataset_uuid}")
+        self.assertEqual(args[0][0], f"entities/{dataset_uuid}")
         self.assertEqual(args[0][1], json)
         self.assertEqual(args[0][2], {'extra_header': 'fun Header'})
 
@@ -75,7 +75,7 @@ class TestEntityApi(unittest.TestCase):
 
         mock_request_get.assert_called()
         args = mock_request_get.call_args_list[0]
-        self.assertEqual(args[0][0], f"/entities/{dataset_uuid}")
+        self.assertEqual(args[0][0], f"entities/{dataset_uuid}")
 
     @patch('api.api.Api.request_get')
     def test_get_ancestors(self, mock_request_get):
@@ -85,4 +85,4 @@ class TestEntityApi(unittest.TestCase):
 
         mock_request_get.assert_called()
         args = mock_request_get.call_args_list[0]
-        self.assertEqual(args[0][0], f"/ancestors/{dataset_uuid}")
+        self.assertEqual(args[0][0], f"ancestors/{dataset_uuid}")

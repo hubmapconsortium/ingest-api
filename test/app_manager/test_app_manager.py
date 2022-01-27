@@ -15,8 +15,8 @@ class TestAppManager(unittest.TestCase):
         self.token = 'token'
         self.request_headers = {'AUTHORIZATION': f'bearer   {self.token}'}
 
-    def test_nexus_token_from_request_headers(self):
-        result = app_manager.nexus_token_from_request_headers(self.request_headers)
+    def test_groups_token_from_request_headers(self):
+        result = app_manager.groups_token_from_request_headers(self.request_headers)
 
         self.assertEqual(result, self.token)
 
