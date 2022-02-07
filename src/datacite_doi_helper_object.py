@@ -55,7 +55,7 @@ class DataCiteDoiHelper:
             raise ValueError(msg)
 
     # See: https://support.datacite.org/docs/schema-40#table-3-expanded-datacite-mandatory-properties
-    def build_common_dataset_contributors(self, dataset_contributor: dict) -> dict:
+    def build_common_dataset_contributor(self, dataset_contributor: dict) -> dict:
         contributor = {}
         if 'name' in dataset_contributor:
             contributor['name'] = dataset_contributor['name']
@@ -80,29 +80,33 @@ class DataCiteDoiHelper:
 
     # See: https://support.datacite.org/docs/schema-optional-properties-v43#7-contributor
     def build_doi_contributors(self, dataset: dict) -> list:
-        dataset_contributors = self.safely_convert_string(dataset['contributors'])
+        dataset_contributors = self.safely_convert_string(dataset['contacts'])
         contributors = []
         for dataset_contributor in dataset_contributors:
-            # a 'contributor' is defined by ['is_contact'] == 'TRUE'...
-            if 'is_contact' in dataset_contributor and dataset_contributor['is_contact'].upper() == 'TRUE':
-                contributor = self.build_common_dataset_contributors(dataset_contributor)
-                # See: https://support.datacite.org/docs/schema-optional-properties-v43#7a-contributortype
-                contributor['contributorType'] = 'ContactPerson'
-                if len(contributor) != 0:
-                    contributors.append(contributor)
+            contributor = self.build_common_dataset_contributor(dataset_contributor)
+            # See: https://support.datacite.org/docs/schema-optional-properties-v43#7a-contributortype
+            contributor['contributorType'] = 'ContactPerson'
+            
+            if len(contributor) != 0:
+                contributors.append(contributor)
+    
         if len(contributors) == 0:
             return None
+
         return contributors
 
     def build_doi_creators(self, dataset: object) -> list:
         dataset_contributors = self.safely_convert_string(dataset['contributors'])
         creators = []
         for dataset_contributor in dataset_contributors:
-            creator = self.build_common_dataset_contributors(dataset_contributor)
+            creator = self.build_common_dataset_contributor(dataset_contributor)
+            
             if len(creator) != 0:
                 creators.append(creator)
+
         if len(creators) == 0:
             return None
+            
         return creators
 
     """
