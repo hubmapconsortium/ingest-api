@@ -72,9 +72,11 @@ class DataCiteDoiHelper:
         if 'orcid_id' in dataset_contributor:
             # See: https://support.datacite.org/docs/schema-optional-properties-v43#74-nameidentifier
             contributor['nameIdentifiers'] = [
-                {'nameIdentifierScheme': 'ORCID',
-                 'nameIdentifier': dataset_contributor['orcid_id'],
-                 'schemeURI': 'http://orchid.org' }
+                {
+                    'nameIdentifierScheme': 'ORCID',
+                    'nameIdentifier': dataset_contributor['orcid_id'],
+                    'schemeURI': 'http://orchid.org' 
+                }
             ]
         return contributor
 
@@ -106,7 +108,7 @@ class DataCiteDoiHelper:
 
         if len(creators) == 0:
             return None
-            
+
         return creators
 
     """
@@ -132,7 +134,7 @@ class DataCiteDoiHelper:
             datacite_api = DataCiteApi(self.datacite_repository_id, self.datacite_repository_password,
                                        self.datacite_hubmap_prefix, self.datacite_api_url, self.entity_api_url)
             
-            response = datacite_api.add_new_doi(dataset['hubmap_id'], 
+            response = datacite_api.create_new_draft_doi(dataset['hubmap_id'], 
                                                 dataset['uuid'],
                                                 self.build_doi_contributors(dataset), 
                                                 dataset['title'],
@@ -256,24 +258,6 @@ class DataCiteDoiHelper:
 
 # Running this python file as a script
 # cd src; python3 -m datacite_doi_helper_object <user_token> <dataset_uuid>
-
-# To get the uuid of a published dataset with contributors that have a contact use this Neo4J query....
-# http://neo4j.dev.hubmapconsortium.org:7474/browser/
-# match(n:Dataset) where n.status="Published" and n.contributors contains "is_contact" return n.uuid
-# You can look up that dataset on HubMap...
-# https://portal.dev.hubmapconsortium.org/
-# If you add .json to the end of the URL returned you can see the data.
-
-# Verify information in...
-# URL: https://doi.test.datacite.org/sign-in
-# Username: PSC.HUBMAP  (all caps)
-# Password: doi4HuBMAP2020
-# HuBMAP Prefix: 10.80478
-# Click "DOIs" in the GUI and see what is registered, and find the one that you just created
-# from the {'data': {'id':'10.80478/hbm836.lnmm.773' ...
-# the url should look like "https://handle.stage.datacite.org/10.80478/hbm836.lnmm.773
-# click on it and it should send you to the registered redirect page registered in creating
-# the draft doi, e.g., https://portal.test.hubmapconsortium.org/browse/dataset/2d4d2f368c6f74cc3aa17177924003b8
 if __name__ == "__main__":
     try:
         user_token = sys.argv[1]
@@ -302,12 +286,16 @@ if __name__ == "__main__":
 
         data_cite_doi_helper = DataCiteDoiHelper()
         try:
+            logger.debug("Create Draft DOI")
+
             data_cite_doi_helper.create_dataset_draft_doi(dataset)
         except requests.exceptions.RequestException as e:
             pass
         try:
+            logger.debug("Move Draft DOI -> Findable DOI")
+
             # To publish an existing draft DOI (change the state from draft to findable)
-            data_cite_doi_helper.move_doi_state_from_draft_to_findable(dataset, user_token)
+            #data_cite_doi_helper.move_doi_state_from_draft_to_findable(dataset, user_token)
         except requests.exceptions.RequestException as e:
             logger.exception(e)
     else:

@@ -18,7 +18,9 @@ class DataCiteApi:
         self.redirect_prefix = f"{entity_api_url}/doi/redirect"
         self.ssl_verification_enabed = False
 
-    def registration_doi(self, dataset_hubmap_id: str):
+    # https://support.datacite.org/docs/doi-basics
+    def build_doi_name(self, dataset_hubmap_id: str):
+        # Format: prefix/suffix, no need for proxy part
         return f"{self.datacite_hubmap_prefix}/{dataset_hubmap_id}"
 
     # https://support.datacite.org/reference/dois-2#get_dois-id
@@ -33,7 +35,7 @@ class DataCiteApi:
 
     # https://support.datacite.org/reference/dois-2#post_dois
     # and https://docs.python.org/3/library/typing.html
-    def add_new_doi(self,
+    def create_new_draft_doi(self,
                     dataset_hubmap_id: str, 
                     dataset_uuid: str,
                     contributors: list, 
@@ -48,12 +50,19 @@ class DataCiteApi:
                 'id': dataset_hubmap_id,
                 'type': 'dois',
                 'attributes': {
-                    'event': 'register',
+                    # ==============ATTENTION==============
+                    # Do NOT add 'event' field in order to create a "Draft" DOI
+                    # Do NOT specify 'event': 'register', this creates a "Registered" DOI directly or
+                    # triggers a state move from "Draft" to "Registered" and this DOI can not be deleted nor returned to the "Draft" state
+                    # Do NOT specify 'event': 'publish', this creates a "Findable" DOI directly or
+                    # triggers a state move from "Draft" or "Registered" to "Findable" and this DOI can not be deleted nor returned to a different state
+                    # =====================================
+
                     # Below are all the "Manditory" properties. See:
                     # https://schema.datacite.org/meta/kernel-4.3/doc/DataCite-MetadataKernel_v4.3.pdf#%5B%7B%22num%22%3A19%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C68%2C549%2C0%5D
 
                     # The globally unique string that identifies the resource and can't be changed
-                    'doi': self.registration_doi(dataset_hubmap_id),
+                    'doi': self.build_doi_name(dataset_hubmap_id),
                     # One or more names or titles by which the resource is known
                     'titles': [{
                         'title': dataset_title
@@ -94,12 +103,13 @@ class DataCiteApi:
 
     # https://support.datacite.org/reference/dois-2#put_dois-id
     def update_doi_event_publish(self, dataset_hubmap_id: str) -> object:
-        doi = self.registration_doi(dataset_hubmap_id)
+        doi = self.build_doi_name(dataset_hubmap_id)
         json = {
             'data': {
                 'id': doi,
                 'type': 'dois',
                 'attributes': {
+                    # Triggers a state move from "Draft" or "Registered" to "Findable"
                     'event': 'publish'
                 }
             }

@@ -214,18 +214,18 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
         self.assertEqual(json_from_put_call['data']['type'], 'dois')
         self.assertEqual(json_from_put_call['data']['attributes']['event'], 'publish')
 
-    @patch('datacite_doi_helper_object.DataCiteApi.add_new_doi')
-    def test_create_dataset_draft_doi_fail(self, mock_add_new_doi):
+    @patch('datacite_doi_helper_object.DataCiteApi.create_new_draft_doi')
+    def test_create_dataset_draft_doi_fail(self, mock_create_new_draft_doi):
         def resp1():
             r = requests.Response()
             r.status_code = 400
             r.json = lambda: self.response_doi
             return r
-        mock_add_new_doi.side_effect = [resp1()]
+        mock_create_new_draft_doi.side_effect = [resp1()]
 
         self.assertRaises(requests.RequestException,
                           self.datacite_doi_helper.create_dataset_draft_doi, self.dataset)
-        mock_add_new_doi.assert_called()
+        mock_create_new_draft_doi.assert_called()
 
     @patch('datacite_doi_helper_object.EntityApi.put_entities')
     @patch('datacite_doi_helper_object.DataCiteApi.update_doi_event_publish')
