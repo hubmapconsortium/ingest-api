@@ -161,8 +161,7 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
 
         data_attributes = json_from_post_call['data']['attributes']
         self.assertTrue(isinstance(data_attributes, dict))
-        self.assertEqual(len(data_attributes.keys()), 9)
-        self.assertEqual(data_attributes['event'], 'register')
+        self.assertEqual(len(data_attributes.keys()), 8)
         self.assertEqual(data_attributes['doi'], f"{self.hubmap_prefix}/{self.hubmap_id}")
         self.assertEqual(data_attributes['titles'][0]['title'], "Dataset Title String")
         self.assertEqual(data_attributes['publisher'], 'HuBMAP Consortium')

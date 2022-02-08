@@ -188,9 +188,9 @@ class DataCiteDoiHelper:
                 # Then update the dataset DOI properties via entity-api after the DOI gets published
                 try:
                     doi_url = doi_data['data']['attributes']['url']
-                    registration_doi = datacite_api.registration_doi(dataset['hubmap_id'])
+                    doi_name = datacite_api.build_doi_name(dataset['hubmap_id'])
                     entity_api = EntityApi(user_token, self.entity_api_url)
-                    updated_dataset = self.update_dataset_after_doi_published(dataset['uuid'], registration_doi, doi_url, entity_api)
+                    updated_dataset = self.update_dataset_after_doi_published(dataset['uuid'], doi_name, doi_url, entity_api)
 
                     return updated_dataset
                 except requests.exceptions.RequestException as e:
@@ -214,8 +214,8 @@ class DataCiteDoiHelper:
     ----------
     dataset_uuid: str
         The dataset uuid
-    registration_doi: str
-        The registered doi
+    doi_name: str
+        The registered doi: prefix/suffix
     doi_url: str
         The registered doi_url
     entity_api
@@ -226,14 +226,14 @@ class DataCiteDoiHelper:
     dict
         The entity dict with updated DOI properties
     """
-    def update_dataset_after_doi_published(self, dataset_uuid: str, registration_doi: str, doi_url: str, entity_api: EntityApi) -> object:
+    def update_dataset_after_doi_published(self, dataset_uuid: str, doi_name: str, doi_url: str, entity_api: EntityApi) -> object:
 
         # Update the registered_doi, and doi_url properties after DOI made findable
         # Changing Dataset.status to "Published" and setting the published_* properties
         # are handled by another script
         # See https://github.com/hubmapconsortium/ingest-ui/issues/354
         dataset_properties_to_update = {
-            'registered_doi': registration_doi,
+            'registered_doi': doi_name,
             'doi_url': doi_url
         }
         response = entity_api.put_entities(dataset_uuid, dataset_properties_to_update)
