@@ -40,9 +40,9 @@ class DataCiteApi:
                     dataset_uuid: str,
                     contributors: list, 
                     dataset_title: str,
+                    publication_year: int,
                     creators: list) -> object:
         publisher = 'HuBMAP Consortium'
-        publication_year = int(datetime.now().year)
 
         # Draft DOI doesn't specify the 'event' attribute
         json = {
