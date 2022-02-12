@@ -150,17 +150,6 @@ class DataCiteDoiHelper:
             datacite_api = DataCiteApi(self.datacite_repository_id, self.datacite_repository_password,
                                        self.datacite_hubmap_prefix, self.datacite_api_url, self.entity_api_url)
             
-            # Check existence of the target DOI ID
-            try:
-                doi_id = datacite_api.build_doi_name(dataset['hubmap_id'])
-                r = datacite_api.get_doi_by_id(doi_id)
-                if r.status_code == 200:
-                    raise ValueError(f"The DOI {doi_id} already exists")
-            except requests.exceptions.RequestException as e:
-                logger.exception(e)
-
-                raise requests.exceptions.RequestException(response.text)
-
             # Get publication_year, default to the current year
             publication_year = int(datetime.now().year)
             if 'published_timestamp' in dataset:

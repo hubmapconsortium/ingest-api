@@ -92,7 +92,6 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
         self.assertTrue(isinstance(contributor, dict))
         self.assertEqual(len(contributor.keys()), 6)
 
-        self.assertEqual(contributor['name'], 'Jeffrey M. Spraggins')
         # See:  https://support.datacite.org/docs/schema-optional-properties-v43#72-givenname
         self.assertEqual(contributor['givenName'], 'Jeffrey')
         self.assertEqual(contributor['familyName'], 'Spraggins')
@@ -108,7 +107,7 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
         self.assertEqual(len(contributorIdentifiers[0].keys()), 3)
         self.assertEqual(contributorIdentifiers[0]['nameIdentifierScheme'], 'ORCID')
         self.assertEqual(contributorIdentifiers[0]['nameIdentifier'], '0000-0001-9198-5498')
-        self.assertEqual(contributorIdentifiers[0]['schemeURI'], 'http://orchid.org')
+        self.assertEqual(contributorIdentifiers[0]['schemeUri'], 'https://orcid.org/')
 
     def test_build_doi_creators(self):
         str = "[{'affiliation': 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA', 'first_name': 'Jamie', 'is_contact': 'FALSE', 'last_name': 'Allen', 'middle_name_or_initial': 'L.', 'name': 'Jamie L. Allen', 'orcid_id': '0000-0002-4739-2166', 'version': '1'}]"
@@ -120,7 +119,6 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
         self.assertEqual(len(result[0].keys()), 5)
         self.assertEqual(result[0]['familyName'], 'Allen')
         self.assertEqual(result[0]['givenName'], 'Jamie')
-        self.assertEqual(result[0]['name'], 'Jamie L. Allen')
         # Here there can be an array of affiliations...
         self.assertEqual(result[0]['affiliation'][0]['name'],
                          'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA')
@@ -131,16 +129,17 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
         self.assertEqual(len(result0NmeIdentifiers[0].keys()), 3)
         self.assertEqual(result0NmeIdentifiers[0]['nameIdentifierScheme'], 'ORCID')
         self.assertEqual(result0NmeIdentifiers[0]['nameIdentifier'], '0000-0002-4739-2166')
-        self.assertEqual(result0NmeIdentifiers[0]['schemeURI'], 'http://orchid.org')
+        self.assertEqual(result0NmeIdentifiers[0]['schemeUri'], 'https://orcid.org/')
 
+    
     @patch('api.datacite_api.requests.post')
     def test_create_dataset_draft_doi_happy_path(self, mock_post):
-        def resp1():
+        def resp():
             r = requests.Response()
             r.status_code = 201
             r.json = lambda: None
             return r
-        mock_post.side_effect = [resp1()]
+        mock_post.side_effect = [resp()]
 
         self.datacite_doi_helper.create_dataset_draft_doi(self.dataset)
 
@@ -165,7 +164,7 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
         self.assertEqual(data_attributes['doi'], f"{self.hubmap_prefix}/{self.hubmap_id}")
         self.assertEqual(data_attributes['titles'][0]['title'], "Dataset Title String")
         self.assertEqual(data_attributes['publisher'], 'HuBMAP Consortium')
-        self.assertEqual(data_attributes['publicationYear'], int(datetime.now().year))
+        self.assertEqual(data_attributes['publicationYear'], 2021)
         self.assertEqual(data_attributes['types']['resourceTypeGeneral'], 'Dataset')
         self.assertEqual(data_attributes['url'], f"{self.entity_webservice_url}/doi/redirect/{self.uuid}")
 
@@ -182,7 +181,6 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
             self.assertTrue(isinstance(creator, dict))
             self.assertTrue('familyName' in creator)
             self.assertTrue('givenName' in creator)
-            self.assertTrue('name' in creator)
             self.assertTrue('affiliation' in creator)
 
     @patch('api.datacite_api.requests.put')

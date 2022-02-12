@@ -23,18 +23,9 @@ class DataCiteApi:
         # Format: prefix/suffix, no need for proxy part
         return f"{self.datacite_hubmap_prefix}/{dataset_hubmap_id}"
 
-    # https://support.datacite.org/reference/dois-2#get_dois-id
-    def return_doi(self, dataset_hubmap_id: str) -> object:
-        response = requests.get(
-            url=f"{self.datacite_api_url}/{dataset_hubmap_id}",
-            auth=self.auth,
-            headers={'Accept: application/vnd.api+json'},
-            verify=self.ssl_verification_enabed
-        )
-        return response
-
     # DOI retrieval
-    def get_doi_by_id(self, doi_id: str):
+    # https://support.datacite.org/reference/dois-2#get_dois-id
+    def get_doi_by_id(self, dataset_hubmap_id: str) -> object:
         logger.debug(f"======Target DOI ID: {doi_id}======")
 
         response = requests.get(
