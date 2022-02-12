@@ -438,7 +438,7 @@ if __name__ == "__main__":
     ]
 
 
-    datasets = [
+    datasets_2 = [
         'bae81c76d9baf591fc7455f570e3c41d', 
         '28481bdc81b2fac9c645ec95fc0e1824', 
         '3802f8843c090764d056b2e326a494ca', 
@@ -541,9 +541,12 @@ if __name__ == "__main__":
         '6aa9b45e2fe555a72335e21837334c52', 
         '60ed8e03152b51d5d9c8fc04e20fa5e3', 
         '146063814f6bd2b6546e950d0ca5f8c3', 
-        '1d1a8376b558398588f92688314f23c5', 
+        '1d1a8376b558398588f92688314f23c5',  
+    ]
+    
+    datasets = [
         '56b00177fa2bbd091a10dae8d57c9539', 
-        '1e995c94f5e0affd76af014834a3c3a0', 
+        '1e995c94f5e0affd76af014834a3c3a0',
         'b99153a1b16f28dd9ed12bc596795261', 
         '598e80e7888712571caed6488c191302', 
         '2ece1b8974483e14046fad953b35fedd', 
@@ -648,6 +651,6 @@ if __name__ == "__main__":
 
         logger.debug(f"End {count}: ========================= {dataset_uuid} =========================")
 
-        time.sleep(2)
+        time.sleep(5)
 
         count = count + 1
