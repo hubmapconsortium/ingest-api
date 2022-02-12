@@ -33,6 +33,18 @@ class DataCiteApi:
         )
         return response
 
+    # DOI retrieval
+    def get_doi_by_id(self, doi_id: str):
+        logger.debug(f"======Target DOI ID: {doi_id}======")
+
+        response = requests.get(
+            url=f"{self.datacite_api_url}/{doi_id}",
+            auth=self.auth,
+            headers={'Content-Type': 'application/vnd.api+json'},
+            verify=self.ssl_verification_enabed
+        )
+        return response
+
     # https://support.datacite.org/reference/dois-2#post_dois
     # and https://docs.python.org/3/library/typing.html
     def create_new_draft_doi(self,
@@ -90,7 +102,7 @@ class DataCiteApi:
             json['data']['attributes']['creators'] = creators
 
         logger.debug("======Draft DOI json_to_post======")
-        logger.debug(json)
+        #logger.debug(json)
 
         response = requests.post(
             url=self.datacite_api_url,
