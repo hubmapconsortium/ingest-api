@@ -147,6 +147,10 @@ class DataCiteDoiHelper:
     """
     def create_dataset_draft_doi(self, dataset: dict) -> object:
         if ('entity_type' in dataset) and (dataset['entity_type'] == 'Dataset'):
+            # In case the given dataset is not published
+            if dataset['status'].lower() != 'published':
+                raise ValueError('This Dataset is not Published, can not register DOI')
+
             datacite_api = DataCiteApi(self.datacite_repository_id, self.datacite_repository_password,
                                        self.datacite_hubmap_prefix, self.datacite_api_url, self.entity_api_url)
             
@@ -282,6 +286,7 @@ class DataCiteDoiHelper:
 # Running this python file as a script
 # cd src; python3 -m datacite_doi_helper_object <user_token>
 if __name__ == "__main__":
+    # Add the uuids to this list
     datasets = []
 
     try:
