@@ -800,16 +800,7 @@ def publish_datastage(identifier):
                     if data_access_level != 'public':
                         uuids_for_public.append(uuid)
                 elif entity_type == 'Dataset':
-                    if status == 'Published':
-                        pass # TODO: Enable the commented code once the integration work with pipeline has been completed for story #354.
-                        # Note: moved dataset title auto generation to entity-api - Zhou 9/29/2021
-
-                        # nexus_token = app_manager.nexus_token_from_request_headers(request.headers)
-                        # datacite_doi_helper = DataCiteDoiHelper()
-                        # datacite_doi_helper.create_dataset_draft_doi(node)
-                        # # This will make the draft DOI created above 'findable'....
-                        # datacite_doi_helper.move_doi_state_from_draft_to_findable(node, nexus_token)
-                    else:
+                    if status != 'Published':
                         return Response(f"{dataset_uuid} has an ancestor dataset that has not been Published. Will not Publish. Ancestor dataset is: {uuid}", 400)
             
             if donor_uuid is None:
@@ -855,6 +846,17 @@ def publish_datastage(identifier):
                 logger.info(identifier + "\t" + dataset_uuid + "\tNEO4J-update-ancestors\t" + update_q)
                 neo_session.run(update_q)
                     
+
+            # DOI gets generated here
+            # TODO: Enable the commented code once the integration work with pipeline has been completed for story #354.
+            # Note: moved dataset title auto generation to entity-api - Zhou 9/29/2021
+            # nexus_token = app_manager.nexus_token_from_request_headers(request.headers)
+            # datacite_doi_helper = DataCiteDoiHelper()
+            # datacite_doi_helper.create_dataset_draft_doi(node)
+            # # This will make the draft DOI created above 'findable'....
+            # datacite_doi_helper.move_doi_state_from_draft_to_findable(node, nexus_token)
+
+
         if no_indexing_and_acls:
             r_val = {'acl_cmd': acls_cmd, 'donors_for_indexing': donors_to_reindex}
         else:
