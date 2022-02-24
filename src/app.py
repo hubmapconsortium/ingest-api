@@ -551,11 +551,7 @@ Example:
 def get_file_system_relative_path():
     ds_uuid_list = request.json
     out_list = []
-    #print(f"Type of ds_uuid_list is: {type(ds_uuid_list)}")
-    #print(f"ds_uuid_list is: {ds_uuid_list}")
-    #for ds_uuid in ds_uuid_list:
-    #    print(f"Type of list item is: {type(ds_uuid)}")
-    #    print(f"list item is: {ds_uuid}")
+    error_id_list = []
     for ds_uuid in ds_uuid_list:
         try:
             ent_recd = {}
@@ -565,33 +561,45 @@ def get_file_system_relative_path():
             ent_recd['entity_type'] = ent_type_m
             group_uuid = __get_dict_prop(dset, 'group_uuid')
             if ent_type_m is None or ent_type_m.strip() == '':
-                return Response(f"Entity with uuid:{ds_uuid} needs to be a Dataset or Upload.", 400)
+                error_id = {'id': ds_uuid, 'message': 'id not for Dataset or Upload', 'status_code': 400}
+                error_id_list.append(error_id)
             ent_type = ent_type_m.lower().strip()
             ingest_helper = IngestFileHelper(app.config)
-
             if ent_type == 'upload':
                 path = ingest_helper.get_upload_directory_relative_path(group_uuid=group_uuid, upload_uuid=dset['uuid'])
             elif ent_type == 'dataset':
                 is_phi = __get_dict_prop(dset, 'contains_human_genetic_sequences')
                 if ent_type is None or not ent_type.lower().strip() == 'dataset':
-                    return Response(f"Entity with uuid:{ds_uuid} is not a Dataset or Upload", 400)
+                    error_id = {'id': ds_uuid, 'message': 'id not for Dataset or Upload', 'status_code': 400}
+                    error_id_list.append(error_id)
                 if group_uuid is None:
-                    return Response(f"Error: Unable to find group uuid on dataset {ds_uuid}", 400)
+                    error_id = {'id': ds_uuid, 'message': 'Unable to find group uuid on dataset', 'status_code': 400}
+                    error_id_list.append(error_id)
                 if is_phi is None:
-                    return Response(f"Error: contains_human_genetic_sequences is not set on dataset {ds_uuid}", 400)
+                    error_id = {'id': ds_uuid, 'message': 'contains_human_genetic_sequences is not set on dataset',
+                                'status_code': 400}
+                    error_id_list.append(error_id)
                 path = ingest_helper.get_dataset_directory_relative_path(dset, group_uuid, dset['uuid'])
             else:
-                return Response("Unhandled entity type, must be Upload or Dataset, found " + ent_type_m, 400)
+                error_id = {'id': ds_uuid, 'message': f'Unhandled entity type, must be Upload or Dataset, '
+                                                      f'found {ent_type_m}', 'status_code': 400}
+                error_id_list.append(error_id)
             ent_recd['rel_path'] = path['rel_path']
             ent_recd['globus_endpoint_uuid'] = path['globus_endpoint_uuid']
             out_list.append(ent_recd)
-            # return jsonify({'path': path}), 200
         except HTTPException as hte:
-            return Response(f"Error while getting file-system-abs-path for {ds_uuid}: " + hte.get_description(),
-                            hte.get_status_code())
+            error_id = {'id': ds_uuid, 'message': hte.get_description(), 'status_code': hte.get_status_code()}
+            error_id_list.append(error_id)
         except Exception as e:
             logger.error(e, exc_info=True)
-            return Response(f"Unexpected error while retrieving entity {ds_uuid}: " + str(e), 500)
+            error_id = {'id': ds_uuid, 'message': str(e), 'status_code': 500}
+            error_id_list.append(error_id)
+    if len(error_id_list) > 0:
+        status_code = 400
+        for each in error_id_list:
+            if each['status_code'] == 500:
+                status_code = 500
+        return jsonify(error_id_list), status_code
     return jsonify(out_list), 200
 #passthrough method to call mirror method on entity-api
 #this is need by ingest-pipeline that can only call 
