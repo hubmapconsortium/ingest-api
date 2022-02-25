@@ -537,8 +537,10 @@ Example:
    [{
        "id":"HBM123.ABCD.4564",
        "entity_type":"Dataset",
+       "hubmap_id":"HBM123.ABCD.4564",
        "rel_path":"/consortium/IEC Testing/db382ce928b32839dbe83746f384e354"
-       "globus_endpoint_uuid":"a935-ce928b328-39dbe83746f3-84bdae"
+       "globus_endpoint_uuid":"a935-ce928b328-39dbe83746f3-84bdae",
+       "uuid", "db382ce928b32839dbe83746f384e354"
     },
     {
        "id":"HBM478.BYRE.7748",
@@ -586,6 +588,8 @@ def get_file_system_relative_path():
                 error_id_list.append(error_id)
             ent_recd['rel_path'] = path['rel_path']
             ent_recd['globus_endpoint_uuid'] = path['globus_endpoint_uuid']
+            ent_recd['uuid'] = (__get_dict_prop(dset, 'uuid'))
+            ent_recd['hubmap_id'] = (__get_dict_prop(dset, 'hubmap_id'))
             out_list.append(ent_recd)
         except HTTPException as hte:
             error_id = {'id': ds_uuid, 'message': hte.get_description(), 'status_code': hte.get_status_code()}
