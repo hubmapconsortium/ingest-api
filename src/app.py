@@ -510,7 +510,6 @@ def get_file_system_absolute_path(ds_uuid):
 """
 Retrieve the path of Datasets or Uploads relative to the Globus endpoint mount point give from a list of entity uuids
 This is a public endpoint, not authorization token is required.
-
 Input
 --------
 Input is via POST request body data as a Json array of Upload or Dataset HuBMAP IDs or UUIDs.
@@ -518,12 +517,10 @@ Traditionally this would be a GET method as it isn't posting/creating anything, 
 use the ability to send request body data with this method, even though GET can support a 
 request body with data we've found that our Gateway service (AWS API Gateway) doesn't support
 GET with data.
-
 ds_uuid_list : list
     ds_uuid : str
         The HuBMAP ID (e.g. HBM123.ABCD.456) or UUID of target dataset or upload
 Example: ["HBM123.ABCD.456", "HBM939.ZYES.733", "a9382ce928b32839dbe83746f383ea8"]
-
 Returns
 --------
 out_list : json array of json objects with information about the individual
@@ -532,13 +529,14 @@ out_list : json array of json objects with information about the individual
                         entity_type: The type of entity ("Upload" or "Dataset")
                            rel_path: the path on the file system where the data for the entity sits relative to the mount point of the Globus endpoint
                globus_endpoint_uuid: The Globus id of the endpoint where the data can be downloaded
-
 Example:
    [{
        "id":"HBM123.ABCD.4564",
        "entity_type":"Dataset",
+       "hubmap_id":"HBM123.ABCD.4564",
        "rel_path":"/consortium/IEC Testing/db382ce928b32839dbe83746f384e354"
-       "globus_endpoint_uuid":"a935-ce928b328-39dbe83746f3-84bdae"
+       "globus_endpoint_uuid":"a935-ce928b328-39dbe83746f3-84bdae",
+       "uuid", "db382ce928b32839dbe83746f384e354"
     },
     {
        "id":"HBM478.BYRE.7748",
@@ -586,6 +584,8 @@ def get_file_system_relative_path():
                 error_id_list.append(error_id)
             ent_recd['rel_path'] = path['rel_path']
             ent_recd['globus_endpoint_uuid'] = path['globus_endpoint_uuid']
+            ent_recd['uuid'] = (__get_dict_prop(dset, 'uuid'))
+            ent_recd['hubmap_id'] = (__get_dict_prop(dset, 'hubmap_id'))
             out_list.append(ent_recd)
         except HTTPException as hte:
             error_id = {'id': ds_uuid, 'message': hte.get_description(), 'status_code': hte.get_status_code()}
