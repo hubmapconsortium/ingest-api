@@ -506,6 +506,101 @@ def get_file_system_absolute_path(ds_uuid):
         logger.error(e, exc_info=True)
         return Response(f"Unexpected error while retrieving entity {ds_uuid}: " + str(e), 500)
 
+
+"""
+Retrieve the path of Datasets or Uploads relative to the Globus endpoint mount point give from a list of entity uuids
+This is a public endpoint, not authorization token is required.
+Input
+--------
+Input is via POST request body data as a Json array of Upload or Dataset HuBMAP IDs or UUIDs.
+Traditionally this would be a GET method as it isn't posting/creating anything, but we need to
+use the ability to send request body data with this method, even though GET can support a 
+request body with data we've found that our Gateway service (AWS API Gateway) doesn't support
+GET with data.
+ds_uuid_list : list
+    ds_uuid : str
+        The HuBMAP ID (e.g. HBM123.ABCD.456) or UUID of target dataset or upload
+Example: ["HBM123.ABCD.456", "HBM939.ZYES.733", "a9382ce928b32839dbe83746f383ea8"]
+Returns
+--------
+out_list : json array of json objects with information about the individual
+           entities where the json objects have the following properties:
+                                 id: the id of the dataset as sent in the input
+                        entity_type: The type of entity ("Upload" or "Dataset")
+                           rel_path: the path on the file system where the data for the entity sits relative to the mount point of the Globus endpoint
+               globus_endpoint_uuid: The Globus id of the endpoint where the data can be downloaded
+Example:
+   [{
+       "id":"HBM123.ABCD.4564",
+       "entity_type":"Dataset",
+       "hubmap_id":"HBM123.ABCD.4564",
+       "rel_path":"/consortium/IEC Testing/db382ce928b32839dbe83746f384e354"
+       "globus_endpoint_uuid":"a935-ce928b328-39dbe83746f3-84bdae",
+       "uuid", "db382ce928b32839dbe83746f384e354"
+    },
+    {
+       "id":"HBM478.BYRE.7748",
+       "entity_type":"Dataset",
+       "rel_path":"/consortium/IEC Testing/db382ce928b32839dbe83746f384e354"
+       "globus_endpoint_uuid":"a935-ce928b328-39dbe83746f3-84bdae"
+    }]
+"""
+@app.route('/entities/file-system-rel-path', methods=['POST'])
+def get_file_system_relative_path():
+    ds_uuid_list = request.json
+    out_list = []
+    error_id_list = []
+    for ds_uuid in ds_uuid_list:
+        try:
+            ent_recd = {}
+            ent_recd['id'] = ds_uuid
+            dset = __get_entity(ds_uuid, auth_header="Bearer " + auth_helper_instance.getProcessSecret())
+            ent_type_m = __get_dict_prop(dset, 'entity_type')
+            ent_recd['entity_type'] = ent_type_m
+            group_uuid = __get_dict_prop(dset, 'group_uuid')
+            if ent_type_m is None or ent_type_m.strip() == '':
+                error_id = {'id': ds_uuid, 'message': 'id not for Dataset or Upload', 'status_code': 400}
+                error_id_list.append(error_id)
+            ent_type = ent_type_m.lower().strip()
+            ingest_helper = IngestFileHelper(app.config)
+            if ent_type == 'upload':
+                path = ingest_helper.get_upload_directory_relative_path(group_uuid=group_uuid, upload_uuid=dset['uuid'])
+            elif ent_type == 'dataset':
+                is_phi = __get_dict_prop(dset, 'contains_human_genetic_sequences')
+                if ent_type is None or not ent_type.lower().strip() == 'dataset':
+                    error_id = {'id': ds_uuid, 'message': 'id not for Dataset or Upload', 'status_code': 400}
+                    error_id_list.append(error_id)
+                if group_uuid is None:
+                    error_id = {'id': ds_uuid, 'message': 'Unable to find group uuid on dataset', 'status_code': 400}
+                    error_id_list.append(error_id)
+                if is_phi is None:
+                    error_id = {'id': ds_uuid, 'message': 'contains_human_genetic_sequences is not set on dataset',
+                                'status_code': 400}
+                    error_id_list.append(error_id)
+                path = ingest_helper.get_dataset_directory_relative_path(dset, group_uuid, dset['uuid'])
+            else:
+                error_id = {'id': ds_uuid, 'message': f'Unhandled entity type, must be Upload or Dataset, '
+                                                      f'found {ent_type_m}', 'status_code': 400}
+                error_id_list.append(error_id)
+            ent_recd['rel_path'] = path['rel_path']
+            ent_recd['globus_endpoint_uuid'] = path['globus_endpoint_uuid']
+            ent_recd['uuid'] = (__get_dict_prop(dset, 'uuid'))
+            ent_recd['hubmap_id'] = (__get_dict_prop(dset, 'hubmap_id'))
+            out_list.append(ent_recd)
+        except HTTPException as hte:
+            error_id = {'id': ds_uuid, 'message': hte.get_description(), 'status_code': hte.get_status_code()}
+            error_id_list.append(error_id)
+        except Exception as e:
+            logger.error(e, exc_info=True)
+            error_id = {'id': ds_uuid, 'message': str(e), 'status_code': 500}
+            error_id_list.append(error_id)
+    if len(error_id_list) > 0:
+        status_code = 400
+        for each in error_id_list:
+            if each['status_code'] == 500:
+                status_code = 500
+        return jsonify(error_id_list), status_code
+    return jsonify(out_list), 200
 #passthrough method to call mirror method on entity-api
 #this is need by ingest-pipeline that can only call 
 #methods via http (running on the same machine for security reasons)
@@ -713,16 +808,7 @@ def publish_datastage(identifier):
                     if data_access_level != 'public':
                         uuids_for_public.append(uuid)
                 elif entity_type == 'Dataset':
-                    if status == 'Published':
-                        pass # TODO: Enable the commented code once the integration work with pipeline has been completed for story #354.
-                        # Note: moved dataset title auto generation to entity-api - Zhou 9/29/2021
-
-                        # nexus_token = app_manager.nexus_token_from_request_headers(request.headers)
-                        # datacite_doi_helper = DataCiteDoiHelper()
-                        # datacite_doi_helper.create_dataset_draft_doi(node)
-                        # # This will make the draft DOI created above 'findable'....
-                        # datacite_doi_helper.move_doi_state_from_draft_to_findable(node, nexus_token)
-                    else:
+                    if status != 'Published':
                         return Response(f"{dataset_uuid} has an ancestor dataset that has not been Published. Will not Publish. Ancestor dataset is: {uuid}", 400)
             
             if donor_uuid is None:
@@ -768,6 +854,17 @@ def publish_datastage(identifier):
                 logger.info(identifier + "\t" + dataset_uuid + "\tNEO4J-update-ancestors\t" + update_q)
                 neo_session.run(update_q)
                     
+
+            # DOI gets generated here
+            # TODO: Enable the commented code once the integration work with pipeline has been completed for story #354.
+            # Note: moved dataset title auto generation to entity-api - Zhou 9/29/2021
+            # nexus_token = app_manager.nexus_token_from_request_headers(request.headers)
+            # datacite_doi_helper = DataCiteDoiHelper()
+            # datacite_doi_helper.create_dataset_draft_doi(node)
+            # # This will make the draft DOI created above 'findable'....
+            # datacite_doi_helper.move_doi_state_from_draft_to_findable(node, nexus_token)
+
+
         if no_indexing_and_acls:
             r_val = {'acl_cmd': acls_cmd, 'donors_for_indexing': donors_to_reindex}
         else:
@@ -865,7 +962,7 @@ def update_ingest_status():
         abort(400, jsonify( { 'error': 'no data found cannot process update' } ))
     
     try:
-        entity_api = EntityApi(app_manager.nexus_token_from_request_headers(request.headers),
+        entity_api = EntityApi(app_manager.groups_token_from_request_headers(request.headers),
                                commons_file_helper.removeTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']))
 
         return app_manager.update_ingest_status_title_thumbnail(app.config, 
@@ -1010,8 +1107,8 @@ def create_uploadstage():
             return(auth_tokens)
         elif isinstance(auth_tokens, str):
             token = auth_tokens
-        elif 'nexus_token' in auth_tokens:
-            token = auth_tokens['nexus_token']
+        elif 'groups_token' in auth_tokens:
+            token = auth_tokens['groups_token']
         else:
             return(Response("Valid nexus auth token required", 401))
         
@@ -1073,7 +1170,6 @@ def submit_upload(upload_uuid):
 #method to validate an Upload
 #saves the upload then calls the validate workflow via
 #AirFlow interface 
-#changed- 9/29/2021 only does a save for now-- connected to the "Save" button in the URL.
 @app.route('/uploads/<upload_uuid>/validate', methods=['PUT'])
 def validate_upload(upload_uuid):
     if not request.is_json:
@@ -1093,9 +1189,8 @@ def validate_upload(upload_uuid):
     #and change the status to "Processing", the validate
     #pipeline will update the status when finished
 
-    #this line disabled because we aren't calling validate-- needs to be enabled again when we
     #run the pipeline validation
-    #upload_changes['status'] = 'Processing'
+    upload_changes['status'] = 'Processing'
     update_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/' + upload_uuid
     
     # Disable ssl certificate verification
@@ -1105,14 +1200,51 @@ def validate_upload(upload_uuid):
     
     #disable validations stuff for now...
     ##call the AirFlow validation workflow
-    #validate_url = commons_file_helper.ensureTrailingSlashURL(app.config['INGEST_PIPELINE_URL']) + 'uploads/' + upload_uuid + "/validate"
+    validate_url = commons_file_helper.ensureTrailingSlashURL(app.config['INGEST_PIPELINE_URL']) + 'uploads/' + upload_uuid + "/validate"
     ## Disable ssl certificate verification
-    #resp = requests.put(validate_url, headers=http_headers, json=upload_changes, verify = False)
-    #if resp.status_code >= 300:
-    #    return Response(resp.text, resp.status_code)
+    resp = requests.put(validate_url, headers=http_headers, json=upload_changes, verify = False)
+    if resp.status_code >= 300:
+        return Response(resp.text, resp.status_code)
 
     return(Response("Upload updated successfully", 200))
     
+#method to reorganize an Upload
+#saves the upload then calls the reorganize workflow via
+#AirFlow interface 
+@app.route('/uploads/<upload_uuid>/reorganize', methods=['PUT'])
+def reorganize_upload(upload_uuid):
+    
+    #get auth info to use in other calls
+    #add the app specific header info
+    http_headers = {
+        'Authorization': request.headers["AUTHORIZATION"], 
+        'Content-Type': 'application/json',
+        'X-Hubmap-Application':'ingest-api'
+    } 
+
+    #update the Upload with any changes from the request
+    #and change the status to "Processing", the validate
+    #pipeline will update the status when finished
+    upload_changes = {}
+    upload_changes['status'] = 'Processing'
+    update_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/' + upload_uuid
+    
+    # Disable ssl certificate verification
+    resp = requests.put(update_url, headers=http_headers, json=upload_changes, verify = False)
+    if resp.status_code >= 300:
+        return Response(resp.text, resp.status_code)
+    
+    #disable validations stuff for now...
+    ##call the AirFlow validation workflow
+    validate_url = commons_file_helper.ensureTrailingSlashURL(app.config['INGEST_PIPELINE_URL']) + 'uploads/' + upload_uuid + "/reorganize"
+    ## Disable ssl certificate verification
+    resp = requests.put(validate_url, headers=http_headers, json=upload_changes, verify = False)
+    if resp.status_code >= 300:
+        return Response(resp.text, resp.status_code)
+
+    return(Response("Upload reorganize started successfully", 200))
+
+
 
 @app.route('/metadata/usergroups', methods = ['GET'])
 @secured(groups="HuBMAP-read")
@@ -1993,7 +2125,7 @@ if __name__ == '__main__':
         parser = argparse.ArgumentParser()
         parser.add_argument("-p", "--port")
         args = parser.parse_args()
-        port = 5000
+        port = 8484
         if args.port:
             port = int(args.port)
         app.run(port=port, host='0.0.0.0')

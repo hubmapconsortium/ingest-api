@@ -16,17 +16,16 @@ logger = logging.getLogger(__name__)
 requests.packages.urllib3.disable_warnings(category = InsecureRequestWarning)
 
 
-def nexus_token_from_request_headers(request_headers: object) -> str:
+def groups_token_from_request_headers(request_headers: object) -> str:
     bearer_token = request_headers['AUTHORIZATION'].strip()
-    nexus_token = bearer_token[len('bearer '):].strip()
-    return nexus_token
+    groups_token = bearer_token[len('bearer '):].strip()
+    return groups_token
 
 
 def update_ingest_status_title_thumbnail(app_config: object, request_json: object, 
                                          request_headers: object, entity_api: EntityApi, 
                                          file_upload_helper_instance: UploadFileHelper) -> object:
     dataset_uuid = request_json['dataset_id'].strip()
-    nexus_token = nexus_token_from_request_headers(request_headers)
     dataset = Dataset(app_config)
     dataset_helper = DatasetHelper()
 
@@ -102,7 +101,7 @@ def update_ingest_status_title_thumbnail(app_config: object, request_json: objec
 
 
 def verify_dataset_title_info(uuid: str, request_headers: object) -> object:
-    nexus_token = nexus_token_from_request_headers(request_headers)
+    groups_token = groups_token_from_request_headers(request_headers)
     dataset_helper = DatasetHelper()
-    return dataset_helper.verify_dataset_title_info(uuid, nexus_token)
+    return dataset_helper.verify_dataset_title_info(uuid, groups_token)
 

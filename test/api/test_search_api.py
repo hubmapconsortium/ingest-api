@@ -23,4 +23,4 @@ class TestSearchApi(unittest.TestCase):
 
         mock_request_get_public.assert_called()
         args = mock_request_get_public.call_args_list[0]
-        self.assertEqual(args[0][0], f"/assaytype/{data_type}")
+        self.assertEqual(args[0][0], f"assaytype/{data_type}")
