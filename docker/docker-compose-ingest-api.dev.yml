@@ -32,6 +32,8 @@ services:
       - "5555:5555"
       # ingest-api on http 7777 to be used by airflow
       - "7777:7777"
+      # 8443 is used by AWS Nat Gateway connect to ingest-api on PSC network
+      - "8443:8443"
     environment:
       # This base user `hive` is used to run the application process within the container
       # It's also used for ACL settings of ingest-api app.cfg
