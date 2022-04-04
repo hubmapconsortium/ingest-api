@@ -20,7 +20,7 @@ from globus_sdk import AccessTokenAuthorizer, AuthClient, ConfidentialAppAuthCli
 
 # HuBMAP commons
 from hubmap_commons import neo4j_driver
-from hubmap_commons.hm_auth import AuthHelper, secured
+from hubmap_commons.hm_auth import AuthHelper
 from hubmap_commons.autherror import AuthError
 from hubmap_commons.exceptions import HTTPException
 from hubmap_commons import string_helper
@@ -607,7 +607,6 @@ def get_file_system_relative_path():
 #and ingest-api will for the foreseeable future run on the same 
 #machine
 @app.route('/entities/<entity_uuid>', methods = ['GET'])
-#@secured(groups="HuBMAP-read")
 def get_entity(entity_uuid):
     try:
         entity = __get_entity(entity_uuid, auth_header = request.headers.get("AUTHORIZATION"))
@@ -645,7 +644,6 @@ Output JSON example:
 }
 """
 @app.route('/datasets/derived', methods=['POST'])
-#@secured(groups="HuBMAP-read")
 def create_derived_dataset():
     # Token is required
     nexus_token = None
@@ -750,7 +748,6 @@ def create_datastage():
 
 # Needs to be triggered in the workflow or manually?!
 @app.route('/datasets/<identifier>/publish', methods = ['PUT'])
-@secured(groups="HuBMAP-read")
 def publish_datastage(identifier):
     try:
         auth_helper = AuthHelper.configured_instance(app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'])
@@ -891,7 +888,6 @@ def publish_datastage(identifier):
 
              
 @app.route('/datasets/<uuid>/status/<new_status>', methods = ['PUT'])
-#@secured(groups="HuBMAP-read")
 def update_dataset_status(uuid, new_status):
     if uuid == None or len(uuid) == 0:
         abort(400, jsonify( { 'error': 'uuid parameter is required to change a dataset status' } ))
@@ -932,7 +928,6 @@ def update_dataset_status(uuid, new_status):
 
 
 @app.route('/datasets/<uuid>/verifytitleinfo', methods=['GET'])
-# @secured(groups="HuBMAP-read")
 def verify_dataset_title_info(uuid: str) -> object:
     try:
         UUID(uuid)
@@ -956,7 +951,6 @@ def verify_dataset_title_info(uuid: str) -> object:
 
 # Called by "data ingest pipeline" to update status of dataset...
 @app.route('/datasets/status', methods = ['PUT'])
-# @secured(groups="HuBMAP-read")
 def update_ingest_status():
     if not request.json:
         abort(400, jsonify( { 'error': 'no data found cannot process update' } ))
@@ -1247,7 +1241,6 @@ def reorganize_upload(upload_uuid):
 
 
 @app.route('/metadata/usergroups', methods = ['GET'])
-@secured(groups="HuBMAP-read")
 def user_group_list():
     token = str(request.headers["AUTHORIZATION"])[7:]
     try:
@@ -1261,7 +1254,6 @@ def user_group_list():
         return Response("Unexpected error while creating a dataset: " + str(e) + "  Check the logs", 500)        
 
 @app.route('/metadata/userroles', methods = ['GET'])
-@secured(groups="HuBMAP-read")
 def user_role_list():
     token = str(request.headers["AUTHORIZATION"])[7:]
     try:
@@ -1280,7 +1272,6 @@ def user_role_list():
 
 
 @app.route('/specimens/<identifier>/ingest-group-ids', methods=['GET'])
-@secured(groups="HuBMAP-read")
 def get_specimen_ingest_group_ids(identifier):
     if identifier == None:
         abort(400)
@@ -1348,7 +1339,6 @@ def get_specimen_ingest_group_ids(identifier):
 #                  }
 
 @app.route('/entities/<hmuuid>/allowable-edit-states', methods = ['GET'])
-@secured(groups="HuBMAP-read")
 def allowable_edit_states(hmuuid):
     #if no uuid provided send back a 400
     if hmuuid == None or len(hmuuid) == 0:
