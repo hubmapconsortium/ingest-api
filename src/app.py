@@ -489,7 +489,7 @@ def get_file_system_absolute_path(ds_uuid):
             return Response(f"Entity with uuid:{ds_uuid} needs to be a Dataset or Upload.", 400)
         ingest_helper = IngestFileHelper(app.config)
         if ent_type.lower().strip() == 'upload':
-            path = ingest_helper.get_upload_directory_abs_path(group_uuid = group_uuid, upload_uuid = ds_uuid)
+            path = ingest_helper.get_upload_directory_absolute_path(group_uuid = group_uuid, upload_uuid = ds_uuid)
         else:
             is_phi = __get_dict_prop(dset, 'contains_human_genetic_sequences')
             if ent_type is None or not ent_type.lower().strip() == 'dataset':
@@ -1124,7 +1124,7 @@ def create_uploadstage():
         if response.status_code != 200:
             return Response(response.text, response.status_code)
         new_upload = response.json()
-        ingest_helper.create_upload_directory(new_upload, requested_group_uuid, new_upload['uuid'])
+        ingest_helper.create_upload_directory(requested_group_uuid, new_upload['uuid'])
         return jsonify(new_upload)
     except HTTPException as hte:
         return Response(hte.get_description(), hte.get_status_code())
