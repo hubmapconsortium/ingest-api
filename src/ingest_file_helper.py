@@ -65,16 +65,13 @@ class IngestFileHelper:
 
     def get_upload_directory_relative_path(self, group_uuid, upload_uuid):
         return self.__dataset_directory_relative_path('protected', group_uuid, upload_uuid, False)
-
-    def get_upload_directory_abs_path(self, group_uuid, upload_uuid):
-        return self.__dataset_directory_absolute_path('protected', group_uuid, upload_uuid, False)
-    
+   
     def __dataset_directory_absolute_path(self, access_level, group_uuid, dataset_uuid, published):
         grp_name = AuthHelper.getGroupDisplayName(group_uuid)
         if access_level == 'protected':
             base_dir = self.appconfig['GLOBUS_PROTECTED_ENDPOINT_FILEPATH']
             abs_path = str(os.path.join(base_dir, grp_name, dataset_uuid))
-        elif published or access_level == 'public':
+        elif published:
             base_dir = self.appconfig['GLOBUS_PUBLIC_ENDPOINT_FILEPATH']
             abs_path = str(os.path.join(base_dir, dataset_uuid))
         else:
@@ -88,7 +85,7 @@ class IngestFileHelper:
         if access_level == 'protected':
             endpoint_id = self.appconfig['GLOBUS_PROTECTED_ENDPOINT_UUID']
             rel_path = str(os.path.join(self.appconfig['RELATIVE_GLOBUS_PROTECTED_ENDPOINT_FILEPATH'], grp_name, dataset_uuid))
-        elif published or access_level == 'public':
+        elif published:
             endpoint_id = self.appconfig['GLOBUS_PUBLIC_ENDPOINT_UUID']
             rel_path = str(os.path.join(self.appconfig['RELATIVE_GLOBUS_PUBLIC_ENDPOINT_FILEPATH'], dataset_uuid))
         else:
@@ -122,16 +119,14 @@ class IngestFileHelper:
         except Exception as e:
             self.logger.error(e, exc_info=True)
     
-    def get_upload_directory_absolute_path(self, upload_record, group_uuid, upload_uuid):
+    def get_upload_directory_absolute_path(self, group_uuid, upload_uuid):
         grp_name = AuthHelper.getGroupDisplayName(group_uuid)
         base_dir = self.appconfig['GLOBUS_PROTECTED_ENDPOINT_FILEPATH']
         abs_path = str(os.path.join(base_dir, grp_name, upload_uuid))
         return abs_path
     
-    def create_upload_directory(self, upload_record, group_uuid, upload_uuid): 
-        # repli. w/ uploads
-        access_level = 'protected'
-        new_directory_path = self.get_upload_directory_absolute_path(upload_record, group_uuid, upload_uuid)
+    def create_upload_directory(self, group_uuid, upload_uuid): 
+        new_directory_path = self.get_upload_directory_absolute_path(group_uuid, upload_uuid)
         IngestFileHelper.make_directory(new_directory_path, None)
         try:
             x = threading.Thread(target=self.set_dir_permissions, args=['protected', new_directory_path])

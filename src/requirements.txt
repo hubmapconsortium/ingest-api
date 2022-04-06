@@ -5,6 +5,7 @@
 # But we don't want to upgrade Flask in case it breaks the API
 # Add this itsdangerous dependency and downgrade to 2.0.1 as a temporary solution
 itsdangerous==2.0.1
+Jinja2==3.0.3
 
 Flask==1.1.2
 flask_cors==3.0.10
