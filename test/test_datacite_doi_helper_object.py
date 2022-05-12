@@ -58,6 +58,7 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
             "last_modified_user_email": "hubmap@hubmapconsortium.org",
             "pipeline_message": "the process ran",
             "contributors": "[{'affiliation': 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA', 'first_name': 'Jamie', 'is_contact': 'FALSE', 'last_name': 'Allen', 'middle_name_or_initial': 'L.', 'name': 'Jamie L. Allen', 'orcid_id': '0000-0002-4739-2166', 'version': '1'}, {'affiliation': 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA', 'first_name': 'David', 'is_contact': 'FALSE', 'last_name': 'Anderson', 'middle_name_or_initial': 'M.G.', 'name': 'David M.G. Anderson', 'orcid_id': '0000-0002-3866-0923', 'version': '1'}, {'affiliation': 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA', 'first_name': 'Maya', 'is_contact': 'FALSE', 'last_name': 'Brewer', 'middle_name_or_initial': '', 'name': 'Maya Brewer', 'orcid_id': '0000-0001-5914-0081', 'version': '1'}, {'affiliation': 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA', 'first_name': 'Richard', 'is_contact': 'FALSE', 'last_name': 'Caprioli', 'middle_name_or_initial': 'M.', 'name': 'Richard M. Caprioli', 'orcid_id': '0000-0001-5859-3310', 'version': '1'}, {'affiliation': 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA', 'first_name': 'Mark', 'is_contact': 'FALSE', 'last_name': 'deCaestecker', 'middle_name_or_initial': '', 'name': 'Mark deCaestecker', 'orcid_id': '0000-0001-7926-1673', 'version': '1'}, {'affiliation': 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA', 'first_name': 'Agnes', 'is_contact': 'FALSE', 'last_name': 'Fogo', 'middle_name_or_initial': 'B.', 'name': 'Agnes B. Fogo', 'orcid_id': '0000-0003-3698-8527', 'version': '1'}, {'affiliation': 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA', 'first_name': 'Danielle', 'is_contact': 'FALSE', 'last_name': 'Gutierrez', 'middle_name_or_initial': 'B.', 'name': 'Danielle B. Gutierrez', 'orcid_id': '0000-0001-6355-2134', 'version': '1'}, {'affiliation': 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA', 'first_name': 'Raymond', 'is_contact': 'FALSE', 'last_name': 'Harris', 'middle_name_or_initial': 'C.', 'name': 'Raymond C. Harris', 'orcid_id': '0000-0001-8025-0883', 'version': '1'}, {'affiliation': 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA', 'first_name': 'Jennifer', 'is_contact': 'FALSE', 'last_name': 'Harvey', 'middle_name_or_initial': '', 'name': 'Jennifer Harvey', 'orcid_id': '0000-0003-3067-1238', 'version': '1'}, {'affiliation': 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA', 'first_name': 'Migas', 'is_contact': 'FALSE', 'last_name': 'Lukasz', 'middle_name_or_initial': '', 'name': 'Lukasz Migas', 'orcid_id': '0000-0002-1884-6405', 'version': '1'}, {'affiliation': 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA', 'first_name': 'Elizabeth', 'is_contact': 'FALSE', 'last_name': 'Neumann', 'middle_name_or_initial': 'K.', 'name': 'Elizabeth K. Neumann', 'orcid_id': '0000-0002-6078-3321', 'version': '1'}, {'affiliation': 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA', 'first_name': 'Nathan', 'is_contact': 'FALSE', 'last_name': 'Patterson', 'middle_name_or_initial': 'Heath', 'name': 'Nathan Heath Patterson', 'orcid_id': '0000-0002-0064-1583', 'version': '1'}, {'affiliation': 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA', 'first_name': 'Kavya', 'is_contact': 'FALSE', 'last_name': 'Sharman', 'middle_name_or_initial': '', 'name': 'Kavya Sharman', 'orcid_id': '0000-0002-3487-7199', 'version': '1'}, {'affiliation': 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA', 'first_name': 'Jeffrey', 'is_contact': 'TRUE', 'last_name': 'Spraggins', 'middle_name_or_initial': 'M.', 'name': 'Jeffrey M. Spraggins', 'orcid_id': '0000-0001-9198-5498', 'version': '1'}, {'affiliation': 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA', 'first_name': 'Leonoor', 'is_contact': 'FALSE', 'last_name': 'Tideman', 'middle_name_or_initial': '', 'name': 'Leonor Tideman', 'orcid_id': '0000-0001-7405-3146', 'version': '1'}, {'affiliation': 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA', 'first_name': 'Raf', 'is_contact': 'FALSE', 'last_name': 'Van de Plas', 'middle_name_or_initial': '', 'name': 'Raf Van de Plas', 'orcid_id': '0000-0002-2232-7130', 'version': '1'}, {'affiliation': 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA', 'first_name': 'Haichun', 'is_contact': 'FALSE', 'last_name': 'Yang', 'middle_name_or_initial': '', 'name': 'Haichun Yang', 'orcid_id': '0000-0003-4265-7492', 'version': '1'}]",
+            "contacts": "[{'affiliation': 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA', 'first_name': 'Jamie', 'is_contact': 'FALSE', 'last_name': 'Allen', 'middle_name_or_initial': 'L.', 'name': 'Jamie L. Allen', 'orcid_id': '0000-0002-4739-2166', 'version': '1'}, {'affiliation': 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA', 'first_name': 'David', 'is_contact': 'FALSE', 'last_name': 'Anderson', 'middle_name_or_initial': 'M.G.', 'name': 'David M.G. Anderson', 'orcid_id': '0000-0002-3866-0923', 'version': '1'}, {'affiliation': 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA', 'first_name': 'Maya', 'is_contact': 'FALSE', 'last_name': 'Brewer', 'middle_name_or_initial': '', 'name': 'Maya Brewer', 'orcid_id': '0000-0001-5914-0081', 'version': '1'}, {'affiliation': 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA', 'first_name': 'Richard', 'is_contact': 'FALSE', 'last_name': 'Caprioli', 'middle_name_or_initial': 'M.', 'name': 'Richard M. Caprioli', 'orcid_id': '0000-0001-5859-3310', 'version': '1'}, {'affiliation': 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA', 'first_name': 'Mark', 'is_contact': 'FALSE', 'last_name': 'deCaestecker', 'middle_name_or_initial': '', 'name': 'Mark deCaestecker', 'orcid_id': '0000-0001-7926-1673', 'version': '1'}, {'affiliation': 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA', 'first_name': 'Agnes', 'is_contact': 'FALSE', 'last_name': 'Fogo', 'middle_name_or_initial': 'B.', 'name': 'Agnes B. Fogo', 'orcid_id': '0000-0003-3698-8527', 'version': '1'}, {'affiliation': 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA', 'first_name': 'Danielle', 'is_contact': 'FALSE', 'last_name': 'Gutierrez', 'middle_name_or_initial': 'B.', 'name': 'Danielle B. Gutierrez', 'orcid_id': '0000-0001-6355-2134', 'version': '1'}, {'affiliation': 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA', 'first_name': 'Raymond', 'is_contact': 'FALSE', 'last_name': 'Harris', 'middle_name_or_initial': 'C.', 'name': 'Raymond C. Harris', 'orcid_id': '0000-0001-8025-0883', 'version': '1'}, {'affiliation': 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA', 'first_name': 'Jennifer', 'is_contact': 'FALSE', 'last_name': 'Harvey', 'middle_name_or_initial': '', 'name': 'Jennifer Harvey', 'orcid_id': '0000-0003-3067-1238', 'version': '1'}, {'affiliation': 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA', 'first_name': 'Migas', 'is_contact': 'FALSE', 'last_name': 'Lukasz', 'middle_name_or_initial': '', 'name': 'Lukasz Migas', 'orcid_id': '0000-0002-1884-6405', 'version': '1'}, {'affiliation': 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA', 'first_name': 'Elizabeth', 'is_contact': 'FALSE', 'last_name': 'Neumann', 'middle_name_or_initial': 'K.', 'name': 'Elizabeth K. Neumann', 'orcid_id': '0000-0002-6078-3321', 'version': '1'}, {'affiliation': 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA', 'first_name': 'Nathan', 'is_contact': 'FALSE', 'last_name': 'Patterson', 'middle_name_or_initial': 'Heath', 'name': 'Nathan Heath Patterson', 'orcid_id': '0000-0002-0064-1583', 'version': '1'}, {'affiliation': 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA', 'first_name': 'Kavya', 'is_contact': 'FALSE', 'last_name': 'Sharman', 'middle_name_or_initial': '', 'name': 'Kavya Sharman', 'orcid_id': '0000-0002-3487-7199', 'version': '1'}, {'affiliation': 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA', 'first_name': 'Jeffrey', 'is_contact': 'TRUE', 'last_name': 'Spraggins', 'middle_name_or_initial': 'M.', 'name': 'Jeffrey M. Spraggins', 'orcid_id': '0000-0001-9198-5498', 'version': '1'}, {'affiliation': 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA', 'first_name': 'Leonoor', 'is_contact': 'FALSE', 'last_name': 'Tideman', 'middle_name_or_initial': '', 'name': 'Leonor Tideman', 'orcid_id': '0000-0001-7405-3146', 'version': '1'}, {'affiliation': 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA', 'first_name': 'Raf', 'is_contact': 'FALSE', 'last_name': 'Van de Plas', 'middle_name_or_initial': '', 'name': 'Raf Van de Plas', 'orcid_id': '0000-0002-2232-7130', 'version': '1'}, {'affiliation': 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA', 'first_name': 'Haichun', 'is_contact': 'FALSE', 'last_name': 'Yang', 'middle_name_or_initial': '', 'name': 'Haichun Yang', 'orcid_id': '0000-0003-4265-7492', 'version': '1'}]",
             "data_types": "['PAS']",
             "published_user_displayname": "HuBMAP Process",
             "status": "Published"
@@ -82,7 +83,7 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
 
     def test_build_doi_contributors_is_contact(self):
         str = "[{'affiliation': 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA', 'first_name': 'Jeffrey', 'is_contact': 'TRUE', 'last_name': 'Spraggins', 'middle_name_or_initial': 'M.', 'name': 'Jeffrey M. Spraggins', 'orcid_id': '0000-0001-9198-5498', 'version': '1'}]"
-        result: list = self.datacite_doi_helper.build_doi_contributors({'contributors': str})
+        result: list = self.datacite_doi_helper.build_doi_contributors({'contacts': str})
 
         self.assertTrue(isinstance(result, list))
         self.assertEqual(len(result), 1)
@@ -91,7 +92,6 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
         self.assertTrue(isinstance(contributor, dict))
         self.assertEqual(len(contributor.keys()), 6)
 
-        self.assertEqual(contributor['name'], 'Jeffrey M. Spraggins')
         # See:  https://support.datacite.org/docs/schema-optional-properties-v43#72-givenname
         self.assertEqual(contributor['givenName'], 'Jeffrey')
         self.assertEqual(contributor['familyName'], 'Spraggins')
@@ -107,13 +107,7 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
         self.assertEqual(len(contributorIdentifiers[0].keys()), 3)
         self.assertEqual(contributorIdentifiers[0]['nameIdentifierScheme'], 'ORCID')
         self.assertEqual(contributorIdentifiers[0]['nameIdentifier'], '0000-0001-9198-5498')
-        self.assertEqual(contributorIdentifiers[0]['schemeURI'], 'http://orchid.org')
-
-    def test_build_doi_contributors_is_not_contact(self):
-        str = "[{'affiliation': 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA', 'first_name': 'David', 'is_contact': 'FALSE', 'last_name': 'Anderson', 'middle_name_or_initial': 'M.G.', 'name': 'David M.G. Anderson', 'orcid_id': '0000-0002-3866-0923', 'version': '1'}]"
-        result = self.datacite_doi_helper.build_doi_contributors({'contributors': str})
-
-        self.assertEqual(result, None)
+        self.assertEqual(contributorIdentifiers[0]['schemeUri'], 'https://orcid.org/')
 
     def test_build_doi_creators(self):
         str = "[{'affiliation': 'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA', 'first_name': 'Jamie', 'is_contact': 'FALSE', 'last_name': 'Allen', 'middle_name_or_initial': 'L.', 'name': 'Jamie L. Allen', 'orcid_id': '0000-0002-4739-2166', 'version': '1'}]"
@@ -125,7 +119,6 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
         self.assertEqual(len(result[0].keys()), 5)
         self.assertEqual(result[0]['familyName'], 'Allen')
         self.assertEqual(result[0]['givenName'], 'Jamie')
-        self.assertEqual(result[0]['name'], 'Jamie L. Allen')
         # Here there can be an array of affiliations...
         self.assertEqual(result[0]['affiliation'][0]['name'],
                          'Biomolecular Multimodal Imaging Center, Vanderbilt University, Nashville, TN 37232 USA')
@@ -136,16 +129,17 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
         self.assertEqual(len(result0NmeIdentifiers[0].keys()), 3)
         self.assertEqual(result0NmeIdentifiers[0]['nameIdentifierScheme'], 'ORCID')
         self.assertEqual(result0NmeIdentifiers[0]['nameIdentifier'], '0000-0002-4739-2166')
-        self.assertEqual(result0NmeIdentifiers[0]['schemeURI'], 'http://orchid.org')
+        self.assertEqual(result0NmeIdentifiers[0]['schemeUri'], 'https://orcid.org/')
 
+    
     @patch('api.datacite_api.requests.post')
     def test_create_dataset_draft_doi_happy_path(self, mock_post):
-        def resp1():
+        def resp():
             r = requests.Response()
             r.status_code = 201
             r.json = lambda: None
             return r
-        mock_post.side_effect = [resp1()]
+        mock_post.side_effect = [resp()]
 
         self.datacite_doi_helper.create_dataset_draft_doi(self.dataset)
 
@@ -166,18 +160,17 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
 
         data_attributes = json_from_post_call['data']['attributes']
         self.assertTrue(isinstance(data_attributes, dict))
-        self.assertEqual(len(data_attributes.keys()), 9)
-        self.assertEqual(data_attributes['event'], 'register')
+        self.assertEqual(len(data_attributes.keys()), 8)
         self.assertEqual(data_attributes['doi'], f"{self.hubmap_prefix}/{self.hubmap_id}")
         self.assertEqual(data_attributes['titles'][0]['title'], "Dataset Title String")
         self.assertEqual(data_attributes['publisher'], 'HuBMAP Consortium')
-        self.assertEqual(data_attributes['publicationYear'], int(datetime.now().year))
+        self.assertEqual(data_attributes['publicationYear'], 2021)
         self.assertEqual(data_attributes['types']['resourceTypeGeneral'], 'Dataset')
         self.assertEqual(data_attributes['url'], f"{self.entity_webservice_url}/doi/redirect/{self.uuid}")
 
         contributors = json_from_post_call['data']['attributes']['contributors']
         self.assertTrue(isinstance(contributors, list))
-        self.assertEqual(len(contributors), 1)
+        self.assertEqual(len(contributors), 17)
         for contributor in contributors:
             self.assertTrue(isinstance(contributor, dict))
 
@@ -188,7 +181,6 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
             self.assertTrue(isinstance(creator, dict))
             self.assertTrue('familyName' in creator)
             self.assertTrue('givenName' in creator)
-            self.assertTrue('name' in creator)
             self.assertTrue('affiliation' in creator)
 
     @patch('api.datacite_api.requests.put')
@@ -219,18 +211,18 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
         self.assertEqual(json_from_put_call['data']['type'], 'dois')
         self.assertEqual(json_from_put_call['data']['attributes']['event'], 'publish')
 
-    @patch('datacite_doi_helper_object.DataCiteApi.add_new_doi')
-    def test_create_dataset_draft_doi_fail(self, mock_add_new_doi):
+    @patch('datacite_doi_helper_object.DataCiteApi.create_new_draft_doi')
+    def test_create_dataset_draft_doi_fail(self, mock_create_new_draft_doi):
         def resp1():
             r = requests.Response()
             r.status_code = 400
             r.json = lambda: self.response_doi
             return r
-        mock_add_new_doi.side_effect = [resp1()]
+        mock_create_new_draft_doi.side_effect = [resp1()]
 
         self.assertRaises(requests.RequestException,
                           self.datacite_doi_helper.create_dataset_draft_doi, self.dataset)
-        mock_add_new_doi.assert_called()
+        mock_create_new_draft_doi.assert_called()
 
     @patch('datacite_doi_helper_object.EntityApi.put_entities')
     @patch('datacite_doi_helper_object.DataCiteApi.update_doi_event_publish')
