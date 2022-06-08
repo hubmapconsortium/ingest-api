@@ -9,6 +9,7 @@ from uuid import UUID
 import yaml
 import csv
 import requests
+from hubmap_sdk import EntitySdk
 # Don't confuse urllib (Python native library) with urllib3 (3rd-party library, requests also uses urllib3)
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 import argparse
@@ -767,12 +768,11 @@ def publish_datastage(identifier):
 
         if identifier is None or len(identifier) == 0:
             abort(400, jsonify( { 'error': 'identifier parameter is required to publish a dataset' } ))
-
         r = requests.get(app.config['UUID_WEBSERVICE_URL'] + "/" + identifier, headers={'Authorization': request.headers["AUTHORIZATION"]})
         if r.ok is False:
             raise ValueError("Cannot find specimen with identifier: " + identifier)
         dataset_uuid = json.loads(r.text)['hm_uuid']
-
+        is_primary = dataset_is_primary(dataset_uuid)
         suspend_indexing_and_acls = string_helper.isYes(request.args.get('suspend-indexing-and-acls'))
         no_indexing_and_acls = False
         if suspend_indexing_and_acls:
@@ -790,7 +790,7 @@ def publish_datastage(identifier):
             #look at all of the ancestors
             #gather uuids of ancestors that need to be switched to public access_level
             #grab the id of the donor ancestor to use for reindexing
-            q = f"MATCH (dataset:Dataset {{uuid: '{dataset_uuid}'}})<-[:ACTIVITY_OUTPUT]-(e1)<-[:ACTIVITY_INPUT|ACTIVITY_OUTPUT*]-(all_ancestors:Entity) RETURN distinct all_ancestors.uuid as uuid, all_ancestors.entity_type as entity_type, all_ancestors.data_types as data_types, all_ancestors.data_access_level as data_access_level, all_ancestors.status as status"
+            q = f"MATCH (dataset:Dataset {{uuid: '{dataset_uuid}'}})<-[:ACTIVITY_OUTPUT]-(e1)<-[:ACTIVITY_INPUT|ACTIVITY_OUTPUT*]-(all_ancestors:Entity) RETURN distinct all_ancestors.uuid as uuid, all_ancestors.entity_type as entity_type, all_ancestors.data_types as data_types, all_ancestors.data_access_level as data_access_level, all_ancestors.status as status, all_ancestors.metadata as metadata"
             rval = neo_session.run(q).data()
             uuids_for_public = []
             donor_uuid = None
@@ -799,10 +799,26 @@ def publish_datastage(identifier):
                 entity_type = node['entity_type']
                 data_access_level = node['data_access_level']
                 status = node['status']
+                metadata = node.get("metadata")
                 if entity_type == 'Sample':
                     if data_access_level != 'public':
                         uuids_for_public.append(uuid)
                 elif entity_type == 'Donor':
+                    if is_primary:
+                        if metadata is None or metadata.strip() == '':
+                            return jsonify({"error": f"donor.metadata is missing for {dataset_uuid}"}), 400
+                        metadata = metadata.replace("'", '"')
+                        metadata_dict = json.loads(metadata)
+                        living_donor = True
+                        organ_donor = True
+                        if metadata_dict.get('organ_donor_data') is None:
+                            living_donor = False
+                        if metadata_dict.get('living_donor_data') is None:
+                            organ_donor = False
+                        if (organ_donor and living_donor) or (not organ_donor and not living_donor):
+                            return jsonify({"error": f"donor.metadata.organ_donor_data or "
+                                                     f"donor.metadata.living_donor_data required. "
+                                                     f"Both cannot be None. Both cannot be present. Only one."}), 400
                     donor_uuid = uuid
                     donors_to_reindex.append(uuid)
                     if data_access_level != 'public':
@@ -815,17 +831,23 @@ def publish_datastage(identifier):
                 return Response(f"{dataset_uuid}: no donor found for dataset, will not Publish")
             
             #get info for the dataset to be published
-            q = f"MATCH (e:Dataset {{uuid: '{dataset_uuid}'}}) RETURN e.uuid as uuid, e.entity_type as entitytype, e.status as status, e.data_access_level as data_access_level, e.group_uuid as group_uuid"
+            q = f"MATCH (e:Dataset {{uuid: '{dataset_uuid}'}}) RETURN e.uuid as uuid, e.entity_type as entitytype, e.status as status, e.data_access_level as data_access_level, e.group_uuid as group_uuid, e.contacts as contacts, e.contributors as contributors"
             rval = neo_session.run(q).data()
             dataset_status = rval[0]['status']
             dataset_entitytype = rval[0]['entitytype']
             dataset_data_access_level = rval[0]['data_access_level']
             dataset_group_uuid = rval[0]['group_uuid']
+            dataset_contacts = rval[0]['contacts']
+            dataset_contributors = rval[0]['contributors']
             if dataset_entitytype != 'Dataset':
                 return Response(f"{dataset_uuid} is not a dataset will not Publish, entity type is {dataset_entitytype}", 400)
             if not dataset_status == 'QA':
                 return Response(f"{dataset_uuid} is not in QA state will not Publish, status is {dataset_status}", 400)
-            
+            if is_primary:
+                if dataset_contacts is None or dataset_contributors is None:
+                    return jsonify({"error": f"{dataset_uuid} missing contacts or contributors. Must have at least one of each"}), 400
+                if len(json.loads(dataset_contacts)) < 1 or len(json.loads(dataset_contributors)) < 1:
+                    return jsonify({"error": f"{dataset_uuid} missing contacts or contributors. Must have at least one of each"}), 400
             ingest_helper = IngestFileHelper(app.config)
             
             data_access_level = dataset_data_access_level
@@ -854,15 +876,24 @@ def publish_datastage(identifier):
                 logger.info(identifier + "\t" + dataset_uuid + "\tNEO4J-update-ancestors\t" + update_q)
                 neo_session.run(update_q)
                     
+            # verify that dataset status has been successfully updated to "Published"
+            published_q = "match (e:Entity {uuid:'" + dataset_uuid + "'}) RETURN e.status as status"
+            rval = neo_session.run(published_q).data()
+            if rval[0]['status'].upper() != "PUBLISHED":
+                return jsonify({"error": f"Internal error. Dataset with id {dataset_uuid} status not successfully changed to 'Published'"}), 500
+
 
             # DOI gets generated here
-            # TODO: Enable the commented code once the integration work with pipeline has been completed for story #354.
             # Note: moved dataset title auto generation to entity-api - Zhou 9/29/2021
-            # nexus_token = app_manager.nexus_token_from_request_headers(request.headers)
-            # datacite_doi_helper = DataCiteDoiHelper()
-            # datacite_doi_helper.create_dataset_draft_doi(node)
-            # # This will make the draft DOI created above 'findable'....
-            # datacite_doi_helper.move_doi_state_from_draft_to_findable(node, nexus_token)
+            auth_tokens = auth_helper.getAuthorizationTokens(request.headers)
+            datacite_doi_helper = DataCiteDoiHelper()
+
+            entity_instance = EntitySdk(token=auth_tokens, service_url=app.config['ENTITY_WEBSERVICE_URL'])
+            entity = entity_instance.get_entity_by_id(dataset_uuid)
+            entity_dict = vars(entity)
+            datacite_doi_helper.create_dataset_draft_doi(entity_dict)
+            # This will make the draft DOI created above 'findable'....
+            datacite_doi_helper.move_doi_state_from_draft_to_findable(entity_dict, auth_tokens)
 
 
         if no_indexing_and_acls:
@@ -2117,6 +2148,14 @@ def __get_entity(entity_uuid, auth_header = None):
 
     return response.json()
 
+# Determines if a dataset is Primary. If the list returned from the neo4j query is empty, the dataset is not primary
+def dataset_is_primary(dataset_uuid):
+    with neo4j_driver_instance.session() as neo_session:
+        q = (f"MATCH (ds:Dataset {{uuid: '{dataset_uuid}'}})<-[]-()<-[]-(s:Sample) RETURN ds.uuid")
+        result = neo_session.run(q).data()
+        if len(result) == 0:
+            return False
+        return True
 
 
 # For local development/testing
