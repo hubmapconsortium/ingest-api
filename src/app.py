@@ -839,6 +839,8 @@ def publish_datastage(identifier):
             dataset_group_uuid = rval[0]['group_uuid']
             dataset_contacts = rval[0]['contacts']
             dataset_contributors = rval[0]['contributors']
+            dataset_contacts = dataset_contacts.replace("'", '"')
+            dataset_contributors = dataset_contributors.replace("'", '"')
             if dataset_entitytype != 'Dataset':
                 return Response(f"{dataset_uuid} is not a dataset will not Publish, entity type is {dataset_entitytype}", 400)
             if not dataset_status == 'QA':
@@ -863,25 +865,6 @@ def publish_datastage(identifier):
                     ingest_helper.relink_to_public(dataset_uuid)
             
             acls_cmd = ingest_helper.set_dataset_permissions(dataset_uuid, dataset_group_uuid, data_access_level, True, no_indexing_and_acls)
-            
-            #set dataset status to published and set the last modified user info and user who published
-            update_q = "match (e:Entity {uuid:'" + dataset_uuid + "'}) set e.status = 'Published', e.last_modified_user_sub = '" + user_info['sub'] + "', e.last_modified_user_email = '" + user_info['email'] + "', e.last_modified_user_displayname = '" + user_info['name'] + "', e.last_modified_timestamp = TIMESTAMP(), e.published_timestamp = TIMESTAMP(), e.published_user_email = '" + user_info['email'] + "', e.published_user_sub = '" + user_info['sub'] + "', e.published_user_displayname = '" + user_info['name'] + "'"
-            logger.info(dataset_uuid + "\t" + dataset_uuid + "\tNEO4J-update-base-dataset\t" + update_q)
-            neo_session.run(update_q)
-    
-            #if all else worked set the list of ids to public that need to be public
-            if len(uuids_for_public) > 0:
-                id_list = string_helper.listToCommaSeparated(uuids_for_public, quoteChar = "'")
-                update_q = "match (e:Entity) where e.uuid in [" + id_list + "] set e.data_access_level = 'public'"
-                logger.info(identifier + "\t" + dataset_uuid + "\tNEO4J-update-ancestors\t" + update_q)
-                neo_session.run(update_q)
-                    
-            # verify that dataset status has been successfully updated to "Published"
-            published_q = "match (e:Entity {uuid:'" + dataset_uuid + "'}) RETURN e.status as status"
-            rval = neo_session.run(published_q).data()
-            if rval[0]['status'].upper() != "PUBLISHED":
-                return jsonify({"error": f"Internal error. Dataset with id {dataset_uuid} status not successfully changed to 'Published'"}), 500
-
 
             # DOI gets generated here
             # Note: moved dataset title auto generation to entity-api - Zhou 9/29/2021
@@ -891,10 +874,31 @@ def publish_datastage(identifier):
             entity_instance = EntitySdk(token=auth_tokens, service_url=app.config['ENTITY_WEBSERVICE_URL'])
             entity = entity_instance.get_entity_by_id(dataset_uuid)
             entity_dict = vars(entity)
-            datacite_doi_helper.create_dataset_draft_doi(entity_dict)
+            try:
+                datacite_doi_helper.create_dataset_draft_doi(entity_dict, check_publication_status=False)
+            except Exception as e:
+                return jsonify({"error": f"Error occurred while trying to create a draft doi for{dataset_uuid}. {e}"}), 500
             # This will make the draft DOI created above 'findable'....
-            datacite_doi_helper.move_doi_state_from_draft_to_findable(entity_dict, auth_tokens)
+            try:
+                datacite_doi_helper.move_doi_state_from_draft_to_findable(entity_dict, auth_tokens)
+            except Exception as e:
+                return jsonify({"error": f"Error occurred while trying to change doi draft state to findable doi for{dataset_uuid}. {e}"}), 500
+            # set dataset status to published and set the last modified user info and user who published
+            update_q = "match (e:Entity {uuid:'" + dataset_uuid + "'}) set e.status = 'Published', e.last_modified_user_sub = '" + \
+                       user_info['sub'] + "', e.last_modified_user_email = '" + user_info[
+                           'email'] + "', e.last_modified_user_displayname = '" + user_info[
+                           'name'] + "', e.last_modified_timestamp = TIMESTAMP(), e.published_timestamp = TIMESTAMP(), e.published_user_email = '" + \
+                       user_info['email'] + "', e.published_user_sub = '" + user_info[
+                           'sub'] + "', e.published_user_displayname = '" + user_info['name'] + "'"
+            logger.info(dataset_uuid + "\t" + dataset_uuid + "\tNEO4J-update-base-dataset\t" + update_q)
+            neo_session.run(update_q)
 
+            # if all else worked set the list of ids to public that need to be public
+            if len(uuids_for_public) > 0:
+                id_list = string_helper.listToCommaSeparated(uuids_for_public, quoteChar="'")
+                update_q = "match (e:Entity) where e.uuid in [" + id_list + "] set e.data_access_level = 'public'"
+                logger.info(identifier + "\t" + dataset_uuid + "\tNEO4J-update-ancestors\t" + update_q)
+                neo_session.run(update_q)
 
         if no_indexing_and_acls:
             r_val = {'acl_cmd': acls_cmd, 'donors_for_indexing': donors_to_reindex}
