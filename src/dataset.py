@@ -236,7 +236,7 @@ class Dataset(object):
             antibodies = json_data['antibodies']
         if 'contributors' in json_data:
             contributors = json_data['contributors']
-        
+            
         if 'metadata' in metadata:
             meta_lvl2 = metadata['metadata']
             if 'antibodies' in meta_lvl2:
@@ -284,12 +284,35 @@ class Dataset(object):
             update_record['antibodies'] = antibodies
         if not contributors is None:
             update_record['contributors'] = contributors
-        
+            contacts = []
+            for contrib in contributors:
+                if 'is_contact' in contrib:
+                    v = contrib['is_contact']
+                    if self.__is_true(val = v):
+                        contacts.append(contrib)
+            if len(contacts) > 0:
+                update_record['contacts'] = contacts
+
         # For thumbnail image handling
         if 'thumbnail_file_abs_path' in json_data:
             update_record['thumbnail_file_abs_path'] = json_data['thumbnail_file_abs_path']
               
         return update_record
+
+    #Does the string represent a "true" value, or an int that is 1
+    @classmethod
+    def __is_true(self, val):
+        if val is None: return False
+        if isinstance(val, str):
+            uval = val.upper().strip()
+            if uval in ['TRUE','T','1','Y','YES']:
+                return True
+            else:
+                return False
+        elif isinstance(val, int) and val == 1:
+            return True
+        else:
+            return False
 
     @classmethod
     def get_file_list(self, orig_file_path):
