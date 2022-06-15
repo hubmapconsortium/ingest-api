@@ -793,6 +793,7 @@ def publish_datastage(identifier):
             q = f"MATCH (dataset:Dataset {{uuid: '{dataset_uuid}'}})<-[:ACTIVITY_OUTPUT]-(e1)<-[:ACTIVITY_INPUT|ACTIVITY_OUTPUT*]-(all_ancestors:Entity) RETURN distinct all_ancestors.uuid as uuid, all_ancestors.entity_type as entity_type, all_ancestors.data_types as data_types, all_ancestors.data_access_level as data_access_level, all_ancestors.status as status, all_ancestors.metadata as metadata"
             rval = neo_session.run(q).data()
             uuids_for_public = []
+            has_donor = False
             donor_uuid = None
             for node in rval:
                 uuid = node['uuid']
@@ -804,6 +805,7 @@ def publish_datastage(identifier):
                     if data_access_level != 'public':
                         uuids_for_public.append(uuid)
                 elif entity_type == 'Donor':
+                    has_donor = True
                     if is_primary:
                         if metadata is None or metadata.strip() == '':
                             return jsonify({"error": f"donor.metadata is missing for {dataset_uuid}"}), 400
@@ -827,7 +829,7 @@ def publish_datastage(identifier):
                     if status != 'Published':
                         return Response(f"{dataset_uuid} has an ancestor dataset that has not been Published. Will not Publish. Ancestor dataset is: {uuid}", 400)
             
-            if donor_uuid is None:
+            if has_donor is False:
                 return Response(f"{dataset_uuid}: no donor found for dataset, will not Publish")
             
             #get info for the dataset to be published
@@ -2155,7 +2157,7 @@ def __get_entity(entity_uuid, auth_header = None):
 # Determines if a dataset is Primary. If the list returned from the neo4j query is empty, the dataset is not primary
 def dataset_is_primary(dataset_uuid):
     with neo4j_driver_instance.session() as neo_session:
-        q = (f"MATCH (ds:Dataset {{uuid: '{dataset_uuid}'}})<-[]-()<-[]-(s:Sample) RETURN ds.uuid")
+        q = (f"MATCH (ds:Dataset {{uuid: '{dataset_uuid}'}})<-[:ACTIVITY_OUTPUT]-(:Activity)<-[:ACTIVITY_INPUT]-(s:Sample) RETURN ds.uuid")
         result = neo_session.run(q).data()
         if len(result) == 0:
             return False
