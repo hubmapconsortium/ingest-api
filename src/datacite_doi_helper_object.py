@@ -145,11 +145,12 @@ class DataCiteDoiHelper:
     dict
         The registered DOI details
     """
-    def create_dataset_draft_doi(self, dataset: dict) -> object:
+    def create_dataset_draft_doi(self, dataset: dict, check_publication_status=True) -> object:
         if ('entity_type' in dataset) and (dataset['entity_type'] == 'Dataset'):
             # In case the given dataset is not published
-            if dataset['status'].lower() != 'published':
-                raise ValueError('This Dataset is not Published, can not register DOI')
+            if check_publication_status:
+                if dataset['status'].lower() != 'published':
+                    raise ValueError('This Dataset is not Published, can not register DOI')
 
             datacite_api = DataCiteApi(self.datacite_repository_id, self.datacite_repository_password,
                                        self.datacite_hubmap_prefix, self.datacite_api_url, self.entity_api_url)
