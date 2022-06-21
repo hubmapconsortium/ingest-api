@@ -841,8 +841,6 @@ def publish_datastage(identifier):
             dataset_group_uuid = rval[0]['group_uuid']
             dataset_contacts = rval[0]['contacts']
             dataset_contributors = rval[0]['contributors']
-            dataset_contacts = dataset_contacts.replace("'", '"')
-            dataset_contributors = dataset_contributors.replace("'", '"')
             if dataset_entitytype != 'Dataset':
                 return Response(f"{dataset_uuid} is not a dataset will not Publish, entity type is {dataset_entitytype}", 400)
             if not dataset_status == 'QA':
@@ -850,6 +848,8 @@ def publish_datastage(identifier):
             if is_primary:
                 if dataset_contacts is None or dataset_contributors is None:
                     return jsonify({"error": f"{dataset_uuid} missing contacts or contributors. Must have at least one of each"}), 400
+                dataset_contacts = dataset_contacts.replace("'", '"')
+                dataset_contributors = dataset_contributors.replace("'", '"')
                 if len(json.loads(dataset_contacts)) < 1 or len(json.loads(dataset_contributors)) < 1:
                     return jsonify({"error": f"{dataset_uuid} missing contacts or contributors. Must have at least one of each"}), 400
             ingest_helper = IngestFileHelper(app.config)
