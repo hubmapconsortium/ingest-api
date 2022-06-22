@@ -1,0 +1,25 @@
+version: "3.7"
+
+# Will use the hostname when talking between services on the same network
+services:
+  
+  ingest-api:
+    # Use the published image and tag from DockerHub
+    image: hubmap/ingest-api:${INGEST_API_VERSION:?err}
+
+    # Map host machine port 80, 443 to container ports 8080 and 4430
+    # Only root can listen on ports below 1024, we use higher-numbered ports
+    # since nginx is running under non-root user hubmap
+    ports:
+      # flower instance on TEST only
+      - "5556:5556"
+    volumes:
+      # Mount conf.d-test to the nginx conf.d on container
+      - "./ingest-api/nginx/conf.d-test:/etc/nginx/conf.d"
+      # Airflow static files
+      - "/hive/users/hive/hubmap/hivevm192-test/venv/lib/python3.6/site-packages/airflow/www:/airflow-static"
+      # Flower static files, for TEST only
+      - "/hive/users/hive/hubmap/hivevm192-test/venv/lib/python3.6/site-packages/flower:/flower-static"
+      # Mount Globus data
+      - "/hive/hubmap-test:/hive/hubmap-test"
+

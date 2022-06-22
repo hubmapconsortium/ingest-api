@@ -1,0 +1,9 @@
+version: "3.7"
+
+services:
+  
+  ingest-api:
+    # Use the published image from DockerHub
+    image: hubmap/ingest-api:latest
+
+
