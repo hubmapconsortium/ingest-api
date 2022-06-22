@@ -794,7 +794,6 @@ def publish_datastage(identifier):
             rval = neo_session.run(q).data()
             uuids_for_public = []
             has_donor = False
-            donor_uuid = None
             for node in rval:
                 uuid = node['uuid']
                 entity_type = node['entity_type']
@@ -821,7 +820,6 @@ def publish_datastage(identifier):
                             return jsonify({"error": f"donor.metadata.organ_donor_data or "
                                                      f"donor.metadata.living_donor_data required. "
                                                      f"Both cannot be None. Both cannot be present. Only one."}), 400
-                    donor_uuid = uuid
                     donors_to_reindex.append(uuid)
                     if data_access_level != 'public':
                         uuids_for_public.append(uuid)
@@ -868,23 +866,25 @@ def publish_datastage(identifier):
             
             acls_cmd = ingest_helper.set_dataset_permissions(dataset_uuid, dataset_group_uuid, data_access_level, True, no_indexing_and_acls)
 
-            # DOI gets generated here
-            # Note: moved dataset title auto generation to entity-api - Zhou 9/29/2021
-            auth_tokens = auth_helper.getAuthorizationTokens(request.headers)
-            datacite_doi_helper = DataCiteDoiHelper()
+            if is_primary:
+                # DOI gets generated here
+                # Note: moved dataset title auto generation to entity-api - Zhou 9/29/2021
+                auth_tokens = auth_helper.getAuthorizationTokens(request.headers)
+                datacite_doi_helper = DataCiteDoiHelper()
 
-            entity_instance = EntitySdk(token=auth_tokens, service_url=app.config['ENTITY_WEBSERVICE_URL'])
-            entity = entity_instance.get_entity_by_id(dataset_uuid)
-            entity_dict = vars(entity)
-            try:
-                datacite_doi_helper.create_dataset_draft_doi(entity_dict, check_publication_status=False)
-            except Exception as e:
-                return jsonify({"error": f"Error occurred while trying to create a draft doi for{dataset_uuid}. {e}"}), 500
-            # This will make the draft DOI created above 'findable'....
-            try:
-                datacite_doi_helper.move_doi_state_from_draft_to_findable(entity_dict, auth_tokens)
-            except Exception as e:
-                return jsonify({"error": f"Error occurred while trying to change doi draft state to findable doi for{dataset_uuid}. {e}"}), 500
+                entity_instance = EntitySdk(token=auth_tokens, service_url=app.config['ENTITY_WEBSERVICE_URL'])
+                entity = entity_instance.get_entity_by_id(dataset_uuid)
+                entity_dict = vars(entity)
+                try:
+                    datacite_doi_helper.create_dataset_draft_doi(entity_dict, check_publication_status=False)
+                except Exception as e:
+                    return jsonify({"error": f"Error occurred while trying to create a draft doi for{dataset_uuid}. {e}"}), 500
+                # This will make the draft DOI created above 'findable'....
+                try:
+                    datacite_doi_helper.move_doi_state_from_draft_to_findable(entity_dict, auth_tokens)
+                except Exception as e:
+                    return jsonify({"error": f"Error occurred while trying to change doi draft state to findable doi for{dataset_uuid}. {e}"}), 500
+
             # set dataset status to published and set the last modified user info and user who published
             update_q = "match (e:Entity {uuid:'" + dataset_uuid + "'}) set e.status = 'Published', e.last_modified_user_sub = '" + \
                        user_info['sub'] + "', e.last_modified_user_email = '" + user_info[
@@ -921,11 +921,7 @@ def publish_datastage(identifier):
         return Response(hte.get_description(), hte.get_status_code())
     except Exception as e:
         logger.error(e, exc_info=True)
-        return Response("Unexpected error while creating a dataset: " + str(e) + "  Check the logs", 500)    
-
-    
-    return Response("This method is not implemented. Use manual publication script", 501)
-
+        return Response("Unexpected error while creating a dataset: " + str(e) + "  Check the logs", 500)
              
 @app.route('/datasets/<uuid>/status/<new_status>', methods = ['PUT'])
 #@secured(groups="HuBMAP-read")
