@@ -85,7 +85,7 @@ cd docker
 
 ```
 cd docker
-export HUBMAP_AUTH_API_VERSION=a.b.c (replace with the actual released version number)
+export INGEST_API_VERSION=a.b.c (replace with the actual released version number)
 ./docker-deployment.sh [test|stage|prod] [start|stop|down]
 ```
 
