@@ -59,11 +59,11 @@ else
         # Print empty line
         echo
 
-        if [ "$1" = "start" ]; then
+        if [ "$2" = "start" ]; then
             docker-compose -f docker-compose.yml -f docker-compose.deployment.$1.yml -p ingest-api up -d
-        elif [ "$1" = "stop" ]; then
+        elif [ "$2" = "stop" ]; then
             docker-compose -f docker-compose.yml -f docker-compose.deployment.$1.yml -p ingest-api stop
-        elif [ "$1" = "down" ]; then
+        elif [ "$2" = "down" ]; then
             docker-compose -f docker-compose.yml -f docker-compose.deployment.$1.yml -p ingest-api down
         fi
     fi
