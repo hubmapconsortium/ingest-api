@@ -27,7 +27,7 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
     @patch('dataset_helper_object.EntityApi.get_ancestors')
     @patch('dataset_helper_object.SearchApi.get_assaytype')
     def test_verify_dataset_title_info_happy_path(self, mock_get_assaytype, mock_get_ancestors, mock_get_entities, mock_url_open):
-        # https://github.com/hubmapconsortium/search-api/blob/test-release/src/search-schema/data/definitions/enums/assay_types.yaml
+        # https://github.com/hubmapconsortium/search-api/blob/main/src/search-schema/data/definitions/enums/assay_types.yaml
         def resp1():
             r = requests.Response()
             r.status_code = 200

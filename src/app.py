@@ -1859,11 +1859,11 @@ def validate_samples(headers, records, header):
             error_msg.append(f"{field} is not an accepted field")
 
     with urllib.request.urlopen(
-            'https://raw.githubusercontent.com/hubmapconsortium/search-api/master/src/search-schema/data/definitions/enums/tissue_sample_types.yaml') as urlfile:
+            'https://raw.githubusercontent.com/hubmapconsortium/search-api/main/src/search-schema/data/definitions/enums/tissue_sample_types.yaml') as urlfile:
         sample_resource_file = yaml.load(urlfile, Loader=yaml.FullLoader)
 
     with urllib.request.urlopen(
-            'https://raw.githubusercontent.com/hubmapconsortium/search-api/master/src/search-schema/data/definitions/enums/organ_types.yaml') as urlfile:
+            'https://raw.githubusercontent.com/hubmapconsortium/search-api/main/src/search-schema/data/definitions/enums/organ_types.yaml') as urlfile:
         organ_resource_file = yaml.load(urlfile, Loader=yaml.FullLoader)
 
     rownum = 1
@@ -1892,7 +1892,7 @@ def validate_samples(headers, records, header):
                 error_msg.append(f"Row Number: {rownum}. If rui_location field is not blank, sample type cannot be organ")
             if sample_type.lower() not in sample_resource_file:
                 file_is_valid = False
-                error_msg.append(f"Row Number: {rownum}. sample_type value must be a sample code listed in tissue sample type files (https://raw.githubusercontent.com/hubmapconsortium/search-api/master/src/search-schema/data/definitions/enums/tissue_sample_types.yaml)")
+                error_msg.append(f"Row Number: {rownum}. sample_type value must be a sample code listed in tissue sample type files (https://raw.githubusercontent.com/hubmapconsortium/search-api/main/src/search-schema/data/definitions/enums/tissue_sample_types.yaml)")
 
             # validate organ_type
             organ_type = data_row['organ_type']
@@ -1908,7 +1908,7 @@ def validate_samples(headers, records, header):
                 if organ_type.upper() not in organ_resource_file:
                     file_is_valid = False
                     error_msg.append(
-                        f"Row Number: {rownum}. organ_type value must be a sample code listed in tissue sample type files (https://raw.githubusercontent.com/hubmapconsortium/search-api/master/src/search-schema/data/definitions/enums/organ_types.yaml)")
+                        f"Row Number: {rownum}. organ_type value must be a sample code listed in tissue sample type files (https://raw.githubusercontent.com/hubmapconsortium/search-api/main/src/search-schema/data/definitions/enums/organ_types.yaml)")
 
             # validate description
             description = data_row['description']
