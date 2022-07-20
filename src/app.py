@@ -479,6 +479,59 @@ def remove_file():
     # Send back the updated files_info_list
     return jsonify(files_info_list)
 
+
+# https://www.hdfgroup.org/
+import anndata
+from os.path import exists
+
+
+def h5ad_file_analysis(h5ad_file: str, cell_type_counts: dict) -> None:
+    sec_an = anndata.read_h5ad(h5ad_file)
+    if 'predicted.ASCT.celltype' in sec_an.obs:
+        df = sec_an.obs[['predicted.ASCT.celltype']]
+        for index, row in df.iterrows():
+            cell_type: str = row.tolist()[0]
+            if cell_type not in cell_type_counts:
+                cell_type_counts[cell_type] = 1
+            else:
+                cell_type_counts[cell_type] += 1
+
+
+@app.route('/dataset/extract-cell-count-from-secondary-analysis-files', methods=['POST'])
+def extract_cell_count_from_secondary_analysis_files():
+    try:
+        cell_type_counts: dict = {}
+        require_json(request)
+        for ds_uuid in request.json['ds_uuids']:
+            dset = __get_entity(ds_uuid, auth_header=request.headers.get("AUTHORIZATION"))
+            ent_type = __get_dict_prop(dset, 'entity_type')
+            group_uuid = __get_dict_prop(dset, 'group_uuid')
+            if ent_type is None or ent_type.strip() == '':
+                return Response(f"Entity with uuid:{ds_uuid} needs to be a Dataset or Upload.", 400)
+            ingest_helper = IngestFileHelper(app.config)
+            if ent_type.lower().strip() == 'upload':
+                path = ingest_helper.get_upload_directory_absolute_path(group_uuid=group_uuid, upload_uuid=ds_uuid)
+            else:
+                is_phi = __get_dict_prop(dset, 'contains_human_genetic_sequences')
+                if ent_type is None or not ent_type.lower().strip() == 'dataset':
+                    return Response(f"Entity with uuid:{ds_uuid} is not a Dataset or Upload", 400)
+                if group_uuid is None:
+                    return Response(f"Error: Unable to find group uuid on dataset {ds_uuid}", 400)
+                if is_phi is None:
+                    return Response(f"Error: contains_human_genetic_sequences is not set on dataset {ds_uuid}", 400)
+                path = ingest_helper.get_dataset_directory_absolute_path(dset, group_uuid, ds_uuid)
+            h5ad_file: str = path + '/secondary_analysis.h5ad'
+            logger.info(f"extract_cell_count_from_secondary_analysis_files: ds_uuid: {ds_uuid}; h5ad_file: {h5ad_file}")
+            if exists(h5ad_file):
+                h5ad_file_analysis(h5ad_file, cell_type_counts)
+        return jsonify({'cell_type_counts': cell_type_counts}), 200
+    except HTTPException as hte:
+        return Response(f"Error while getting file-system-abs-path for {ds_uuid}: " + hte.get_description(), hte.get_status_code())
+    except Exception as e:
+        logger.error(e, exc_info=True)
+        return Response(f"Unexpected error in extract_cell_count_from_secondary_analysis_files: " + str(e), 500)
+
+
 @app.route('/uploads/<ds_uuid>/file-system-abs-path', methods = ['GET'])
 @app.route('/datasets/<ds_uuid>/file-system-abs-path', methods = ['GET'])
 def get_file_system_absolute_path(ds_uuid):
