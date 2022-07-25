@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 # Local modules
 from dataset_helper_object import DatasetHelper
-from api.entity_api import EntityApi
+from hubmap_sdk import EntitySdk
 from file_upload_helper import UploadFileHelper
 
 
@@ -23,7 +23,7 @@ class TestDatasetThumbnail(TestCase):
         # but we got a real instance of DatasetHelper
         # Doing this to avoid the app.cfg being loaded in the fake file system
         self.dataset_helper = DatasetHelper()
-        self.entity_api = EntityApi("", "")
+        self.entity_api = EntitySdk("", "")
         
         self.thumbnail_file_abs_path = '/hive/hubmap/data/public/University of Florida TMC/e69fb303e035192a0ee38a34e4b25024/extra/thumbnail.jpg'
         self.dataset_uuid = 'e69fb303e035192a0ee38a34e4b25024'
@@ -42,8 +42,8 @@ class TestDatasetThumbnail(TestCase):
         self.fs.create_file(self.thumbnail_file_abs_path)
 
 
-    @patch('dataset_helper_object.EntityApi.get_entities')
-    @patch('dataset_helper_object.EntityApi.put_entities')
+    @patch('dataset_helper_object.EntitySdk.get_entity_by_id')
+    @patch('dataset_helper_object.EntitySdk.update_entity')
     def test_dataset_with_existing_thumbnail_file(self, mock_put_entities, mock_get_entities):
         def resp1():
             r = requests.Response()
@@ -74,8 +74,8 @@ class TestDatasetThumbnail(TestCase):
         self.assertTrue(os.path.exists(temp_file_path))
 
 
-    @patch('dataset_helper_object.EntityApi.get_entities')
-    @patch('dataset_helper_object.EntityApi.put_entities')
+    @patch('dataset_helper_object.EntitySdk.get_entity_by_id')
+    @patch('dataset_helper_object.EntitySdk.update_entity')
     def test_dataset_without_existing_thumbnail_file(self, mock_put_entities, mock_get_entities):
         def resp1():
             r = requests.Response()

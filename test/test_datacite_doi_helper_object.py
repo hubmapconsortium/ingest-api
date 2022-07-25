@@ -224,7 +224,7 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
                           self.datacite_doi_helper.create_dataset_draft_doi, self.dataset)
         mock_create_new_draft_doi.assert_called()
 
-    @patch('datacite_doi_helper_object.EntityApi.put_entities')
+    @patch('datacite_doi_helper_object.EntitySdk.update_entity')
     @patch('datacite_doi_helper_object.DataCiteApi.update_doi_event_publish')
     def test_move_doi_state_from_draft_to_findable_happy_path(self, mock_update_doi_event_publish, mock_put_entities):
         def resp1():
@@ -247,7 +247,7 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
         mock_put_entities.assert_called()
         self.assertEqual(doi_data, self.response_doi)
 
-    @patch('datacite_doi_helper_object.EntityApi.put_entities')
+    @patch('datacite_doi_helper_object.EntitySdk.update_entity')
     @patch('datacite_doi_helper_object.DataCiteApi.update_doi_event_publish')
     def test_move_doi_state_from_draft_to_findable_fail1(self, mock_update_doi_event_publish, mock_put_entities):
         def resp1():
@@ -263,7 +263,7 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
         mock_update_doi_event_publish.assert_called()
         mock_put_entities.assert_not_called()
 
-    @patch('datacite_doi_helper_object.EntityApi.put_entities')
+    @patch('datacite_doi_helper_object.EntitySdk.update_entity')
     @patch('datacite_doi_helper_object.DataCiteApi.update_doi_event_publish')
     def test_move_doi_state_from_draft_to_findable_fail2(self, mock_update_doi_event_publish, mock_put_entities):
         def resp1():

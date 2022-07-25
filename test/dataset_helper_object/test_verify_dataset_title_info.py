@@ -23,9 +23,9 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
         self.user_token = "fake token"
 
     @patch('dataset_helper_object.urllib.request.urlopen')
-    @patch('dataset_helper_object.EntityApi.get_entities')
-    @patch('dataset_helper_object.EntityApi.get_ancestors')
-    @patch('dataset_helper_object.SearchApi.get_assaytype')
+    @patch('dataset_helper_object.EntitySdk.get_entity_by_id')
+    @patch('dataset_helper_object.EntitySdk.get_ancestors')
+    @patch('dataset_helper_object.SearchSdk.assayname')
     def test_verify_dataset_title_info_happy_path(self, mock_get_assaytype, mock_get_ancestors, mock_get_entities, mock_url_open):
         # https://github.com/hubmapconsortium/search-api/blob/test-release/src/search-schema/data/definitions/enums/assay_types.yaml
         def resp1():
@@ -81,7 +81,7 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
         mock_get_entities.assert_called()
         mock_url_open.assert_called()
 
-    @patch('dataset_helper_object.EntityApi.get_entities')
+    @patch('dataset_helper_object.EntitySdk.get_entity_by_id')
     def test_verify_dataset_title_info_entities_not_found(self, mock_get_entities):
         def resp4():
             r = requests.Response()
@@ -97,9 +97,9 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
         mock_get_entities.assert_called()
 
     @patch('dataset_helper_object.urllib.request.urlopen')
-    @patch('dataset_helper_object.EntityApi.get_entities')
-    @patch('dataset_helper_object.EntityApi.get_ancestors')
-    @patch('dataset_helper_object.SearchApi.get_assaytype')
+    @patch('dataset_helper_object.EntitySdk.get_entity_by_id')
+    @patch('dataset_helper_object.EntitySdk.get_ancestors')
+    @patch('dataset_helper_object.SearchSdk.assayname')
     def test_verify_dataset_title_info_organ_code_description_not_found(self, mock_get_assaytype, mock_get_ancestors, mock_get_entities, mock_url_open):
         # https://github.com/hubmapconsortium/search-api/blob/test-release/src/search-schema/data/definitions/enums/assay_types.yaml
         def resp1():
@@ -157,9 +157,9 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
         mock_url_open.assert_called()
 
     @patch('dataset_helper_object.urllib.request.urlopen')
-    @patch('dataset_helper_object.EntityApi.get_entities')
-    @patch('dataset_helper_object.EntityApi.get_ancestors')
-    @patch('dataset_helper_object.SearchApi.get_assaytype')
+    @patch('dataset_helper_object.EntitySdk.get_entity_by_id')
+    @patch('dataset_helper_object.EntitySdk.get_ancestors')
+    @patch('dataset_helper_object.SearchSdk.assayname')
     def test_verify_dataset_title_info_organ_code_not_found_in_types_file(self, mock_get_assaytype, mock_get_ancestors, mock_get_entities, mock_url_open):
         # https://github.com/hubmapconsortium/search-api/blob/test-release/src/search-schema/data/definitions/enums/assay_types.yaml
         def resp1():
@@ -217,9 +217,9 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
         mock_url_open.assert_called()
 
     @patch('dataset_helper_object.urllib.request.urlopen')
-    @patch('dataset_helper_object.EntityApi.get_entities')
-    @patch('dataset_helper_object.EntityApi.get_ancestors')
-    @patch('dataset_helper_object.SearchApi.get_assaytype')
+    @patch('dataset_helper_object.EntitySdk.get_entity_by_id')
+    @patch('dataset_helper_object.EntitySdk.get_ancestors')
+    @patch('dataset_helper_object.SearchSdk.assayname')
     def test_verify_dataset_title_info_organ_key_not_found(self, mock_get_assaytype, mock_get_ancestors, mock_get_entities, mock_url_open):
         # https://github.com/hubmapconsortium/search-api/blob/test-release/src/search-schema/data/definitions/enums/assay_types.yaml
         def resp1():
@@ -277,9 +277,9 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
         mock_url_open.assert_not_called()
 
     @patch('dataset_helper_object.urllib.request.urlopen')
-    @patch('dataset_helper_object.EntityApi.get_entities')
-    @patch('dataset_helper_object.EntityApi.get_ancestors')
-    @patch('dataset_helper_object.SearchApi.get_assaytype')
+    @patch('dataset_helper_object.EntitySdk.get_entity_by_id')
+    @patch('dataset_helper_object.EntitySdk.get_ancestors')
+    @patch('dataset_helper_object.SearchSdk.assayname')
     def test_verify_dataset_title_info_no_race_no_sex(self, mock_get_assaytype, mock_get_ancestors, mock_get_entities, mock_url_open):
         # https://github.com/hubmapconsortium/search-api/blob/test-release/src/search-schema/data/definitions/enums/assay_types.yaml
         def resp1():
@@ -336,9 +336,9 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
         mock_url_open.assert_called()
 
     @patch('dataset_helper_object.urllib.request.urlopen')
-    @patch('dataset_helper_object.EntityApi.get_entities')
-    @patch('dataset_helper_object.EntityApi.get_ancestors')
-    @patch('dataset_helper_object.SearchApi.get_assaytype')
+    @patch('dataset_helper_object.EntitySdk.get_entity_by_id')
+    @patch('dataset_helper_object.EntitySdk.get_ancestors')
+    @patch('dataset_helper_object.SearchSdk.assayname')
     def test_verify_dataset_title_info_assaytype_not_found(self, mock_get_assaytype, mock_get_ancestors, mock_get_entities, mock_url_open):
         # https://github.com/hubmapconsortium/search-api/blob/test-release/src/search-schema/data/definitions/enums/assay_types.yaml
         def resp1():
@@ -397,9 +397,9 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
         mock_url_open.assert_called()
 
     @patch('dataset_helper_object.urllib.request.urlopen')
-    @patch('dataset_helper_object.EntityApi.get_entities')
-    @patch('dataset_helper_object.EntityApi.get_ancestors')
-    @patch('dataset_helper_object.SearchApi.get_assaytype')
+    @patch('dataset_helper_object.EntitySdk.get_entity_by_id')
+    @patch('dataset_helper_object.EntitySdk.get_ancestors')
+    @patch('dataset_helper_object.SearchSdk.assayname')
     def test_verify_dataset_title_info_dataset_data_types_missing(self, mock_get_assaytype, mock_get_ancestors, mock_get_entities, mock_url_open):
         # https://github.com/hubmapconsortium/search-api/blob/test-release/src/search-schema/data/definitions/enums/assay_types.yaml
         def resp1():

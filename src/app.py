@@ -37,7 +37,6 @@ from specimen import Specimen
 from ingest_file_helper import IngestFileHelper
 from file_upload_helper import UploadFileHelper
 import app_manager
-from api.entity_api import EntityApi
 from dataset import Dataset
 from dataset_helper_object import DatasetHelper
 from datacite_doi_helper_object import DataCiteDoiHelper
@@ -997,10 +996,10 @@ def verify_dataset_title_info(uuid: str) -> object:
 def update_ingest_status():
     if not request.json:
         abort(400, jsonify( { 'error': 'no data found cannot process update' } ))
-    
+
     try:
-        entity_api = EntityApi(app_manager.groups_token_from_request_headers(request.headers),
-                               commons_file_helper.removeTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']))
+        entity_api = EntitySdk(token=app_manager.groups_token_from_request_headers(request.headers), service_url=commons_file_helper.removeTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']))
+
 
         return app_manager.update_ingest_status_title_thumbnail(app.config, 
                                                                 request.json, 
