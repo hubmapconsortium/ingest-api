@@ -127,7 +127,8 @@ class UploadFileHelper:
         data['file_info'] = [file_info]
         response = requests.post(self.uuid_api_url, json = data, headers = headers, verify = False)
         if response is None or response.status_code != 200:
-            raise Exception(f"Unable to generate uuid for file {file_temp_dir}{temp_file_name}")
+            logger.error(f"POSTed request for file {file_temp_dir}{temp_file_name} returned response.status_code={response.status_code}, response.text = {response.text}.")
+            raise Exception(f"Unable to generate uuid for file {file_temp_dir}{temp_file_name}. See logs.")
         
         rsjs = response.json()
         file_uuid = rsjs[0]['uuid']
