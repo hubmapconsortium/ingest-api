@@ -840,6 +840,8 @@ def publish_datastage(identifier):
             dataset_group_uuid = rval[0]['group_uuid']
             dataset_contacts = rval[0]['contacts']
             dataset_contributors = rval[0]['contributors']
+            if dataset_contacts is None or dataset_contributors is None:
+                return Response(f"Missing contacts or contributors for {dataset_uuid}. Will not publish", 400)
             dataset_contacts = dataset_contacts.replace("'", '"')
             dataset_contributors = dataset_contributors.replace("'", '"')
             if dataset_entitytype != 'Dataset':

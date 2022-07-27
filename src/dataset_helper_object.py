@@ -94,14 +94,13 @@ class DatasetHelper:
             entity = entity_api.get_ancestors(dataset['uuid'])
         except Exception:
             rslt.append(f"Unable to get the ancestors of dataset with uuid: {dataset_uuid}")
-
         for ancestor in entity:
-            if 'entity_type' in ancestor:
-
-                if ancestor['entity_type'] == 'Sample':
-                    if 'specimen_type' in ancestor and ancestor['specimen_type'].lower() == 'organ':
-                        if 'organ' in ancestor:
-                            organ_code = ancestor['organ']
+            ancestor_dict = vars(ancestor)
+            if 'entity_type' in ancestor_dict:
+                if ancestor_dict['entity_type'] == 'Sample':
+                    if 'specimen_type' in ancestor_dict and ancestor_dict['specimen_type'].lower() == 'organ':
+                        if 'organ' in ancestor_dict:
+                            organ_code = ancestor_dict['organ']
                             organ_types_dict = self.get_organ_types_dict()
                             if organ_code in organ_types_dict:
                                 organ_entry = organ_types_dict[organ_code]
@@ -112,9 +111,9 @@ class DatasetHelper:
                         else:
                             rslt.append('Organ key not found in specimen_type organ')
 
-                elif ancestor['entity_type'] == 'Donor':
+                elif ancestor_dict['entity_type'] == 'Donor':
                     try:
-                        for data in ancestor['metadata']['organ_donor_data']:
+                        for data in ancestor_dict['metadata']['organ_donor_data']:
                             if data['grouping_concept_preferred_term'].lower() == 'age':
                                 data_found['age'] = True
 
