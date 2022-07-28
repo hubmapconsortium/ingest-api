@@ -7,8 +7,9 @@ from requests.packages.urllib3.exceptions import InsecureRequestWarning
 import logging
 from flask import Flask
 from api.datacite_api import DataCiteApi
-from api.entity_api import EntityApi
+from hubmap_sdk import EntitySdk
 from dataset_helper_object import DatasetHelper
+from hubmap_commons.exceptions import HTTPException
 import ast
 
 requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
@@ -87,7 +88,7 @@ class DataCiteDoiHelper:
                 {
                     'nameIdentifierScheme': 'ORCID',
                     'nameIdentifier': dataset_contributor['orcid_id'],
-                    'schemeUri': 'https://orcid.org/' 
+                    'schemeUri': 'https://orcid.org/'
                 }
             ]
 
@@ -105,7 +106,7 @@ class DataCiteDoiHelper:
 
             if len(contributor) != 0:
                 contributors.append(contributor)
-    
+
         if len(contributors) == 0:
             return None
 
@@ -154,7 +155,7 @@ class DataCiteDoiHelper:
 
             datacite_api = DataCiteApi(self.datacite_repository_id, self.datacite_repository_password,
                                        self.datacite_hubmap_prefix, self.datacite_api_url, self.entity_api_url)
-            
+
             # Get publication_year, default to the current year
             publication_year = int(datetime.now().year)
             if 'published_timestamp' in dataset:
@@ -216,7 +217,7 @@ class DataCiteDoiHelper:
                 # Then update the dataset DOI properties via entity-api after the DOI gets published
                 try:
                     doi_name = datacite_api.build_doi_name(dataset['hubmap_id'])
-                    entity_api = EntityApi(user_token, self.entity_api_url)
+                    entity_api = EntitySdk(user_token, self.entity_api_url)
                     updated_dataset = self.update_dataset_after_doi_published(dataset['uuid'], doi_name, entity_api)
 
                     return updated_dataset
@@ -244,14 +245,14 @@ class DataCiteDoiHelper:
     doi_name: str
         The registered doi: prefix/suffix
     entity_api
-        The EntityApi object instance
+        The EntitySdk object instance
     
     Returns
     -------
     dict
         The entity dict with updated DOI properties
     """
-    def update_dataset_after_doi_published(self, dataset_uuid: str, doi_name: str, entity_api: EntityApi) -> object:
+    def update_dataset_after_doi_published(self, dataset_uuid: str, doi_name: str, entity_api: EntitySdk) -> object:
 
         # Update the registered_doi, and doi_url properties after DOI made findable
         # Changing Dataset.status to "Published" and setting the published_* properties
@@ -261,24 +262,24 @@ class DataCiteDoiHelper:
             'registered_doi': doi_name,
             'doi_url': f'https://doi.org/{doi_name}'
         }
-        response = entity_api.put_entities(dataset_uuid, dataset_properties_to_update)
 
-        if response.status_code == 200:
+        try:
+            entity = entity_api.update_entity(dataset_uuid, dataset_properties_to_update)
             logger.info("======The dataset {dataset['uuid']}  has been updated with DOI info======")
-            updated_entity = response.json()
+            updated_entity = vars(entity)
             logger.debug("======updated_entity======")
             logger.debug(updated_entity)
-
             return updated_entity
-        else:
+
+        except HTTPException as e:
             # Log the full stack trace, prepend a line with our message
             logger.exception(f"Unable to update the DOI properties of dataset {dataset_uuid}")
-            logger.debug(f'======Status code from DataCite {response.status_code} ======')
+            logger.debug(f'======Status code from DataCite {e.status_code} ======')
             logger.debug("======response text from entity-api======")
-            logger.debug(response.text)
+            logger.debug(e.description)
 
             # Also bubble up the error message from entity-api
-            raise requests.exceptions.RequestException(response.text)
+            raise requests.exceptions.RequestException(e.description)
 
 
 # Running this python file as a script
@@ -297,15 +298,14 @@ if __name__ == "__main__":
 
     # Make sure that 'app.cfg' is pointed to DEV everything!!!
     config = load_flask_instance_config()
-    entity_api = EntityApi(user_token, config['ENTITY_WEBSERVICE_URL'])
+    entity_api = EntitySdk(user_token, config['ENTITY_WEBSERVICE_URL'])
 
     count = 1
     for dataset_uuid in datasets:
         logger.debug(f"Begin {count}: ========================= {dataset_uuid} =========================")
-
-        response = entity_api.get_entities(dataset_uuid)
-        if response.status_code == 200:
-            dataset = response.json()
+        try:
+            entity = entity_api.get_entity_by_id(dataset_uuid)
+            dataset = vars(entity)
 
             #logger.debug(dataset)
 
@@ -315,7 +315,7 @@ if __name__ == "__main__":
 
             try:
                 logger.debug("Create Draft DOI")
-                
+
                 # DISABLED
                 #data_cite_doi_helper.create_dataset_draft_doi(dataset)
             except Exception as e:
@@ -331,15 +331,15 @@ if __name__ == "__main__":
             except Exception as e:
                 logger.exception(e)
                 sys.exit(e)
-        else:
+        except HTTPException as e:
             # Log the full stack trace, prepend a line with our message
             logger.exception(f"Unable to query the target dataset with uuid: {dataset_uuid}")
 
             logger.debug("======status code from entity-api======")
-            logger.debug(response.status_code)
+            logger.debug(e.status_code)
 
             logger.debug("======response text from entity-api======")
-            logger.debug(response.text)
+            logger.debug(e.description)
 
         logger.debug(f"End {count}: ========================= {dataset_uuid} =========================")
 
