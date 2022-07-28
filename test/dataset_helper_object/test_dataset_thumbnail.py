@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 # Local modules
 from dataset_helper_object import DatasetHelper
-from api.entity_api import EntityApi
+from hubmap_sdk import EntitySdk
 from file_upload_helper import UploadFileHelper
 
 
@@ -23,7 +23,7 @@ class TestDatasetThumbnail(TestCase):
         # but we got a real instance of DatasetHelper
         # Doing this to avoid the app.cfg being loaded in the fake file system
         self.dataset_helper = DatasetHelper()
-        self.entity_api = EntityApi("", "")
+        self.entity_api = EntitySdk("", "")
         
         self.thumbnail_file_abs_path = '/hive/hubmap/data/public/University of Florida TMC/e69fb303e035192a0ee38a34e4b25024/extra/thumbnail.jpg'
         self.dataset_uuid = 'e69fb303e035192a0ee38a34e4b25024'
@@ -42,22 +42,22 @@ class TestDatasetThumbnail(TestCase):
         self.fs.create_file(self.thumbnail_file_abs_path)
 
 
-    @patch('dataset_helper_object.EntityApi.get_entities')
-    @patch('dataset_helper_object.EntityApi.put_entities')
-    def test_dataset_with_existing_thumbnail_file(self, mock_put_entities, mock_get_entities):
+    @patch('dataset_helper_object.EntitySdk.get_entity_by_id')
+    @patch('dataset_helper_object.EntitySdk.update_entity')
+    def test_dataset_with_existing_thumbnail_file(self, mock_update_entity, mock_get_entity_by_id):
         def resp1():
             r = requests.Response()
             r.status_code = 200
             r.json = lambda: {'thumbnail_file': {'filename': 'thumbnail.jpg', 'file_uuid': 'fc95dd0faaf2cfc4786d89bf7b074485'}, 'title': "CX_19-002_lymph-node_R2", 'uuid': 'e69fb303e035192a0ee38a34e4b25024'}
             return r
-        mock_get_entities.side_effect = [resp1()]
+        mock_get_entity_by_id.side_effect = [resp1()]
 
         def resp2():
             r = requests.Response()
             r.status_code = 200
             r.json = lambda: {'title': "CX_19-002_lymph-node_R2", 'uuid': 'e69fb303e035192a0ee38a34e4b25024'}
             return r
-        mock_put_entities.side_effect = [resp2()]
+        mock_update_entity.side_effect = [resp2()]
 
         updated_dataset_dict =\
             self.dataset_helper.handle_thumbnail_file(self.thumbnail_file_abs_path, 
@@ -67,22 +67,22 @@ class TestDatasetThumbnail(TestCase):
                                                       self.temp_file_id, 
                                                       self.file_upload_temp_dir)
 
-        mock_get_entities.assert_called()
-        mock_put_entities.assert_called()
+        mock_get_entity_by_id.assert_called()
+        mock_update_entity.assert_called()
 
         temp_file_path = os.path.join(self.file_upload_temp_dir, self.temp_file_id, 'thumbnail.jpg')
         self.assertTrue(os.path.exists(temp_file_path))
 
 
-    @patch('dataset_helper_object.EntityApi.get_entities')
-    @patch('dataset_helper_object.EntityApi.put_entities')
-    def test_dataset_without_existing_thumbnail_file(self, mock_put_entities, mock_get_entities):
+    @patch('dataset_helper_object.EntitySdk.get_entity_by_id')
+    @patch('dataset_helper_object.EntitySdk.update_entity')
+    def test_dataset_without_existing_thumbnail_file(self, mock_update_entity, mock_get_entity_by_id):
         def resp1():
             r = requests.Response()
             r.status_code = 200
             r.json = lambda: {'title': "CX_19-002_lymph-node_R2", 'uuid': 'e69fb303e035192a0ee38a34e4b25024'}
             return r
-        mock_get_entities.side_effect = [resp1()]
+        mock_get_entity_by_id.side_effect = [resp1()]
 
         updated_dataset_dict =\
             self.dataset_helper.handle_thumbnail_file(self.thumbnail_file_abs_path, 
@@ -92,9 +92,9 @@ class TestDatasetThumbnail(TestCase):
                                                       self.temp_file_id, 
                                                       self.file_upload_temp_dir)
 
-        mock_get_entities.assert_called()
+        mock_get_entity_by_id.assert_called()
         # No existing thumbnail, thus no removal via PUT
-        mock_put_entities.assert_not_called()
+        mock_update_entity.assert_not_called()
 
         temp_file_path = os.path.join(self.file_upload_temp_dir, self.temp_file_id, 'thumbnail.jpg')
         self.assertTrue(os.path.exists(temp_file_path))
