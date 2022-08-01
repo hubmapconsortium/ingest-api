@@ -1,6 +1,7 @@
 import unittest
 from unittest.mock import patch
 
+import hubmap_sdk
 import requests
 from dataset_helper_object import DatasetHelper
 
@@ -341,10 +342,51 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
     @patch('dataset_helper_object.SearchSdk.assayname')
     def test_verify_dataset_title_info_assaytype_not_found(self, mock_assayname, mock_get_ancestors, mock_get_entity_by_id, mock_url_open):
         # https://github.com/hubmapconsortium/search-api/blob/test-release/src/search-schema/data/definitions/enums/assay_types.yaml
+
+        mock_assayname.side_effect = [Exception(), Exception()]
+
+        def resp1():
+            dataset1 = hubmap_sdk.Dataset({'entity_type': 'Sample',
+                                           'specimen_type': 'Organ',
+                                           'organ': 'BM'})
+            dataset2 = hubmap_sdk.Dataset({'entity_type': 'Donor',
+                                           'metadata':
+                                               {'organ_donor_data': [
+                                                   {'grouping_concept_preferred_term': 'Age'},
+                                                   {'grouping_concept_preferred_term': 'Race'},
+                                                   {'grouping_concept_preferred_term': 'Sex'}
+                                               ]
+                                               }})
+
+            entity = [dataset1, dataset2]
+            return entity
+
+        mock_get_ancestors.side_effect = [resp1()]
+
+        def resp2():
+            entity = hubmap_sdk.Dataset(self.dataset)
+            return entity
+
+        mock_get_entity_by_id.side_effect = [resp2()]
+
+        def resp3():
+            r = requests.Response()
+            r.read = lambda: b'AO:\r\n  description: Aorta\r\nBL:\r\n  \r\nBD:\r\n  description: Blood\r\nBM:\r\n  description: Bone Marrow\r\nBR:\r\n  description: Brain\r\n'
+            # The 'when' needs the close method in the response....
+            r.close = lambda: True
+            return r
+
+        mock_url_open.side_effect = [resp3()]
+
         result = self.dataset_helper.verify_dataset_title_info(self.dataset_uuid, self.user_token)
-        self.assertEqual(len(result), 2, msg=result)
+
+        self.assertEqual(len(result), 2)
         self.assertEqual(result[0], 'Unable to query the assay type details of: bulk-RNA via search-api')
         self.assertEqual(result[1], 'Unable to query the assay type details of: IMC via search-api')
+        mock_assayname.assert_called()
+        mock_get_ancestors.assert_called()
+        mock_get_entity_by_id.assert_called()
+        mock_url_open.assert_called()
 
     @patch('dataset_helper_object.urllib.request.urlopen')
     @patch('dataset_helper_object.EntitySdk.get_entity_by_id')
