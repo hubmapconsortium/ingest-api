@@ -84,14 +84,9 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
 
     @patch('dataset_helper_object.EntitySdk.get_entity_by_id')
     def test_verify_dataset_title_info_entities_not_found(self, mock_get_entity_by_id):
-        def resp4():
-            r = requests.Response()
-            r.status_code = 404
-            r.json = lambda: None
-            return r
-        mock_get_entity_by_id.side_effect = [resp4()]
+        mock_get_entity_by_id.side_effect = [Exception]
 
-        result = self.dataset_helper.verify_dataset_title_info( self.dataset_uuid, self.user_token)
+        result = self.dataset_helper.verify_dataset_title_info(self.dataset_uuid, self.user_token)
 
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0], f"Unable to get the target dataset with uuid: {self.dataset_uuid}")
