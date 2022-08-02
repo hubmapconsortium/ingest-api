@@ -1,4 +1,6 @@
 import os
+
+import hubmap_sdk
 import requests
 from pyfakefs.fake_filesystem_unittest import TestCase
 from unittest.mock import patch
@@ -46,17 +48,13 @@ class TestDatasetThumbnail(TestCase):
     @patch('dataset_helper_object.EntitySdk.update_entity')
     def test_dataset_with_existing_thumbnail_file(self, mock_update_entity, mock_get_entity_by_id):
         def resp1():
-            r = requests.Response()
-            r.status_code = 200
-            r.json = lambda: {'thumbnail_file': {'filename': 'thumbnail.jpg', 'file_uuid': 'fc95dd0faaf2cfc4786d89bf7b074485'}, 'title': "CX_19-002_lymph-node_R2", 'uuid': 'e69fb303e035192a0ee38a34e4b25024'}
-            return r
+            dataset = hubmap_sdk.Dataset({'thumbnail_file': {'filename': 'thumbnail.jpg', 'file_uuid': 'fc95dd0faaf2cfc4786d89bf7b074485'}, 'title': "CX_19-002_lymph-node_R2", 'uuid': 'e69fb303e035192a0ee38a34e4b25024'})
+            return dataset
         mock_get_entity_by_id.side_effect = [resp1()]
 
         def resp2():
-            r = requests.Response()
-            r.status_code = 200
-            r.json = lambda: {'title': "CX_19-002_lymph-node_R2", 'uuid': 'e69fb303e035192a0ee38a34e4b25024'}
-            return r
+            dataset = hubmap_sdk.Dataset({'title': "CX_19-002_lymph-node_R2", 'uuid': 'e69fb303e035192a0ee38a34e4b25024'})
+            return dataset
         mock_update_entity.side_effect = [resp2()]
 
         updated_dataset_dict =\
