@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch
 # import pprint
-
+import hubmap_sdk
 import requests
 
 from datacite_doi_helper_object import DataCiteDoiHelper
@@ -235,10 +235,8 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
         mock_update_doi_event_publish.side_effect = [resp1()]
 
         def resp2():
-            r = requests.Response()
-            r.status_code = 200
-            r.json = lambda: self.response_doi
-            return r
+            dataset = hubmap_sdk.Dataset(self.response_doi)
+            return dataset
         mock_update_entity.side_effect = [resp2()]
 
         doi_data = self.datacite_doi_helper.move_doi_state_from_draft_to_findable(self.dataset, "User Token String")
@@ -273,12 +271,8 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
             return r
         mock_update_doi_event_publish.side_effect = [resp1()]
 
-        def resp2():
-            r = requests.Response()
-            r.status_code = 400
-            r.json = lambda: self.response_doi
-            return r
-        mock_update_entity.side_effect = [resp2()]
+
+        mock_update_entity.side_effect = [requests.RequestException]
 
         self.assertRaises(requests.RequestException,
                           self.datacite_doi_helper.move_doi_state_from_draft_to_findable,
