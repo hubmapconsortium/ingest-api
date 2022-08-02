@@ -207,39 +207,33 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
     def test_verify_dataset_title_info_organ_key_not_found(self, mock_assayname, mock_get_ancestors, mock_get_entity_by_id, mock_url_open):
         # https://github.com/hubmapconsortium/search-api/blob/test-release/src/search-schema/data/definitions/enums/assay_types.yaml
         def resp1():
-            r = requests.Response()
-            r.status_code = 200
-            r.json = lambda: {'description': 'Imaging Mass Cytometry', 'alt-names': [], 'primary': 'true', 'vitessce-hints': []}
-            return r
+            response_dict = {'description': 'Imaging Mass Cytometry', 'alt-names': [], 'primary': 'true', 'vitessce-hints': []}
+            return response_dict
 
         def resp2():
-            r = requests.Response()
-            r.status_code = 200
-            r.json = lambda: {'description': 'Bulk RNA-seq', 'alt-names': [], 'primary': 'true', 'vitessce-hints': []}
-            return r
+            response_dict = {'description': 'Bulk RNA-seq', 'alt-names': [], 'primary': 'true', 'vitessce-hints': []}
+            return response_dict
         mock_assayname.side_effect = [resp1(), resp2()]
 
         def resp3():
-            r = requests.Response()
-            r.status_code = 200
-            r.json = lambda: [{'entity_type': 'Sample',
-                               'specimen_type': 'Organ'},
-                              {'entity_type': 'Donor',
+            dataset1 = hubmap_sdk.Dataset({'entity_type': 'Sample',
+                               'specimen_type': 'Organ'})
+            dataset2 = hubmap_sdk.Dataset({'entity_type': 'Donor',
                                'metadata':
                                  {'organ_donor_data': [
                                     {'grouping_concept_preferred_term': 'Age'},
                                     {'grouping_concept_preferred_term': 'Race'},
                                     {'grouping_concept_preferred_term': 'Sex'}
                                   ]
-                               }}]
-            return r
+                               }})
+
+            entity = [dataset1, dataset2]
+            return entity
         mock_get_ancestors.side_effect = [resp3()]
 
         def resp4():
-            r = requests.Response()
-            r.status_code = 200
-            r.json = lambda: self.dataset
-            return r
+            dataset = hubmap_sdk.Dataset(self.dataset)
+            return dataset
         mock_get_entity_by_id.side_effect = [resp4()]
 
         def resp5():
