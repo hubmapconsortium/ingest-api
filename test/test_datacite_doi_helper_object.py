@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch
 # import pprint
-
+import hubmap_sdk
 import requests
 
 from datacite_doi_helper_object import DataCiteDoiHelper
@@ -224,9 +224,9 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
                           self.datacite_doi_helper.create_dataset_draft_doi, self.dataset)
         mock_create_new_draft_doi.assert_called()
 
-    @patch('datacite_doi_helper_object.EntityApi.put_entities')
+    @patch('datacite_doi_helper_object.EntitySdk.update_entity')
     @patch('datacite_doi_helper_object.DataCiteApi.update_doi_event_publish')
-    def test_move_doi_state_from_draft_to_findable_happy_path(self, mock_update_doi_event_publish, mock_put_entities):
+    def test_move_doi_state_from_draft_to_findable_happy_path(self, mock_update_doi_event_publish, mock_update_entity):
         def resp1():
             r = requests.Response()
             r.status_code = 200
@@ -235,21 +235,19 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
         mock_update_doi_event_publish.side_effect = [resp1()]
 
         def resp2():
-            r = requests.Response()
-            r.status_code = 200
-            r.json = lambda: self.response_doi
-            return r
-        mock_put_entities.side_effect = [resp2()]
+            dataset = hubmap_sdk.Dataset(self.response_doi)
+            return dataset
+        mock_update_entity.side_effect = [resp2()]
 
         doi_data = self.datacite_doi_helper.move_doi_state_from_draft_to_findable(self.dataset, "User Token String")
 
         mock_update_doi_event_publish.assert_called()
-        mock_put_entities.assert_called()
+        mock_update_entity.assert_called()
         self.assertEqual(doi_data, self.response_doi)
 
-    @patch('datacite_doi_helper_object.EntityApi.put_entities')
+    @patch('datacite_doi_helper_object.EntitySdk.update_entity')
     @patch('datacite_doi_helper_object.DataCiteApi.update_doi_event_publish')
-    def test_move_doi_state_from_draft_to_findable_fail1(self, mock_update_doi_event_publish, mock_put_entities):
+    def test_move_doi_state_from_draft_to_findable_fail1(self, mock_update_doi_event_publish, mock_update_entity):
         def resp1():
             r = requests.Response()
             r.status_code = 400
@@ -261,11 +259,11 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
                           self.datacite_doi_helper.move_doi_state_from_draft_to_findable,
                           self.dataset, "Dataset Title String")
         mock_update_doi_event_publish.assert_called()
-        mock_put_entities.assert_not_called()
+        mock_update_entity.assert_not_called()
 
-    @patch('datacite_doi_helper_object.EntityApi.put_entities')
+    @patch('datacite_doi_helper_object.EntitySdk.update_entity')
     @patch('datacite_doi_helper_object.DataCiteApi.update_doi_event_publish')
-    def test_move_doi_state_from_draft_to_findable_fail2(self, mock_update_doi_event_publish, mock_put_entities):
+    def test_move_doi_state_from_draft_to_findable_fail2(self, mock_update_doi_event_publish, mock_update_entity):
         def resp1():
             r = requests.Response()
             r.status_code = 200
@@ -273,15 +271,11 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
             return r
         mock_update_doi_event_publish.side_effect = [resp1()]
 
-        def resp2():
-            r = requests.Response()
-            r.status_code = 400
-            r.json = lambda: self.response_doi
-            return r
-        mock_put_entities.side_effect = [resp2()]
+
+        mock_update_entity.side_effect = [requests.RequestException]
 
         self.assertRaises(requests.RequestException,
                           self.datacite_doi_helper.move_doi_state_from_draft_to_findable,
                           self.dataset, "User Token String")
         mock_update_doi_event_publish.assert_called()
-        mock_put_entities.assert_called()
+        mock_update_entity.assert_called()
