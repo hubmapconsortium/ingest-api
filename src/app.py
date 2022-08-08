@@ -515,6 +515,7 @@ def h5ad_file_analysis_updating_cell_type_counts(h5ad_file: str,
                 cell_type_counts[cell_type] += 1
 
 
+# This is the time-consuming part of the process. It is called from a thread to prevent a HTTP response timeout.
 def extract_cell_type_counts(ds_files: dict) -> dict:
     cell_type_counts: dict = {}
     for ds_uuid, h5ad_file in ds_files.items():
@@ -561,16 +562,12 @@ def thread_extract_cell_count_from_secondary_analysis_files_for_sample_uuid(samp
                                                                             ds_files: dict):
     from datetime import datetime
     start = datetime.now()
-    # TODO: Get this from a config file...
-    SPATIAL_API_URL = "http://localhost:5001"
     # TODO: Does logger_lock also need to be used by ALL calls to logger and not just the ones in the thread?
     with logger_lock:
         logger.info(f'Thread {current_thread().name} started!')
     cell_type_counts: dict = extract_cell_type_counts(ds_files)
-    with logger_lock:
-        logger.info(f'Thread {current_thread().name} finished collecting cell type counts (time: )!')
-    url = f'{SPATIAL_API_URL}/sample/extracted_cell_count_from_secondary_analysis_files'
-    # Because the Bearer Token may timeout as a result of the processing we send one that doesn't timeout...
+    url = f"{app.config['SPATIAL_WEBSERVICE_URL']}/sample/extracted_cell_count_from_secondary_analysis_files"
+    # Because the calling request Bearer Token may timeout as a result of the processing we send one that doesn't...
     headers: dict = {
         'Authorization': f'Bearer {auth_helper_instance.getProcessSecret()}',
         'Accept': 'application/json',

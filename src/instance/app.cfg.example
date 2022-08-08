@@ -70,6 +70,9 @@ SEARCH_WEBSERVICE_URL = 'http://hubmap-auth:6666'
 # Default works with docker deployment on the same host machine
 ENTITY_WEBSERVICE_URL = 'http://hubmap-auth:3333'
 
+#URL to the spatial-api web service
+SPATIAL_WEBSERVICE_URL = 'http://localhost:5001'
+
 # For UI login/logout
 # Flask app session key
 SECRET_KEY = 'a%@3k9Hdlkfjakjajf99adsf909oel'
