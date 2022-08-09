@@ -483,11 +483,6 @@ def remove_file():
     return jsonify(files_info_list)
 
 
-# https://www.hdfgroup.org/
-import anndata
-from os.path import exists
-
-
 class ResponseException(Exception):
     """Return a HTTP response from deep within the call stack"""
     def __init__(self, message: str, stat: int):
@@ -505,6 +500,8 @@ def h5ad_file_analysis_updating_cell_type_counts(h5ad_file: str,
                                                  cell_type_counts: dict) -> None:
     """Allow the accumulation of cell type counts found in h5ad_files.
     Hint: Object function parameters in Python are 'call by address' """
+    # https://www.hdfgroup.org/
+    import anndata
     sec_an = anndata.read_h5ad(h5ad_file)
     if 'predicted.ASCT.celltype' in sec_an.obs:
         df = sec_an.obs[['predicted.ASCT.celltype']]
@@ -518,6 +515,7 @@ def h5ad_file_analysis_updating_cell_type_counts(h5ad_file: str,
 
 # This is the time-consuming part of the process. It is called from a thread to prevent a HTTP response timeout.
 def extract_cell_type_counts(ds_files: dict) -> dict:
+    """Accumulate the cell type counts from the given dataset files"""
     cell_type_counts: dict = {}
     for ds_uuid, h5ad_file in ds_files.items():
         h5ad_file_analysis_updating_cell_type_counts(h5ad_file, cell_type_counts)
@@ -548,10 +546,11 @@ def get_ds_path(ds_uuid: str,
 
 def sample_ds_uuid_files(ds_uuids: List[str],
                          ingest_helper: IngestFileHelper) -> dict:
+    """Return a dict which associates the dataset uuid with the file for processing by the thread"""
     ds_files: dict = {}
     for ds_uuid in ds_uuids:
         h5ad_file: str = get_ds_path(ds_uuid, ingest_helper) + '/secondary_analysis.h5ad'
-        if exists(h5ad_file):
+        if os.path.exists(h5ad_file):
             ds_files.update({ds_uuid: h5ad_file})
         else:
             logger.error(
@@ -561,6 +560,7 @@ def sample_ds_uuid_files(ds_uuids: List[str],
 
 def thread_extract_cell_count_from_secondary_analysis_files_for_sample_uuid(sample_uuid: str,
                                                                             ds_files: dict):
+    """Aggregate the cell type counts and send them back to Spatial-Api"""
     start = datetime.now()
     # TODO: Does logger_lock also need to be used by ALL calls to logger and not just the ones in the thread?
     with logger_lock:
@@ -569,6 +569,7 @@ def thread_extract_cell_count_from_secondary_analysis_files_for_sample_uuid(samp
     # Because this thread may take a long time we send a token that won't timeout...
     headers: dict = {
         'Authorization': f'Bearer {auth_helper_instance.getProcessSecret()}',
+        'X-Hubmap-Application': 'ingest-api',
         'Accept': 'application/json',
         'Content-Type': 'application/json'
     }
@@ -576,8 +577,8 @@ def thread_extract_cell_count_from_secondary_analysis_files_for_sample_uuid(samp
         'sample_uuid': sample_uuid,
         'cell_type_counts': extract_cell_type_counts(ds_files)
     }
-    # Send the data that it time consuming to produce, spacial-api will finish up with this but respond back
-    # to us that it is simply "working on it". There is no loop to close here.
+    # Send the data that it time-consuming to produce, spacial-api will finish up with this but respond back
+    # to us that it is simply "working on it". There is no loop to close here. Status checked just to log it.
     resp: Response = requests.put(url, headers=headers, data=json.dumps(data))
     with logger_lock:
         if resp.status_code != 202:
@@ -587,6 +588,7 @@ def thread_extract_cell_count_from_secondary_analysis_files_for_sample_uuid(samp
 
 @app.route('/dataset/begin-extract-cell-count-from-secondary-analysis-files-async', methods=['POST'])
 def begin_extract_cell_count_from_secondary_analysis_files_async():
+    """Spatial Api requests cell type counts for the sample which is returned asynchronously by the thread"""
     try:
         start = datetime.now()
         require_json(request)
@@ -608,7 +610,7 @@ def begin_extract_cell_count_from_secondary_analysis_files_async():
         logger.error(e, exc_info=True)
         return Response(f"Unexpected error in extract_cell_count_from_secondary_analysis_files: " + str(e), 500)
 
-# This is the non threaded version of the above and is deprecated....
+# This is the non-threaded version of the above which is DEPRECATED....
 @app.route('/dataset/extract-cell-count-from-secondary-analysis-files', methods=['POST'])
 def extract_cell_count_from_secondary_analysis_files():
     try:
