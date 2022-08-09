@@ -631,8 +631,7 @@ def extract_cell_count_from_secondary_analysis_files():
 def get_file_system_absolute_path(ds_uuid: str):
     try:
         ingest_helper = IngestFileHelper(app.config)
-        path: str = get_ds_path(ds_uuid, ingest_helper)
-        return jsonify ({'path': path}), 200
+        return jsonify ({'path': get_ds_path(ds_uuid, ingest_helper)}), 200
     except ResponseException as re:
         return re.response
     except HTTPException as hte:
