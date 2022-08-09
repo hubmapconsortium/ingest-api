@@ -19,6 +19,7 @@ from flask import Flask, g, jsonify, abort, request, session, redirect, json, Re
 from flask_cors import CORS
 from globus_sdk import AccessTokenAuthorizer, AuthClient, ConfidentialAppAuthClient
 from typing import List
+from datetime import datetime
 
 # HuBMAP commons
 from hubmap_commons import neo4j_driver
@@ -560,7 +561,6 @@ def sample_ds_uuid_files(ds_uuids: List[str],
 
 def thread_extract_cell_count_from_secondary_analysis_files_for_sample_uuid(sample_uuid: str,
                                                                             ds_files: dict):
-    from datetime import datetime
     start = datetime.now()
     # TODO: Does logger_lock also need to be used by ALL calls to logger and not just the ones in the thread?
     with logger_lock:
@@ -588,6 +588,7 @@ def thread_extract_cell_count_from_secondary_analysis_files_for_sample_uuid(samp
 @app.route('/dataset/begin-extract-cell-count-from-secondary-analysis-files-async', methods=['POST'])
 def begin_extract_cell_count_from_secondary_analysis_files_async():
     try:
+        start = datetime.now()
         require_json(request)
         ingest_helper = IngestFileHelper(app.config)
         sample_uuid: str = request.json['sample_uuid']
@@ -596,6 +597,8 @@ def begin_extract_cell_count_from_secondary_analysis_files_async():
                         args=[sample_uuid, ds_files],
                         name=f'extract_cell_count_for_sample_uuid_{sample_uuid}')
         thread.start()
+        logger.info(
+            f'begin_extract_cell_count_from_secondary_analysis_files_async done; sample {sample_uuid}; execution time [h:mm:ss.xxxxxx]: {datetime.now() - start}!')
         return Response("Processing has been initiated", 202)
     except ResponseException as re:
         return re.response
@@ -605,15 +608,14 @@ def begin_extract_cell_count_from_secondary_analysis_files_async():
         logger.error(e, exc_info=True)
         return Response(f"Unexpected error in extract_cell_count_from_secondary_analysis_files: " + str(e), 500)
 
-
+# This is the non threaded version of the above and is deprecated....
 @app.route('/dataset/extract-cell-count-from-secondary-analysis-files', methods=['POST'])
 def extract_cell_count_from_secondary_analysis_files():
     try:
         require_json(request)
         ingest_helper = IngestFileHelper(app.config)
         ds_files: dict = sample_ds_uuid_files(request.json['ds_uuids'], ingest_helper)
-        cell_type_counts: dict = extract_cell_type_counts(ds_files)
-        return jsonify({'cell_type_counts': cell_type_counts}), 200
+        return jsonify({'cell_type_counts': extract_cell_type_counts(ds_files)}), 200
     except ResponseException as re:
         return re.response
     except HTTPException as hte:
