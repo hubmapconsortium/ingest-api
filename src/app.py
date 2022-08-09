@@ -565,9 +565,8 @@ def thread_extract_cell_count_from_secondary_analysis_files_for_sample_uuid(samp
     # TODO: Does logger_lock also need to be used by ALL calls to logger and not just the ones in the thread?
     with logger_lock:
         logger.info(f'Thread {current_thread().name} started!')
-    cell_type_counts: dict = extract_cell_type_counts(ds_files)
     url = f"{app.config['SPATIAL_WEBSERVICE_URL']}/sample/extracted_cell_count_from_secondary_analysis_files"
-    # Because the calling request Bearer Token may timeout as a result of the processing we send one that doesn't...
+    # Because this thread may take a long time we send a token that won't timeout...
     headers: dict = {
         'Authorization': f'Bearer {auth_helper_instance.getProcessSecret()}',
         'Accept': 'application/json',
@@ -575,13 +574,15 @@ def thread_extract_cell_count_from_secondary_analysis_files_for_sample_uuid(samp
     }
     data: dict = {
         'sample_uuid': sample_uuid,
-        'cell_type_counts': cell_type_counts
+        'cell_type_counts': extract_cell_type_counts(ds_files)
     }
+    # Send the data that it time consuming to produce, spacial-api will finish up with this but respond back
+    # to us that it is simply "working on it". There is no loop to close here.
     resp: Response = requests.put(url, headers=headers, data=json.dumps(data))
     with logger_lock:
         if resp.status_code != 202:
-            logger.error(f'Thread {current_thread().name} unexpected response ({resp.status_code}) from {url}')
-        logger.info(f'Thread {current_thread().name} done; execution time: {datetime.now()-start}!')
+            logger.error(f'Thread {current_thread().name} unexpected response ({resp.status_code}) from {url} while processing sample {sample_uuid}')
+        logger.info(f'Thread {current_thread().name} done; sample {sample_uuid}; execution time [h:mm:ss.xxxxxx]: {datetime.now()-start}!')
 
 
 @app.route('/dataset/begin-extract-cell-count-from-secondary-analysis-files-async', methods=['POST'])
