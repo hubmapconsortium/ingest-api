@@ -39,7 +39,6 @@ from specimen import Specimen
 from ingest_file_helper import IngestFileHelper
 from file_upload_helper import UploadFileHelper
 import app_manager
-from api.entity_api import EntityApi
 from dataset import Dataset
 from dataset_helper_object import DatasetHelper
 from datacite_doi_helper_object import DataCiteDoiHelper
@@ -95,7 +94,7 @@ def http_internal_server_error(e):
 # Initialize AuthHelper class and ensure singleton
 try:
     if AuthHelper.isInitialized() == False:
-        auth_helper_instance = AuthHelper.create(app.config['APP_CLIENT_ID'], 
+        auth_helper_instance = AuthHelper.create(app.config['APP_CLIENT_ID'],
                                                  app.config['APP_CLIENT_SECRET'])
 
         logger.info("Initialized AuthHelper class successfully :)")
@@ -115,8 +114,8 @@ except Exception:
 # This neo4j_driver_instance will be used for application-specific neo4j queries
 # as well as being passed to the schema_manager
 try:
-    neo4j_driver_instance = neo4j_driver.instance(app.config['NEO4J_SERVER'], 
-                                                  app.config['NEO4J_USERNAME'], 
+    neo4j_driver_instance = neo4j_driver.instance(app.config['NEO4J_SERVER'],
+                                                  app.config['NEO4J_USERNAME'],
                                                   app.config['NEO4J_PASSWORD'])
 
     logger.info("Initialized neo4j_driver module successfully :)")
@@ -145,7 +144,7 @@ def close_neo4j_driver(error):
 try:
     # Initialize the UploadFileHelper class and ensure singleton
     if UploadFileHelper.is_initialized() == False:
-        file_upload_helper_instance = UploadFileHelper.create(app.config['FILE_UPLOAD_TEMP_DIR'], 
+        file_upload_helper_instance = UploadFileHelper.create(app.config['FILE_UPLOAD_TEMP_DIR'],
                                                               app.config['FILE_UPLOAD_DIR'],
                                                               app.config['UUID_WEBSERVICE_URL'])
 
@@ -195,12 +194,12 @@ def status():
         'version': (Path(__file__).absolute().parent.parent / 'VERSION').read_text().strip(),
         'build': (Path(__file__).absolute().parent.parent / 'BUILD').read_text().strip(),
     }
-    
+
     try:
         #if ?check-ws-dependencies=true is present in the url request params
         #set a flag to check these other web services
         check_ws_calls = string_helper.isYes(request.args.get('check-ws-dependencies'))
-        
+
         #check the neo4j connection
         try:
             with neo4j_driver_instance.session() as session:
@@ -218,13 +217,13 @@ def status():
             response_code = 500
             response_data['neo4j_error'] = str(e)
             is_connected = False
-            
+
         if is_connected:
             response_data['neo4j_connection'] = True
         else:
             response_code = 500
             response_data['neo4j_connection'] = False
-        
+
         #if the flag was set to check ws dependencies do it now
         #for each dependency try to connect via helper which calls the
         #service's /status method
@@ -241,14 +240,14 @@ def status():
             response_data['uuid_ws'] = uuid_ws_check
             response_data['entity_ws'] = entity_ws_check
             response_data['search_ws_check'] = search_ws_check
-    
+
     #catch any unhandled exceptions
     except Exception as e:
         response_code = 500
         response_data['exception_message'] = str(e)
     finally:
         return Response(json.dumps(response_data), response_code, mimetype='application/json')
-    
+
 ####################################################################################################
 ## Endpoints for UI Login and Logout
 ####################################################################################################
@@ -265,7 +264,7 @@ def login():
     # If there's no "code" query string parameter, we're in this route
     # starting a Globus Auth login flow.
     # Redirect out to Globus Auth
-    if 'code' not in request.args:                                        
+    if 'code' not in request.args:
         auth_uri = confidential_app_auth_client.oauth2_get_authorize_url(additional_params={"scope": "openid profile email urn:globus:auth:scope:transfer.api.globus.org:all urn:globus:auth:scope:auth.globus.org:view_identities urn:globus:auth:scope:nexus.api.globus.org:groups urn:globus:auth:scope:groups.api.globus.org:all" })
         return redirect(auth_uri)
     # If we do have a "code" param, we're coming back from Globus Auth
@@ -274,7 +273,7 @@ def login():
         auth_code = request.args.get('code')
 
         token_response = confidential_app_auth_client.oauth2_exchange_code_for_tokens(auth_code)
-        
+
         # Get all Bearer tokens
         auth_token = token_response.by_resource_server['auth.globus.org']['access_token']
         #nexus_token = token_response.by_resource_server['nexus.api.globus.org']['access_token']
@@ -282,7 +281,7 @@ def login():
         groups_token = token_response.by_resource_server['groups.api.globus.org']['access_token']
         # Also get the user info (sub, email, name, preferred_username) using the AuthClient with the auth token
         user_info = get_user_info(auth_token)
-        
+
         info = {
             'name': user_info['name'],
             'email': user_info['email'],
@@ -296,16 +295,16 @@ def login():
         # Turns json dict into a str
         json_str = json.dumps(info)
         #print(json_str)
-        
+
         # Store the resulting tokens in server session
         session.update(
             tokens=token_response.by_resource_server
         )
-      
+
         # Finally redirect back to the client
         return redirect(app.config['GLOBUS_CLIENT_APP_URI'] + '?info=' + str(json_str))
 
-   
+
 @app.route('/logout')
 def logout():
     """
@@ -316,7 +315,7 @@ def logout():
     confidential_app_auth_client = ConfidentialAppAuthClient(app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'])
 
     # Revoke the tokens with Globus Auth
-    if 'tokens' in session:    
+    if 'tokens' in session:
         for token in (token_info['access_token']
             for token_info in session['tokens'].values()):
                 confidential_app_auth_client.oauth2_revoke_token(token)
@@ -470,7 +469,7 @@ def remove_file():
     for file_uuid in file_uuids:
         # Get back the updated files_info_list
         files_info_list = file_upload_helper_instance.remove_file(entity_upload_dir, file_uuid, files_info_list)
-    
+
         # Also remove the dir contains the symlink to the uploaded file under assets
         # /hive/hubmap/assets/<file_uuid> (for PROD)
         assets_file_dir = os.path.join(str(app.config['HUBMAP_WEBSERVICE_FILEPATH']), file_uuid)
@@ -736,16 +735,16 @@ def get_file_system_relative_path():
         return jsonify(error_id_list), status_code
     return jsonify(out_list), 200
 #passthrough method to call mirror method on entity-api
-#this is need by ingest-pipeline that can only call 
+#this is need by ingest-pipeline that can only call
 #methods via http (running on the same machine for security reasons)
-#and ingest-api will for the foreseeable future run on the same 
+#and ingest-api will for the foreseeable future run on the same
 #machine
 @app.route('/entities/<entity_uuid>', methods = ['GET'])
 #@secured(groups="HuBMAP-read")
 def get_entity(entity_uuid):
     try:
         entity = __get_entity(entity_uuid, auth_header = request.headers.get("AUTHORIZATION"))
-        return jsonify (entity), 200    
+        return jsonify (entity), 200
     except HTTPException as hte:
         return Response(hte.get_description(), hte.get_status_code())
     except Exception as e:
@@ -789,7 +788,7 @@ def create_derived_dataset():
         internal_server_error("Unable to parse globus token from request header")
 
     require_json(request)
-    
+
     json_data = request.json
 
     logger.info("++++++++++Calling /datasets/derived")
@@ -797,7 +796,7 @@ def create_derived_dataset():
 
     if 'source_dataset_uuids' not in json_data:
         bad_request_error("The 'source_dataset_uuids' property is required.")
-    
+
     if 'derived_dataset_name' not in json_data:
         bad_request_error("The 'derived_dataset_name' property is required.")
 
@@ -840,13 +839,13 @@ def create_derived_dataset():
             return Response(response_text, status_code)
     except Exception as e:
         logger.error(e, exc_info=True)
-        internal_server_error("Unexpected error while creating derived dataset: " + str(e))        
+        internal_server_error("Unexpected error while creating derived dataset: " + str(e))
 
 
 @app.route('/datasets', methods=['POST'])
 def create_datastage():
     if not request.is_json:
-        return Response("json request required", 400)    
+        return Response("json request required", 400)
     try:
         dataset_request = request.json
         auth_helper = AuthHelper.configured_instance(app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'])
@@ -859,20 +858,20 @@ def create_datastage():
             token = auth_tokens['nexus_token']
         else:
             return(Response("Valid nexus auth token required", 401))
-        
+
         requested_group_uuid = None
         if 'group_uuid' in dataset_request:
             requested_group_uuid = dataset_request['group_uuid']
-        
+
         ingest_helper = IngestFileHelper(app.config)
         requested_group_uuid = auth_helper.get_write_group_uuid(token, requested_group_uuid)
-        dataset_request['group_uuid'] = requested_group_uuid            
+        dataset_request['group_uuid'] = requested_group_uuid
         post_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/dataset'
         response = requests.post(post_url, json = dataset_request, headers = {'Authorization': 'Bearer ' + token, 'X-Hubmap-Application':'ingest-api' }, verify = False)
         if response.status_code != 200:
             return Response(response.text, response.status_code)
         new_dataset = response.json()
-        
+
         ingest_helper.create_dataset_directory(new_dataset, requested_group_uuid, new_dataset['uuid'])
 
         return jsonify(new_dataset)
@@ -880,7 +879,7 @@ def create_datastage():
         return Response(hte.get_description(), hte.get_status_code())
     except Exception as e:
         logger.error(e, exc_info=True)
-        return Response("Unexpected error while creating a dataset: " + str(e) + "  Check the logs", 500)        
+        return Response("Unexpected error while creating a dataset: " + str(e) + "  Check the logs", 500)
 
 # Needs to be triggered in the workflow or manually?!
 @app.route('/datasets/<identifier>/publish', methods = ['PUT'])
@@ -893,7 +892,7 @@ def publish_datastage(identifier):
             return Response("Unable to obtain user information for auth token", 401)
         if isinstance(user_info, Response):
             return user_info
-        
+
         if 'hmgroupids' not in user_info:
             return Response("User has no valid group information to authorize publication.", 403)
         if data_admin_group_uuid not in user_info['hmgroupids']:
@@ -959,10 +958,10 @@ def publish_datastage(identifier):
                 elif entity_type == 'Dataset':
                     if status != 'Published':
                         return Response(f"{dataset_uuid} has an ancestor dataset that has not been Published. Will not Publish. Ancestor dataset is: {uuid}", 400)
-            
+
             if has_donor is False:
                 return Response(f"{dataset_uuid}: no donor found for dataset, will not Publish")
-            
+
             #get info for the dataset to be published
             q = f"MATCH (e:Dataset {{uuid: '{dataset_uuid}'}}) RETURN e.uuid as uuid, e.entity_type as entitytype, e.status as status, e.data_access_level as data_access_level, e.group_uuid as group_uuid, e.contacts as contacts, e.contributors as contributors"
             rval = neo_session.run(q).data()
@@ -984,7 +983,7 @@ def publish_datastage(identifier):
                 if len(json.loads(dataset_contacts)) < 1 or len(json.loads(dataset_contributors)) < 1:
                     return jsonify({"error": f"{dataset_uuid} missing contacts or contributors. Must have at least one of each"}), 400
             ingest_helper = IngestFileHelper(app.config)
-            
+
             data_access_level = dataset_data_access_level
             #if consortium access level convert to public dataset, if protected access leave it protected
             if dataset_data_access_level == 'consortium':
@@ -996,7 +995,7 @@ def publish_datastage(identifier):
                 data_access_level = 'public'
                 if asset_dir_exists:
                     ingest_helper.relink_to_public(dataset_uuid)
-            
+
             acls_cmd = ingest_helper.set_dataset_permissions(dataset_uuid, dataset_group_uuid, data_access_level, True, no_indexing_and_acls)
 
             if is_primary:
@@ -1128,8 +1127,9 @@ def update_ingest_status():
         abort(400, jsonify( { 'error': 'no data found cannot process update' } ))
     
     try:
-        entity_api = EntityApi(app_manager.groups_token_from_request_headers(request.headers),
-                               commons_file_helper.removeTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']))
+        entity_api = EntitySdk(token=app_manager.groups_token_from_request_headers(request.headers),
+                               service_url=commons_file_helper.removeTrailingSlashURL(
+                                   app.config['ENTITY_WEBSERVICE_URL']))
 
         return app_manager.update_ingest_status_title_thumbnail(app.config, 
                                                                 request.json, 
@@ -1242,7 +1242,7 @@ def submit_dataset(uuid):
 #      400 if invalid json sent
 #      401 if user does not have hubmap read access or the token is invalid
 #
-# Example json response: 
+# Example json response:
 #                  {{
 #                         "created_by_user_displayname": "Eris Pink",
 #                         "created_by_user_email": "mycoolemail@aolonline.co",
@@ -1505,7 +1505,7 @@ def get_specimen_ingest_group_ids(identifier):
 #      401 if user does not have hubmap read access or the token is invalid
 #      404 if the uuid is not found
 #
-# Example json response: 
+# Example json response:
 #                  {
 #                      "has_write_priv": true,
 #                      "has_submit_priv": false,
