@@ -8,7 +8,6 @@ import json
 from uuid import UUID
 import yaml
 import csv
-import requests
 from hubmap_sdk import EntitySdk
 # Don't confuse urllib (Python native library) with urllib3 (3rd-party library, requests also uses urllib3)
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
@@ -19,6 +18,7 @@ from flask import Flask, g, jsonify, abort, request, session, redirect, json, Re
 from flask_cors import CORS
 from globus_sdk import AccessTokenAuthorizer, AuthClient, ConfidentialAppAuthClient
 from typing import List
+from threading import Thread, current_thread, Lock
 from datetime import datetime
 
 # HuBMAP commons
@@ -43,7 +43,6 @@ from api.entity_api import EntityApi
 from dataset import Dataset
 from dataset_helper_object import DatasetHelper
 from datacite_doi_helper_object import DataCiteDoiHelper
-from threading import Thread, current_thread, Lock
 
 # Set logging format and level (default is warning)
 # All the API logging is forwarded to the uWSGI server and gets written into the log file `uwsgi-ingest-api.log`
