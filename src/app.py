@@ -563,7 +563,7 @@ def thread_extract_cell_count_from_secondary_analysis_files_for_sample_uuid(samp
     # TODO: Does logger_lock also need to be used by ALL calls to logger and not just the ones in the thread?
     with logger_lock:
         logger.info(f'Thread {current_thread().name} started!')
-    url = f"{app.config['SPATIAL_WEBSERVICE_URL']}/sample/extracted_cell_count_from_secondary_analysis_files"
+    url = f"{app.config['SPATIAL_WEBSERVICE_URL']}/sample/extracted-cell-count-from-secondary-analysis-files"
     # Because this thread may take a long time we send a token that won't timeout...
     headers: dict = {
         'Authorization': f'Bearer {auth_helper_instance.getProcessSecret()}',
