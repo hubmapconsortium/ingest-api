@@ -71,6 +71,7 @@ SEARCH_WEBSERVICE_URL = 'http://hubmap-auth:6666'
 ENTITY_WEBSERVICE_URL = 'http://hubmap-auth:3333'
 
 # URL to the spatial-api web service
+# Must no trailing slash /
 SPATIAL_WEBSERVICE_URL = 'http://localhost:5001'
 
 # For UI login/logout
