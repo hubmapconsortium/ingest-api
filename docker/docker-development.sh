@@ -98,7 +98,7 @@ else
             rm -rf ingest-api/VERSION
         fi
         
-        if [ -f "search-api/BUILD" ]; then
+        if [ -f "ingest-api/BUILD" ]; then
             rm -rf ingest-api/BUILD
         fi
         

@@ -1,22 +1,12 @@
-# 2/25/2022
-# Note: we don't need this dependency. But due to the recent unit test error: 
-# ImportError: cannot import name 'json' from 'itsdangerous'
-# The recommended fix is to upgrade the Flask to latest version i.e, 2.0.3 or above
-# But we don't want to upgrade Flask in case it breaks the API
-# Add this itsdangerous dependency and downgrade to 2.0.1 as a temporary solution
-itsdangerous==2.0.1
-Jinja2==3.0.3
-
-Flask==1.1.2
+Flask==2.1.3
 flask_cors==3.0.10
 globus_sdk==2.0.1
 hubmap-sdk==1.0.2
 jsonref==0.2
 jsonschema==3.2.0
-neo4j==4.2.1
+neo4j==4.4
 py2neo==2021.0.1
 selenium==3.141.0
-Werkzeug==1.0.1
 
 # The commons package requires requests>=2.22.0
 requests==2.25.1
