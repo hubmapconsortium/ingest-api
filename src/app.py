@@ -625,8 +625,8 @@ def extract_cell_count_from_secondary_analysis_files():
         return Response(f"Unexpected error in extract_cell_count_from_secondary_analysis_files: " + str(e), 500)
 
 
-@app.route('/uploads/<ds_uuid>/file-system-abs-path', methods = ['GET'])
-@app.route('/datasets/<ds_uuid>/file-system-abs-path', methods = ['GET'])
+@app.route('/uploads/<ds_uuid>/file-system-abs-path', methods=['GET'])
+@app.route('/datasets/<ds_uuid>/file-system-abs-path', methods=['GET'])
 def get_file_system_absolute_path(ds_uuid: str):
     try:
         ingest_helper = IngestFileHelper(app.config)
