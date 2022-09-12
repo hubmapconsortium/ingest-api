@@ -1,5 +1,6 @@
-# Ignore config file
-src/instance/app.cfg
+# Ignore config file, except for the example config file
+src/instance/*
+!src/instance/app.cfg.example
 *~
 
 ingest-venv
