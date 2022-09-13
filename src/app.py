@@ -14,12 +14,8 @@ from requests.packages.urllib3.exceptions import InsecureRequestWarning
 import argparse
 from pathlib import Path
 from shutil import rmtree # Used by file removal
-from flask import Flask, g, jsonify, abort, request, session, redirect, json, Response
+from flask import Flask, g, jsonify, abort, request, json, Response
 from flask_cors import CORS
-from globus_sdk import AccessTokenAuthorizer, AuthClient, ConfidentialAppAuthClient
-from typing import List
-from threading import Thread, current_thread, Lock
-from datetime import datetime
 
 # HuBMAP commons
 from hubmap_commons import neo4j_driver
@@ -40,8 +36,12 @@ from ingest_file_helper import IngestFileHelper
 from file_upload_helper import UploadFileHelper
 import app_manager
 from dataset import Dataset
-from dataset_helper_object import DatasetHelper
 from datacite_doi_helper_object import DataCiteDoiHelper
+
+from app_utils import require_json, bad_request_error, __get_dict_prop, __get_entity
+
+from routes.auth import auth_blueprint
+from routes.datasets import datasets_blueprint
 
 # Set logging format and level (default is warning)
 # All the API logging is forwarded to the uWSGI server and gets written into the log file `uwsgi-ingest-api.log`
@@ -49,11 +49,13 @@ from datacite_doi_helper_object import DataCiteDoiHelper
 # Do NOT handle log file and rotation via the Python logging to avoid issues with multi-worker processes
 logging.basicConfig(format='[%(asctime)s] %(levelname)s in %(module)s: %(message)s', level=logging.DEBUG, datefmt='%Y-%m-%d %H:%M:%S')
 logger = logging.getLogger(__name__)
-logger_lock = Lock()
 
 # Specify the absolute path of the instance folder and use the config file relative to the instance path
 app = Flask(__name__, instance_path=os.path.join(os.path.abspath(os.path.dirname(__file__)), 'instance'), instance_relative_config=True)
 app.config.from_pyfile('app.cfg')
+
+app.register_blueprint(auth_blueprint)
+app.register_blueprint(datasets_blueprint)
 
 # Suppress InsecureRequestWarning warning when requesting status on https with ssl cert verify disabled
 requests.packages.urllib3.disable_warnings(category = InsecureRequestWarning)
@@ -168,7 +170,7 @@ data_curator_group_uuid = app.config['HUBMAP_DATA_CURATOR_GROUP_UUID']
 ## Default and Status Routes
 ####################################################################################################
 
-@app.route('/', methods = ['GET'])
+@app.route('/', methods=['GET'])
 def index():
     return "Hello! This is HuBMAP Ingest API service :)"
 
@@ -186,7 +188,7 @@ def index():
 #        "uuid_ws": 105,
 #        "version": "1.15.4"
 #     }
-@app.route('/status', methods = ['GET'])
+@app.route('/status', methods=['GET'])
 def status():
     response_code = 200
     response_data = {
@@ -248,112 +250,10 @@ def status():
     finally:
         return Response(json.dumps(response_data), response_code, mimetype='application/json')
 
-####################################################################################################
-## Endpoints for UI Login and Logout
-####################################################################################################
-
-# Redirect users from react app login page to Globus auth login widget then redirect back
-@app.route('/login')
-def login():
-    #redirect_uri = url_for('login', _external=True)
-    redirect_uri = app.config['FLASK_APP_BASE_URI'] + 'login'
-
-    confidential_app_auth_client = ConfidentialAppAuthClient(app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'])
-    confidential_app_auth_client.oauth2_start_flow(redirect_uri, refresh_tokens=True)
-
-    # If there's no "code" query string parameter, we're in this route
-    # starting a Globus Auth login flow.
-    # Redirect out to Globus Auth
-    if 'code' not in request.args:
-        auth_uri = confidential_app_auth_client.oauth2_get_authorize_url(additional_params={"scope": "openid profile email urn:globus:auth:scope:transfer.api.globus.org:all urn:globus:auth:scope:auth.globus.org:view_identities urn:globus:auth:scope:nexus.api.globus.org:groups urn:globus:auth:scope:groups.api.globus.org:all" })
-        return redirect(auth_uri)
-    # If we do have a "code" param, we're coming back from Globus Auth
-    # and can start the process of exchanging an auth code for a token.
-    else:
-        auth_code = request.args.get('code')
-
-        token_response = confidential_app_auth_client.oauth2_exchange_code_for_tokens(auth_code)
-
-        # Get all Bearer tokens
-        auth_token = token_response.by_resource_server['auth.globus.org']['access_token']
-        #nexus_token = token_response.by_resource_server['nexus.api.globus.org']['access_token']
-        transfer_token = token_response.by_resource_server['transfer.api.globus.org']['access_token']
-        groups_token = token_response.by_resource_server['groups.api.globus.org']['access_token']
-        # Also get the user info (sub, email, name, preferred_username) using the AuthClient with the auth token
-        user_info = get_user_info(auth_token)
-
-        info = {
-            'name': user_info['name'],
-            'email': user_info['email'],
-            'globus_id': user_info['sub'],
-            'auth_token': auth_token,
-            #'nexus_token': nexus_token,
-            'transfer_token': transfer_token,
-            'groups_token': groups_token
-        }
-
-        # Turns json dict into a str
-        json_str = json.dumps(info)
-        #print(json_str)
-
-        # Store the resulting tokens in server session
-        session.update(
-            tokens=token_response.by_resource_server
-        )
-
-        # Finally redirect back to the client
-        return redirect(app.config['GLOBUS_CLIENT_APP_URI'] + '?info=' + str(json_str))
-
-
-@app.route('/logout')
-def logout():
-    """
-    - Revoke the tokens with Globus Auth.
-    - Destroy the session state.
-    - Redirect the user to the Globus Auth logout page.
-    """
-    confidential_app_auth_client = ConfidentialAppAuthClient(app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'])
-
-    # Revoke the tokens with Globus Auth
-    if 'tokens' in session:
-        for token in (token_info['access_token']
-            for token_info in session['tokens'].values()):
-                confidential_app_auth_client.oauth2_revoke_token(token)
-
-    # Destroy the session state
-    session.clear()
-
-    # build the logout URI with query params
-    # there is no tool to help build this (yet!)
-    globus_logout_url = (
-        'https://auth.globus.org/v2/web/logout' +
-        '?client={}'.format(app.config['APP_CLIENT_ID']) +
-        '&redirect_uri={}'.format(app.config['GLOBUS_CLIENT_APP_URI']) +
-        '&redirect_name={}'.format(app.config['GLOBUS_CLIENT_APP_NAME']))
-
-    # Redirect the user to the Globus Auth logout page
-    return redirect(globus_logout_url)
-
-
-####################################################################################################
-## Register error handlers
-####################################################################################################
-
-# Error handler for 400 Bad Request with custom error message
-@app.errorhandler(400)
-def http_bad_request(e):
-    return jsonify(error=str(e)), 400
-
-# Error handler for 500 Internal Server Error with custom error message
-@app.errorhandler(500)
-def http_internal_server_error(e):
-    return jsonify(error=str(e)), 500
-
 
 ####################################################################################################
 ## Ingest API Endpoints
 ####################################################################################################
-
 
 """
 File upload handling for Donor and Sample
@@ -479,165 +379,6 @@ def remove_file():
 
     # Send back the updated files_info_list
     return jsonify(files_info_list)
-
-
-class ResponseException(Exception):
-    """Return a HTTP response from deep within the call stack"""
-    def __init__(self, message: str, stat: int):
-        self.message: str = message
-        self.status: int = stat
-
-    @property
-    def response(self) -> Response:
-        logger.error(f'message: {message}; status: {stat}')
-        return Response(message, stat)
-
-
-# https://stackoverflow.com/questions/48745240/python-logging-in-multi-threads
-def h5ad_file_analysis_updating_cell_type_counts(h5ad_file: str,
-                                                 cell_type_counts: dict) -> None:
-    """Allow the accumulation of cell type counts found in h5ad_files.
-    Hint: Object function parameters in Python are 'call by address' """
-    # https://www.hdfgroup.org/
-    import anndata
-    sec_an = anndata.read_h5ad(h5ad_file)
-    if 'predicted.ASCT.celltype' in sec_an.obs:
-        df = sec_an.obs[['predicted.ASCT.celltype']]
-        for index, row in df.iterrows():
-            cell_type: str = row.tolist()[0]
-            if cell_type not in cell_type_counts:
-                cell_type_counts[cell_type] = 1
-            else:
-                cell_type_counts[cell_type] += 1
-
-
-# This is the time-consuming part of the process. It is called from a thread to prevent a HTTP response timeout.
-def extract_cell_type_counts(ds_files: dict) -> dict:
-    """Accumulate the cell type counts from the given dataset files"""
-    cell_type_counts: dict = {}
-    for ds_uuid, h5ad_file in ds_files.items():
-        h5ad_file_analysis_updating_cell_type_counts(h5ad_file, cell_type_counts)
-        logger.info(
-            f"Extracted cell count from secondary analysis file for ds_uuid: {ds_uuid}; h5ad_file: {h5ad_file}")
-    return cell_type_counts
-
-
-def get_ds_path(ds_uuid: str,
-                ingest_helper: IngestFileHelper) -> str:
-    """Get the path to the dataset files"""
-    dset = __get_entity(ds_uuid, auth_header=request.headers.get("AUTHORIZATION"))
-    ent_type = __get_dict_prop(dset, 'entity_type')
-    group_uuid = __get_dict_prop(dset, 'group_uuid')
-    if ent_type is None or ent_type.strip() == '':
-        raise ResponseException(f"Entity with uuid:{ds_uuid} needs to be a Dataset or Upload.", 400)
-    if ent_type.lower().strip() == 'upload':
-        return ingest_helper.get_upload_directory_absolute_path(group_uuid=group_uuid, upload_uuid=ds_uuid)
-    is_phi = __get_dict_prop(dset, 'contains_human_genetic_sequences')
-    if ent_type is None or not ent_type.lower().strip() == 'dataset':
-        raise ResponseException(f"Entity with uuid:{ds_uuid} is not a Dataset or Upload", 400)
-    if group_uuid is None:
-        raise ResponseException(f"Unable to find group uuid on dataset {ds_uuid}", 400)
-    if is_phi is None:
-        raise ResponseException(f"Contains_human_genetic_sequences is not set on dataset {ds_uuid}", 400)
-    return ingest_helper.get_dataset_directory_absolute_path(dset, group_uuid, ds_uuid)
-
-
-def sample_ds_uuid_files(ds_uuids: List[str],
-                         ingest_helper: IngestFileHelper) -> dict:
-    """Return a dict which associates the dataset uuid with the file for processing by the thread"""
-    ds_files: dict = {}
-    for ds_uuid in ds_uuids:
-        h5ad_file: str = get_ds_path(ds_uuid, ingest_helper) + '/secondary_analysis.h5ad'
-        if os.path.exists(h5ad_file):
-            ds_files.update({ds_uuid: h5ad_file})
-        else:
-            logger.error(
-                f"For ds_uuid: {ds_uuid}; Missing extracted cell count from secondary analysis h5ad_file: {h5ad_file}")
-    return ds_files
-
-
-def thread_extract_cell_count_from_secondary_analysis_files_for_sample_uuid(sample_uuid: str,
-                                                                            ds_files: dict):
-    """Aggregate the cell type counts and send them back to Spatial-Api"""
-    start = datetime.now()
-    # TODO: Does logger_lock also need to be used by ALL calls to logger and not just the ones in the thread?
-    with logger_lock:
-        logger.info(f'Thread {current_thread().name} started!')
-    url = f"{app.config['SPATIAL_WEBSERVICE_URL'].rstrip('/')}/sample/extracted-cell-count-from-secondary-analysis-files"
-    # Because this thread may take a long time we send a token that won't timeout...
-    headers: dict = {
-        'Authorization': f'Bearer {auth_helper_instance.getProcessSecret()}',
-        'X-Hubmap-Application': 'ingest-api',
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-    }
-    data: dict = {
-        'sample_uuid': sample_uuid,
-        'cell_type_counts': extract_cell_type_counts(ds_files)
-    }
-    # Send the data that it time-consuming to produce, spacial-api will finish up with this but respond back
-    # to us that it is simply "working on it". There is no loop to close here. Status checked just to log it.
-    resp: Response = requests.put(url, headers=headers, data=json.dumps(data))
-    with logger_lock:
-        if resp.status_code != 202:
-            logger.error(f'Thread {current_thread().name} unexpected response ({resp.status_code}) from {url} while processing sample {sample_uuid}')
-        logger.info(f'Thread {current_thread().name} done; sample {sample_uuid}; execution time [h:mm:ss.xxxxxx]: {datetime.now()-start}!')
-
-
-@app.route('/dataset/begin-extract-cell-count-from-secondary-analysis-files-async', methods=['POST'])
-def begin_extract_cell_count_from_secondary_analysis_files_async():
-    """Spatial Api requests cell type counts for the sample which is returned asynchronously by the thread"""
-    try:
-        start = datetime.now()
-        require_json(request)
-        ingest_helper = IngestFileHelper(app.config)
-        sample_uuid: str = request.json['sample_uuid']
-        ds_files: dict = sample_ds_uuid_files(request.json['ds_uuids'], ingest_helper)
-        thread = Thread(target=thread_extract_cell_count_from_secondary_analysis_files_for_sample_uuid,
-                        args=[sample_uuid, ds_files],
-                        name=f'extract_cell_count_for_sample_uuid_{sample_uuid}')
-        thread.start()
-        logger.info(
-            f'begin_extract_cell_count_from_secondary_analysis_files_async done; sample {sample_uuid}; execution time [h:mm:ss.xxxxxx]: {datetime.now() - start}!')
-        return Response("Processing has been initiated", 202)
-    except ResponseException as re:
-        return re.response
-    except HTTPException as hte:
-        return Response(f"Error while getting file-system-abs-path for sample_uuid {sample_uuid}: " + hte.get_description(), hte.get_status_code())
-    except Exception as e:
-        logger.error(e, exc_info=True)
-        return Response(f"Unexpected error in extract_cell_count_from_secondary_analysis_files: " + str(e), 500)
-
-# This is the non-threaded version of the above which is DEPRECATED....
-@app.route('/dataset/extract-cell-count-from-secondary-analysis-files', methods=['POST'])
-def extract_cell_count_from_secondary_analysis_files():
-    try:
-        require_json(request)
-        ingest_helper = IngestFileHelper(app.config)
-        ds_files: dict = sample_ds_uuid_files(request.json['ds_uuids'], ingest_helper)
-        return jsonify({'cell_type_counts': extract_cell_type_counts(ds_files)}), 200
-    except ResponseException as re:
-        return re.response
-    except HTTPException as hte:
-        return Response(f"Error while getting file-system-abs-path for {ds_uuid}: " + hte.get_description(), hte.get_status_code())
-    except Exception as e:
-        logger.error(e, exc_info=True)
-        return Response(f"Unexpected error in extract_cell_count_from_secondary_analysis_files: " + str(e), 500)
-
-
-@app.route('/uploads/<ds_uuid>/file-system-abs-path', methods=['GET'])
-@app.route('/datasets/<ds_uuid>/file-system-abs-path', methods=['GET'])
-def get_file_system_absolute_path(ds_uuid: str):
-    try:
-        ingest_helper = IngestFileHelper(app.config)
-        return jsonify ({'path': get_ds_path(ds_uuid, ingest_helper)}), 200
-    except ResponseException as re:
-        return re.response
-    except HTTPException as hte:
-        return Response(f"Error while getting file-system-abs-path for {ds_uuid}: " + hte.get_description(), hte.get_status_code())
-    except Exception as e:
-        logger.error(e, exc_info=True)
-        return Response(f"Unexpected error while retrieving entity {ds_uuid}: " + str(e), 500)
 
 
 """
@@ -2207,25 +1948,6 @@ def validate_donors(headers, records):
 ## Internal Functions
 ####################################################################################################
 
-"""
-Always expect a json body from user request
-
-request : Flask request object
-    The Flask request passed from the API endpoint
-"""
-def require_json(request):
-    if not request.is_json:
-        bad_request_error("A json body and appropriate Content-Type header are required")
-
-"""
-Throws error for 400 Bad Reqeust with message
-Parameters
-----------
-err_msg : str
-    The custom error message to return to end users
-"""
-def bad_request_error(err_msg):
-    abort(400, description = err_msg)
 
 """
 Throws error for 401 Unauthorized with message
@@ -2256,32 +1978,7 @@ err_msg : str
 """
 def internal_server_error(err_msg):
     abort(500, description = err_msg)
-    
 
-def get_user_info(token):
-    auth_client = AuthClient(authorizer=AccessTokenAuthorizer(token))
-    return auth_client.oauth2_userinfo()
-
-def __get_dict_prop(dic, prop_name):
-    if not prop_name in dic: return None
-    val = dic[prop_name]
-    if isinstance(val, str) and val.strip() == '': return None
-    return val
-
-def __get_entity(entity_uuid, auth_header = None):
-    if auth_header is None:
-        headers = None
-    else:
-        headers = {'Authorization': auth_header, 'Accept': 'application/json', 'Content-Type': 'application/json'}
-    get_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/' + entity_uuid
-
-    response = requests.get(get_url, headers = headers, verify = False)
-    if response.status_code != 200:
-        err_msg = f"Error while calling {get_url} status code:{response.status_code}  message:{response.text}"
-        logger.error(err_msg)
-        raise HTTPException(err_msg, response.status_code)
-
-    return response.json()
 
 # Determines if a dataset is Primary. If the list returned from the neo4j query is empty, the dataset is not primary
 def dataset_is_primary(dataset_uuid):
