@@ -38,7 +38,9 @@ import app_manager
 from dataset import Dataset
 from datacite_doi_helper_object import DataCiteDoiHelper
 
-from app_utils import require_json, bad_request_error, __get_dict_prop, __get_entity
+from app_utils.request_validation import require_json, bad_request_error
+from app_utils.misc import __get_dict_prop
+from app_utils.entity import __get_entity
 
 from routes.auth import auth_blueprint
 from routes.datasets import datasets_blueprint

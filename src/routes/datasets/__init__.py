@@ -10,7 +10,9 @@ from ingest_file_helper import IngestFileHelper
 from hubmap_commons.hm_auth import AuthHelper
 from hubmap_commons.exceptions import HTTPException
 
-from app_utils import require_json, __get_dict_prop, __get_entity
+from app_utils.request_validation import require_json
+from app_utils.misc import __get_dict_prop
+from app_utils.entity import __get_entity
 
 datasets_blueprint = Blueprint('datasets', __name__)
 logger: logging.Logger = logging.getLogger(__name__)
