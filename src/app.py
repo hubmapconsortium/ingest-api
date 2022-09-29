@@ -913,7 +913,7 @@ def publish_datastage(identifier):
                     logger.info(f"Publishing {identifier} indexed donor {donor_uuid} with status {rspn.status_code}")
                 except:
                     logger.exception(f"While publishing {identifier} Error happened when calling reindex web service for donor {donor_uuid}")
-                        
+
         return Response(json.dumps(r_val), 200, mimetype='application/json')                    
 
     except HTTPException as hte:
@@ -946,11 +946,11 @@ def update_dataset_status(uuid, new_status):
             print('Error occurred when call the reindex web service')
 
         return jsonify( { 'result' : status_obj } ), 200
-    
+
     except ValueError as ve:
         print('ERROR: ' + str(ve))
         abort(404, jsonify( { 'error': str(ve) } ))
-        
+
     except:
         msg = 'An error occurred: '
         for x in sys.exc_info():
@@ -1390,7 +1390,7 @@ def allowable_edit_states(hmuuid):
     try:
         #the Globus nexus auth token will be in the AUTHORIZATION section of the header
         token = str(request.headers["AUTHORIZATION"])[7:]
-        
+
         #get a connection to Neo4j db
         with neo4j_driver_instance.session() as session:
             #query Neo4j db to find the entity
@@ -1482,13 +1482,13 @@ def allowable_edit_states(hmuuid):
                         r_val['has_write_priv'] = False
                 else:
                     return Response("Entity group uuid not found", 400)
-                
+
             #if we fall through to here without entering the loop the entity was not found
             if count == 0:
                 return Response("Entity not found", 404)
             else:
                 return Response(json.dumps(r_val), 200, mimetype='application/json')
-            
+
     except AuthError as e:
         print(e)
         return Response('token is invalid', 401)
@@ -1499,73 +1499,52 @@ def allowable_edit_states(hmuuid):
         abort(400, msg)
 
 
-@app.route('/donors/bulk-upload', methods = ['POST'])
+@app.route('/donors/bulk-upload', methods=['POST'])
 def bulk_donors_upload_and_validate():
-    file_does_not_exist = False
-    file_does_not_exist_msg = ''
     if 'file' not in request.files:
-        file_does_not_exist = True
-        file_does_not_exist_msg = 'No file part'
-        #bad_request_error('No file part')
+        bad_request_error('No file part')
     file = request.files['file']
     if file.filename == '':
-        #bad_request_error('No selected file')
-        file_does_not_exist = True
-        file_does_not_exist_msg = "No selected file"
-    if file_does_not_exist is True:
-        response_body = {"status": "fail", "message": file_does_not_exist_msg}
-        return Response(json.dumps(response_body, sort_keys=True), 400, mimetype='application/json')
-    if file_does_not_exist is False:
-        unsuccessful_upload = False
-        unsuccessful_upload_msg = ''
-        try:
-            temp_id = file_upload_helper_instance.save_temp_file(file)
-        except Exception as e:
-            unsuccessful_upload = True
-            unsuccessful_upload_msg = str(e)
-        # uses csv.DictReader to add functionality to tsv file. Can do operations on rows and headers.
-        records = []
-        headers = []
-        file_location = commons_file_helper.ensureTrailingSlash(app.config['FILE_UPLOAD_TEMP_DIR']) + temp_id + os.sep + file.filename
-        with open(file_location, newline='') as tsvfile:
-            reader = csv.DictReader(tsvfile, delimiter='\t')
-            first = True
-            for row in reader:
-                data_row = {}
-                for key in row.keys():
-                    if first: headers.append(key)
-                    data_row[key] = row[key]
-                records.append(data_row)
-                if first: first = False
-        validfile = validate_donors(headers, records)
-        if validfile == True:
-            if unsuccessful_upload is False:
-                valid_response = {}
-                #valid_response['Response'] = "Tsv file valid. File uploaded succesffuly"
-                valid_response['temp_id'] = temp_id
-                return Response(json.dumps(valid_response, sort_keys=True), 201, mimetype='application/json')
-                #return jsonify(valid_response)
-            if unsuccessful_upload is True:
-                msg = "Failed to upload files"
-                logger.exception(msg)
-                #internal_server_error(msg)
-                response_body = {"status": "error", "data": {"File valid but upload failed": unsuccessful_upload_msg}}
-                return Response(json.dumps(response_body, sort_keys=True), 500, mimetype='application/json')
-        if type(validfile) == list:
-            return_validfile = {}
-            error_num = 0
-            for item in validfile:
-                return_validfile[str(error_num)] = str(item)
-                error_num = error_num + 1
-            #return_validfile = ', '.join(validfile)
-            response_body = {"status": "fail", "data": return_validfile}
-            return Response(json.dumps(response_body, sort_keys=True), 400, mimetype='application/json')  # The exact format of the return to be determined
+        bad_request_error('No selected file')
+    file.filename = file.filename.replace(" ", "_")
+    try:
+        temp_id = file_upload_helper_instance.save_temp_file(file)
+    except Exception as e:
+        bad_request_error(f"Failed to create temp_id: {e}")
+    # uses csv.DictReader to add functionality to tsv file. Can do operations on rows and headers.
+    records = []
+    headers = []
+    file_location = commons_file_helper.ensureTrailingSlash(app.config['FILE_UPLOAD_TEMP_DIR']) + temp_id + os.sep + file.filename
+    with open(file_location, newline='') as tsvfile:
+        reader = csv.DictReader(tsvfile, delimiter='\t')
+        first = True
+        for row in reader:
+            data_row = {}
+            for key in row.keys():
+                if first:
+                    headers.append(key)
+                data_row[key] = row[key]
+            records.append(data_row)
+            if first:
+                first = False
+    validfile = validate_donors(headers, records)
+    if validfile == True:
+        return Response(json.dumps({'temp_id': temp_id}, sort_keys=True), 201, mimetype='application/json')
+    if type(validfile) == list:
+        return_validfile = {}
+        error_num = 0
+        for item in validfile:
+            return_validfile[str(error_num)] = str(item)
+            error_num = error_num + 1
+        response_body = {"status": "fail", "data": return_validfile}
+        return Response(json.dumps(response_body, sort_keys=True), 400,
+                        mimetype='application/json')  # The exact format of the return to be determined
 
 
 @app.route('/donors/bulk', methods=['POST'])
 def create_donors_from_bulk():
     request_data = request.get_json()
-    token = str(request.headers["AUTHORIZATION"])[7:]
+    token = auth_helper_instance.getAuthorizationTokens(request.headers)
     header = {'Authorization': 'Bearer ' + token}
     temp_id = request_data['temp_id']
     group_uuid = None
@@ -1573,255 +1552,220 @@ def create_donors_from_bulk():
         group_uuid = request_data['group_uuid']
     temp_dir = app.config['FILE_UPLOAD_TEMP_DIR']
     tsv_directory = commons_file_helper.ensureTrailingSlash(temp_dir) + temp_id + os.sep
-    file_not_found = False
     if not os.path.exists(tsv_directory):
-        file_not_found = True
-        #raise Exception("Temporary file with id " + temp_id + " does not have a temp directory.")
         return_body = {"status": "fail", "message": f"Temporary file with id {temp_id} does not have a temp directory"}
         return Response(json.dumps(return_body, sort_keys=True), 400, mimetype='application/json')
-    if file_not_found is False:
-        fcount = 0
-        temp_file_name = None
-        for tfile in os.listdir(tsv_directory):
-            fcount = fcount + 1
-            temp_file_name = tfile
-        incorrect_file_count = False
-        incorrect_file_count_message = ""
-        if fcount == 0:
-            #raise Exception("File not found for temporary file with id " + temp_id) #how are these getting passed to the front end?
-            incorrect_file_count = True
-            incorrect_file_count_message = f"File not found in temporary directory /{temp_id}"
-        if fcount > 1:
-            #raise Exception("Multiple files found in temporary file path for temp file id " + temp_id)
-            incorrect_file_count = True
-            incorrect_file_count_message = f"Multiple files found in temporary file path /{temp_id}"
-        if incorrect_file_count:
-            return_response = {"status": "fail", "message": incorrect_file_count_message}
-            return Response(json.dumps(return_response, sort_keys=True), 400, mimetype='application/json')
-        if incorrect_file_count is False:
-            tsvfile_name = tsv_directory + temp_file_name
-            records = []
-            headers = []
-            with open(tsvfile_name, newline= '') as tsvfile:
-                reader = csv.DictReader(tsvfile, delimiter='\t')
-                first = True
-                for row in reader:
-                    data_row = {}
-                    for key in row.keys():
-                        if first:
-                            headers.append(key)
-                        data_row[key] = row[key]
-                    records.append(data_row)
-                    if first:
-                        first = False
-            validfile = validate_donors(headers, records)
-            if type(validfile) == list:
-                return_validfile = {}
-                error_num = 0
-                for item in validfile:
-                    return_validfile[str(error_num)] = str(item)
-                    error_num = error_num + 1
-                # return_validfile = ', '.join(validfile)
-                response_body = {"status": "fail", "data": return_validfile}
-                return Response(json.dumps(response_body, sort_keys=True), 400, mimetype='application/json')
-            entity_response = {}
-            row_num = 1
-            if validfile == True:
-                entity_created = False
-                status_code = 500
-                for item in records:
-                    item['lab_donor_id'] = item['lab_id']
-                    del item['lab_id']
-                    item['label'] = item['lab_name']
-                    del item['lab_name']
-                    item['protocol_url'] = item['selection_protocol']
-                    del item['selection_protocol']
-                    if group_uuid is not None:
-                        item['group_uuid'] = group_uuid
-                    r = requests.post(commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/donor', headers=header, json=item)
-                    entity_response[row_num] = r.json()
-                    row_num = row_num + 1
-                    status_code = r.status_code
-                    if r.status_code < 300:
-                        entity_created = True
-                #return jsonify(response)
-                response = {"status": "success", "data": entity_response}
-                if entity_created:
-                    status_code = 201
-                return Response(json.dumps(response, sort_keys=True), status_code, mimetype='application/json')
+    fcount = 0
+    temp_file_name = None
+    for tfile in os.listdir(tsv_directory):
+        fcount = fcount + 1
+        temp_file_name = tfile
+    if fcount == 0:
+        return Response(json.dumps({"status": "fail", "message": f"File not found in temporary directory /{temp_id}"},
+                                   sort_keys=True), 400, mimetype='application/json')
+    if fcount > 1:
+        return Response(
+            json.dumps({"status": "fail", "message": f"Multiple files found in temporary file path /{temp_id}"},
+                       sort_keys=True), 400, mimetype='application/json')
+    tsvfile_name = tsv_directory + temp_file_name
+    records = []
+    headers = []
+    with open(tsvfile_name, newline='') as tsvfile:
+        reader = csv.DictReader(tsvfile, delimiter='\t')
+        first = True
+        for row in reader:
+            data_row = {}
+            for key in row.keys():
+                if first:
+                    headers.append(key)
+                data_row[key] = row[key]
+            records.append(data_row)
+            if first:
+                first = False
+    validfile = validate_donors(headers, records)
+    if type(validfile) == list:
+        return_validfile = {}
+        error_num = 0
+        for item in validfile:
+            return_validfile[str(error_num)] = str(item)
+            error_num = error_num + 1
+        response_body = {"status": "fail", "data": return_validfile}
+        return Response(json.dumps(response_body, sort_keys=True), 400, mimetype='application/json')
+    entity_response = {}
+    row_num = 1
+    if validfile == True:
+        entity_created = False
+        entity_failed_to_create = False
+        for item in records:
+            item['lab_donor_id'] = item['lab_id']
+            del item['lab_id']
+            item['label'] = item['lab_name']
+            del item['lab_name']
+            item['protocol_url'] = item['selection_protocol']
+            del item['selection_protocol']
+            if group_uuid is not None:
+                item['group_uuid'] = group_uuid
+            r = requests.post(
+                commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/donor',
+                headers=header, json=item)
+            entity_response[row_num] = r.json()
+            row_num = row_num + 1
+            status_code = r.status_code
+            if r.status_code > 399:
+                entity_failed_to_create = True
+            else:
+                entity_created = True
+        if entity_created and not entity_failed_to_create:
+            response_status = "Success - All Entities Created Successfully"
+            status_code = 201
+        elif entity_failed_to_create and not entity_created:
+            response_status = "Failure - None of the Entities Created Successfully"
+            status_code = 500
+        elif entity_created and entity_failed_to_create:
+            response_status = "Partial Success - Some Entities Created Successfully"
+            status_code
+        response = {"status": response_status, "data": entity_response}
+        return Response(json.dumps(response, sort_keys=True), status_code, mimetype='application/json')
+
 
 @app.route('/samples/bulk-upload', methods=['POST'])
 def bulk_samples_upload_and_validate():
-    token = str(request.headers["AUTHORIZATION"])[7:]
+    token = auth_helper_instance.getAuthorizationTokens(request.headers)
     header = {'Authorization': 'Bearer ' + token}
-    file_does_not_exist = False
-    file_does_not_exist_msg = ''
     if 'file' not in request.files:
-        #bad_request_error('No file part')
-        file_does_not_exist = True
-        file_does_not_exist_msg = 'No file part'
+        bad_request_error('No file part')
     file = request.files['file']
     if file.filename == '':
-        #bad_request_error('No selected file')
-        file_does_not_exist = True
-        file_does_not_exist_msg = "No selected file"
-    if file_does_not_exist is True:
-        response_body = {"status": "fail", "message": file_does_not_exist_msg}
-        return Response(json.dumps(response_body, sort_keys=True), 400, mimetype='application/json')
-    temp_id = ''
-    if file_does_not_exist is False:
-        unsuccessful_upload = False
-        unsuccessful_upload_msg = ''
-        try:
-            temp_id = file_upload_helper_instance.save_temp_file(file)
-        except Exception as e:
-            unsuccessful_upload = True
-            unsuccessful_upload_msg = str(e)
-
-        # uses csv.DictReader to add functionality to tsv file. Can do operations on rows and headers.
-        records = []
-        headers = []
-        file_location = commons_file_helper.ensureTrailingSlash(
-            app.config['FILE_UPLOAD_TEMP_DIR']) + temp_id + os.sep + file.filename
-        with open(file_location, newline='') as tsvfile:
-            reader = csv.DictReader(tsvfile, delimiter='\t')
-            first = True
-            for row in reader:
-                data_row = {}
-                for key in row.keys():
-                    if first:
-                        headers.append(key)
-                    data_row[key] = row[key]
-                records.append(data_row)
+        bad_request_error('No selected file')
+    file.filename = file.filename.replace(" ", "_")
+    try:
+        temp_id = file_upload_helper_instance.save_temp_file(file)
+    except Exception as e:
+        bad_request_error(f"Failed to create temp_id: {e}")
+    # uses csv.DictReader to add functionality to tsv file. Can do operations on rows and headers.
+    records = []
+    headers = []
+    file_location = commons_file_helper.ensureTrailingSlash(
+        app.config['FILE_UPLOAD_TEMP_DIR']) + temp_id + os.sep + file.filename
+    with open(file_location, newline='') as tsvfile:
+        reader = csv.DictReader(tsvfile, delimiter='\t')
+        first = True
+        for row in reader:
+            data_row = {}
+            for key in row.keys():
                 if first:
-                    first = False
-        validfile = validate_samples(headers, records, header)
-        if validfile == True:
-            if unsuccessful_upload is False:
-                valid_response = {}
-                # valid_response['Response'] = "Tsv file valid. File uploaded succesffuly"
-                valid_response['temp_id'] = temp_id
-                return Response(json.dumps(valid_response, sort_keys=True), 201, mimetype='application/json')
-                # return jsonify(valid_response)
-            if unsuccessful_upload is True:
-                msg = "Failed to upload files"
-                logger.exception(msg)
-                #internal_server_error(msg)
-                response_body = {"status": "error", "data": {"File valid but upload failed": unsuccessful_upload_msg}}
-                return Response(json.dumps(response_body, sort_keys=True), 500, mimetype='application/json')
-        if type(validfile) == list:
-            return_validfile = {}
-            error_num = 0
-            for item in validfile:
-                return_validfile[str(error_num)] = str(item)
-                error_num = error_num + 1
-            # return_validfile = ', '.join(validfile)
-            response_body = {"status": "fail", "data": return_validfile}
-            return Response(json.dumps(response_body, sort_keys=True), 400,
-                            mimetype='application/json')  # The exact format of the return to be determined
+                    headers.append(key)
+                data_row[key] = row[key]
+            records.append(data_row)
+            if first:
+                first = False
+    validfile = validate_samples(headers, records, header)
+    if validfile == True:
+        return Response(json.dumps({'temp_id': temp_id}, sort_keys=True), 201, mimetype='application/json')
+    if type(validfile) == list:
+        return_validfile = {}
+        error_num = 0
+        for item in validfile:
+            return_validfile[str(error_num)] = str(item)
+            error_num = error_num + 1
+        response_body = {"status": "fail", "data": return_validfile}
+        return Response(json.dumps(response_body, sort_keys=True), 400, mimetype='application/json')
+
 
 @app.route('/samples/bulk', methods=['POST'])
 def create_samples_from_bulk():
     request_data = request.get_json()
-    token = str(request.headers["AUTHORIZATION"])[7:]
+    token = auth_helper_instance.getAuthorizationTokens(request.headers)
     header = {'Authorization': 'Bearer ' + token}
     temp_id = request_data['temp_id']
-    include_group = False
-    group_uuid = ''
+    group_uuid = None
     if "group_uuid" in request_data:
         group_uuid = request_data['group_uuid']
-        include_group = True
     temp_dir = app.config['FILE_UPLOAD_TEMP_DIR']
     tsv_directory = commons_file_helper.ensureTrailingSlash(temp_dir) + temp_id + os.sep
-    file_not_found = False
     if not os.path.exists(tsv_directory):
-        file_not_found = True
-        # raise Exception("Temporary file with id " + temp_id + " does not have a temp directory.")
         return_body = {"status": "fail", "message": f"Temporary file with id {temp_id} does not have a temp directory"}
         return Response(json.dumps(return_body, sort_keys=True), 400, mimetype='application/json')
-    if file_not_found is False:
-        fcount = 0
-        temp_file_name = None
-        for tfile in os.listdir(tsv_directory):
-            fcount = fcount + 1
-            temp_file_name = tfile
-        incorrect_file_count = False
-        incorrect_file_count_message = ""
-        if fcount == 0:
-            # raise Exception("File not found for temporary file with id " + temp_id) #how are these getting passed to the front end?
-            incorrect_file_count = True
-            incorrect_file_count_message = f"File not found in temporary directory /{temp_id}"
-        if fcount > 1:
-            # raise Exception("Multiple files found in temporary file path for temp file id " + temp_id)
-            incorrect_file_count = True
-            incorrect_file_count_message = f"Multiple files found in temporary file path /{temp_id}"
-        if incorrect_file_count:
-            return_response = {"status": "fail", "message": incorrect_file_count_message}
-            return Response(json.dumps(return_response, sort_keys=True), 400, mimetype='application/json')
-        if incorrect_file_count is False:
-            tsvfile_name = tsv_directory + temp_file_name
-            records = []
-            headers = []
-            with open(tsvfile_name, newline='') as tsvfile:
-                reader = csv.DictReader(tsvfile, delimiter='\t')
-                first = True
-                for row in reader:
-                    data_row = {}
-                    for key in row.keys():
-                        if first:
-                            headers.append(key)
-                        data_row[key] = row[key]
-                    records.append(data_row)
-                    if first:
-                        first = False
-            validfile = validate_samples(headers, records, header)
-            if type(validfile) == list:
-                return_validfile = {}
-                error_num = 0
-                for item in validfile:
-                    return_validfile[str(error_num)] = str(item)
-                    error_num = error_num + 1
-                # return_validfile = ', '.join(validfile)
-                response_body = {"status": "fail", "data": return_validfile}
-                return Response(json.dumps(response_body, sort_keys=True), 400, mimetype='application/json')
-            entity_response = {}
-            row_num = 1
-            if validfile == True:
-                entity_failure = False
-                for item in records:
-                    item['direct_ancestor_uuid'] = item['source_id']
-                    del item['source_id']
-                    item['lab_tissue_sample_id'] = item['lab_id']
-                    del item['lab_id']
-                    item['specimen_type'] = item['sample_type']
-                    del item['sample_type']
-                    item['organ'] = item['organ_type']
-                    del item['organ_type']
-                    item['protocol_url'] = item['sample_protocol']
-                    del item['sample_protocol']
-                    if item['organ'] == '':
-                        del item['organ']
-                    if item['rui_location'] == '':
-                        del item['rui_location']
-                    else:
-                        rui_location_json = json.loads(item['rui_location'])
-                        item['rui_location'] = rui_location_json
-                    if include_group:
-                        item['group_uuid'] = group_uuid
-                    r = requests.post(commons_file_helper.ensureTrailingSlashURL(
-                        app.config['ENTITY_WEBSERVICE_URL']) + 'entities/sample', headers=header, json=item)
-                    entity_response[row_num] = r.json()
-                    row_num = row_num + 1
-                    if r.status_code > 399:
-                        entity_failure = True
-                # return jsonify(response)
-                response_status = ""
-                if entity_failure is True:
-                    response_status = "failure - one or more entries failed to be created"
-                else:
-                    response_status = "success"
-                response = {"status": response_status, "data": entity_response}
-                return Response(json.dumps(response, sort_keys=True), 201, mimetype='application/json')
+    fcount = 0
+    temp_file_name = None
+    for tfile in os.listdir(tsv_directory):
+        fcount = fcount + 1
+        temp_file_name = tfile
+    if fcount == 0:
+        return Response(json.dumps({"status": "fail", "message": f"File not found in temporary directory /{temp_id}"},
+                                   sort_keys=True), 400, mimetype='application/json')
+    if fcount > 1:
+        return Response(
+            json.dumps({"status": "fail", "message": f"Multiple files found in temporary file path /{temp_id}"},
+                       sort_keys=True), 400, mimetype='application/json')
+    tsvfile_name = tsv_directory + temp_file_name
+    records = []
+    headers = []
+    with open(tsvfile_name, newline='') as tsvfile:
+        reader = csv.DictReader(tsvfile, delimiter='\t')
+        first = True
+        for row in reader:
+            data_row = {}
+            for key in row.keys():
+                if first:
+                    headers.append(key)
+                data_row[key] = row[key]
+            records.append(data_row)
+            if first:
+                first = False
+    validfile = validate_samples(headers, records, header)
+    if type(validfile) == list:
+        return_validfile = {}
+        error_num = 0
+        for item in validfile:
+            return_validfile[str(error_num)] = str(item)
+            error_num = error_num + 1
+        response_body = {"status": "fail", "data": return_validfile}
+        return Response(json.dumps(response_body, sort_keys=True), 400, mimetype='application/json')
+    entity_response = {}
+    row_num = 1
+    if validfile == True:
+        entity_created = False
+        entity_failed_to_create = False
+        for item in records:
+            item['direct_ancestor_uuid'] = item['source_id']
+            del item['source_id']
+            item['lab_tissue_sample_id'] = item['lab_id']
+            del item['lab_id']
+            item['specimen_type'] = item['sample_type']
+            del item['sample_type']
+            item['organ'] = item['organ_type']
+            del item['organ_type']
+            item['protocol_url'] = item['sample_protocol']
+            del item['sample_protocol']
+            if item['organ'] == '':
+                del item['organ']
+            if item['rui_location'] == '':
+                del item['rui_location']
+            else:
+                rui_location_json = json.loads(item['rui_location'])
+                item['rui_location'] = rui_location_json
+            if group_uuid is not None:
+                item['group_uuid'] = group_uuid
+            r = requests.post(
+                commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/sample',
+                headers=header, json=item)
+            entity_response[row_num] = r.json()
+            row_num = row_num + 1
+            if r.status_code > 399:
+                entity_failed_to_create = True
+            else:
+                entity_created = True
+        if entity_created and not entity_failed_to_create:
+            response_status = "Success - All Entities Created Successfully"
+            status_code = 201
+        elif entity_failed_to_create and not entity_created:
+            response_status = "Failure - None of the Entities Created Successfully"
+            status_code = 500
+        elif entity_created and entity_failed_to_create:
+            response_status = "Partial Success - Some Entities Created Successfully"
+        response = {"status": response_status, "data": entity_response}
+        return Response(json.dumps(response, sort_keys=True), status_code, mimetype='application/json')
 
 
 def validate_samples(headers, records, header):

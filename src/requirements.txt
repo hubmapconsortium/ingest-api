@@ -7,6 +7,7 @@ jsonschema==3.2.0
 neo4j==4.4
 py2neo==2021.0.1
 selenium==3.141.0
+PyYAML==6.0
 
 # The commons package requires requests>=2.22.0
 requests==2.25.1
