@@ -41,8 +41,8 @@ function export_version() {
 
 
 
-if [[ "$1" != "test" && "$1" != "stage" && "$1" != "prod" ]]; then
-    echo "Unknown deployment environment '$1', specify one of the following: test|stage|prod"
+if [[ "$1" != "test" && "$1" != "prod" ]]; then
+    echo "Unknown deployment environment '$1', specify one of the following: test|prod"
 else
     if [[ "$2" != "start" && "$2" != "stop" && "$2" != "down" ]]; then
         echo "Unknown command '$2', specify one of the following: start|stop|down"
