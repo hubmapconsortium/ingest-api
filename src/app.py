@@ -1946,18 +1946,6 @@ def validate_samples(headers, records, header):
 def validate_donors(headers, records):
     error_msg = []
     file_is_valid = True
-    # if not 'lab_name' in headers:
-    #     file_is_valid = False
-    #     error_msg.append("lab_name field is required")
-    # if not 'selection_protocol' in headers:
-    #     file_is_valid = False
-    #     error_msg.append("selection_protocol field is required")
-    # if not 'description' in headers:
-    #     file_is_valid = False
-    #     error_msg.append("description field is required")
-    # if not 'lab_id' in headers:
-    #     file_is_valid = False
-    #     error_msg.append("lab_id field is required") #if any of this fails, just stop
 
     required_headers = ['lab_name', 'selection_protocol', 'description', 'lab_id']
     for field in required_headers:
@@ -1973,41 +1961,50 @@ def validate_donors(headers, records):
         for data_row in records:
 
             #validate lab_name
-            if len(data_row['lab_name']) > 1024:
+            if data_row['lab_name'] is not None:
+                if len(data_row['lab_name']) > 1024:
+                    file_is_valid = False
+                    error_msg.append(f"Row Number: {rownum}. lab_name must be fewer than 1024 characters")
+                if len(data_row['lab_name']) < 1:
+                    file_is_valid = False
+                    error_msg.append(f"Row Number: {rownum}. lab_name must have 1 or more characters")
+            else:
                 file_is_valid = False
-                error_msg.append(f"Row Number: {rownum}. lab_name must be fewer than 1024 characters")
-            if len(data_row['lab_name']) < 1:
-                file_is_valid = False
-                error_msg.append(f"Row Number: {rownum}. lab_name must have 1 or more characters")
-            # lab_name_pattern = re.match('^\w*$')
-            # if lab_name_pattern == None:
-            #     file_is_valid = False
-            #     error_msg.append(f"Row Number: {rownum}. lab_name must be an alphanumeric string")
+                error_msg.append(f"Row Number: {rownum}. lab_name field is 'none'. Check file. Verify tabs separate each entry of every line")
 
             #validate selection_protocol
-            protocol = data_row['selection_protocol']
-            selection_protocol_pattern1 = re.match('^https://dx\.doi\.org/[\d]+\.[\d]+/protocols\.io\.[\w]*', protocol)
-            selection_protocol_pattern2 = re.match('^[\d]+\.[\d]+/protocols\.io\.[\w]*', protocol)
-            if selection_protocol_pattern2 is None and selection_protocol_pattern1 is None:
+            if data_row['selection_protocol'] is not None:
+                protocol = data_row['selection_protocol']
+                selection_protocol_pattern1 = re.match('^https://dx\.doi\.org/[\d]+\.[\d]+/protocols\.io\.[\w]*', protocol)
+                selection_protocol_pattern2 = re.match('^[\d]+\.[\d]+/protocols\.io\.[\w]*', protocol)
+                if selection_protocol_pattern2 is None and selection_protocol_pattern1 is None:
+                    file_is_valid = False
+                    error_msg.append(f"Row Number: {rownum}. selection_protocol must either be of the format https://dx.doi.org/##.####/protocols.io.* or ##.####/protocols.io.*")
+            else:
                 file_is_valid = False
-                error_msg.append(f"Row Number: {rownum}. selection_protocol must either be of the format https://dx.doi.org/##.####/protocols.io.* or ##.####/protocols.io.*")
+                error_msg.append(f"Row Number: {rownum}. selection_protocol field is 'none'. Check file. Verify tabs separate each entry of every line")
 
             #validate description
-            description = data_row['description']
-            if len(description) > 10000:
+            if data_row['description'] is not None:
+                description = data_row['description']
+                if len(description) > 10000:
+                    file_is_valid = False
+                    error_msg.append(f"Row Number: {rownum}. Description must be fewer than 10,000 characters")
+            else:
                 file_is_valid = False
-                error_msg.append(f"Row Number: {rownum}. Description must be fewer than 10,000 characters")
+                error_msg.append(f"Row Number: {rownum}. description field is 'none'. Check file. Verify tabs separate each entry of every line")
 
             #validate lab_id
-            lab_id = data_row['lab_id']
-            #lab_id_pattern = re.match('^\w*$', lab_id)
-            if len(lab_id) > 1024:
+            if data_row['lab_id'] is not None:
+                lab_id = data_row['lab_id']
+                #lab_id_pattern = re.match('^\w*$', lab_id)
+                if len(lab_id) > 1024:
+                    file_is_valid = False
+                    error_msg.append(f"Row Number: {rownum}. lab_id must be fewer than 1024 characters")
+                rownum = rownum + 1
+            else:
                 file_is_valid = False
-                error_msg.append(f"Row Number: {rownum}. lab_id must be fewer than 1024 characters")
-            #if lab_id_pattern is None:
-            #    file_is_valid = False
-            #    error_msg.append(f"Row Number: {rownum}. if lab_id is given, it must be an alphanumeric string")
-            rownum = rownum + 1
+                error_msg.append(f"Row Number: {rownum}. lab_id field is 'none'. Check file. Verify tabs separate each entry of every line")
 
     if file_is_valid:
         return file_is_valid
