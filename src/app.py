@@ -1623,7 +1623,7 @@ def create_donors_from_bulk():
             status_code = 500
         elif entity_created and entity_failed_to_create:
             response_status = "Partial Success - Some Entities Created Successfully"
-            status_code
+            status_code = 207
         response = {"status": response_status, "data": entity_response}
         return Response(json.dumps(response, sort_keys=True), status_code, mimetype='application/json')
 
@@ -1764,6 +1764,7 @@ def create_samples_from_bulk():
             status_code = 500
         elif entity_created and entity_failed_to_create:
             response_status = "Partial Success - Some Entities Created Successfully"
+            status_code = 207
         response = {"status": response_status, "data": entity_response}
         return Response(json.dumps(response, sort_keys=True), status_code, mimetype='application/json')
 
@@ -1771,26 +1772,6 @@ def create_samples_from_bulk():
 def validate_samples(headers, records, header):
     error_msg = []
     file_is_valid = True
-    # if not 'source_id' in headers:
-    #     file_is_valid = False
-    #     error_msg.append("source_id field is required")
-    # if not 'lab_id' in headers:
-    #     file_is_valid = False
-    #     error_msg.append("lab_id field is required")
-    # if not 'sample_type' in headers:
-    #     file_is_valid = False
-    #     error_msg.append("sample_type field is required")
-    # if not 'organ_type' in headers:
-    #     file_is_valid = False
-    # if not 'sample_protocol' in headers:
-    #     file_is_valid = False
-    #     error_msg.append("sample_protocol field is required")
-    # if not 'description' in headers:
-    #     file_is_valid = False
-    #     error_msg.append("sample_protocol field is required")
-    # if not 'rui_location' in headers:
-    #     file_is_valid = False
-    #     error_msg.append("rui_location field is required")
 
     required_headers = ['source_id', 'lab_id', 'sample_type', 'organ_type', 'sample_protocol', 'description', 'rui_location']
     for field in required_headers:
@@ -1814,7 +1795,23 @@ def validate_samples(headers, records, header):
     valid_source_ids = []
     if file_is_valid is True:
         for data_row in records:
+            # validate that no fields in data_row are none. If they are none, then we cannot verify even if the entry we
+            # are validating is what it is supposed to be. Mark the entire row as bad if a none field exists.
+            none_present = False
+            for each in data_row.keys():
+                if data_row[each] is None:
+                    none_present = True
+            if none_present:
+                file_is_valid = False
+                error_msg.append(
+                    f"Row Number: {rownum}. This row has too few entries. Check file; verify spaces were not used where a tab should be")
+                continue
 
+            # validate that no headers are None. This indicates that there are fields present.
+            if data_row.get(None) is None:
+                file_is_valid = False
+                error_msg.append(f"Row Number: {rownum}. This row has too many entries. Check file; verify that there are only as many fields as there are headers")
+                continue
             # validate rui_location
             rui_is_blank = True
             rui_location = data_row['rui_location']
@@ -1946,18 +1943,6 @@ def validate_samples(headers, records, header):
 def validate_donors(headers, records):
     error_msg = []
     file_is_valid = True
-    # if not 'lab_name' in headers:
-    #     file_is_valid = False
-    #     error_msg.append("lab_name field is required")
-    # if not 'selection_protocol' in headers:
-    #     file_is_valid = False
-    #     error_msg.append("selection_protocol field is required")
-    # if not 'description' in headers:
-    #     file_is_valid = False
-    #     error_msg.append("description field is required")
-    # if not 'lab_id' in headers:
-    #     file_is_valid = False
-    #     error_msg.append("lab_id field is required") #if any of this fails, just stop
 
     required_headers = ['lab_name', 'selection_protocol', 'description', 'lab_id']
     for field in required_headers:
@@ -1971,7 +1956,23 @@ def validate_donors(headers, records):
     rownum = 1
     if file_is_valid is True:
         for data_row in records:
+            # validate that no fields in data_row are none. If they are none, then we cannot verify even if the entry we
+            # are validating is what it is supposed to be. Mark the entire row as bad if a none field exists.
+            none_present = False
+            for each in data_row.keys():
+                if data_row[each] is None:
+                    none_present = True
+            if none_present:
+                file_is_valid = False
+                error_msg.append(f"Row Number: {rownum}. This row has too few entries. Check file; verify spaces were not used where a tab should be")
+                continue
 
+            # validate that no headers are None. This indicates that there are fields present.
+            if data_row.get(None) is None:
+                file_is_valid = False
+                error_msg.append(
+                    f"Row Number: {rownum}. This row has too many entries. Check file; verify that there are only as many fields as there are headers")
+                continue
             #validate lab_name
             if len(data_row['lab_name']) > 1024:
                 file_is_valid = False
@@ -1979,10 +1980,6 @@ def validate_donors(headers, records):
             if len(data_row['lab_name']) < 1:
                 file_is_valid = False
                 error_msg.append(f"Row Number: {rownum}. lab_name must have 1 or more characters")
-            # lab_name_pattern = re.match('^\w*$')
-            # if lab_name_pattern == None:
-            #     file_is_valid = False
-            #     error_msg.append(f"Row Number: {rownum}. lab_name must be an alphanumeric string")
 
             #validate selection_protocol
             protocol = data_row['selection_protocol']
