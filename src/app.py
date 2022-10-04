@@ -8,16 +8,14 @@ import json
 from uuid import UUID
 import yaml
 import csv
-import requests
 from hubmap_sdk import EntitySdk
 # Don't confuse urllib (Python native library) with urllib3 (3rd-party library, requests also uses urllib3)
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 import argparse
 from pathlib import Path
 from shutil import rmtree # Used by file removal
-from flask import Flask, g, jsonify, abort, request, session, redirect, json, Response
+from flask import Flask, g, jsonify, abort, request, json, Response
 from flask_cors import CORS
-from globus_sdk import AccessTokenAuthorizer, AuthClient, ConfidentialAppAuthClient
 
 # HuBMAP commons
 from hubmap_commons import neo4j_driver
@@ -38,9 +36,14 @@ from ingest_file_helper import IngestFileHelper
 from file_upload_helper import UploadFileHelper
 import app_manager
 from dataset import Dataset
-from dataset_helper_object import DatasetHelper
 from datacite_doi_helper_object import DataCiteDoiHelper
 
+from app_utils.request_validation import require_json, bad_request_error
+from app_utils.misc import __get_dict_prop
+from app_utils.entity import __get_entity
+
+from routes.auth import auth_blueprint
+from routes.datasets import datasets_blueprint
 
 # Set logging format and level (default is warning)
 # All the API logging is forwarded to the uWSGI server and gets written into the log file `uwsgi-ingest-api.log`
@@ -52,6 +55,9 @@ logger = logging.getLogger(__name__)
 # Specify the absolute path of the instance folder and use the config file relative to the instance path
 app = Flask(__name__, instance_path=os.path.join(os.path.abspath(os.path.dirname(__file__)), 'instance'), instance_relative_config=True)
 app.config.from_pyfile('app.cfg')
+
+app.register_blueprint(auth_blueprint)
+app.register_blueprint(datasets_blueprint)
 
 # Suppress InsecureRequestWarning warning when requesting status on https with ssl cert verify disabled
 requests.packages.urllib3.disable_warnings(category = InsecureRequestWarning)
@@ -166,7 +172,7 @@ data_curator_group_uuid = app.config['HUBMAP_DATA_CURATOR_GROUP_UUID']
 ## Default and Status Routes
 ####################################################################################################
 
-@app.route('/', methods = ['GET'])
+@app.route('/', methods=['GET'])
 def index():
     return "Hello! This is HuBMAP Ingest API service :)"
 
@@ -184,7 +190,7 @@ def index():
 #        "uuid_ws": 105,
 #        "version": "1.15.4"
 #     }
-@app.route('/status', methods = ['GET'])
+@app.route('/status', methods=['GET'])
 def status():
     response_code = 200
     response_data = {
@@ -246,112 +252,10 @@ def status():
     finally:
         return Response(json.dumps(response_data), response_code, mimetype='application/json')
 
-####################################################################################################
-## Endpoints for UI Login and Logout
-####################################################################################################
-
-# Redirect users from react app login page to Globus auth login widget then redirect back
-@app.route('/login')
-def login():
-    #redirect_uri = url_for('login', _external=True)
-    redirect_uri = app.config['FLASK_APP_BASE_URI'] + 'login'
-
-    confidential_app_auth_client = ConfidentialAppAuthClient(app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'])
-    confidential_app_auth_client.oauth2_start_flow(redirect_uri, refresh_tokens=True)
-
-    # If there's no "code" query string parameter, we're in this route
-    # starting a Globus Auth login flow.
-    # Redirect out to Globus Auth
-    if 'code' not in request.args:
-        auth_uri = confidential_app_auth_client.oauth2_get_authorize_url(additional_params={"scope": "openid profile email urn:globus:auth:scope:transfer.api.globus.org:all urn:globus:auth:scope:auth.globus.org:view_identities urn:globus:auth:scope:nexus.api.globus.org:groups urn:globus:auth:scope:groups.api.globus.org:all" })
-        return redirect(auth_uri)
-    # If we do have a "code" param, we're coming back from Globus Auth
-    # and can start the process of exchanging an auth code for a token.
-    else:
-        auth_code = request.args.get('code')
-
-        token_response = confidential_app_auth_client.oauth2_exchange_code_for_tokens(auth_code)
-
-        # Get all Bearer tokens
-        auth_token = token_response.by_resource_server['auth.globus.org']['access_token']
-        #nexus_token = token_response.by_resource_server['nexus.api.globus.org']['access_token']
-        transfer_token = token_response.by_resource_server['transfer.api.globus.org']['access_token']
-        groups_token = token_response.by_resource_server['groups.api.globus.org']['access_token']
-        # Also get the user info (sub, email, name, preferred_username) using the AuthClient with the auth token
-        user_info = get_user_info(auth_token)
-
-        info = {
-            'name': user_info['name'],
-            'email': user_info['email'],
-            'globus_id': user_info['sub'],
-            'auth_token': auth_token,
-            #'nexus_token': nexus_token,
-            'transfer_token': transfer_token,
-            'groups_token': groups_token
-        }
-
-        # Turns json dict into a str
-        json_str = json.dumps(info)
-        #print(json_str)
-
-        # Store the resulting tokens in server session
-        session.update(
-            tokens=token_response.by_resource_server
-        )
-
-        # Finally redirect back to the client
-        return redirect(app.config['GLOBUS_CLIENT_APP_URI'] + '?info=' + str(json_str))
-
-
-@app.route('/logout')
-def logout():
-    """
-    - Revoke the tokens with Globus Auth.
-    - Destroy the session state.
-    - Redirect the user to the Globus Auth logout page.
-    """
-    confidential_app_auth_client = ConfidentialAppAuthClient(app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'])
-
-    # Revoke the tokens with Globus Auth
-    if 'tokens' in session:
-        for token in (token_info['access_token']
-            for token_info in session['tokens'].values()):
-                confidential_app_auth_client.oauth2_revoke_token(token)
-
-    # Destroy the session state
-    session.clear()
-
-    # build the logout URI with query params
-    # there is no tool to help build this (yet!)
-    globus_logout_url = (
-        'https://auth.globus.org/v2/web/logout' +
-        '?client={}'.format(app.config['APP_CLIENT_ID']) +
-        '&redirect_uri={}'.format(app.config['GLOBUS_CLIENT_APP_URI']) +
-        '&redirect_name={}'.format(app.config['GLOBUS_CLIENT_APP_NAME']))
-
-    # Redirect the user to the Globus Auth logout page
-    return redirect(globus_logout_url)
-
-
-####################################################################################################
-## Register error handlers
-####################################################################################################
-
-# Error handler for 400 Bad Request with custom error message
-@app.errorhandler(400)
-def http_bad_request(e):
-    return jsonify(error=str(e)), 400
-
-# Error handler for 500 Internal Server Error with custom error message
-@app.errorhandler(500)
-def http_internal_server_error(e):
-    return jsonify(error=str(e)), 500
-
 
 ####################################################################################################
 ## Ingest API Endpoints
 ####################################################################################################
-
 
 """
 File upload handling for Donor and Sample
@@ -477,34 +381,6 @@ def remove_file():
 
     # Send back the updated files_info_list
     return jsonify(files_info_list)
-
-@app.route('/uploads/<ds_uuid>/file-system-abs-path', methods = ['GET'])
-@app.route('/datasets/<ds_uuid>/file-system-abs-path', methods = ['GET'])
-def get_file_system_absolute_path(ds_uuid):
-    try:
-        dset = __get_entity(ds_uuid, auth_header = request.headers.get("AUTHORIZATION"))
-        ent_type = __get_dict_prop(dset, 'entity_type')
-        group_uuid = __get_dict_prop(dset, 'group_uuid')
-        if ent_type is None or ent_type.strip() == '':
-            return Response(f"Entity with uuid:{ds_uuid} needs to be a Dataset or Upload.", 400)
-        ingest_helper = IngestFileHelper(app.config)
-        if ent_type.lower().strip() == 'upload':
-            path = ingest_helper.get_upload_directory_absolute_path(group_uuid = group_uuid, upload_uuid = ds_uuid)
-        else:
-            is_phi = __get_dict_prop(dset, 'contains_human_genetic_sequences')
-            if ent_type is None or not ent_type.lower().strip() == 'dataset':
-                return Response(f"Entity with uuid:{ds_uuid} is not a Dataset or Upload", 400)
-            if group_uuid is None:
-                return Response(f"Error: Unable to find group uuid on dataset {ds_uuid}", 400)
-            if is_phi is None:
-                return Response(f"Error: contains_human_genetic_sequences is not set on dataset {ds_uuid}", 400)
-            path = ingest_helper.get_dataset_directory_absolute_path(dset, group_uuid, ds_uuid)
-        return jsonify ({'path': path}), 200
-    except HTTPException as hte:
-        return Response(f"Error while getting file-system-abs-path for {ds_uuid}: " + hte.get_description(), hte.get_status_code())
-    except Exception as e:
-        logger.error(e, exc_info=True)
-        return Response(f"Unexpected error while retrieving entity {ds_uuid}: " + str(e), 500)
 
 
 """
@@ -2015,25 +1891,6 @@ def validate_donors(headers, records):
 ## Internal Functions
 ####################################################################################################
 
-"""
-Always expect a json body from user request
-
-request : Flask request object
-    The Flask request passed from the API endpoint
-"""
-def require_json(request):
-    if not request.is_json:
-        bad_request_error("A json body and appropriate Content-Type header are required")
-
-"""
-Throws error for 400 Bad Reqeust with message
-Parameters
-----------
-err_msg : str
-    The custom error message to return to end users
-"""
-def bad_request_error(err_msg):
-    abort(400, description = err_msg)
 
 """
 Throws error for 401 Unauthorized with message
@@ -2064,32 +1921,7 @@ err_msg : str
 """
 def internal_server_error(err_msg):
     abort(500, description = err_msg)
-    
 
-def get_user_info(token):
-    auth_client = AuthClient(authorizer=AccessTokenAuthorizer(token))
-    return auth_client.oauth2_userinfo()
-
-def __get_dict_prop(dic, prop_name):
-    if not prop_name in dic: return None
-    val = dic[prop_name]
-    if isinstance(val, str) and val.strip() == '': return None
-    return val
-
-def __get_entity(entity_uuid, auth_header = None):
-    if auth_header is None:
-        headers = None
-    else:
-        headers = {'Authorization': auth_header, 'Accept': 'application/json', 'Content-Type': 'application/json'}
-    get_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/' + entity_uuid
-
-    response = requests.get(get_url, headers = headers, verify = False)
-    if response.status_code != 200:
-        err_msg = f"Error while calling {get_url} status code:{response.status_code}  message:{response.text}"
-        logger.error(err_msg)
-        raise HTTPException(err_msg, response.status_code)
-
-    return response.json()
 
 # Determines if a dataset is Primary. If the list returned from the neo4j query is empty, the dataset is not primary
 def dataset_is_primary(dataset_uuid):
