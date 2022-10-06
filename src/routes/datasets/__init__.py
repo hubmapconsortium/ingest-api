@@ -140,9 +140,6 @@ def thread_extract_cell_count_from_secondary_analysis_files_for_sample_uuid(samp
                                                                             ds_files: dict,
                                                                             spatial_url: str):
     """Aggregate the cell type counts and send them back to Spatial-Api"""
-    # TODO: Does logger_lock also need to be used by ALL calls to logger and not just the ones in the thread?
-    with logger_lock:
-        logger.info(f'Thread {current_thread().name} started!')
     url = f"{spatial_url}/sample/extracted-cell-count-from-secondary-analysis-files"
     # Because this thread may take a long time we send a token that won't timeout...
     auth_helper_instance = AuthHelper.instance()
