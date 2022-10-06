@@ -41,6 +41,7 @@ from datacite_doi_helper_object import DataCiteDoiHelper
 from app_utils.request_validation import require_json, bad_request_error
 from app_utils.misc import __get_dict_prop
 from app_utils.entity import __get_entity
+from werkzeug import utils
 
 from routes.auth import auth_blueprint
 from routes.datasets import datasets_blueprint
@@ -1390,7 +1391,7 @@ def bulk_donors_upload_and_validate():
     # uses csv.DictReader to add functionality to tsv file. Can do operations on rows and headers.
     records = []
     headers = []
-    file.filename = werkzeug.utils.secure_filename(file.filename)
+    file.filename = utils.secure_filename(file.filename)
     file_location = commons_file_helper.ensureTrailingSlash(app.config['FILE_UPLOAD_TEMP_DIR']) + temp_id + os.sep + file.filename
     with open(file_location, newline='') as tsvfile:
         reader = csv.DictReader(tsvfile, delimiter='\t')
@@ -1522,7 +1523,7 @@ def bulk_samples_upload_and_validate():
     # uses csv.DictReader to add functionality to tsv file. Can do operations on rows and headers.
     records = []
     headers = []
-    file.filename = werkzeug.utils.secure_filename(file.filename)
+    file.filename = utils.secure_filename(file.filename)
     file_location = commons_file_helper.ensureTrailingSlash(
         app.config['FILE_UPLOAD_TEMP_DIR']) + temp_id + os.sep + file.filename
     with open(file_location, newline='') as tsvfile:
