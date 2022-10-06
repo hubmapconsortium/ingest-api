@@ -32,6 +32,8 @@ class ResponseException(Exception):
         return Response(self.message, self.status)
 
 
+# https://docs.python.org/3/library/queue.html
+# Constructor for a FIFO queue. The Queue class implements all the required locking semantics.
 thread_queue: queue = queue.Queue()
 
 
@@ -53,6 +55,7 @@ def thread_process_thread_queue(q) -> None:
     """
     logger.info('Starting thread_process_thread_queue Thread')
     while True:
+        logger.info(f'approximate thread_queue size: {q.qsize()}')
         # This will block until there is something in the Queue...
         thread = q.get()
         logger.info(f'THREAD START {thread.name}')
