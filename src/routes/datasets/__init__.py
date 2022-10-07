@@ -140,7 +140,7 @@ def thread_extract_cell_count_from_secondary_analysis_files_for_sample_uuid(samp
                                                                             ds_files: dict,
                                                                             spatial_url: str):
     """Aggregate the cell type counts and send them back to Spatial-Api"""
-    url = f"{spatial_url}/sample/extracted-cell-count-from-secondary-analysis-files"
+    url = f"{spatial_url}/sample/extracted-cell-type-counts-from-secondary-analysis-files"
     # Because this thread may take a long time we send a token that won't timeout...
     auth_helper_instance = AuthHelper.instance()
     headers: dict = {
