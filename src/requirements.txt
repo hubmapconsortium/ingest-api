@@ -7,6 +7,7 @@ jsonschema==3.2.0
 neo4j==4.4
 py2neo==2021.0.1
 selenium==3.141.0
+PyYAML==6.0
 
 # The commons package requires requests>=2.22.0
 requests==2.25.1
@@ -14,11 +15,11 @@ requests==2.25.1
 # Use the published package from PyPI as default
 # Use the branch name of commons from github for testing new changes made in commons from different branch
 # Default is main branch specified in docker-compose.development.yml if not set
-git+https://github.com/hubmapconsortium/commons.git@shirey/refactor-mult-apps#egg=hubmap-commons
-#hubmap-commons==2.0.15
+git+https://github.com/hubmapconsortium/commons.git@${COMMONS_BRANCH}#egg=hubmap-commons
+# hubmap-commons==2.0.15
 
 # For parsing the secondary analysis files...
-anndata >= 0.7.8
+anndata == 0.7.8
 
 # For unit test
 nose2==0.11.0

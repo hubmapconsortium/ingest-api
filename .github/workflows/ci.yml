@@ -14,6 +14,6 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r src/requirements.txt
+          export COMMONS_BRANCH=main; pip install -r src/requirements.txt
       - name: Run tests
         run: nose2 --verbose
