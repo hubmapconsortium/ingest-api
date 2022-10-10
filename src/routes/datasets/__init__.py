@@ -6,6 +6,7 @@ from typing import List
 from threading import Thread, current_thread, Lock
 from datetime import datetime
 import logging
+import queue
 from ingest_file_helper import IngestFileHelper
 from hubmap_commons.hm_auth import AuthHelper
 from hubmap_commons.exceptions import HTTPException
@@ -29,6 +30,47 @@ class ResponseException(Exception):
     def response(self) -> Response:
         logger.error(f'message: {self.message}; status: {self.status}')
         return Response(self.message, self.status)
+
+
+# https://docs.python.org/3/library/queue.html
+# Constructor for a FIFO queue. The Queue class implements all the required locking semantics.
+thread_queue: queue = queue.Queue()
+
+
+def queue_extract_cell_count_thread(sample_uuid: str, ds_files: str, spatial_url: str) -> None:
+    """Create an extract_cell_count Thread and put it in the queue to be picked up by the
+    thread_processing_thread_queue and run.
+    """
+    thread = Thread(target=thread_extract_cell_count_from_secondary_analysis_files_for_sample_uuid,
+                    args=[sample_uuid, ds_files, spatial_url],
+                    name=f'extract_cell_count_for_sample_uuid_{sample_uuid}')
+    thread_queue.put(thread)
+
+
+def thread_process_thread_queue(q) -> None:
+    """This is a thread that processes extract_cell_count Threads that have been queued.
+    It needs to be in a separate thread because queue.get() will block execution
+    until there is something in the queue, and so it will only block this thread and not the server.
+    It never 'finishes' but loops till it has something to process.
+    """
+    logger.info('Starting thread_process_thread_queue Thread')
+    while True:
+        logger.info(f'approximate thread_queue size: {q.qsize()}')
+        # This will block until there is something in the Queue...
+        thread = q.get()
+        logger.info(f'THREAD START {thread.name}')
+        start = datetime.now()
+        try:
+            thread.start()
+            # This will block until the thread has finished...
+            thread.join()
+        except Exception as e:
+            logger.error(f'An Exception {e} occurred while executing thread.')
+        logger.info(f'THREAD END {thread.name}; execution time [h:mm:ss.xxxxxx]: {datetime.now() - start}')
+
+
+Thread(target=thread_process_thread_queue, args=[thread_queue], name='Thread Processing Thread Queue').start()
+# we never join with this thread because it's task never ends....
 
 
 # https://stackoverflow.com/questions/48745240/python-logging-in-multi-threads
@@ -98,11 +140,7 @@ def thread_extract_cell_count_from_secondary_analysis_files_for_sample_uuid(samp
                                                                             ds_files: dict,
                                                                             spatial_url: str):
     """Aggregate the cell type counts and send them back to Spatial-Api"""
-    start = datetime.now()
-    # TODO: Does logger_lock also need to be used by ALL calls to logger and not just the ones in the thread?
-    with logger_lock:
-        logger.info(f'Thread {current_thread().name} started!')
-    url = f"{spatial_url}/sample/extracted-cell-count-from-secondary-analysis-files"
+    url = f"{spatial_url}/sample/extracted-cell-type-counts-from-secondary-analysis-files"
     # Because this thread may take a long time we send a token that won't timeout...
     auth_helper_instance = AuthHelper.instance()
     headers: dict = {
@@ -118,11 +156,9 @@ def thread_extract_cell_count_from_secondary_analysis_files_for_sample_uuid(samp
     # Send the data that it time-consuming to produce, spacial-api will finish up with this but respond back
     # to us that it is simply "working on it". There is no loop to close here. Status checked just to log it.
     resp: Response = requests.put(url, headers=headers, data=json.dumps(data))
-    with logger_lock:
-        if resp.status_code != 202:
+    if resp.status_code != 202:
+        with logger_lock:
             logger.error(f'Thread {current_thread().name} unexpected response ({resp.status_code}) for {url} while processing sample {sample_uuid}')
-        logger.info(f'Thread {current_thread().name} done; sample {sample_uuid};' +\
-                    f' execution time [h:mm:ss.xxxxxx]: {datetime.now()-start}!')
 
 
 @datasets_blueprint.route('/dataset/begin-extract-cell-count-from-secondary-analysis-files-async', methods=['POST'])
@@ -131,18 +167,11 @@ def begin_extract_cell_count_from_secondary_analysis_files_async():
     require_json(request)
     sample_uuid: str = ''
     try:
-        start = datetime.now()
         ingest_helper = IngestFileHelper(current_app.config)
         sample_uuid: str = request.json['sample_uuid']
         ds_files: dict = sample_ds_uuid_files(request.json['ds_uuids'], ingest_helper)
         spatial_url: str = current_app.config['SPATIAL_WEBSERVICE_URL'].rstrip('/')
-        thread = Thread(target=thread_extract_cell_count_from_secondary_analysis_files_for_sample_uuid,
-                        args=[sample_uuid, ds_files, spatial_url],
-                        name=f'extract_cell_count_for_sample_uuid_{sample_uuid}')
-        thread.start()
-        logger.info(
-            f"begin_extract_cell_count_from_secondary_analysis_files_async done; sample {sample_uuid};"
-            f" execution time [h:mm:ss.xxxxxx]: {datetime.now() - start}!")
+        queue_extract_cell_count_thread(sample_uuid, ds_files, spatial_url)
         return Response("Processing has been initiated", 202)
     except ResponseException as re:
         return re.response
