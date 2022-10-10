@@ -156,8 +156,10 @@ def thread_extract_cell_count_from_secondary_analysis_files_for_sample_uuid(samp
     # Send the data that it time-consuming to produce, spacial-api will finish up with this but respond back
     # to us that it is simply "working on it". There is no loop to close here. Status checked just to log it.
     resp: Response = requests.put(url, headers=headers, data=json.dumps(data))
-    if resp.status_code != 202:
-        with logger_lock:
+    with logger_lock:
+        if resp.status_code == 202:
+            logger.info(f'Thread {current_thread().name} received expected 202 status from {url} while processing sample {sample_uuid}')
+        else:
             logger.error(f'Thread {current_thread().name} unexpected response ({resp.status_code}) for {url} while processing sample {sample_uuid}')
 
 
