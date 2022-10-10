@@ -41,6 +41,7 @@ from datacite_doi_helper_object import DataCiteDoiHelper
 from app_utils.request_validation import require_json, bad_request_error
 from app_utils.misc import __get_dict_prop
 from app_utils.entity import __get_entity
+from werkzeug import utils
 
 from routes.auth import auth_blueprint
 from routes.datasets import datasets_blueprint
@@ -1390,6 +1391,7 @@ def bulk_donors_upload_and_validate():
     # uses csv.DictReader to add functionality to tsv file. Can do operations on rows and headers.
     records = []
     headers = []
+    file.filename = utils.secure_filename(file.filename)
     file_location = commons_file_helper.ensureTrailingSlash(app.config['FILE_UPLOAD_TEMP_DIR']) + temp_id + os.sep + file.filename
     with open(file_location, newline='') as tsvfile:
         reader = csv.DictReader(tsvfile, delimiter='\t')
@@ -1521,6 +1523,7 @@ def bulk_samples_upload_and_validate():
     # uses csv.DictReader to add functionality to tsv file. Can do operations on rows and headers.
     records = []
     headers = []
+    file.filename = utils.secure_filename(file.filename)
     file_location = commons_file_helper.ensureTrailingSlash(
         app.config['FILE_UPLOAD_TEMP_DIR']) + temp_id + os.sep + file.filename
     with open(file_location, newline='') as tsvfile:
@@ -1654,6 +1657,7 @@ def validate_samples(headers, records, header):
         if field not in headers:
             file_is_valid = False
             error_msg.append(f"{field} is a required field")
+    required_headers.append(None)
     for field in headers:
         if field not in required_headers:
             file_is_valid = False
@@ -1684,7 +1688,7 @@ def validate_samples(headers, records, header):
                 continue
 
             # validate that no headers are None. This indicates that there are fields present.
-            if data_row.get(None) is None:
+            if data_row.get(None) is not None:
                 file_is_valid = False
                 error_msg.append(f"Row Number: {rownum}. This row has too many entries. Check file; verify that there are only as many fields as there are headers")
                 continue
@@ -1825,6 +1829,7 @@ def validate_donors(headers, records):
         if field not in headers:
             file_is_valid = False
             error_msg.append(f"{field} is a required field")
+    required_headers.append(None)
     for field in headers:
         if field not in required_headers:
             file_is_valid = False
@@ -1844,7 +1849,7 @@ def validate_donors(headers, records):
                 continue
 
             # validate that no headers are None. This indicates that there are fields present.
-            if data_row.get(None) is None:
+            if data_row.get(None) is not None:
                 file_is_valid = False
                 error_msg.append(
                     f"Row Number: {rownum}. This row has too many entries. Check file; verify that there are only as many fields as there are headers")
