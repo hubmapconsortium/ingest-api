@@ -4,6 +4,8 @@ import os
 import json
 from typing import List
 from threading import Thread, current_thread, Lock
+import uwsgi
+import uwsgidecorators
 from datetime import datetime
 import logging
 import queue
@@ -37,27 +39,36 @@ class ResponseException(Exception):
 thread_queue: queue = queue.Queue()
 
 
+@uwsgidecorators.lock
 def queue_extract_cell_count_thread(sample_uuid: str, ds_files: str, spatial_url: str) -> None:
     """Create an extract_cell_count Thread and put it in the queue to be picked up by the
     thread_processing_thread_queue and run.
     """
+    global thread_queue
     thread = Thread(target=thread_extract_cell_count_from_secondary_analysis_files_for_sample_uuid,
                     args=[sample_uuid, ds_files, spatial_url],
                     name=f'extract_cell_count_for_sample_uuid_{sample_uuid}')
     thread_queue.put(thread)
+    logger.info(f'Queuing extract cell type count thread {thread.name} in worker {uwsgi.worker_id()}'
+                f' for sample_uuid {sample_uuid};'
+                f' approximate thread_queue size: {thread_queue.qsize()}')
 
 
-def thread_process_thread_queue(q) -> None:
+# https://uwsgi-docs.readthedocs.io/en/latest/PythonDecorators.html#uwsgidecorators.thread
+@uwsgidecorators.postfork
+@uwsgidecorators.thread
+def thread_process_thread_queue() -> None:
     """This is a thread that processes extract_cell_count Threads that have been queued.
     It needs to be in a separate thread because queue.get() will block execution
     until there is something in the queue, and so it will only block this thread and not the server.
-    It never 'finishes' but loops till it has something to process.
+    It will never 'finish' but loops till it has something to process.
     """
-    logger.info('Starting thread_process_thread_queue Thread')
+    global thread_queue
+    logger.info(f'Starting thread_process_thread_queue thread in worker {uwsgi.worker_id()}')
     while True:
-        logger.info(f'approximate thread_queue size: {q.qsize()}')
+        logger.info(f'Approximate thread_queue size {thread_queue.qsize()} in worker {uwsgi.worker_id()}')
         # This will block until there is something in the Queue...
-        thread = q.get()
+        thread = thread_queue.get()
         logger.info(f'THREAD START {thread.name}')
         start = datetime.now()
         try:
@@ -68,9 +79,7 @@ def thread_process_thread_queue(q) -> None:
             logger.error(f'An Exception {e} occurred while executing thread.')
         logger.info(f'THREAD END {thread.name}; execution time [h:mm:ss.xxxxxx]: {datetime.now() - start}')
 
-
-Thread(target=thread_process_thread_queue, args=[thread_queue], name='Thread Processing Thread Queue').start()
-# we never join with this thread because it's task never ends....
+#Thread(target=thread_process_thread_queue, args=[], name='Thread Processing Thread Queue').start()
 
 
 # https://stackoverflow.com/questions/48745240/python-logging-in-multi-threads
@@ -186,21 +195,21 @@ def begin_extract_cell_count_from_secondary_analysis_files_async():
 
 
 # This is the non-threaded version of the above which is DEPRECATED....
-@datasets_blueprint.route('/dataset/extract-cell-count-from-secondary-analysis-files', methods=['POST'])
-def extract_cell_count_from_secondary_analysis_files():
-    try:
-        require_json(request)
-        ingest_helper = IngestFileHelper(current_app.config)
-        ds_files: dict = sample_ds_uuid_files(request.json['ds_uuids'], ingest_helper)
-        return jsonify({'cell_type_counts': extract_cell_type_counts(ds_files)}), 200
-    except ResponseException as re:
-        return re.response
-    except HTTPException as hte:
-        return Response(f"Error while getting file-system-abs-path for dataset: " +
-                        hte.get_description(), hte.get_status_code())
-    except Exception as e:
-        logger.error(e, exc_info=True)
-        return Response(f"Unexpected error in extract_cell_count_from_secondary_analysis_files: " + str(e), 500)
+# @datasets_blueprint.route('/dataset/extract-cell-count-from-secondary-analysis-files', methods=['POST'])
+# def extract_cell_count_from_secondary_analysis_files():
+#     try:
+#         require_json(request)
+#         ingest_helper = IngestFileHelper(current_app.config)
+#         ds_files: dict = sample_ds_uuid_files(request.json['ds_uuids'], ingest_helper)
+#         return jsonify({'cell_type_counts': extract_cell_type_counts(ds_files)}), 200
+#     except ResponseException as re:
+#         return re.response
+#     except HTTPException as hte:
+#         return Response(f"Error while getting file-system-abs-path for dataset: " +
+#                         hte.get_description(), hte.get_status_code())
+#     except Exception as e:
+#         logger.error(e, exc_info=True)
+#         return Response(f"Unexpected error in extract_cell_count_from_secondary_analysis_files: " + str(e), 500)
 
 
 @datasets_blueprint.route('/uploads/<ds_uuid>/file-system-abs-path', methods=['GET'])
