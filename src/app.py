@@ -1619,8 +1619,8 @@ def validate_samples(headers, records, header):
 
             # validate sample_protocol
             protocol = data_row['sample_protocol']
-            selection_protocol_pattern1 = re.match('^https://dx\.doi\.org/[\d]+\.[\d]+/protocols\.io\.[\w]*', protocol)
-            selection_protocol_pattern2 = re.match('^[\d]+\.[\d]+/protocols\.io\.[\w]*', protocol)
+            selection_protocol_pattern1 = re.match('^https://dx\.doi\.org/[\d]+\.[\d]+/protocols\.io\.[\w]*$', protocol)
+            selection_protocol_pattern2 = re.match('^[\d]+\.[\d]+/protocols\.io\.[\w]*$', protocol)
             if selection_protocol_pattern2 is None and selection_protocol_pattern1 is None:
                 file_is_valid = False
                 error_msg.append(
@@ -1744,8 +1744,8 @@ def validate_donors(headers, records):
 
             #validate selection_protocol
             protocol = data_row['selection_protocol']
-            selection_protocol_pattern1 = re.match('^https://dx\.doi\.org/[\d]+\.[\d]+/protocols\.io\.[\w]*', protocol)
-            selection_protocol_pattern2 = re.match('^[\d]+\.[\d]+/protocols\.io\.[\w]*', protocol)
+            selection_protocol_pattern1 = re.match('^https://dx\.doi\.org/[\d]+\.[\d]+/protocols\.io\.[\w]*$', protocol)
+            selection_protocol_pattern2 = re.match('^[\d]+\.[\d]+/protocols\.io\.[\w]*$', protocol)
             if selection_protocol_pattern2 is None and selection_protocol_pattern1 is None:
                 file_is_valid = False
                 error_msg.append(f"Row Number: {rownum}. selection_protocol must either be of the format https://dx.doi.org/##.####/protocols.io.* or ##.####/protocols.io.*")
