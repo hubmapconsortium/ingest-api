@@ -51,6 +51,38 @@ services:
       - "./ingest-api/nginx/html:/usr/share/nginx/html"
       # Mount ssl certificates from host to container
       - "/etc/pki/nginx:/etc/pki/nginx"
+    depends_on:
+      - rq-worker
+    networks:
+      - hubmap
+
+  rq-dashboard:
+    image: jaredv/rq-docker:0.0.2
+    container_name: rq-dashboard
+    command: rq-dashboard -H rq-server
+    ports:
+      - 9181:9181
+    depends_on:
+      - rq-server
+    networks:
+      - hubmap
+
+  rq-worker:
+    image: jaredv/rq-docker:0.0.2
+    container_name: rq-worker
+    command: rq worker -u redis://rq-server:6379 high normal low
+    deploy:
+      replicas: 1
+    depends_on:
+      - rq-server
+    networks:
+      - hubmap
+
+  rq-server:
+    image: redis:alpine
+    container_name: rq-server
+    ports:
+      - 6379:6379
     networks:
       - hubmap
 

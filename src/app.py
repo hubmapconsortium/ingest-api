@@ -182,7 +182,7 @@ data_curator_group_uuid = app.config['HUBMAP_DATA_CURATOR_GROUP_UUID']
 try:
     redis_url = app.config['REDIS_URL']
     logger.info(f'Initializing TaskQueue class successfully :) REDIS_URL={redis_url}')
-    TaskQueue.create(redis_url)
+    TaskQueue.create(redis_url, 'Cell Type Count Processing')
 except Exception:
     logger.exception("Failed to Initializing class TaskQueue")
 
