@@ -63,7 +63,7 @@ services:
     ports:
       - 9181:9181
     depends_on:
-      - rq-server
+      - rq-worker
     networks:
       - hubmap
 
