@@ -41,6 +41,7 @@ from app_utils.request_validation import require_json
 from app_utils.error import unauthorized_error, not_found_error, internal_server_error, bad_request_error
 from app_utils.misc import __get_dict_prop
 from app_utils.entity import __get_entity
+from app_utils.task_queue import TaskQueue
 from werkzeug import utils
 
 from routes.auth import auth_blueprint
@@ -174,6 +175,16 @@ except Exception:
 # Admin group UUID
 data_admin_group_uuid = app.config['HUBMAP_DATA_ADMIN_GROUP_UUID']
 data_curator_group_uuid = app.config['HUBMAP_DATA_CURATOR_GROUP_UUID']
+
+####################################################################################################
+## Task Queue initialization
+####################################################################################################
+try:
+    redis_url = app.config['REDIS_URL']
+    logger.info(f'Initializing TaskQueue class successfully :) REDIS_URL={redis_url}')
+    TaskQueue.create(redis_url, 'Cell Type Count Processing')
+except Exception:
+    logger.exception("Failed to Initializing class TaskQueue")
 
 ####################################################################################################
 ## Default and Status Routes
