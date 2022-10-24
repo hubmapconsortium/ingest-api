@@ -73,6 +73,9 @@ ENTITY_WEBSERVICE_URL = 'http://hubmap-auth:3333'
 # URL to the spatial-api web service
 SPATIAL_WEBSERVICE_URL = 'http://localhost:5001'
 
+# URL to the Redis server used by the cell_count_type computation queuing mechanism.
+REDIS_URL = 'redis://rq-server:6379'
+
 # For UI login/logout
 # Flask app session key
 SECRET_KEY = 'a%@3k9Hdlkfjakjajf99adsf909oel'
