@@ -35,7 +35,7 @@ services:
     image: jaredv/rq-docker:0.0.2
     hostname: ingest-api-rq-dashboard
     container_name: ingest-api-rq-dashboard
-    command: rq-dashboard -H rq-server
+    command: rq-dashboard -H ingest-api-rq-server
     ports:
       - 9181:9181
     depends_on:
@@ -47,8 +47,8 @@ services:
     image: jaredv/rq-docker:0.0.2
     hostname: ingest-api-rq-worker
     container_name: ingest-api-rq-worker
-    # Use port 6479 instead of the default 6379
-    command: rq worker -u redis://ingest-api-rq-server:6479 high normal low
+    # Use port 6379 exposed on the container not host
+    command: rq worker -u redis://ingest-api-rq-server:6379 high normal low
     deploy:
       replicas: 1
     depends_on:
@@ -60,8 +60,5 @@ services:
     image: redis:alpine
     hostname: ingest-api-rq-server
     container_name: ingest-api-rq-server
-    ports:
-      # Use port 6479 instead of the default 6379
-      - 6479:6379
     networks:
       - hubmap
