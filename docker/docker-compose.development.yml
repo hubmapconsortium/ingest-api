@@ -27,41 +27,41 @@ services:
       # Mount Globus data
       - "/hive/hubmap-dev:/hive/hubmap-dev"
     depends_on:
-      - rq-worker
+      - ingest-api-rq-worker
     networks:
       - hubmap
 
-  rq-dashboard:
+  ingest-api-rq-dashboard:
     image: jaredv/rq-docker:0.0.2
-    container_name: rq-dashboard
+    hostname: ingest-api-rq-dashboard
+    container_name: ingest-api-rq-dashboard
     command: rq-dashboard -H rq-server
     ports:
       - 9181:9181
     depends_on:
-      - rq-worker
+      - ingest-api-rq-worker
     networks:
       - hubmap
 
-  rq-worker:
+  ingest-api-rq-worker:
     image: jaredv/rq-docker:0.0.2
-    container_name: rq-worker
+    hostname: ingest-api-rq-worker
+    container_name: ingest-api-rq-worker
     # Use port 6479 instead of the default 6379
-    command: rq worker -u redis://rq-server:6479 high normal low
+    command: rq worker -u redis://ingest-api-rq-server:6479 high normal low
     deploy:
       replicas: 1
     depends_on:
-      - rq-server
+      - ingest-api-rq-server
     networks:
       - hubmap
 
-  rq-server:
+  ingest-api-rq-server:
     image: redis:alpine
-    container_name: rq-server
+    hostname: ingest-api-rq-server
+    container_name: ingest-api-rq-server
     ports:
       # Use port 6479 instead of the default 6379
       - 6479:6379
     networks:
       - hubmap
-
-networks:
-  hubmap:

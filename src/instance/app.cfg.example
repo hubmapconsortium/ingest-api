@@ -75,7 +75,7 @@ SPATIAL_WEBSERVICE_URL = 'http://localhost:5001'
 
 # URL to the Redis server used by the cell_count_type computation queuing mechanism.
 # Use port 6479 instead of the default 6379
-REDIS_URL = 'redis://rq-server:6479'
+REDIS_URL = 'redis://ingest-api-rq-server:6479'
 
 # For UI login/logout
 # Flask app session key
