@@ -58,20 +58,16 @@ GLOBUS_GENOMIC_DATA_FILE_GROUP_NAME = 'hubseq'
 GLOBUS_CONSORTIUM_FILE_GROUP_NAME = 'hubmap'
 
 # URL for talking to UUID API (default value used for localhost docker environment)
-# Don't use http://localhost since uuid-api running on a different container
-# Point to remote https URL for DEV/TEST/STAGE/PROD deployment
-UUID_WEBSERVICE_URL = 'http://hubmap-auth:9999/hmuuid'
+UUID_WEBSERVICE_URL = 'https://uuid-api.dev.hubmapconsortium.org/hmuuid'
 
 # Must no trailing slash /
-# Default works with docker deployment on the same host machine
-SEARCH_WEBSERVICE_URL = 'http://hubmap-auth:6666'
+SEARCH_WEBSERVICE_URL = 'https://search-api.dev.hubmapconsortium.org/v3'
 
 # URL to the entity-api web service
-# Default works with docker deployment on the same host machine
-ENTITY_WEBSERVICE_URL = 'http://hubmap-auth:3333'
+ENTITY_WEBSERVICE_URL = 'https://entity-api.dev.hubmapconsortium.org'
 
 # URL to the spatial-api web service
-SPATIAL_WEBSERVICE_URL = 'http://localhost:5001'
+SPATIAL_WEBSERVICE_URL = 'https://spatial-api.dev.hubmapconsortium.org'
 
 # For UI login/logout
 # Flask app session key
