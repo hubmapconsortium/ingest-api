@@ -35,8 +35,10 @@ def begin_extract_cell_count_from_secondary_analysis_files_async():
         logger.info(f'Task: {job.id} enqueued at {job.enqueued_at} with args: {args}')
         return Response("Processing has been initiated", 202)
     except ResponseException as re:
+        logger.error(re, exc_info=True)
         return re.response
     except HTTPException as hte:
+        logger.error(hte, exc_info=True)
         return Response(f"Error while getting file-system-abs-path for sample_uuid {sample_uuid}: " +
                         hte.get_description(), hte.get_status_code())
     except Exception as e:
