@@ -1,4 +1,5 @@
 import time
+from flask import jsonify
 import sys
 import os
 import requests
@@ -55,11 +56,7 @@ def upload_validate(upload_uuid):
 @app.route('/api/hubmap/request_ingest', methods = ['POST'])
 def request_ingest():
     time.sleep(10)
-    f = open("Desktop/airflow_output.txt", "w")
-    f.write("Success1")
-    f.close()
-
-    return ("Good", 200)
+    return Response("Good", 200)
 
 def __apply_mock_run(mock_run_data, upload_path, upload_uuid, auth_headers, prev_status):
     try:
