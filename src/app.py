@@ -960,8 +960,8 @@ def submit_dataset(uuid):
                 """
                 data = json.loads(r.content.decode())
                 submission_data = data['response']
-                dataset_request[HubmapConst.DATASET_INGEST_ID_ATTRIBUTE] = submission_data['ingest_id']
-                dataset_request[HubmapConst.DATASET_RUN_ID] = submission_data['run_id']
+                dataset_request['ingest_id'] = submission_data['ingest_id']
+                dataset_request['run_id'] = submission_data['run_id']
             else:
                 error_message = 'Failed call to AirFlow HTTP Response: ' + str(r.status_code) + ' msg: ' + str(r.text)
                 logger.error(error_message)
