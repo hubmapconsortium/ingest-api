@@ -15,10 +15,10 @@ logger: logging.Logger = logging.getLogger(__name__)
 def get_upload_file_helper_instance() -> UploadFileHelper:
     try:
         if UploadFileHelper.is_initialized() is False:
+            logger.info("Creating UploadFileHelper class")
             return UploadFileHelper.create(current_app.config['FILE_UPLOAD_TEMP_DIR'],
                                            current_app.config['FILE_UPLOAD_DIR'],
                                            current_app.config['UUID_WEBSERVICE_URL'])
-            logger.info("Initialized UploadFileHelper class successfully :)")
         return UploadFileHelper.instance()
     except Exception as e:
         msg = "Failed to initialize the UploadFileHelper class"
