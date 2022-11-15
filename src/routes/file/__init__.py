@@ -12,6 +12,20 @@ file_blueprint = Blueprint('file', __name__)
 logger: logging.Logger = logging.getLogger(__name__)
 
 
+def get_upload_file_helper_instance() -> UploadFileHelper:
+    try:
+        if UploadFileHelper.is_initialized() is False:
+            return UploadFileHelper.create(current_app.config['FILE_UPLOAD_TEMP_DIR'],
+                                           current_app.config['FILE_UPLOAD_DIR'],
+                                           current_app.config['UUID_WEBSERVICE_URL'])
+            logger.info("Initialized UploadFileHelper class successfully :)")
+        return UploadFileHelper.instance()
+    except Exception as e:
+        msg = "Failed to initialize the UploadFileHelper class"
+        logger.exception(msg)
+        internal_server_error(msg)
+
+
 """
 File upload handling for Donor and Sample
 
@@ -32,7 +46,7 @@ def upload_file():
         bad_request_error('No selected file')
 
     try:
-        file_upload_helper_instance = UploadFileHelper.instance()
+        file_upload_helper_instance: UploadFileHelper = get_upload_file_helper_instance()
         temp_id = file_upload_helper_instance.save_temp_file(file)
         rspn_data = {
             "temp_file_id": temp_id
@@ -72,7 +86,7 @@ def commit_file():
     entity_uuid = json_data_dict['entity_uuid']
     user_token = json_data_dict['user_token']
 
-    file_upload_helper_instance = UploadFileHelper.instance()
+    file_upload_helper_instance: UploadFileHelper = get_upload_file_helper_instance()
     file_uuid_info = file_upload_helper_instance.commit_file(temp_file_id, entity_uuid, user_token)
     filename = file_uuid_info['filename']
     file_uuid = file_uuid_info['file_uuid']
@@ -121,7 +135,7 @@ def remove_file():
     file_uuids = json_data_dict['file_uuids']
     files_info_list = json_data_dict['files_info_list']
 
-    file_upload_helper_instance = UploadFileHelper.instance()
+    file_upload_helper_instance: UploadFileHelper = get_upload_file_helper_instance()
     # `upload_dir` is already normalized with trailing slash
     entity_upload_dir = file_upload_helper_instance.upload_dir + entity_uuid + os.sep
 
