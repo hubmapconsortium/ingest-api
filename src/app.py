@@ -942,15 +942,19 @@ def submit_dataset(uuid):
     except Exception as e:
         logger.error(e, exc_info=True)
         return Response("Unexpected error while creating a dataset: " + str(e) + "  Check the logs", 500)
-    dataset_request['status'] = 'Processing'
-    put_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/' + uuid
-    response = requests.put(put_url, json=dataset_request,
-                            headers={'Authorization': 'Bearer ' + token, 'X-Hubmap-Application': 'ingest-api'},
-                            verify=False)
-    if not response.status_code == 200:
-        error_msg = f"call to {put_url} failed with code:{response.status_code} message:" + response.text
-        logger.error(error_msg)
-        return Response(str(error_msg), 500)
+    try:
+        put_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/' + uuid
+        dataset_request['status'] = 'Processing'
+        response = requests.put(put_url, json=dataset_request,
+                                headers={'Authorization': 'Bearer ' + token, 'X-Hubmap-Application': 'ingest-api'},
+                                verify=False)
+        if not response.status_code == 200:
+            error_msg = f"call to {put_url} failed with code:{response.status_code} message:" + response.text
+            logger.error(error_msg)
+            return Response(error_msg, response.status_code)
+    except HTTPException as hte:
+        logger.error(hte)
+        return Response("Unexpected error while updating dataset: " + str(e) + "  Check the logs", 500)
     def call_airflow():
         try:
             r = requests.post(pipeline_url, json={"submission_id" : "{uuid}".format(uuid=uuid), "process" : app.config['INGEST_PIPELINE_DEFAULT_PROCESS'],"full_path": ingest_helper.get_dataset_directory_absolute_path(dataset_request, group_uuid, uuid),"provider": "{group_name}".format(group_name=AuthHelper.getGroupDisplayName(group_uuid))}, headers={'Content-Type':'application/json', 'Authorization': 'Bearer {token}'.format(token=AuthHelper.instance().getProcessSecret() )}, verify=False)
@@ -967,10 +971,12 @@ def submit_dataset(uuid):
                 logger.error(error_message)
                 dataset_request['status'] = 'Error'
                 dataset_request['pipeline_message'] = error_message
-                response = requests.put(put_url, json=dataset_request,
-                                        headers={'Authorization': 'Bearer ' + token,
-                                                 'X-Hubmap-Application': 'ingest-api'},
-                                        verify=False)
+            response = requests.put(put_url, json=dataset_request,
+                                    headers={'Authorization': 'Bearer ' + token, 'X-Hubmap-Application': 'ingest-api'},
+                                    verify=False)
+            if not response.status_code == 200:
+                error_msg = f"call to {put_url} failed with code:{response.status_code} message:" + response.text
+                logger.error(error_msg)
         except HTTPException as hte:
             logger.error(hte)
         except Exception as e:

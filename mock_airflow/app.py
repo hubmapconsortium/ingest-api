@@ -56,7 +56,13 @@ def upload_validate(upload_uuid):
 @app.route('/api/hubmap/request_ingest', methods = ['POST'])
 def request_ingest():
     time.sleep(10)
-    return Response("Good", 200)
+    data = {
+        "response": {
+            "ingest_id": "test_ingest_id",
+            "run_id": "test_run_id"
+        }
+    }
+    return jsonify(data), 200
 
 def __apply_mock_run(mock_run_data, upload_path, upload_uuid, auth_headers, prev_status):
     try:
