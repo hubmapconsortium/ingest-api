@@ -110,6 +110,8 @@ def extract_cell_count_from_secondary_analysis_files_for_sample_uuid(sample_uuid
         'cell_type_counts': extract_cell_type_counts(ds_files)
     }
     logger.info(f'URL: {url} DATA: {data}')
+    while True:
+        pass
     # Send the data that it time-consuming to produce, spacial-api will finish up with this but respond back
     # to us that it is simply "working on it". There is no loop to close here. Status checked just to log it.
     resp: Response = requests.put(url, headers=headers, data=json.dumps(data))
