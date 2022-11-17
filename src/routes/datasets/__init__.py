@@ -20,11 +20,15 @@ logger: logging.Logger = logging.getLogger(__name__)
 
 def report_extract_cell_count_task_failure(job, connection, type, value, traceback) -> None:
     job_dict: dict = job.to_dict()
-    if 'retries_left' in job_dict and job_dict['retries_left'] != 0:
-        return
     description: str = ''
     if 'description' in job_dict:
         description = f" Description: {job_dict['description']};"
+    retries_left = -1
+    if 'retries_left' in job_dict:
+        retries_left: int = job_dict['retries_left']
+    logger.info(f"*** report_extract_cell_count_task_failure for job{description}; Retries left: {retries_left}")
+    if retries_left > 0:
+        return
     logger.error(f"TASK FAILURE:{description} Created at: {job_dict['created_at']}; Exception: {traceback[1]}")
 
 
