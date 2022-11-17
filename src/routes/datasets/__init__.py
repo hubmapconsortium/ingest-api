@@ -9,7 +9,8 @@ from hubmap_commons.exceptions import HTTPException
 from app_utils.request_validation import require_json
 from app_utils.task_queue import TaskQueue
 
-from worker.utils import thread_extract_cell_count_from_secondary_analysis_files_for_sample_uuid, sample_ds_uuid_files, get_ds_path, ResponseException
+from worker.utils import extract_cell_count_from_secondary_analysis_files_for_sample_uuid,\
+    sample_ds_uuid_files, get_ds_path, ResponseException
 
 
 datasets_blueprint = Blueprint('datasets', __name__)
@@ -29,8 +30,11 @@ def begin_extract_cell_count_from_secondary_analysis_files_async():
         spatial_url: str = current_app.config['SPATIAL_WEBSERVICE_URL'].rstrip('/')
         task_queue = TaskQueue.instance().get_queue()
         args = (sample_uuid, ds_files, spatial_url,)
-        job = task_queue.enqueue(thread_extract_cell_count_from_secondary_analysis_files_for_sample_uuid,
+        # https://python-rq.org/docs/
+        job = task_queue.enqueue(extract_cell_count_from_secondary_analysis_files_for_sample_uuid,
+                                 description='Extract Cell Count from Secondary Analysis files for sample_uuid',
                                  args=args,
+                                 job_timeout='10m',
                                  retry=Retry(max=3))
         logger.info(f'Task: {job.id} enqueued at {job.enqueued_at} with args: {args}')
         return Response("Processing has been initiated", 202)
