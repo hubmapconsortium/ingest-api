@@ -22,9 +22,9 @@ def report_extract_cell_count_task_failure(job, connection, type, value, traceba
     job_dict: dict = job.to_dict()
     if 'retries_left' in job_dict and job_dict['retries_left'] != 0:
         return
-    description = ''
+    description: str = ''
     if 'description' in job_dict:
-        description = f' Task Description: {job_dict['description]};'
+        description = f" Description: {job_dict['description']};"
     logger.error(f"TASK FAILURE:{description} Created at: {job_dict['created_at']}; Exception: {traceback[1]}")
 
 
