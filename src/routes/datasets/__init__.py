@@ -18,6 +18,16 @@ datasets_blueprint = Blueprint('datasets', __name__)
 logger: logging.Logger = logging.getLogger(__name__)
 
 
+def report_extract_cell_count_task_failure(job, connection, type, value, traceback) -> None:
+    job_dict: dict = job.to_dict()
+    if 'retries_left' in job_dict and job_dict['retries_left'] != 0:
+        return
+    description = ''
+    if 'description' in job_dict:
+        description = f' Task Description: {job_dict['description]};'
+    logger.error(f"TASK FAILURE:{description} Created at: {job_dict['created_at']}; Exception: {traceback[1]}")
+
+
 @datasets_blueprint.route('/dataset/begin-extract-cell-count-from-secondary-analysis-files-async', methods=['POST'])
 def begin_extract_cell_count_from_secondary_analysis_files_async():
     """Spatial Api requests cell type counts for the sample which is returned asynchronously by the thread"""
@@ -34,7 +44,8 @@ def begin_extract_cell_count_from_secondary_analysis_files_async():
         job = task_queue.enqueue(extract_cell_count_from_secondary_analysis_files_for_sample_uuid,
                                  description='Extract Cell Count from Secondary Analysis files for sample_uuid',
                                  args=args,
-                                 job_timeout='10m',
+                                 job_timeout='1s',
+                                 on_failure=report_extract_cell_count_task_failure,
                                  retry=Retry(max=3))
         logger.info(f'Task: {job.id} enqueued at {job.enqueued_at} with args: {args}')
         return Response("Processing has been initiated", 202)
