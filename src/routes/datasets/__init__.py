@@ -26,10 +26,10 @@ def report_extract_cell_count_task_failure(job, connection, type, value, traceba
     retries_left = -1
     if 'retries_left' in job_dict:
         retries_left: int = job_dict['retries_left']
-    logger.info(f"*** report_extract_cell_count_task_failure for job{description}; Retries left: {retries_left}")
+    # logger.info(f"*** report_extract_cell_count_task_failure for job{description}; Retries left: {retries_left}")
     if retries_left > 0:
         return
-    logger.error(f"TASK FAILURE:{description} Created at: {job_dict['created_at']}; Exception: {traceback[1]}")
+    logger.error(f"TASK FAILURE:{description} Created at: {job_dict['created_at']}; Exception: {traceback}")
 
 
 @datasets_blueprint.route('/dataset/begin-extract-cell-count-from-secondary-analysis-files-async', methods=['POST'])
