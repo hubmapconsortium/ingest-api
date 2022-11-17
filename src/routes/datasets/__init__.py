@@ -29,7 +29,7 @@ def report_extract_cell_count_task_failure(job, connection, type, value, traceba
     # logger.info(f"*** report_extract_cell_count_task_failure for job{description}; Retries left: {retries_left}")
     if retries_left > 0:
         return
-    logger.error(f"TASK FAILURE:{description} Created at: {job_dict['created_at']}; Exception: {traceback}")
+    logger.error(f"TASK FAILURE:{description} Created: {job_dict['created_at']} has failed.")
 
 
 @datasets_blueprint.route('/dataset/begin-extract-cell-count-from-secondary-analysis-files-async', methods=['POST'])
@@ -48,9 +48,9 @@ def begin_extract_cell_count_from_secondary_analysis_files_async():
         job = task_queue.enqueue(extract_cell_count_from_secondary_analysis_files_for_sample_uuid,
                                  description='Extract Cell Count from Secondary Analysis files for sample_uuid',
                                  args=args,
-                                 job_timeout='1s',
+                                 job_timeout='10m',
                                  on_failure=report_extract_cell_count_task_failure,
-                                 retry=Retry(max=3))
+                                 retry=Retry(max=1))
         logger.info(f'Task: {job.id} enqueued at {job.enqueued_at} with args: {args}')
         return Response("Processing has been initiated", 202)
     except ResponseException as re:
