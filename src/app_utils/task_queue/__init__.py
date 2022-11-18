@@ -1,5 +1,5 @@
 import redis
-from rq import Queue, Worker, Connection
+from rq import Queue
 import logging
 
 logger: logging.Logger = logging.getLogger(__name__)
