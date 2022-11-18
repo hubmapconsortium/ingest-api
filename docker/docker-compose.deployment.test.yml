@@ -23,7 +23,7 @@ services:
       # Mount Globus data
       - "/hive/hubmap-test:/hive/hubmap-test"
 
-ingest-api-rq-dashboard:
+  ingest-api-rq-dashboard:
     image: jaredv/rq-docker:0.0.2
     hostname: ingest-api-rq-dashboard
     container_name: ingest-api-rq-dashboard
