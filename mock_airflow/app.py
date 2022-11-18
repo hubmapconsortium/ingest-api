@@ -1,3 +1,5 @@
+import time
+from flask import jsonify
 import sys
 import os
 import requests
@@ -9,7 +11,7 @@ from ingest_file_helper import IngestFileHelper
 from flask import Flask, request, json, Response
 from hubmap_commons import file_helper as commons_file_helper
 ip = os.path.dirname(__file__)
-app = Flask(__name__, instance_path=os.path.dirname(__file__), instance_relative_config=True)
+app = Flask(__name__, instance_path=os.path.join(os.path.abspath(os.path.dirname(__file__))), instance_relative_config=True)
 #use the ingest-api config
 app.config.from_pyfile('../src/instance/app.cfg')
 
@@ -50,6 +52,17 @@ def upload_validate(upload_uuid):
     x.start()
     
     return Response("Accepted", 202)
+
+@app.route('/api/hubmap/request_ingest', methods = ['POST'])
+def request_ingest():
+    time.sleep(10)
+    data = {
+        "response": {
+            "ingest_id": "test_ingest_id",
+            "run_id": "test_run_id"
+        }
+    }
+    return jsonify(data), 200
 
 def __apply_mock_run(mock_run_data, upload_path, upload_uuid, auth_headers, prev_status):
     try:

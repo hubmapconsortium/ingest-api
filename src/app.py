@@ -8,7 +8,10 @@ import json
 from uuid import UUID
 import yaml
 import csv
+import time
+from threading import Thread
 from hubmap_sdk import EntitySdk
+from queue import Queue
 # Don't confuse urllib (Python native library) with urllib3 (3rd-party library, requests also uses urllib3)
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 import argparse
@@ -827,37 +830,51 @@ def submit_dataset(uuid):
 
         # TODO: Temp fix till we can get this in the "Validation Pipeline"... add the validation code here... If it returns any errors fail out of this. Return 412 Precondition Failed with the errors in the description.
         pipeline_url = commons_file_helper.ensureTrailingSlashURL(app.config['INGEST_PIPELINE_URL']) + 'request_ingest'
-        r = requests.post(pipeline_url, json={"submission_id" : "{uuid}".format(uuid=uuid),
-                                     "process" : app.config['INGEST_PIPELINE_DEFAULT_PROCESS'],
-                                              "full_path": ingest_helper.get_dataset_directory_absolute_path(dataset_request, group_uuid, uuid),
-                                     "provider": "{group_name}".format(group_name=AuthHelper.getGroupDisplayName(group_uuid))}, 
-                                          headers={'Content-Type':'application/json', 'Authorization': 'Bearer {token}'.format(token=AuthHelper.instance().getProcessSecret() )}, verify=False)
-        if r.ok == True:
-            """expect data like this:
-            {"ingest_id": "abc123", "run_id": "run_657-xyz", "overall_file_count": "99", "top_folder_contents": "["IMS", "processed_microscopy","raw_microscopy","VAN0001-RK-1-spatial_meta.txt"]"}
-            """
-            data = json.loads(r.content.decode())
-            submission_data = data['response']
-            dataset_request[HubmapConst.DATASET_INGEST_ID_ATTRIBUTE] = submission_data['ingest_id']
-            dataset_request[HubmapConst.DATASET_RUN_ID] = submission_data['run_id']
-        else:
-            logger.error('Failed call to AirFlow HTTP Response: ' + str(r.status_code) + ' msg: ' + str(r.text)) 
-            return Response("Ingest pipeline failed: " + str(r.text), r.status_code)
-        
-        dataset_request['status'] = 'Processing'
-        put_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/' + uuid
-        response = requests.put(put_url, json = dataset_request, headers = {'Authorization': 'Bearer ' + token, 'X-Hubmap-Application':'ingest-api' }, verify = False)
-        if not response.status_code == 200:
-            logger.error(f"call to {put_url} failed with code:{response.status_code} message:" + response.text)
-            return Response(response.text, response.status_code)
-        updated_dataset = response.json()
-        return jsonify(updated_dataset)
-    except HTTPException as hte:
-        return Response(hte.get_description(), hte.get_status_code())
     except Exception as e:
         logger.error(e, exc_info=True)
-        return Response("Unexpected error while creating a dataset: " + str(e) + "  Check the logs", 500)        
- 
+        return Response("Unexpected error while creating a dataset: " + str(e) + "  Check the logs", 500)
+    try:
+        put_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/' + uuid
+        dataset_request['status'] = 'Processing'
+        response = requests.put(put_url, json=dataset_request,
+                                headers={'Authorization': 'Bearer ' + token, 'X-Hubmap-Application': 'ingest-api'},
+                                verify=False)
+        if not response.status_code == 200:
+            error_msg = f"call to {put_url} failed with code:{response.status_code} message:" + response.text
+            logger.error(error_msg)
+            return Response(error_msg, response.status_code)
+    except HTTPException as hte:
+        logger.error(hte)
+        return Response("Unexpected error while updating dataset: " + str(e) + "  Check the logs", 500)
+    def call_airflow():
+        try:
+            r = requests.post(pipeline_url, json={"submission_id" : "{uuid}".format(uuid=uuid), "process" : app.config['INGEST_PIPELINE_DEFAULT_PROCESS'],"full_path": ingest_helper.get_dataset_directory_absolute_path(dataset_request, group_uuid, uuid),"provider": "{group_name}".format(group_name=AuthHelper.getGroupDisplayName(group_uuid))}, headers={'Content-Type':'application/json', 'Authorization': 'Bearer {token}'.format(token=AuthHelper.instance().getProcessSecret() )}, verify=False)
+            if r.ok == True:
+                """expect data like this:
+                {"ingest_id": "abc123", "run_id": "run_657-xyz", "overall_file_count": "99", "top_folder_contents": "["IMS", "processed_microscopy","raw_microscopy","VAN0001-RK-1-spatial_meta.txt"]"}
+                """
+                data = json.loads(r.content.decode())
+                submission_data = data['response']
+                dataset_request['ingest_id'] = submission_data['ingest_id']
+                dataset_request['run_id'] = submission_data['run_id']
+            else:
+                error_message = 'Failed call to AirFlow HTTP Response: ' + str(r.status_code) + ' msg: ' + str(r.text)
+                logger.error(error_message)
+                dataset_request['status'] = 'Error'
+                dataset_request['pipeline_message'] = error_message
+            response = requests.put(put_url, json=dataset_request,
+                                    headers={'Authorization': 'Bearer ' + token, 'X-Hubmap-Application': 'ingest-api'},
+                                    verify=False)
+            if not response.status_code == 200:
+                error_msg = f"call to {put_url} failed with code:{response.status_code} message:" + response.text
+                logger.error(error_msg)
+        except HTTPException as hte:
+            logger.error(hte)
+        except Exception as e:
+            logger.error(e, exc_info=True)
+    thread = Thread(target=call_airflow)
+    thread.start()
+    return Response("Request of Dataset Submisssion Accepted", 202)
 
 ####################################################################################################
 ## Uploads API Endpoints
