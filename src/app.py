@@ -8,16 +8,16 @@ import json
 from uuid import UUID
 import yaml
 import csv
-import requests
+import time
+from threading import Thread
 from hubmap_sdk import EntitySdk
+from queue import Queue
 # Don't confuse urllib (Python native library) with urllib3 (3rd-party library, requests also uses urllib3)
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 import argparse
 from pathlib import Path
-from shutil import rmtree # Used by file removal
-from flask import Flask, g, jsonify, abort, request, session, redirect, json, Response
+from flask import Flask, g, jsonify, abort, request, json, Response
 from flask_cors import CORS
-from globus_sdk import AccessTokenAuthorizer, AuthClient, ConfidentialAppAuthClient
 
 # HuBMAP commons
 from hubmap_commons import neo4j_driver
@@ -37,25 +37,41 @@ from specimen import Specimen
 from ingest_file_helper import IngestFileHelper
 from file_upload_helper import UploadFileHelper
 import app_manager
-from api.entity_api import EntityApi
 from dataset import Dataset
-from dataset_helper_object import DatasetHelper
 from datacite_doi_helper_object import DataCiteDoiHelper
 
+from app_utils.request_validation import require_json
+from app_utils.error import unauthorized_error, not_found_error, internal_server_error, bad_request_error
+from app_utils.misc import __get_dict_prop
+from app_utils.entity import __get_entity
+from app_utils.task_queue import TaskQueue
+from werkzeug import utils
+
+from routes.auth import auth_blueprint
+from routes.datasets import datasets_blueprint
+from routes.file import file_blueprint
 
 # Set logging format and level (default is warning)
 # All the API logging is forwarded to the uWSGI server and gets written into the log file `uwsgi-ingest-api.log`
 # Log rotation is handled via logrotate on the host system with a configuration file
 # Do NOT handle log file and rotation via the Python logging to avoid issues with multi-worker processes
-logging.basicConfig(format='[%(asctime)s] %(levelname)s in %(module)s: %(message)s', level=logging.DEBUG, datefmt='%Y-%m-%d %H:%M:%S')
+logging.basicConfig(format='[%(asctime)s] %(levelname)s in %(module)s: %(message)s',
+                    level=logging.DEBUG,
+                    datefmt='%Y-%m-%d %H:%M:%S')
 logger = logging.getLogger(__name__)
 
 # Specify the absolute path of the instance folder and use the config file relative to the instance path
-app = Flask(__name__, instance_path=os.path.join(os.path.abspath(os.path.dirname(__file__)), 'instance'), instance_relative_config=True)
+app = Flask(__name__,
+            instance_path=os.path.join(os.path.abspath(os.path.dirname(__file__)), 'instance'),
+            instance_relative_config=True)
 app.config.from_pyfile('app.cfg')
 
+app.register_blueprint(auth_blueprint)
+app.register_blueprint(datasets_blueprint)
+app.register_blueprint(file_blueprint)
+
 # Suppress InsecureRequestWarning warning when requesting status on https with ssl cert verify disabled
-requests.packages.urllib3.disable_warnings(category = InsecureRequestWarning)
+requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
 
 # Enable/disable CORS from configuration based on docker or non-docker deployment
 if app.config['ENABLE_CORS']:
@@ -93,7 +109,7 @@ def http_internal_server_error(e):
 # Initialize AuthHelper class and ensure singleton
 try:
     if AuthHelper.isInitialized() == False:
-        auth_helper_instance = AuthHelper.create(app.config['APP_CLIENT_ID'], 
+        auth_helper_instance = AuthHelper.create(app.config['APP_CLIENT_ID'],
                                                  app.config['APP_CLIENT_SECRET'])
 
         logger.info("Initialized AuthHelper class successfully :)")
@@ -113,8 +129,8 @@ except Exception:
 # This neo4j_driver_instance will be used for application-specific neo4j queries
 # as well as being passed to the schema_manager
 try:
-    neo4j_driver_instance = neo4j_driver.instance(app.config['NEO4J_SERVER'], 
-                                                  app.config['NEO4J_USERNAME'], 
+    neo4j_driver_instance = neo4j_driver.instance(app.config['NEO4J_SERVER'],
+                                                  app.config['NEO4J_USERNAME'],
                                                   app.config['NEO4J_PASSWORD'])
 
     logger.info("Initialized neo4j_driver module successfully :)")
@@ -143,7 +159,7 @@ def close_neo4j_driver(error):
 try:
     # Initialize the UploadFileHelper class and ensure singleton
     if UploadFileHelper.is_initialized() == False:
-        file_upload_helper_instance = UploadFileHelper.create(app.config['FILE_UPLOAD_TEMP_DIR'], 
+        file_upload_helper_instance = UploadFileHelper.create(app.config['FILE_UPLOAD_TEMP_DIR'],
                                                               app.config['FILE_UPLOAD_DIR'],
                                                               app.config['UUID_WEBSERVICE_URL'])
 
@@ -164,10 +180,20 @@ data_admin_group_uuid = app.config['HUBMAP_DATA_ADMIN_GROUP_UUID']
 data_curator_group_uuid = app.config['HUBMAP_DATA_CURATOR_GROUP_UUID']
 
 ####################################################################################################
+## Task Queue initialization
+####################################################################################################
+try:
+    redis_url = app.config['REDIS_URL']
+    logger.info(f'Initializing TaskQueue class successfully :) REDIS_URL={redis_url}')
+    TaskQueue.create(redis_url, 'Cell Type Count Processing')
+except Exception:
+    logger.exception("Failed to Initializing class TaskQueue")
+
+####################################################################################################
 ## Default and Status Routes
 ####################################################################################################
 
-@app.route('/', methods = ['GET'])
+@app.route('/', methods=['GET'])
 def index():
     return "Hello! This is HuBMAP Ingest API service :)"
 
@@ -185,7 +211,7 @@ def index():
 #        "uuid_ws": 105,
 #        "version": "1.15.4"
 #     }
-@app.route('/status', methods = ['GET'])
+@app.route('/status', methods=['GET'])
 def status():
     response_code = 200
     response_data = {
@@ -193,12 +219,12 @@ def status():
         'version': (Path(__file__).absolute().parent.parent / 'VERSION').read_text().strip(),
         'build': (Path(__file__).absolute().parent.parent / 'BUILD').read_text().strip(),
     }
-    
+
     try:
         #if ?check-ws-dependencies=true is present in the url request params
         #set a flag to check these other web services
         check_ws_calls = string_helper.isYes(request.args.get('check-ws-dependencies'))
-        
+
         #check the neo4j connection
         try:
             with neo4j_driver_instance.session() as session:
@@ -216,13 +242,13 @@ def status():
             response_code = 500
             response_data['neo4j_error'] = str(e)
             is_connected = False
-            
+
         if is_connected:
             response_data['neo4j_connection'] = True
         else:
             response_code = 500
             response_data['neo4j_connection'] = False
-        
+
         #if the flag was set to check ws dependencies do it now
         #for each dependency try to connect via helper which calls the
         #service's /status method
@@ -239,274 +265,18 @@ def status():
             response_data['uuid_ws'] = uuid_ws_check
             response_data['entity_ws'] = entity_ws_check
             response_data['search_ws_check'] = search_ws_check
-    
+
     #catch any unhandled exceptions
     except Exception as e:
         response_code = 500
         response_data['exception_message'] = str(e)
     finally:
         return Response(json.dumps(response_data), response_code, mimetype='application/json')
-    
-####################################################################################################
-## Endpoints for UI Login and Logout
-####################################################################################################
-
-# Redirect users from react app login page to Globus auth login widget then redirect back
-@app.route('/login')
-def login():
-    #redirect_uri = url_for('login', _external=True)
-    redirect_uri = app.config['FLASK_APP_BASE_URI'] + 'login'
-
-    confidential_app_auth_client = ConfidentialAppAuthClient(app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'])
-    confidential_app_auth_client.oauth2_start_flow(redirect_uri, refresh_tokens=True)
-
-    # If there's no "code" query string parameter, we're in this route
-    # starting a Globus Auth login flow.
-    # Redirect out to Globus Auth
-    if 'code' not in request.args:                                        
-        auth_uri = confidential_app_auth_client.oauth2_get_authorize_url(additional_params={"scope": "openid profile email urn:globus:auth:scope:transfer.api.globus.org:all urn:globus:auth:scope:auth.globus.org:view_identities urn:globus:auth:scope:nexus.api.globus.org:groups urn:globus:auth:scope:groups.api.globus.org:all" })
-        return redirect(auth_uri)
-    # If we do have a "code" param, we're coming back from Globus Auth
-    # and can start the process of exchanging an auth code for a token.
-    else:
-        auth_code = request.args.get('code')
-
-        token_response = confidential_app_auth_client.oauth2_exchange_code_for_tokens(auth_code)
-        
-        # Get all Bearer tokens
-        auth_token = token_response.by_resource_server['auth.globus.org']['access_token']
-        #nexus_token = token_response.by_resource_server['nexus.api.globus.org']['access_token']
-        transfer_token = token_response.by_resource_server['transfer.api.globus.org']['access_token']
-        groups_token = token_response.by_resource_server['groups.api.globus.org']['access_token']
-        # Also get the user info (sub, email, name, preferred_username) using the AuthClient with the auth token
-        user_info = get_user_info(auth_token)
-        
-        info = {
-            'name': user_info['name'],
-            'email': user_info['email'],
-            'globus_id': user_info['sub'],
-            'auth_token': auth_token,
-            #'nexus_token': nexus_token,
-            'transfer_token': transfer_token,
-            'groups_token': groups_token
-        }
-
-        # Turns json dict into a str
-        json_str = json.dumps(info)
-        #print(json_str)
-        
-        # Store the resulting tokens in server session
-        session.update(
-            tokens=token_response.by_resource_server
-        )
-      
-        # Finally redirect back to the client
-        return redirect(app.config['GLOBUS_CLIENT_APP_URI'] + '?info=' + str(json_str))
-
-   
-@app.route('/logout')
-def logout():
-    """
-    - Revoke the tokens with Globus Auth.
-    - Destroy the session state.
-    - Redirect the user to the Globus Auth logout page.
-    """
-    confidential_app_auth_client = ConfidentialAppAuthClient(app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'])
-
-    # Revoke the tokens with Globus Auth
-    if 'tokens' in session:    
-        for token in (token_info['access_token']
-            for token_info in session['tokens'].values()):
-                confidential_app_auth_client.oauth2_revoke_token(token)
-
-    # Destroy the session state
-    session.clear()
-
-    # build the logout URI with query params
-    # there is no tool to help build this (yet!)
-    globus_logout_url = (
-        'https://auth.globus.org/v2/web/logout' +
-        '?client={}'.format(app.config['APP_CLIENT_ID']) +
-        '&redirect_uri={}'.format(app.config['GLOBUS_CLIENT_APP_URI']) +
-        '&redirect_name={}'.format(app.config['GLOBUS_CLIENT_APP_NAME']))
-
-    # Redirect the user to the Globus Auth logout page
-    return redirect(globus_logout_url)
-
-
-####################################################################################################
-## Register error handlers
-####################################################################################################
-
-# Error handler for 400 Bad Request with custom error message
-@app.errorhandler(400)
-def http_bad_request(e):
-    return jsonify(error=str(e)), 400
-
-# Error handler for 500 Internal Server Error with custom error message
-@app.errorhandler(500)
-def http_internal_server_error(e):
-    return jsonify(error=str(e)), 500
 
 
 ####################################################################################################
 ## Ingest API Endpoints
 ####################################################################################################
-
-
-"""
-File upload handling for Donor and Sample
-
-Returns
--------
-json
-    A JSON containing the temp file id
-"""
-@app.route('/file-upload', methods=['POST'])
-def upload_file():
-    # Check if the post request has the file part
-    if 'file' not in request.files:
-        bad_request_error('No file part')
-
-    file = request.files['file']
-
-    if file.filename == '':
-        bad_request_error('No selected file')
-
-    try:
-        temp_id = file_upload_helper_instance.save_temp_file(file)
-        rspn_data = {
-            "temp_file_id": temp_id
-        }
-
-        return jsonify(rspn_data), 201
-    except Exception as e:
-        # Log the full stack trace, prepend a line with our message
-        msg = "Failed to upload files"
-        logger.exception(msg)
-        internal_server_error(msg)
-
-"""
-File commit triggered by entity-api trigger method for Donor/Sample/Dataset
-
-Donor: image files
-Sample: image files and metadata files
-Dataset: only the one thumbnail file
-
-This call also creates the symbolic from the file uuid dir under uploads
-to the assets dir so the uploaded files can be exposed via gateway's file assets service
-
-Returns
--------
-json
-    A JSON containing the file uuid info
-"""
-@app.route('/file-commit', methods=['POST'])
-def commit_file():
-    # Always expect a json body
-    require_json(request)
-
-    # Parse incoming json string into json data(python dict object)
-    json_data_dict = request.get_json()
-
-    temp_file_id = json_data_dict['temp_file_id']
-    entity_uuid = json_data_dict['entity_uuid']
-    user_token = json_data_dict['user_token']
-
-    file_uuid_info = file_upload_helper_instance.commit_file(temp_file_id, entity_uuid, user_token)
-    filename = file_uuid_info['filename']
-    file_uuid = file_uuid_info['file_uuid']
-
-    # Link the uploaded file uuid dir to assets
-    # /hive/hubmap/hm_uploads/<entity_uuid>/<file_uuid>/<filename> (for PROD)
-    source_file_path = os.path.join(str(app.config['FILE_UPLOAD_DIR']), entity_uuid, file_uuid, filename)
-    # /hive/hubmap/assets/<file_uuid>/<filename> (for PROD)
-    target_file_dir = os.path.join(str(app.config['HUBMAP_WEBSERVICE_FILEPATH']), file_uuid)
-    target_file_path = os.path.join(target_file_dir, filename)
-
-    # Create the file_uuid directory under assets dir
-    # and a symbolic link to the uploaded file
-    try:
-        Path(target_file_dir).mkdir(parents=True, exist_ok=True)
-        os.symlink(source_file_path, target_file_path)
-    except Exception as e:
-        logger.exception(f"Failed to create the symbolic link from {source_file_path} to {target_file_path}")
-
-    # Send back the updated file_uuid_info
-    return jsonify(file_uuid_info)
-
-"""
-File removal triggered by entity-api trigger method for Donor/Sample/Dataset
-during entity update
-
-Donor: image files
-Sample: image files and metadata files
-Dataset: only the one thumbnail file
-
-Returns
--------
-json
-    A JSON list containing the updated files info
-    It's an empty list for Dataset since there's only one thumbnail file
-"""
-@app.route('/file-remove', methods=['POST'])
-def remove_file():
-    # Always expect a json body
-    require_json(request)
-
-    # Parse incoming json string into json data(python dict object)
-    json_data_dict = request.get_json()
-
-    entity_uuid = json_data_dict['entity_uuid']
-    file_uuids = json_data_dict['file_uuids']
-    files_info_list = json_data_dict['files_info_list']
-
-    # `upload_dir` is already normalized with trailing slash
-    entity_upload_dir = file_upload_helper_instance.upload_dir + entity_uuid + os.sep
-
-    # Remove the physical files from the file system
-    for file_uuid in file_uuids:
-        # Get back the updated files_info_list
-        files_info_list = file_upload_helper_instance.remove_file(entity_upload_dir, file_uuid, files_info_list)
-    
-        # Also remove the dir contains the symlink to the uploaded file under assets
-        # /hive/hubmap/assets/<file_uuid> (for PROD)
-        assets_file_dir = os.path.join(str(app.config['HUBMAP_WEBSERVICE_FILEPATH']), file_uuid)
-        # Delete an entire directory tree
-        # path must point to a directory (but not a symbolic link to a directory)
-        rmtree(assets_file_dir)
-
-    # Send back the updated files_info_list
-    return jsonify(files_info_list)
-
-@app.route('/uploads/<ds_uuid>/file-system-abs-path', methods = ['GET'])
-@app.route('/datasets/<ds_uuid>/file-system-abs-path', methods = ['GET'])
-def get_file_system_absolute_path(ds_uuid):
-    try:
-        dset = __get_entity(ds_uuid, auth_header = request.headers.get("AUTHORIZATION"))
-        ent_type = __get_dict_prop(dset, 'entity_type')
-        group_uuid = __get_dict_prop(dset, 'group_uuid')
-        if ent_type is None or ent_type.strip() == '':
-            return Response(f"Entity with uuid:{ds_uuid} needs to be a Dataset or Upload.", 400)
-        ingest_helper = IngestFileHelper(app.config)
-        if ent_type.lower().strip() == 'upload':
-            path = ingest_helper.get_upload_directory_absolute_path(group_uuid = group_uuid, upload_uuid = ds_uuid)
-        else:
-            is_phi = __get_dict_prop(dset, 'contains_human_genetic_sequences')
-            if ent_type is None or not ent_type.lower().strip() == 'dataset':
-                return Response(f"Entity with uuid:{ds_uuid} is not a Dataset or Upload", 400)
-            if group_uuid is None:
-                return Response(f"Error: Unable to find group uuid on dataset {ds_uuid}", 400)
-            if is_phi is None:
-                return Response(f"Error: contains_human_genetic_sequences is not set on dataset {ds_uuid}", 400)
-            path = ingest_helper.get_dataset_directory_absolute_path(dset, group_uuid, ds_uuid)
-        return jsonify ({'path': path}), 200    
-    except HTTPException as hte:
-        return Response(f"Error while getting file-system-abs-path for {ds_uuid}: " + hte.get_description(), hte.get_status_code())
-    except Exception as e:
-        logger.error(e, exc_info=True)
-        return Response(f"Unexpected error while retrieving entity {ds_uuid}: " + str(e), 500)
-
 
 """
 Retrieve the path of Datasets or Uploads relative to the Globus endpoint mount point give from a list of entity uuids
@@ -603,16 +373,16 @@ def get_file_system_relative_path():
         return jsonify(error_id_list), status_code
     return jsonify(out_list), 200
 #passthrough method to call mirror method on entity-api
-#this is need by ingest-pipeline that can only call 
+#this is need by ingest-pipeline that can only call
 #methods via http (running on the same machine for security reasons)
-#and ingest-api will for the foreseeable future run on the same 
+#and ingest-api will for the foreseeable future run on the same
 #machine
 @app.route('/entities/<entity_uuid>', methods = ['GET'])
 #@secured(groups="HuBMAP-read")
 def get_entity(entity_uuid):
     try:
         entity = __get_entity(entity_uuid, auth_header = request.headers.get("AUTHORIZATION"))
-        return jsonify (entity), 200    
+        return jsonify (entity), 200
     except HTTPException as hte:
         return Response(hte.get_description(), hte.get_status_code())
     except Exception as e:
@@ -656,7 +426,7 @@ def create_derived_dataset():
         internal_server_error("Unable to parse globus token from request header")
 
     require_json(request)
-    
+
     json_data = request.json
 
     logger.info("++++++++++Calling /datasets/derived")
@@ -664,7 +434,7 @@ def create_derived_dataset():
 
     if 'source_dataset_uuids' not in json_data:
         bad_request_error("The 'source_dataset_uuids' property is required.")
-    
+
     if 'derived_dataset_name' not in json_data:
         bad_request_error("The 'derived_dataset_name' property is required.")
 
@@ -707,13 +477,13 @@ def create_derived_dataset():
             return Response(response_text, status_code)
     except Exception as e:
         logger.error(e, exc_info=True)
-        internal_server_error("Unexpected error while creating derived dataset: " + str(e))        
+        internal_server_error("Unexpected error while creating derived dataset: " + str(e))
 
 
 @app.route('/datasets', methods=['POST'])
 def create_datastage():
     if not request.is_json:
-        return Response("json request required", 400)    
+        return Response("json request required", 400)
     try:
         dataset_request = request.json
         auth_helper = AuthHelper.configured_instance(app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'])
@@ -726,20 +496,20 @@ def create_datastage():
             token = auth_tokens['nexus_token']
         else:
             return(Response("Valid nexus auth token required", 401))
-        
+
         requested_group_uuid = None
         if 'group_uuid' in dataset_request:
             requested_group_uuid = dataset_request['group_uuid']
-        
+
         ingest_helper = IngestFileHelper(app.config)
         requested_group_uuid = auth_helper.get_write_group_uuid(token, requested_group_uuid)
-        dataset_request['group_uuid'] = requested_group_uuid            
+        dataset_request['group_uuid'] = requested_group_uuid
         post_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/dataset'
         response = requests.post(post_url, json = dataset_request, headers = {'Authorization': 'Bearer ' + token, 'X-Hubmap-Application':'ingest-api' }, verify = False)
         if response.status_code != 200:
             return Response(response.text, response.status_code)
         new_dataset = response.json()
-        
+
         ingest_helper.create_dataset_directory(new_dataset, requested_group_uuid, new_dataset['uuid'])
 
         return jsonify(new_dataset)
@@ -747,7 +517,7 @@ def create_datastage():
         return Response(hte.get_description(), hte.get_status_code())
     except Exception as e:
         logger.error(e, exc_info=True)
-        return Response("Unexpected error while creating a dataset: " + str(e) + "  Check the logs", 500)        
+        return Response("Unexpected error while creating a dataset: " + str(e) + "  Check the logs", 500)
 
 # Needs to be triggered in the workflow or manually?!
 @app.route('/datasets/<identifier>/publish', methods = ['PUT'])
@@ -760,7 +530,7 @@ def publish_datastage(identifier):
             return Response("Unable to obtain user information for auth token", 401)
         if isinstance(user_info, Response):
             return user_info
-        
+
         if 'hmgroupids' not in user_info:
             return Response("User has no valid group information to authorize publication.", 403)
         if data_admin_group_uuid not in user_info['hmgroupids']:
@@ -826,10 +596,10 @@ def publish_datastage(identifier):
                 elif entity_type == 'Dataset':
                     if status != 'Published':
                         return Response(f"{dataset_uuid} has an ancestor dataset that has not been Published. Will not Publish. Ancestor dataset is: {uuid}", 400)
-            
+
             if has_donor is False:
                 return Response(f"{dataset_uuid}: no donor found for dataset, will not Publish")
-            
+
             #get info for the dataset to be published
             q = f"MATCH (e:Dataset {{uuid: '{dataset_uuid}'}}) RETURN e.uuid as uuid, e.entity_type as entitytype, e.status as status, e.data_access_level as data_access_level, e.group_uuid as group_uuid, e.contacts as contacts, e.contributors as contributors"
             rval = neo_session.run(q).data()
@@ -851,7 +621,7 @@ def publish_datastage(identifier):
                 if len(json.loads(dataset_contacts)) < 1 or len(json.loads(dataset_contributors)) < 1:
                     return jsonify({"error": f"{dataset_uuid} missing contacts or contributors. Must have at least one of each"}), 400
             ingest_helper = IngestFileHelper(app.config)
-            
+
             data_access_level = dataset_data_access_level
             #if consortium access level convert to public dataset, if protected access leave it protected
             if dataset_data_access_level == 'consortium':
@@ -863,7 +633,7 @@ def publish_datastage(identifier):
                 data_access_level = 'public'
                 if asset_dir_exists:
                     ingest_helper.relink_to_public(dataset_uuid)
-            
+
             acls_cmd = ingest_helper.set_dataset_permissions(dataset_uuid, dataset_group_uuid, data_access_level, True, no_indexing_and_acls)
 
             if is_primary:
@@ -914,7 +684,7 @@ def publish_datastage(identifier):
                     logger.info(f"Publishing {identifier} indexed donor {donor_uuid} with status {rspn.status_code}")
                 except:
                     logger.exception(f"While publishing {identifier} Error happened when calling reindex web service for donor {donor_uuid}")
-                        
+
         return Response(json.dumps(r_val), 200, mimetype='application/json')                    
 
     except HTTPException as hte:
@@ -947,11 +717,11 @@ def update_dataset_status(uuid, new_status):
             print('Error occurred when call the reindex web service')
 
         return jsonify( { 'result' : status_obj } ), 200
-    
+
     except ValueError as ve:
         print('ERROR: ' + str(ve))
         abort(404, jsonify( { 'error': str(ve) } ))
-        
+
     except:
         msg = 'An error occurred: '
         for x in sys.exc_info():
@@ -995,8 +765,9 @@ def update_ingest_status():
         abort(400, jsonify( { 'error': 'no data found cannot process update' } ))
     
     try:
-        entity_api = EntityApi(app_manager.groups_token_from_request_headers(request.headers),
-                               commons_file_helper.removeTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']))
+        entity_api = EntitySdk(token=app_manager.groups_token_from_request_headers(request.headers),
+                               service_url=commons_file_helper.removeTrailingSlashURL(
+                                   app.config['ENTITY_WEBSERVICE_URL']))
 
         return app_manager.update_ingest_status_title_thumbnail(app.config, 
                                                                 request.json, 
@@ -1059,37 +830,51 @@ def submit_dataset(uuid):
 
         # TODO: Temp fix till we can get this in the "Validation Pipeline"... add the validation code here... If it returns any errors fail out of this. Return 412 Precondition Failed with the errors in the description.
         pipeline_url = commons_file_helper.ensureTrailingSlashURL(app.config['INGEST_PIPELINE_URL']) + 'request_ingest'
-        r = requests.post(pipeline_url, json={"submission_id" : "{uuid}".format(uuid=uuid),
-                                     "process" : app.config['INGEST_PIPELINE_DEFAULT_PROCESS'],
-                                              "full_path": ingest_helper.get_dataset_directory_absolute_path(dataset_request, group_uuid, uuid),
-                                     "provider": "{group_name}".format(group_name=AuthHelper.getGroupDisplayName(group_uuid))}, 
-                                          headers={'Content-Type':'application/json', 'Authorization': 'Bearer {token}'.format(token=AuthHelper.instance().getProcessSecret() )}, verify=False)
-        if r.ok == True:
-            """expect data like this:
-            {"ingest_id": "abc123", "run_id": "run_657-xyz", "overall_file_count": "99", "top_folder_contents": "["IMS", "processed_microscopy","raw_microscopy","VAN0001-RK-1-spatial_meta.txt"]"}
-            """
-            data = json.loads(r.content.decode())
-            submission_data = data['response']
-            dataset_request[HubmapConst.DATASET_INGEST_ID_ATTRIBUTE] = submission_data['ingest_id']
-            dataset_request[HubmapConst.DATASET_RUN_ID] = submission_data['run_id']
-        else:
-            logger.error('Failed call to AirFlow HTTP Response: ' + str(r.status_code) + ' msg: ' + str(r.text)) 
-            return Response("Ingest pipeline failed: " + str(r.text), r.status_code)
-        
-        dataset_request['status'] = 'Processing'
-        put_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/' + uuid
-        response = requests.put(put_url, json = dataset_request, headers = {'Authorization': 'Bearer ' + token, 'X-Hubmap-Application':'ingest-api' }, verify = False)
-        if not response.status_code == 200:
-            logger.error(f"call to {put_url} failed with code:{response.status_code} message:" + response.text)
-            return Response(response.text, response.status_code)
-        updated_dataset = response.json()
-        return jsonify(updated_dataset)
-    except HTTPException as hte:
-        return Response(hte.get_description(), hte.get_status_code())
     except Exception as e:
         logger.error(e, exc_info=True)
-        return Response("Unexpected error while creating a dataset: " + str(e) + "  Check the logs", 500)        
- 
+        return Response("Unexpected error while creating a dataset: " + str(e) + "  Check the logs", 500)
+    try:
+        put_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/' + uuid
+        dataset_request['status'] = 'Processing'
+        response = requests.put(put_url, json=dataset_request,
+                                headers={'Authorization': 'Bearer ' + token, 'X-Hubmap-Application': 'ingest-api'},
+                                verify=False)
+        if not response.status_code == 200:
+            error_msg = f"call to {put_url} failed with code:{response.status_code} message:" + response.text
+            logger.error(error_msg)
+            return Response(error_msg, response.status_code)
+    except HTTPException as hte:
+        logger.error(hte)
+        return Response("Unexpected error while updating dataset: " + str(e) + "  Check the logs", 500)
+    def call_airflow():
+        try:
+            r = requests.post(pipeline_url, json={"submission_id" : "{uuid}".format(uuid=uuid), "process" : app.config['INGEST_PIPELINE_DEFAULT_PROCESS'],"full_path": ingest_helper.get_dataset_directory_absolute_path(dataset_request, group_uuid, uuid),"provider": "{group_name}".format(group_name=AuthHelper.getGroupDisplayName(group_uuid))}, headers={'Content-Type':'application/json', 'Authorization': 'Bearer {token}'.format(token=AuthHelper.instance().getProcessSecret() )}, verify=False)
+            if r.ok == True:
+                """expect data like this:
+                {"ingest_id": "abc123", "run_id": "run_657-xyz", "overall_file_count": "99", "top_folder_contents": "["IMS", "processed_microscopy","raw_microscopy","VAN0001-RK-1-spatial_meta.txt"]"}
+                """
+                data = json.loads(r.content.decode())
+                submission_data = data['response']
+                dataset_request['ingest_id'] = submission_data['ingest_id']
+                dataset_request['run_id'] = submission_data['run_id']
+            else:
+                error_message = 'Failed call to AirFlow HTTP Response: ' + str(r.status_code) + ' msg: ' + str(r.text)
+                logger.error(error_message)
+                dataset_request['status'] = 'Error'
+                dataset_request['pipeline_message'] = error_message
+            response = requests.put(put_url, json=dataset_request,
+                                    headers={'Authorization': 'Bearer ' + token, 'X-Hubmap-Application': 'ingest-api'},
+                                    verify=False)
+            if not response.status_code == 200:
+                error_msg = f"call to {put_url} failed with code:{response.status_code} message:" + response.text
+                logger.error(error_msg)
+        except HTTPException as hte:
+            logger.error(hte)
+        except Exception as e:
+            logger.error(e, exc_info=True)
+    thread = Thread(target=call_airflow)
+    thread.start()
+    return Response("Request of Dataset Submisssion Accepted", 202)
 
 ####################################################################################################
 ## Uploads API Endpoints
@@ -1109,7 +894,7 @@ def submit_dataset(uuid):
 #      400 if invalid json sent
 #      401 if user does not have hubmap read access or the token is invalid
 #
-# Example json response: 
+# Example json response:
 #                  {{
 #                         "created_by_user_displayname": "Eris Pink",
 #                         "created_by_user_email": "mycoolemail@aolonline.co",
@@ -1372,7 +1157,7 @@ def get_specimen_ingest_group_ids(identifier):
 #      401 if user does not have hubmap read access or the token is invalid
 #      404 if the uuid is not found
 #
-# Example json response: 
+# Example json response:
 #                  {
 #                      "has_write_priv": true,
 #                      "has_submit_priv": false,
@@ -1390,7 +1175,7 @@ def allowable_edit_states(hmuuid):
     try:
         #the Globus nexus auth token will be in the AUTHORIZATION section of the header
         token = str(request.headers["AUTHORIZATION"])[7:]
-        
+
         #get a connection to Neo4j db
         with neo4j_driver_instance.session() as session:
             #query Neo4j db to find the entity
@@ -1482,13 +1267,13 @@ def allowable_edit_states(hmuuid):
                         r_val['has_write_priv'] = False
                 else:
                     return Response("Entity group uuid not found", 400)
-                
+
             #if we fall through to here without entering the loop the entity was not found
             if count == 0:
                 return Response("Entity not found", 404)
             else:
                 return Response(json.dumps(r_val), 200, mimetype='application/json')
-            
+
     except AuthError as e:
         print(e)
         return Response('token is invalid', 401)
@@ -1499,73 +1284,53 @@ def allowable_edit_states(hmuuid):
         abort(400, msg)
 
 
-@app.route('/donors/bulk-upload', methods = ['POST'])
+@app.route('/donors/bulk-upload', methods=['POST'])
 def bulk_donors_upload_and_validate():
-    file_does_not_exist = False
-    file_does_not_exist_msg = ''
     if 'file' not in request.files:
-        file_does_not_exist = True
-        file_does_not_exist_msg = 'No file part'
-        #bad_request_error('No file part')
+        bad_request_error('No file part')
     file = request.files['file']
     if file.filename == '':
-        #bad_request_error('No selected file')
-        file_does_not_exist = True
-        file_does_not_exist_msg = "No selected file"
-    if file_does_not_exist is True:
-        response_body = {"status": "fail", "message": file_does_not_exist_msg}
-        return Response(json.dumps(response_body, sort_keys=True), 400, mimetype='application/json')
-    if file_does_not_exist is False:
-        unsuccessful_upload = False
-        unsuccessful_upload_msg = ''
-        try:
-            temp_id = file_upload_helper_instance.save_temp_file(file)
-        except Exception as e:
-            unsuccessful_upload = True
-            unsuccessful_upload_msg = str(e)
-        # uses csv.DictReader to add functionality to tsv file. Can do operations on rows and headers.
-        records = []
-        headers = []
-        file_location = commons_file_helper.ensureTrailingSlash(app.config['FILE_UPLOAD_TEMP_DIR']) + temp_id + os.sep + file.filename
-        with open(file_location, newline='') as tsvfile:
-            reader = csv.DictReader(tsvfile, delimiter='\t')
-            first = True
-            for row in reader:
-                data_row = {}
-                for key in row.keys():
-                    if first: headers.append(key)
-                    data_row[key] = row[key]
-                records.append(data_row)
-                if first: first = False
-        validfile = validate_donors(headers, records)
-        if validfile == True:
-            if unsuccessful_upload is False:
-                valid_response = {}
-                #valid_response['Response'] = "Tsv file valid. File uploaded succesffuly"
-                valid_response['temp_id'] = temp_id
-                return Response(json.dumps(valid_response, sort_keys=True), 201, mimetype='application/json')
-                #return jsonify(valid_response)
-            if unsuccessful_upload is True:
-                msg = "Failed to upload files"
-                logger.exception(msg)
-                #internal_server_error(msg)
-                response_body = {"status": "error", "data": {"File valid but upload failed": unsuccessful_upload_msg}}
-                return Response(json.dumps(response_body, sort_keys=True), 500, mimetype='application/json')
-        if type(validfile) == list:
-            return_validfile = {}
-            error_num = 0
-            for item in validfile:
-                return_validfile[str(error_num)] = str(item)
-                error_num = error_num + 1
-            #return_validfile = ', '.join(validfile)
-            response_body = {"status": "fail", "data": return_validfile}
-            return Response(json.dumps(response_body, sort_keys=True), 400, mimetype='application/json')  # The exact format of the return to be determined
+        bad_request_error('No selected file')
+    file.filename = file.filename.replace(" ", "_")
+    try:
+        temp_id = file_upload_helper_instance.save_temp_file(file)
+    except Exception as e:
+        bad_request_error(f"Failed to create temp_id: {e}")
+    # uses csv.DictReader to add functionality to tsv file. Can do operations on rows and headers.
+    records = []
+    headers = []
+    file.filename = utils.secure_filename(file.filename)
+    file_location = commons_file_helper.ensureTrailingSlash(app.config['FILE_UPLOAD_TEMP_DIR']) + temp_id + os.sep + file.filename
+    with open(file_location, newline='') as tsvfile:
+        reader = csv.DictReader(tsvfile, delimiter='\t')
+        first = True
+        for row in reader:
+            data_row = {}
+            for key in row.keys():
+                if first:
+                    headers.append(key)
+                data_row[key] = row[key]
+            records.append(data_row)
+            if first:
+                first = False
+    validfile = validate_donors(headers, records)
+    if validfile == True:
+        return Response(json.dumps({'temp_id': temp_id}, sort_keys=True), 201, mimetype='application/json')
+    if type(validfile) == list:
+        return_validfile = {}
+        error_num = 0
+        for item in validfile:
+            return_validfile[str(error_num)] = str(item)
+            error_num = error_num + 1
+        response_body = {"status": "fail", "data": return_validfile}
+        return Response(json.dumps(response_body, sort_keys=True), 400,
+                        mimetype='application/json')  # The exact format of the return to be determined
 
 
 @app.route('/donors/bulk', methods=['POST'])
 def create_donors_from_bulk():
     request_data = request.get_json()
-    token = str(request.headers["AUTHORIZATION"])[7:]
+    token = auth_helper_instance.getAuthorizationTokens(request.headers)
     header = {'Authorization': 'Bearer ' + token}
     temp_id = request_data['temp_id']
     group_uuid = None
@@ -1573,286 +1338,234 @@ def create_donors_from_bulk():
         group_uuid = request_data['group_uuid']
     temp_dir = app.config['FILE_UPLOAD_TEMP_DIR']
     tsv_directory = commons_file_helper.ensureTrailingSlash(temp_dir) + temp_id + os.sep
-    file_not_found = False
     if not os.path.exists(tsv_directory):
-        file_not_found = True
-        #raise Exception("Temporary file with id " + temp_id + " does not have a temp directory.")
         return_body = {"status": "fail", "message": f"Temporary file with id {temp_id} does not have a temp directory"}
         return Response(json.dumps(return_body, sort_keys=True), 400, mimetype='application/json')
-    if file_not_found is False:
-        fcount = 0
-        temp_file_name = None
-        for tfile in os.listdir(tsv_directory):
-            fcount = fcount + 1
-            temp_file_name = tfile
-        incorrect_file_count = False
-        incorrect_file_count_message = ""
-        if fcount == 0:
-            #raise Exception("File not found for temporary file with id " + temp_id) #how are these getting passed to the front end?
-            incorrect_file_count = True
-            incorrect_file_count_message = f"File not found in temporary directory /{temp_id}"
-        if fcount > 1:
-            #raise Exception("Multiple files found in temporary file path for temp file id " + temp_id)
-            incorrect_file_count = True
-            incorrect_file_count_message = f"Multiple files found in temporary file path /{temp_id}"
-        if incorrect_file_count:
-            return_response = {"status": "fail", "message": incorrect_file_count_message}
-            return Response(json.dumps(return_response, sort_keys=True), 400, mimetype='application/json')
-        if incorrect_file_count is False:
-            tsvfile_name = tsv_directory + temp_file_name
-            records = []
-            headers = []
-            with open(tsvfile_name, newline= '') as tsvfile:
-                reader = csv.DictReader(tsvfile, delimiter='\t')
-                first = True
-                for row in reader:
-                    data_row = {}
-                    for key in row.keys():
-                        if first:
-                            headers.append(key)
-                        data_row[key] = row[key]
-                    records.append(data_row)
-                    if first:
-                        first = False
-            validfile = validate_donors(headers, records)
-            if type(validfile) == list:
-                return_validfile = {}
-                error_num = 0
-                for item in validfile:
-                    return_validfile[str(error_num)] = str(item)
-                    error_num = error_num + 1
-                # return_validfile = ', '.join(validfile)
-                response_body = {"status": "fail", "data": return_validfile}
-                return Response(json.dumps(response_body, sort_keys=True), 400, mimetype='application/json')
-            entity_response = {}
-            row_num = 1
-            if validfile == True:
-                entity_created = False
-                status_code = 500
-                for item in records:
-                    item['lab_donor_id'] = item['lab_id']
-                    del item['lab_id']
-                    item['label'] = item['lab_name']
-                    del item['lab_name']
-                    item['protocol_url'] = item['selection_protocol']
-                    del item['selection_protocol']
-                    if group_uuid is not None:
-                        item['group_uuid'] = group_uuid
-                    r = requests.post(commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/donor', headers=header, json=item)
-                    entity_response[row_num] = r.json()
-                    row_num = row_num + 1
-                    status_code = r.status_code
-                    if r.status_code < 300:
-                        entity_created = True
-                #return jsonify(response)
-                response = {"status": "success", "data": entity_response}
-                if entity_created:
-                    status_code = 201
-                return Response(json.dumps(response, sort_keys=True), status_code, mimetype='application/json')
+    fcount = 0
+    temp_file_name = None
+    for tfile in os.listdir(tsv_directory):
+        fcount = fcount + 1
+        temp_file_name = tfile
+    if fcount == 0:
+        return Response(json.dumps({"status": "fail", "message": f"File not found in temporary directory /{temp_id}"},
+                                   sort_keys=True), 400, mimetype='application/json')
+    if fcount > 1:
+        return Response(
+            json.dumps({"status": "fail", "message": f"Multiple files found in temporary file path /{temp_id}"},
+                       sort_keys=True), 400, mimetype='application/json')
+    tsvfile_name = tsv_directory + temp_file_name
+    records = []
+    headers = []
+    with open(tsvfile_name, newline='') as tsvfile:
+        reader = csv.DictReader(tsvfile, delimiter='\t')
+        first = True
+        for row in reader:
+            data_row = {}
+            for key in row.keys():
+                if first:
+                    headers.append(key)
+                data_row[key] = row[key]
+            records.append(data_row)
+            if first:
+                first = False
+    validfile = validate_donors(headers, records)
+    if type(validfile) == list:
+        return_validfile = {}
+        error_num = 0
+        for item in validfile:
+            return_validfile[str(error_num)] = str(item)
+            error_num = error_num + 1
+        response_body = {"status": "fail", "data": return_validfile}
+        return Response(json.dumps(response_body, sort_keys=True), 400, mimetype='application/json')
+    entity_response = {}
+    row_num = 1
+    if validfile == True:
+        entity_created = False
+        entity_failed_to_create = False
+        for item in records:
+            item['lab_donor_id'] = item['lab_id']
+            del item['lab_id']
+            item['label'] = item['lab_name']
+            del item['lab_name']
+            item['protocol_url'] = item['selection_protocol']
+            del item['selection_protocol']
+            if group_uuid is not None:
+                item['group_uuid'] = group_uuid
+            r = requests.post(
+                commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/donor',
+                headers=header, json=item)
+            entity_response[row_num] = r.json()
+            row_num = row_num + 1
+            status_code = r.status_code
+            if r.status_code > 399:
+                entity_failed_to_create = True
+            else:
+                entity_created = True
+        if entity_created and not entity_failed_to_create:
+            response_status = "Success - All Entities Created Successfully"
+            status_code = 201
+        elif entity_failed_to_create and not entity_created:
+            response_status = "Failure - None of the Entities Created Successfully"
+            status_code = 500
+        elif entity_created and entity_failed_to_create:
+            response_status = "Partial Success - Some Entities Created Successfully"
+            status_code = 207
+        response = {"status": response_status, "data": entity_response}
+        return Response(json.dumps(response, sort_keys=True), status_code, mimetype='application/json')
+
 
 @app.route('/samples/bulk-upload', methods=['POST'])
 def bulk_samples_upload_and_validate():
-    token = str(request.headers["AUTHORIZATION"])[7:]
+    token = auth_helper_instance.getAuthorizationTokens(request.headers)
     header = {'Authorization': 'Bearer ' + token}
-    file_does_not_exist = False
-    file_does_not_exist_msg = ''
     if 'file' not in request.files:
-        #bad_request_error('No file part')
-        file_does_not_exist = True
-        file_does_not_exist_msg = 'No file part'
+        bad_request_error('No file part')
     file = request.files['file']
     if file.filename == '':
-        #bad_request_error('No selected file')
-        file_does_not_exist = True
-        file_does_not_exist_msg = "No selected file"
-    if file_does_not_exist is True:
-        response_body = {"status": "fail", "message": file_does_not_exist_msg}
-        return Response(json.dumps(response_body, sort_keys=True), 400, mimetype='application/json')
-    temp_id = ''
-    if file_does_not_exist is False:
-        unsuccessful_upload = False
-        unsuccessful_upload_msg = ''
-        try:
-            temp_id = file_upload_helper_instance.save_temp_file(file)
-        except Exception as e:
-            unsuccessful_upload = True
-            unsuccessful_upload_msg = str(e)
-
-        # uses csv.DictReader to add functionality to tsv file. Can do operations on rows and headers.
-        records = []
-        headers = []
-        file_location = commons_file_helper.ensureTrailingSlash(
-            app.config['FILE_UPLOAD_TEMP_DIR']) + temp_id + os.sep + file.filename
-        with open(file_location, newline='') as tsvfile:
-            reader = csv.DictReader(tsvfile, delimiter='\t')
-            first = True
-            for row in reader:
-                data_row = {}
-                for key in row.keys():
-                    if first:
-                        headers.append(key)
-                    data_row[key] = row[key]
-                records.append(data_row)
+        bad_request_error('No selected file')
+    file.filename = file.filename.replace(" ", "_")
+    try:
+        temp_id = file_upload_helper_instance.save_temp_file(file)
+    except Exception as e:
+        bad_request_error(f"Failed to create temp_id: {e}")
+    # uses csv.DictReader to add functionality to tsv file. Can do operations on rows and headers.
+    records = []
+    headers = []
+    file.filename = utils.secure_filename(file.filename)
+    file_location = commons_file_helper.ensureTrailingSlash(
+        app.config['FILE_UPLOAD_TEMP_DIR']) + temp_id + os.sep + file.filename
+    with open(file_location, newline='') as tsvfile:
+        reader = csv.DictReader(tsvfile, delimiter='\t')
+        first = True
+        for row in reader:
+            data_row = {}
+            for key in row.keys():
                 if first:
-                    first = False
-        validfile = validate_samples(headers, records, header)
-        if validfile == True:
-            if unsuccessful_upload is False:
-                valid_response = {}
-                # valid_response['Response'] = "Tsv file valid. File uploaded succesffuly"
-                valid_response['temp_id'] = temp_id
-                return Response(json.dumps(valid_response, sort_keys=True), 201, mimetype='application/json')
-                # return jsonify(valid_response)
-            if unsuccessful_upload is True:
-                msg = "Failed to upload files"
-                logger.exception(msg)
-                #internal_server_error(msg)
-                response_body = {"status": "error", "data": {"File valid but upload failed": unsuccessful_upload_msg}}
-                return Response(json.dumps(response_body, sort_keys=True), 500, mimetype='application/json')
-        if type(validfile) == list:
-            return_validfile = {}
-            error_num = 0
-            for item in validfile:
-                return_validfile[str(error_num)] = str(item)
-                error_num = error_num + 1
-            # return_validfile = ', '.join(validfile)
-            response_body = {"status": "fail", "data": return_validfile}
-            return Response(json.dumps(response_body, sort_keys=True), 400,
-                            mimetype='application/json')  # The exact format of the return to be determined
+                    headers.append(key)
+                data_row[key] = row[key]
+            records.append(data_row)
+            if first:
+                first = False
+    validfile = validate_samples(headers, records, header)
+    if validfile == True:
+        return Response(json.dumps({'temp_id': temp_id}, sort_keys=True), 201, mimetype='application/json')
+    if type(validfile) == list:
+        return_validfile = {}
+        error_num = 0
+        for item in validfile:
+            return_validfile[str(error_num)] = str(item)
+            error_num = error_num + 1
+        response_body = {"status": "fail", "data": return_validfile}
+        return Response(json.dumps(response_body, sort_keys=True), 400, mimetype='application/json')
+
 
 @app.route('/samples/bulk', methods=['POST'])
 def create_samples_from_bulk():
     request_data = request.get_json()
-    token = str(request.headers["AUTHORIZATION"])[7:]
+    token = auth_helper_instance.getAuthorizationTokens(request.headers)
     header = {'Authorization': 'Bearer ' + token}
     temp_id = request_data['temp_id']
-    include_group = False
-    group_uuid = ''
+    group_uuid = None
     if "group_uuid" in request_data:
         group_uuid = request_data['group_uuid']
-        include_group = True
     temp_dir = app.config['FILE_UPLOAD_TEMP_DIR']
     tsv_directory = commons_file_helper.ensureTrailingSlash(temp_dir) + temp_id + os.sep
-    file_not_found = False
     if not os.path.exists(tsv_directory):
-        file_not_found = True
-        # raise Exception("Temporary file with id " + temp_id + " does not have a temp directory.")
         return_body = {"status": "fail", "message": f"Temporary file with id {temp_id} does not have a temp directory"}
         return Response(json.dumps(return_body, sort_keys=True), 400, mimetype='application/json')
-    if file_not_found is False:
-        fcount = 0
-        temp_file_name = None
-        for tfile in os.listdir(tsv_directory):
-            fcount = fcount + 1
-            temp_file_name = tfile
-        incorrect_file_count = False
-        incorrect_file_count_message = ""
-        if fcount == 0:
-            # raise Exception("File not found for temporary file with id " + temp_id) #how are these getting passed to the front end?
-            incorrect_file_count = True
-            incorrect_file_count_message = f"File not found in temporary directory /{temp_id}"
-        if fcount > 1:
-            # raise Exception("Multiple files found in temporary file path for temp file id " + temp_id)
-            incorrect_file_count = True
-            incorrect_file_count_message = f"Multiple files found in temporary file path /{temp_id}"
-        if incorrect_file_count:
-            return_response = {"status": "fail", "message": incorrect_file_count_message}
-            return Response(json.dumps(return_response, sort_keys=True), 400, mimetype='application/json')
-        if incorrect_file_count is False:
-            tsvfile_name = tsv_directory + temp_file_name
-            records = []
-            headers = []
-            with open(tsvfile_name, newline='') as tsvfile:
-                reader = csv.DictReader(tsvfile, delimiter='\t')
-                first = True
-                for row in reader:
-                    data_row = {}
-                    for key in row.keys():
-                        if first:
-                            headers.append(key)
-                        data_row[key] = row[key]
-                    records.append(data_row)
-                    if first:
-                        first = False
-            validfile = validate_samples(headers, records, header)
-            if type(validfile) == list:
-                return_validfile = {}
-                error_num = 0
-                for item in validfile:
-                    return_validfile[str(error_num)] = str(item)
-                    error_num = error_num + 1
-                # return_validfile = ', '.join(validfile)
-                response_body = {"status": "fail", "data": return_validfile}
-                return Response(json.dumps(response_body, sort_keys=True), 400, mimetype='application/json')
-            entity_response = {}
-            row_num = 1
-            if validfile == True:
-                entity_failure = False
-                for item in records:
-                    item['direct_ancestor_uuid'] = item['source_id']
-                    del item['source_id']
-                    item['lab_tissue_sample_id'] = item['lab_id']
-                    del item['lab_id']
-                    item['specimen_type'] = item['sample_type']
-                    del item['sample_type']
-                    item['organ'] = item['organ_type']
-                    del item['organ_type']
-                    item['protocol_url'] = item['sample_protocol']
-                    del item['sample_protocol']
-                    if item['organ'] == '':
-                        del item['organ']
-                    if item['rui_location'] == '':
-                        del item['rui_location']
-                    else:
-                        rui_location_json = json.loads(item['rui_location'])
-                        item['rui_location'] = rui_location_json
-                    if include_group:
-                        item['group_uuid'] = group_uuid
-                    r = requests.post(commons_file_helper.ensureTrailingSlashURL(
-                        app.config['ENTITY_WEBSERVICE_URL']) + 'entities/sample', headers=header, json=item)
-                    entity_response[row_num] = r.json()
-                    row_num = row_num + 1
-                    if r.status_code > 399:
-                        entity_failure = True
-                # return jsonify(response)
-                response_status = ""
-                if entity_failure is True:
-                    response_status = "failure - one or more entries failed to be created"
-                else:
-                    response_status = "success"
-                response = {"status": response_status, "data": entity_response}
-                return Response(json.dumps(response, sort_keys=True), 201, mimetype='application/json')
+    fcount = 0
+    temp_file_name = None
+    for tfile in os.listdir(tsv_directory):
+        fcount = fcount + 1
+        temp_file_name = tfile
+    if fcount == 0:
+        return Response(json.dumps({"status": "fail", "message": f"File not found in temporary directory /{temp_id}"},
+                                   sort_keys=True), 400, mimetype='application/json')
+    if fcount > 1:
+        return Response(
+            json.dumps({"status": "fail", "message": f"Multiple files found in temporary file path /{temp_id}"},
+                       sort_keys=True), 400, mimetype='application/json')
+    tsvfile_name = tsv_directory + temp_file_name
+    records = []
+    headers = []
+    with open(tsvfile_name, newline='') as tsvfile:
+        reader = csv.DictReader(tsvfile, delimiter='\t')
+        first = True
+        for row in reader:
+            data_row = {}
+            for key in row.keys():
+                if first:
+                    headers.append(key)
+                data_row[key] = row[key]
+            records.append(data_row)
+            if first:
+                first = False
+    validfile = validate_samples(headers, records, header)
+    if type(validfile) == list:
+        return_validfile = {}
+        error_num = 0
+        for item in validfile:
+            return_validfile[str(error_num)] = str(item)
+            error_num = error_num + 1
+        response_body = {"status": "fail", "data": return_validfile}
+        return Response(json.dumps(response_body, sort_keys=True), 400, mimetype='application/json')
+    entity_response = {}
+    row_num = 1
+    if validfile == True:
+        entity_created = False
+        entity_failed_to_create = False
+        for item in records:
+            item['direct_ancestor_uuid'] = item['source_id']
+            del item['source_id']
+            item['lab_tissue_sample_id'] = item['lab_id']
+            del item['lab_id']
+            item['specimen_type'] = item['sample_type']
+            del item['sample_type']
+            item['organ'] = item['organ_type']
+            del item['organ_type']
+            item['protocol_url'] = item['sample_protocol']
+            del item['sample_protocol']
+            if item['organ'] == '':
+                del item['organ']
+            if item['rui_location'] == '':
+                del item['rui_location']
+            else:
+                rui_location_json = json.loads(item['rui_location'])
+                item['rui_location'] = rui_location_json
+            if group_uuid is not None:
+                item['group_uuid'] = group_uuid
+            r = requests.post(
+                commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/sample',
+                headers=header, json=item)
+            entity_response[row_num] = r.json()
+            row_num = row_num + 1
+            if r.status_code > 399:
+                entity_failed_to_create = True
+            else:
+                entity_created = True
+        if entity_created and not entity_failed_to_create:
+            response_status = "Success - All Entities Created Successfully"
+            status_code = 201
+        elif entity_failed_to_create and not entity_created:
+            response_status = "Failure - None of the Entities Created Successfully"
+            status_code = 500
+        elif entity_created and entity_failed_to_create:
+            response_status = "Partial Success - Some Entities Created Successfully"
+            status_code = 207
+        response = {"status": response_status, "data": entity_response}
+        return Response(json.dumps(response, sort_keys=True), status_code, mimetype='application/json')
 
 
 def validate_samples(headers, records, header):
     error_msg = []
     file_is_valid = True
-    # if not 'source_id' in headers:
-    #     file_is_valid = False
-    #     error_msg.append("source_id field is required")
-    # if not 'lab_id' in headers:
-    #     file_is_valid = False
-    #     error_msg.append("lab_id field is required")
-    # if not 'sample_type' in headers:
-    #     file_is_valid = False
-    #     error_msg.append("sample_type field is required")
-    # if not 'organ_type' in headers:
-    #     file_is_valid = False
-    # if not 'sample_protocol' in headers:
-    #     file_is_valid = False
-    #     error_msg.append("sample_protocol field is required")
-    # if not 'description' in headers:
-    #     file_is_valid = False
-    #     error_msg.append("sample_protocol field is required")
-    # if not 'rui_location' in headers:
-    #     file_is_valid = False
-    #     error_msg.append("rui_location field is required")
 
     required_headers = ['source_id', 'lab_id', 'sample_type', 'organ_type', 'sample_protocol', 'description', 'rui_location']
     for field in required_headers:
         if field not in headers:
             file_is_valid = False
             error_msg.append(f"{field} is a required field")
+    required_headers.append(None)
     for field in headers:
         if field not in required_headers:
             file_is_valid = False
@@ -1870,7 +1583,23 @@ def validate_samples(headers, records, header):
     valid_source_ids = []
     if file_is_valid is True:
         for data_row in records:
+            # validate that no fields in data_row are none. If they are none, then we cannot verify even if the entry we
+            # are validating is what it is supposed to be. Mark the entire row as bad if a none field exists.
+            none_present = False
+            for each in data_row.keys():
+                if data_row[each] is None:
+                    none_present = True
+            if none_present:
+                file_is_valid = False
+                error_msg.append(
+                    f"Row Number: {rownum}. This row has too few entries. Check file; verify spaces were not used where a tab should be")
+                continue
 
+            # validate that no headers are None. This indicates that there are fields present.
+            if data_row.get(None) is not None:
+                file_is_valid = False
+                error_msg.append(f"Row Number: {rownum}. This row has too many entries. Check file; verify that there are only as many fields as there are headers")
+                continue
             # validate rui_location
             rui_is_blank = True
             rui_location = data_row['rui_location']
@@ -1918,8 +1647,8 @@ def validate_samples(headers, records, header):
 
             # validate sample_protocol
             protocol = data_row['sample_protocol']
-            selection_protocol_pattern1 = re.match('^https://dx\.doi\.org/[\d]+\.[\d]+/protocols\.io\.[\w]*', protocol)
-            selection_protocol_pattern2 = re.match('^[\d]+\.[\d]+/protocols\.io\.[\w]*', protocol)
+            selection_protocol_pattern1 = re.match('^https://dx\.doi\.org/[\d]+\.[\d]+/protocols\.io\.[\w]*$', protocol)
+            selection_protocol_pattern2 = re.match('^[\d]+\.[\d]+/protocols\.io\.[\w]*$', protocol)
             if selection_protocol_pattern2 is None and selection_protocol_pattern1 is None:
                 file_is_valid = False
                 error_msg.append(
@@ -2002,24 +1731,13 @@ def validate_samples(headers, records, header):
 def validate_donors(headers, records):
     error_msg = []
     file_is_valid = True
-    # if not 'lab_name' in headers:
-    #     file_is_valid = False
-    #     error_msg.append("lab_name field is required")
-    # if not 'selection_protocol' in headers:
-    #     file_is_valid = False
-    #     error_msg.append("selection_protocol field is required")
-    # if not 'description' in headers:
-    #     file_is_valid = False
-    #     error_msg.append("description field is required")
-    # if not 'lab_id' in headers:
-    #     file_is_valid = False
-    #     error_msg.append("lab_id field is required") #if any of this fails, just stop
 
     required_headers = ['lab_name', 'selection_protocol', 'description', 'lab_id']
     for field in required_headers:
         if field not in headers:
             file_is_valid = False
             error_msg.append(f"{field} is a required field")
+    required_headers.append(None)
     for field in headers:
         if field not in required_headers:
             file_is_valid = False
@@ -2027,7 +1745,23 @@ def validate_donors(headers, records):
     rownum = 1
     if file_is_valid is True:
         for data_row in records:
+            # validate that no fields in data_row are none. If they are none, then we cannot verify even if the entry we
+            # are validating is what it is supposed to be. Mark the entire row as bad if a none field exists.
+            none_present = False
+            for each in data_row.keys():
+                if data_row[each] is None:
+                    none_present = True
+            if none_present:
+                file_is_valid = False
+                error_msg.append(f"Row Number: {rownum}. This row has too few entries. Check file; verify spaces were not used where a tab should be")
+                continue
 
+            # validate that no headers are None. This indicates that there are fields present.
+            if data_row.get(None) is not None:
+                file_is_valid = False
+                error_msg.append(
+                    f"Row Number: {rownum}. This row has too many entries. Check file; verify that there are only as many fields as there are headers")
+                continue
             #validate lab_name
             if len(data_row['lab_name']) > 1024:
                 file_is_valid = False
@@ -2035,15 +1769,11 @@ def validate_donors(headers, records):
             if len(data_row['lab_name']) < 1:
                 file_is_valid = False
                 error_msg.append(f"Row Number: {rownum}. lab_name must have 1 or more characters")
-            # lab_name_pattern = re.match('^\w*$')
-            # if lab_name_pattern == None:
-            #     file_is_valid = False
-            #     error_msg.append(f"Row Number: {rownum}. lab_name must be an alphanumeric string")
 
             #validate selection_protocol
             protocol = data_row['selection_protocol']
-            selection_protocol_pattern1 = re.match('^https://dx\.doi\.org/[\d]+\.[\d]+/protocols\.io\.[\w]*', protocol)
-            selection_protocol_pattern2 = re.match('^[\d]+\.[\d]+/protocols\.io\.[\w]*', protocol)
+            selection_protocol_pattern1 = re.match('^https://dx\.doi\.org/[\d]+\.[\d]+/protocols\.io\.[\w]*$', protocol)
+            selection_protocol_pattern2 = re.match('^[\d]+\.[\d]+/protocols\.io\.[\w]*$', protocol)
             if selection_protocol_pattern2 is None and selection_protocol_pattern1 is None:
                 file_is_valid = False
                 error_msg.append(f"Row Number: {rownum}. selection_protocol must either be of the format https://dx.doi.org/##.####/protocols.io.* or ##.####/protocols.io.*")
@@ -2073,82 +1803,6 @@ def validate_donors(headers, records):
 ####################################################################################################
 ## Internal Functions
 ####################################################################################################
-
-"""
-Always expect a json body from user request
-
-request : Flask request object
-    The Flask request passed from the API endpoint
-"""
-def require_json(request):
-    if not request.is_json:
-        bad_request_error("A json body and appropriate Content-Type header are required")
-
-"""
-Throws error for 400 Bad Reqeust with message
-Parameters
-----------
-err_msg : str
-    The custom error message to return to end users
-"""
-def bad_request_error(err_msg):
-    abort(400, description = err_msg)
-
-"""
-Throws error for 401 Unauthorized with message
-Parameters
-----------
-err_msg : str
-    The custom error message to return to end users
-"""
-def unauthorized_error(err_msg):
-    abort(401, description = err_msg)
-
-"""
-Throws error for 404 Not Found with message
-Parameters
-----------
-err_msg : str
-    The custom error message to return to end users
-"""
-def not_found_error(err_msg):
-    abort(404, description = err_msg)
-
-"""
-Throws error for 500 Internal Server Error with message
-Parameters
-----------
-err_msg : str
-    The custom error message to return to end users
-"""
-def internal_server_error(err_msg):
-    abort(500, description = err_msg)
-    
-
-def get_user_info(token):
-    auth_client = AuthClient(authorizer=AccessTokenAuthorizer(token))
-    return auth_client.oauth2_userinfo()
-
-def __get_dict_prop(dic, prop_name):
-    if not prop_name in dic: return None
-    val = dic[prop_name]
-    if isinstance(val, str) and val.strip() == '': return None
-    return val
-
-def __get_entity(entity_uuid, auth_header = None):
-    if auth_header is None:
-        headers = None
-    else:
-        headers = {'Authorization': auth_header, 'Accept': 'application/json', 'Content-Type': 'application/json'}
-    get_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/' + entity_uuid
-
-    response = requests.get(get_url, headers = headers, verify = False)
-    if response.status_code != 200:
-        err_msg = f"Error while calling {get_url} status code:{response.status_code}  message:{response.text}"
-        logger.error(err_msg)
-        raise HTTPException(err_msg, response.status_code)
-
-    return response.json()
 
 # Determines if a dataset is Primary. If the list returned from the neo4j query is empty, the dataset is not primary
 def dataset_is_primary(dataset_uuid):
