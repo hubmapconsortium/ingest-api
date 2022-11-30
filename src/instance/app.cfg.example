@@ -56,7 +56,7 @@ GLOBUS_ADMIN_FILE_USER_NAME = 'shirey'
 GLOBUS_GENOMIC_DATA_FILE_GROUP_NAME = 'hubseq'
 GLOBUS_CONSORTIUM_FILE_GROUP_NAME = 'hubmap'
 
-# URL for talking to UUID API (default value used for localhost docker environment)
+# URL for talking to UUID API (shown for DEV)
 UUID_WEBSERVICE_URL = 'https://uuid-api.dev.hubmapconsortium.org/hmuuid'
 
 # Must no trailing slash / (shown for DEV)
@@ -96,10 +96,10 @@ DATACITE_REPOSITORY_ID = ''
 DATACITE_REPOSITORY_PASSWORD = ''
 
 # DataCite REST API base URL
-# https://api.test.datacite.org/dois for DEV/TEST/STAGE
+# https://api.test.datacite.org/dois for DEV/TEST
 # https://api.datacite.org/dois for PROD
 DATACITE_API_URL = ''
 
-# Use 10.80478 for DataCite Test site with DEV/TEST/STAGE deployment
+# Use 10.80478 for DataCite Test site with DEV/TEST deployment
 # Use 10.35079 for DataCite Production site with PROD deployment
 DATACITE_HUBMAP_PREFIX = ''
