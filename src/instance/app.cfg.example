@@ -2,11 +2,10 @@
 # Set to False when deployment with docker (Gateway nginx handles CORS)
 ENABLE_CORS = False
 
-# Neo4j connection (default value used for docker dev environment)
-# Point to remote neo4j for testing and production deployment
-NEO4J_SERVER = 'bolt://hubmap-neo4j:7687'
-NEO4J_USERNAME = 'neo4j'
-NEO4J_PASSWORD = '123'
+# Neo4j connection
+NEO4J_SERVER = ''
+NEO4J_USERNAME = ''
+NEO4J_PASSWORD = ''
 
 # Globus App ID and secret
 APP_CLIENT_ID = ''
@@ -21,31 +20,31 @@ HUBMAP_DATA_ADMIN_GROUP_UUID = '89a69625-99d7-11ea-9366-0e98982705c1'
 # Curator group UUID
 HUBMAP_DATA_CURATOR_GROUP_UUID = '75804b96-d4a8-11e9-9da9-0ad4acb67ed4'
 
-# File system settings (shown are for DEV)
+# File system settings (shown for DEV)
 GLOBUS_ENDPOINT_FILEPATH = '/hive/hubmap-dev/data/protected'
 HUBMAP_WEBSERVICE_FILEPATH = '/hive/hubmap-dev/assets'
 WORKFLOW_SCRATCH = '/hive/hubmap-dev/scratch'
 
-# Directory where file uploads will be placed temporarily (shown are for DEV)
+# Directory where file uploads will be placed temporarily (shown for DEV)
 # until they are committed
 # Remember to set the proper file system user and group permission
 FILE_UPLOAD_TEMP_DIR = '/hive/hubmap-dev/hm_uploads_tmp'
 
-# Directory where file uploads are permanantly stored (shown are for DEV)
+# Directory where file uploads are permanantly stored (shown for DEV)
 # Remember to set the proper file system user and group permission
 FILE_UPLOAD_DIR = '/hive/hubmap-dev/hm_uploads'
 
-# UUIDs of the Globus endpoints (shown are for DEV)
+# UUIDs of the Globus endpoints (shown for DEV)
 GLOBUS_PUBLIC_ENDPOINT_UUID = 'a00a00b8-d1d1-4ab9-b915-0bada54c27a3'
 GLOBUS_CONSORTIUM_ENDPOINT_UUID = '3cb7d673-a3db-40e9-8376-f2ead6cb5a45'
 GLOBUS_PROTECTED_ENDPOINT_UUID = 'bdaf8547-aab3-4142-97bd-0a16d5cd9f58'
 
-# Absolute file paths of the Globus endpoints (shown are for DEV, change for TEST/STAGE/PROD deployment)
+# Absolute file paths of the Globus endpoints (shown for DEV, change for TEST/PROD deployment)
 GLOBUS_PUBLIC_ENDPOINT_FILEPATH = '/hive/hubmap-dev/data/public'
 GLOBUS_CONSORTIUM_ENDPOINT_FILEPATH = '/hive/hubmap-dev/data/consortium'
 GLOBUS_PROTECTED_ENDPOINT_FILEPATH = '/hive/hubmap-dev/data/protected'
 
-# Relative file paths of the Globus endpoints(shown are for DEV, change for TEST/STAGE/PROD deployment)
+# Relative file paths of the Globus endpoints
 RELATIVE_GLOBUS_PUBLIC_ENDPOINT_FILEPATH = '/'
 RELATIVE_GLOBUS_CONSORTIUM_ENDPOINT_FILEPATH = '/consortium'
 RELATIVE_GLOBUS_PROTECTED_ENDPOINT_FILEPATH = '/protected'
@@ -57,16 +56,16 @@ GLOBUS_ADMIN_FILE_USER_NAME = 'shirey'
 GLOBUS_GENOMIC_DATA_FILE_GROUP_NAME = 'hubseq'
 GLOBUS_CONSORTIUM_FILE_GROUP_NAME = 'hubmap'
 
-# URL for talking to UUID API (default value used for localhost docker environment)
+# URL for talking to UUID API (shown for DEV)
 UUID_WEBSERVICE_URL = 'https://uuid-api.dev.hubmapconsortium.org/hmuuid'
 
-# Must no trailing slash /
+# Must no trailing slash / (shown for DEV)
 SEARCH_WEBSERVICE_URL = 'https://search-api.dev.hubmapconsortium.org/v3'
 
-# URL to the entity-api web service
+# URL to the entity-api web service (shown for DEV)
 ENTITY_WEBSERVICE_URL = 'https://entity-api.dev.hubmapconsortium.org'
 
-# URL to the spatial-api web service
+# URL to the spatial-api web service (shown for DEV)
 SPATIAL_WEBSERVICE_URL = 'https://spatial-api.dev.hubmapconsortium.org'
 
 # URL to the Redis server used by the cell_count_type computation queuing mechanism.
@@ -77,16 +76,16 @@ REDIS_URL = 'redis://ingest-api-rq-server:6379'
 # Flask app session key
 SECRET_KEY = 'a%@3k9Hdlkfjakjajf99adsf909oel'
 
-# Need the trailing slash /
-FLASK_APP_BASE_URI = 'http://localhost:8484/'
+# Need the trailing slash / (shown for DEV)
+FLASK_APP_BASE_URI = 'https://ingest-api.dev.hubmapconsortium.org/'
 
-# React app name and deployment URI (default value used for docker dev environment)
-GLOBUS_CLIENT_APP_NAME = 'HuBMAP Data Ingest'
-# Point to remote URL for testing and production deployment
-GLOBUS_CLIENT_APP_URI = 'http://localhost:8585/'
+# React app name and deployment URI (shown for DEV)
+GLOBUS_CLIENT_APP_NAME = 'HuBMAP Data Ingest - DEV'
+GLOBUS_CLIENT_APP_URI = 'https://ingest.dev.hubmapconsortium.org/'
 
-# URL for the ingest pipeline API.  No trailing '/'
-INGEST_PIPELINE_URL = 'http://ingest-pipeline:8789/api/hubmap'
+# URL for the ingest pipeline API.  No trailing '/' (shown for DEV)
+# Port 5555 is open on the host, not mapped via ingest-api container
+INGEST_PIPELINE_URL = 'https://hivevm191.psc.edu:5555/api/hubmap'
 # internal test: INGEST_PIPELINE_URL = 'http://localhost:5005/datasets/submissions'
 
 # Default processing type for ingest pipeline API.
@@ -97,10 +96,10 @@ DATACITE_REPOSITORY_ID = ''
 DATACITE_REPOSITORY_PASSWORD = ''
 
 # DataCite REST API base URL
-# https://api.test.datacite.org/dois for DEV/TEST/STAGE
+# https://api.test.datacite.org/dois for DEV/TEST
 # https://api.datacite.org/dois for PROD
 DATACITE_API_URL = ''
 
-# Use 10.80478 for DataCite Test site with DEV/TEST/STAGE deployment
+# Use 10.80478 for DataCite Test site with DEV/TEST deployment
 # Use 10.35079 for DataCite Production site with PROD deployment
 DATACITE_HUBMAP_PREFIX = ''
