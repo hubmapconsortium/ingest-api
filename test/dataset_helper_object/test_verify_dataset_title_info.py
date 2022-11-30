@@ -28,7 +28,7 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
     @patch('dataset_helper_object.EntitySdk.get_ancestors')
     @patch('dataset_helper_object.SearchSdk.assayname')
     def test_verify_dataset_title_info_happy_path(self, mock_assayname, mock_get_ancestors, mock_get_entity_by_id, mock_url_open):
-        # https://github.com/hubmapconsortium/search-api/blob/test-release/src/search-schema/data/definitions/enums/assay_types.yaml
+        # https://github.com/hubmapconsortium/search-api/blob/main/src/search-schema/data/definitions/enums/assay_types.yaml
         def resp1():
             response_dict = {'description': 'Imaging Mass Cytometry', 'alt-names': [], 'primary': 'true', 'vitessce-hints': []}
             return response_dict
@@ -93,7 +93,7 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
     @patch('dataset_helper_object.EntitySdk.get_ancestors')
     @patch('dataset_helper_object.SearchSdk.assayname')
     def test_verify_dataset_title_info_organ_code_description_not_found(self, mock_assayname, mock_get_ancestors, mock_get_entity_by_id, mock_url_open):
-        # https://github.com/hubmapconsortium/search-api/blob/test-release/src/search-schema/data/definitions/enums/assay_types.yaml
+        # https://github.com/hubmapconsortium/search-api/blob/main/src/search-schema/data/definitions/enums/assay_types.yaml
         def resp1():
             response_dict = {'description': 'Imaging Mass Cytometry', 'alt-names': [], 'primary': 'true',
                              'vitessce-hints': []}
@@ -150,7 +150,7 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
     @patch('dataset_helper_object.EntitySdk.get_ancestors')
     @patch('dataset_helper_object.SearchSdk.assayname')
     def test_verify_dataset_title_info_organ_code_not_found_in_types_file(self, mock_assayname, mock_get_ancestors, mock_get_entity_by_id, mock_url_open):
-        # https://github.com/hubmapconsortium/search-api/blob/test-release/src/search-schema/data/definitions/enums/assay_types.yaml
+        # https://github.com/hubmapconsortium/search-api/blob/main/src/search-schema/data/definitions/enums/assay_types.yaml
         def resp1():
             response_dict = {'description': 'Imaging Mass Cytometry', 'alt-names': [], 'primary': 'true', 'vitessce-hints': []}
             return response_dict
@@ -205,7 +205,7 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
     @patch('dataset_helper_object.EntitySdk.get_ancestors')
     @patch('dataset_helper_object.SearchSdk.assayname')
     def test_verify_dataset_title_info_organ_key_not_found(self, mock_assayname, mock_get_ancestors, mock_get_entity_by_id, mock_url_open):
-        # https://github.com/hubmapconsortium/search-api/blob/test-release/src/search-schema/data/definitions/enums/assay_types.yaml
+        # https://github.com/hubmapconsortium/search-api/blob/main/src/search-schema/data/definitions/enums/assay_types.yaml
         def resp1():
             response_dict = {'description': 'Imaging Mass Cytometry', 'alt-names': [], 'primary': 'true', 'vitessce-hints': []}
             return response_dict
@@ -259,7 +259,7 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
     @patch('dataset_helper_object.EntitySdk.get_ancestors')
     @patch('dataset_helper_object.SearchSdk.assayname')
     def test_verify_dataset_title_info_no_race_no_sex(self, mock_assayname, mock_get_ancestors, mock_get_entity_by_id, mock_url_open):
-        # https://github.com/hubmapconsortium/search-api/blob/test-release/src/search-schema/data/definitions/enums/assay_types.yaml
+        # https://github.com/hubmapconsortium/search-api/blob/main/src/search-schema/data/definitions/enums/assay_types.yaml
         def resp1():
             response_dict = {'description': 'Imaging Mass Cytometry', 'alt-names': [], 'primary': 'true',
                              'vitessce-hints': []}
@@ -315,7 +315,7 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
     @patch('dataset_helper_object.EntitySdk.get_ancestors')
     @patch('dataset_helper_object.SearchSdk.assayname')
     def test_verify_dataset_title_info_assaytype_not_found(self, mock_assayname, mock_get_ancestors, mock_get_entity_by_id, mock_url_open):
-        # https://github.com/hubmapconsortium/search-api/blob/test-release/src/search-schema/data/definitions/enums/assay_types.yaml
+        # https://github.com/hubmapconsortium/search-api/blob/main/src/search-schema/data/definitions/enums/assay_types.yaml
 
         mock_assayname.side_effect = [Exception(), Exception()]
 
@@ -367,7 +367,7 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
     @patch('dataset_helper_object.EntitySdk.get_ancestors')
     @patch('dataset_helper_object.SearchSdk.assayname')
     def test_verify_dataset_title_info_dataset_data_types_missing(self, mock_assayname, mock_get_ancestors, mock_get_entity_by_id, mock_url_open):
-        # https://github.com/hubmapconsortium/search-api/blob/test-release/src/search-schema/data/definitions/enums/assay_types.yaml
+        # https://github.com/hubmapconsortium/search-api/blob/main/src/search-schema/data/definitions/enums/assay_types.yaml
         def resp1():
             response_dict = {'description': 'Imaging Mass Cytometry', 'alt-names': [], 'primary': 'true', 'vitessce-hints': []}
             return response_dict
