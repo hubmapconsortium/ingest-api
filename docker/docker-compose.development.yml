@@ -22,8 +22,6 @@ services:
       - "../src:/usr/src/app/src"
       # Mount conf.d-dev to the nginx conf.d on container
       - "./ingest-api/nginx/conf.d-dev:/etc/nginx/conf.d"
-      # Airflow static files
-      - "/hive/users/hive/hubmap/hivevm191-dev/venv/lib/python3.6/site-packages/airflow/www:/airflow-static"
       # Mount Globus data
       - "/hive/hubmap-dev:/hive/hubmap-dev"
     depends_on:
