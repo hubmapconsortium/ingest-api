@@ -32,10 +32,10 @@ Upgrade pip:
 python3 -m pip install --upgrade pip
 ````
 
-Then install the dependencies with using the `master` branch code of commons:
+Then install the dependencies with using the `main` branch code of commons:
 
 ````
-export COMMONS_BRANCH=master
+export COMMONS_BRANCH=main
 pip install -r requirements.txt
 ````
 
@@ -63,14 +63,14 @@ python3 -m flask run -p 5000
 
 There are a few configurable environment variables to keep in mind:
 
-- `COMMONS_BRANCH`: build argument only to be used during image creation when we need to use a branch of commons from github rather than the published PyPI package. Default to master branch if not set or null.
+- `COMMONS_BRANCH`: build argument only to be used during image creation when we need to use a branch of commons from github rather than the published PyPI package. Default to main branch if not set or null.
 - `HOST_UID`: the user id on the host machine to be mapped to the container. Default to 1000 if not set or null.
 - `HOST_GID`: the user's group id on the host machine to be mapped to the container. Default to 1000 if not set or null.
 
 We can set and verify the environment variable like below:
 
 ````
-export COMMONS_BRANCH=master
+export COMMONS_BRANCH=main
 echo $COMMONS_BRANCH
 ````
 
