@@ -54,7 +54,7 @@ class DatasetHelper:
             _search_api_url = config['SEARCH_WEBSERVICE_URL']
 
     def get_organ_types_dict(self) -> object:
-        yaml_file_url = 'https://raw.githubusercontent.com/hubmapconsortium/search-api/master/src/search-schema/data/definitions/enums/organ_types.yaml'
+        yaml_file_url = 'https://raw.githubusercontent.com/hubmapconsortium/search-api/main/src/search-schema/data/definitions/enums/organ_types.yaml'
         with urllib.request.urlopen(yaml_file_url) as response:
             yaml_file = response.read()
             try:
