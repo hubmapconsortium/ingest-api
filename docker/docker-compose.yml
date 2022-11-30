@@ -20,8 +20,6 @@ services:
     ports:
       - "80:8080"
       - "443:4430"
-      # ingest-pipeline
-      - "5555:5555"
       # ingest-api on http 7777 to be used by airflow
       - "7777:7777"
     environment:
