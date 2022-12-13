@@ -16,8 +16,6 @@ services:
     volumes:
       # Mount conf.d-test to the nginx conf.d on container
       - "./ingest-api/nginx/conf.d-test:/etc/nginx/conf.d"
-      # Flower static files, for TEST only
-      - "/hive/users/hive/hubmap/hivevm192-test/venv/lib/python3.6/site-packages/flower:/flower-static"
       # Mount Globus data
       - "/hive/hubmap-test:/hive/hubmap-test"
 
