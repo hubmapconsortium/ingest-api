@@ -9,8 +9,6 @@ services:
     volumes:
       # Mount conf.d-prod to the nginx conf.d on container
       - "./ingest-api/nginx/conf.d-prod:/etc/nginx/conf.d"
-      # Airflow static files
-      - "/hive/users/hive/hubmap/hivevm193-prod/venv/lib/python3.6/site-packages/airflow/www:/airflow-static"
       # Mount Globus data
       - "/hive/hubmap:/hive/hubmap"
 
