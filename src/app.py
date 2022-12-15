@@ -1519,8 +1519,9 @@ def create_samples_from_bulk():
             del item['source_id']
             item['lab_tissue_sample_id'] = item['lab_id']
             del item['lab_id']
-            item['specimen_type'] = item['sample_type']
-            del item['sample_type']
+            if 'specimen_type' in item:
+                item['specimen_type'] = item['sample_type']
+                del item['sample_type']
             item['organ'] = item['organ_type']
             del item['organ_type']
             item['protocol_url'] = item['sample_protocol']
