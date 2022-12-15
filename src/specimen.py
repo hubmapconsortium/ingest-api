@@ -399,7 +399,7 @@ class Specimen:
                     is_new_donor = True
                     # for a donor, set the parentUUID to the Lab UUID (which is the same as the group)
                     sourceUUID = groupUUID
-                elif incoming_record['specimen_type'] == 'organ':
+                elif incoming_record['sample_category'] == 'organ':
                     if 'organ' in incoming_record:
                         organ_specifier = incoming_record['organ']
                     else:
@@ -1033,133 +1033,135 @@ class Specimen:
         except:
             raise
 
-    @staticmethod
-    def search_specimen(driver, search_term, readonly_uuid_list, writeable_uuid_list, group_uuid_list, specimen_type=None, include_datasets=False):
-        return_list = []
-        lucence_index_name = "testIdx"
-        entity_type_clause = "entity_node.entitytype IN ['Donor','Sample']"
-        if include_datasets == True:
-            entity_type_clause = "entity_node.entitytype IN ['Donor','Sample','Dataset']"
-        metadata_clause = "{entitytype: 'Metadata'}"
-        if specimen_type != None:
-            if str(specimen_type).lower() == 'donor':
-                entity_type_clause = "entity_node.entitytype = 'Donor'"
-            elif str(specimen_type).lower() == 'dataset':
-                entity_type_clause = "entity_node.entitytype = 'Dataset'"
-            else: #default case: it is a Sample
-                entity_type_clause = "entity_node.entitytype = 'Sample' AND lucene_node.specimen_type = '{specimen_type}'".format(specimen_type=specimen_type)
-            
-        #group_clause = ""
-        # first swap the entity_node.entitytype out of the clause, then the lucene_node.specimen_type
-        # I can't do this in one step since replacing the entity_node would update other sections of the query
-        lucene_type_clause = entity_type_clause.replace('entity_node.entitytype', 'lucene_node.entitytype')
-        lucene_type_clause = lucene_type_clause.replace('lucene_node.specimen_type', 'metadata_node.specimen_type')
-        
-        print("-----><entity_type_clause: " + entity_type_clause)
-        
-        provenance_group_uuid_clause = ""
-        if group_uuid_list != None:
-            if len(group_uuid_list) > 0:
-                provenance_group_uuid_clause += " AND lucene_node.{provenance_group_uuid_attr} IN [".format(provenance_group_uuid_attr=HubmapConst.PROVENANCE_GROUP_UUID_ATTRIBUTE)
-                for group_uuid in group_uuid_list:
-                    provenance_group_uuid_clause += "'{uuid}', ".format(uuid=group_uuid)
-                # lop off the trailing comma and space and add the finish bracket:
-                provenance_group_uuid_clause = provenance_group_uuid_clause[:-2] +']'
-            # if all groups are being selected, ignore the test group
-            elif len(group_uuid_list) == 0:
-                test_group_uuid = '5bd084c8-edc2-11e8-802f-0e368f3075e8'
-                provenance_group_uuid_clause += " AND NOT lucene_node.{provenance_group_uuid_attr} IN ['{group_uuid}']".format(provenance_group_uuid_attr=HubmapConst.PROVENANCE_GROUP_UUID_ATTRIBUTE,group_uuid=test_group_uuid)
-        
-        stmt_list = []
-        if search_term == None:
-            stmt1 = """MATCH (lucene_node:Metadata {{entitytype: 'Metadata'}})<-[:HAS_METADATA]-(entity_node) WHERE {entity_type_clause} {provenance_group_uuid_clause}
-            RETURN COALESCE(entity_node.{hubmapid_attr}, entity_node.{display_doi_attr}) AS hubmap_identifier, entity_node.{lab_tissue_id_attr} AS lab_tissue_id, entity_node.{rui_location_attr} AS rui_location, entity_node.{uuid_attr} AS entity_uuid, entity_node.{entitytype_attr} AS datatype, entity_node.{doi_attr} AS entity_doi, entity_node.{display_doi_attr} as entity_display_doi, properties(lucene_node) AS metadata_properties, lucene_node.{provenance_timestamp} AS modified_timestamp
-            ORDER BY modified_timestamp DESC""".format(metadata_clause=metadata_clause,entity_type_clause=entity_type_clause,lucene_type_clause=lucene_type_clause,lucence_index_name=lucence_index_name,search_term=search_term,
-                uuid_attr=HubmapConst.UUID_ATTRIBUTE, entitytype_attr=HubmapConst.ENTITY_TYPE_ATTRIBUTE, activitytype_attr=HubmapConst.ACTIVITY_TYPE_ATTRIBUTE, doi_attr=HubmapConst.DOI_ATTRIBUTE, 
-                display_doi_attr=HubmapConst.DISPLAY_DOI_ATTRIBUTE,provenance_timestamp=HubmapConst.PROVENANCE_MODIFIED_TIMESTAMP_ATTRIBUTE, 
-                hubmapid_attr=HubmapConst.LAB_IDENTIFIER_ATTRIBUTE,provenance_group_uuid_clause=provenance_group_uuid_clause, lab_tissue_id_attr=HubmapConst.LAB_SAMPLE_ID_ATTRIBUTE, rui_location_attr=HubmapConst.RUI_LOCATION_ATTRIBUTE)
-            stmt_list = [stmt1]
-        else:
-            # use the full text indexing if searching for a term
-            cypher_index_clause = "CALL db.index.fulltext.queryNodes('{lucence_index_name}', '{search_term}') YIELD node AS lucene_node, score"
-            return_clause = "score, "
-            order_by_clause = "score DESC, "    
-            stmt1 = """CALL db.index.fulltext.queryNodes('{lucence_index_name}', '{search_term}') YIELD node AS lucene_node, score 
-            MATCH (lucene_node:Metadata {{entitytype: 'Metadata'}})<-[:HAS_METADATA]-(entity_node) WHERE {entity_type_clause} {provenance_group_uuid_clause}
-            RETURN score, COALESCE(entity_node.{hubmapid_attr}, entity_node.{display_doi_attr}) AS hubmap_identifier, entity_node.{lab_tissue_id_attr} AS lab_tissue_id, entity_node.{rui_location_attr} AS rui_location, entity_node.{uuid_attr} AS entity_uuid, entity_node.{entitytype_attr} AS datatype, entity_node.{doi_attr} AS entity_doi, entity_node.{display_doi_attr} as entity_display_doi, properties(lucene_node) AS metadata_properties, lucene_node.{provenance_timestamp} AS modified_timestamp
-            ORDER BY score DESC, modified_timestamp DESC""".format(metadata_clause=metadata_clause,entity_type_clause=entity_type_clause,lucene_type_clause=lucene_type_clause,lucence_index_name=lucence_index_name,search_term=search_term,
-                uuid_attr=HubmapConst.UUID_ATTRIBUTE, entitytype_attr=HubmapConst.ENTITY_TYPE_ATTRIBUTE, activitytype_attr=HubmapConst.ACTIVITY_TYPE_ATTRIBUTE, doi_attr=HubmapConst.DOI_ATTRIBUTE, 
-                display_doi_attr=HubmapConst.DISPLAY_DOI_ATTRIBUTE,provenance_timestamp=HubmapConst.PROVENANCE_MODIFIED_TIMESTAMP_ATTRIBUTE, 
-                hubmapid_attr=HubmapConst.LAB_IDENTIFIER_ATTRIBUTE,provenance_group_uuid_clause=provenance_group_uuid_clause, lab_tissue_id_attr=HubmapConst.LAB_SAMPLE_ID_ATTRIBUTE, rui_location_attr=HubmapConst.RUI_LOCATION_ATTRIBUTE)
-    
-            provenance_group_uuid_clause = provenance_group_uuid_clause.replace('lucene_node.', 'metadata_node.')
-
-            stmt2 = """CALL db.index.fulltext.queryNodes('{lucence_index_name}', '{search_term}') YIELD node AS lucene_node, score 
-            MATCH (metadata_node:Metadata {{entitytype: 'Metadata'}})<-[:HAS_METADATA]-(lucene_node) WHERE {lucene_type_clause} {provenance_group_uuid_clause}
-            RETURN score, COALESCE(lucene_node.{hubmapid_attr}, lucene_node.{display_doi_attr}) AS hubmap_identifier, lucene_node.{lab_tissue_id_attr} AS lab_tissue_id, lucene_node.{rui_location_attr} AS rui_location, lucene_node.{uuid_attr} AS entity_uuid, lucene_node.{entitytype_attr} AS datatype, lucene_node.{doi_attr} AS entity_doi, lucene_node.{display_doi_attr} as entity_display_doi, properties(metadata_node) AS metadata_properties, metadata_node.{provenance_timestamp} AS modified_timestamp
-            ORDER BY score DESC, modified_timestamp DESC""".format(metadata_clause=metadata_clause,entity_type_clause=entity_type_clause,lucene_type_clause=lucene_type_clause,lucence_index_name=lucence_index_name,search_term=search_term,
-                uuid_attr=HubmapConst.UUID_ATTRIBUTE, entitytype_attr=HubmapConst.ENTITY_TYPE_ATTRIBUTE, activitytype_attr=HubmapConst.ACTIVITY_TYPE_ATTRIBUTE, doi_attr=HubmapConst.DOI_ATTRIBUTE, 
-                display_doi_attr=HubmapConst.DISPLAY_DOI_ATTRIBUTE,provenance_timestamp=HubmapConst.PROVENANCE_MODIFIED_TIMESTAMP_ATTRIBUTE, 
-                hubmapid_attr=HubmapConst.LAB_IDENTIFIER_ATTRIBUTE,provenance_group_uuid_clause=provenance_group_uuid_clause, lab_tissue_id_attr=HubmapConst.LAB_SAMPLE_ID_ATTRIBUTE, rui_location_attr=HubmapConst.RUI_LOCATION_ATTRIBUTE)
-    
-            stmt_list = [stmt1, stmt2]
-        return_list = []
-        display_doi_list = []
-        for stmt in stmt_list:
-            print("Search query: " + stmt)
-            with driver.session() as session:
-    
-                try:
-                    for record in session.run(stmt):
-                        # skip any records with empty display_doi
-                        if record['entity_display_doi'] != None:
-                            # insert any new records
-                            if str(record['entity_display_doi']) not in display_doi_list:
-                                data_record = {}
-                                data_record['uuid'] = record['entity_uuid']
-                                if record.get('score', None) != None:
-                                    data_record['score'] = record['score']
-                                data_record['entity_display_doi'] = record['entity_display_doi']
-                                data_record['entity_doi'] = record['entity_doi']
-                                data_record['datatype'] = record['datatype']
-                                data_record['properties'] = record['metadata_properties']
-                                data_record['hubmap_identifier'] = record['hubmap_identifier']
-                                if record.get('lab_tissue_id', None) != None:
-                                    data_record['properties']['lab_tissue_id'] = record['lab_tissue_id']
-                                if record.get('rui_location', None) != None:
-                                    data_record['properties']['rui_location'] = record['rui_location']
-                                # determine if the record is writable by the current user
-                                data_record['writeable'] = False
-                                if record['metadata_properties']['provenance_group_uuid'] in writeable_uuid_list:
-                                    data_record['writeable'] = True
-                                display_doi_list.append(str(data_record['entity_display_doi']))
-                                return_list.append(data_record)
-                            # find any existing records and update their score (if necessary)
-                            else:
-                                if search_term != None:
-                                    for ret_record in return_list:
-                                        if record['entity_display_doi'] == ret_record['entity_display_doi']:
-                                            # update the score if it is higher
-                                            if record['score'] > ret_record['score']:
-                                                ret_record['score'] = record['score']
-                        
-                except:
-                    print ('A general error occurred: ')
-                    traceback.print_exc()
-                    raise
-        if search_term != None:
-            # before returning the list, sort it again if new items were added
-            return_list.sort(key=lambda x: x['score'], reverse=True)
-            # promote any items where the entity_display_doi is an exact match to the search term (ex: HBM:234-TRET-596)
-            # to the top of the list (regardless of score)
-            if search_term != None:
-                for ret_record in return_list:
-                    if str(ret_record['hubmap_identifier']).find(str(search_term)) > -1:
-                        return_list.remove(ret_record)
-                        return_list.insert(0,ret_record)     
-                        break                       
-
-        return return_list                    
+#    @staticmethod
+#    def search_specimen(driver, search_term, readonly_uuid_list, writeable_uuid_list, group_uuid_list, specimen_type=None, include_datasets=False, sample_category=None):
+#        return_list = []
+#        lucence_index_name = "testIdx"
+#        entity_type_clause = "entity_node.entitytype IN ['Donor','Sample']"
+#        if include_datasets == True:
+#            entity_type_clause = "entity_node.entitytype IN ['Donor','Sample','Dataset']"
+#        metadata_clause = "{entitytype: 'Metadata'}"
+#        if specimen_type != None:
+#            if str(specimen_type).lower() == 'donor':
+#                entity_type_clause = "entity_node.entitytype = 'Donor'"
+#            elif str(specimen_type).lower() == 'dataset':
+#                entity_type_clause = "entity_node.entitytype = 'Dataset'"
+#            else: #default case: it is a Sample
+#                entity_type_clause = "entity_node.entitytype = 'Sample' AND lucene_node.specimen_type = '{specimen_type}'".format(specimen_type=specimen_type)
+#        elif sample_category != None:
+#            entity_type_clause = "entity_node.entitytype = 'Sample' AND lucene_node.sample_category = '{sample_category}'".format(sample_category=sample_category)            
+#            
+#        #group_clause = ""
+#        # first swap the entity_node.entitytype out of the clause, then the lucene_node.specimen_type
+#        # I can't do this in one step since replacing the entity_node would update other sections of the query
+#        lucene_type_clause = entity_type_clause.replace('entity_node.entitytype', 'lucene_node.entitytype')
+#        lucene_type_clause = lucene_type_clause.replace('lucene_node.specimen_type', 'metadata_node.specimen_type')
+#        
+#        print("-----><entity_type_clause: " + entity_type_clause)
+#        
+#        provenance_group_uuid_clause = ""
+#        if group_uuid_list != None:
+#            if len(group_uuid_list) > 0:
+#                provenance_group_uuid_clause += " AND lucene_node.{provenance_group_uuid_attr} IN [".format(provenance_group_uuid_attr=HubmapConst.PROVENANCE_GROUP_UUID_ATTRIBUTE)
+#                for group_uuid in group_uuid_list:
+#                    provenance_group_uuid_clause += "'{uuid}', ".format(uuid=group_uuid)
+#                # lop off the trailing comma and space and add the finish bracket:
+#                provenance_group_uuid_clause = provenance_group_uuid_clause[:-2] +']'
+#            # if all groups are being selected, ignore the test group
+#            elif len(group_uuid_list) == 0:
+#                test_group_uuid = '5bd084c8-edc2-11e8-802f-0e368f3075e8'
+#                provenance_group_uuid_clause += " AND NOT lucene_node.{provenance_group_uuid_attr} IN ['{group_uuid}']".format(provenance_group_uuid_attr=HubmapConst.PROVENANCE_GROUP_UUID_ATTRIBUTE,group_uuid=test_group_uuid)
+#        
+#        stmt_list = []
+#        if search_term == None:
+#            stmt1 = """MATCH (lucene_node:Metadata {{entitytype: 'Metadata'}})<-[:HAS_METADATA]-(entity_node) WHERE {entity_type_clause} {provenance_group_uuid_clause}
+#            RETURN COALESCE(entity_node.{hubmapid_attr}, entity_node.{display_doi_attr}) AS hubmap_identifier, entity_node.{lab_tissue_id_attr} AS lab_tissue_id, entity_node.{rui_location_attr} AS rui_location, entity_node.{uuid_attr} AS entity_uuid, entity_node.{entitytype_attr} AS datatype, entity_node.{doi_attr} AS entity_doi, entity_node.{display_doi_attr} as entity_display_doi, properties(lucene_node) AS metadata_properties, lucene_node.{provenance_timestamp} AS modified_timestamp
+#            ORDER BY modified_timestamp DESC""".format(metadata_clause=metadata_clause,entity_type_clause=entity_type_clause,lucene_type_clause=lucene_type_clause,lucence_index_name=lucence_index_name,search_term=search_term,
+#                uuid_attr=HubmapConst.UUID_ATTRIBUTE, entitytype_attr=HubmapConst.ENTITY_TYPE_ATTRIBUTE, activitytype_attr=HubmapConst.ACTIVITY_TYPE_ATTRIBUTE, doi_attr=HubmapConst.DOI_ATTRIBUTE, 
+#                display_doi_attr=HubmapConst.DISPLAY_DOI_ATTRIBUTE,provenance_timestamp=HubmapConst.PROVENANCE_MODIFIED_TIMESTAMP_ATTRIBUTE, 
+#                hubmapid_attr=HubmapConst.LAB_IDENTIFIER_ATTRIBUTE,provenance_group_uuid_clause=provenance_group_uuid_clause, lab_tissue_id_attr=HubmapConst.LAB_SAMPLE_ID_ATTRIBUTE, rui_location_attr=HubmapConst.RUI_LOCATION_ATTRIBUTE)
+#            stmt_list = [stmt1]
+#        else:
+#            # use the full text indexing if searching for a term
+#            cypher_index_clause = "CALL db.index.fulltext.queryNodes('{lucence_index_name}', '{search_term}') YIELD node AS lucene_node, score"
+#            return_clause = "score, "
+#            order_by_clause = "score DESC, "    
+#            stmt1 = """CALL db.index.fulltext.queryNodes('{lucence_index_name}', '{search_term}') YIELD node AS lucene_node, score 
+#            MATCH (lucene_node:Metadata {{entitytype: 'Metadata'}})<-[:HAS_METADATA]-(entity_node) WHERE {entity_type_clause} {provenance_group_uuid_clause}
+#            RETURN score, COALESCE(entity_node.{hubmapid_attr}, entity_node.{display_doi_attr}) AS hubmap_identifier, entity_node.{lab_tissue_id_attr} AS lab_tissue_id, entity_node.{rui_location_attr} AS rui_location, entity_node.{uuid_attr} AS entity_uuid, entity_node.{entitytype_attr} AS datatype, entity_node.{doi_attr} AS entity_doi, entity_node.{display_doi_attr} as entity_display_doi, properties(lucene_node) AS metadata_properties, lucene_node.{provenance_timestamp} AS modified_timestamp
+#            ORDER BY score DESC, modified_timestamp DESC""".format(metadata_clause=metadata_clause,entity_type_clause=entity_type_clause,lucene_type_clause=lucene_type_clause,lucence_index_name=lucence_index_name,search_term=search_term,
+#                uuid_attr=HubmapConst.UUID_ATTRIBUTE, entitytype_attr=HubmapConst.ENTITY_TYPE_ATTRIBUTE, activitytype_attr=HubmapConst.ACTIVITY_TYPE_ATTRIBUTE, doi_attr=HubmapConst.DOI_ATTRIBUTE, 
+#                display_doi_attr=HubmapConst.DISPLAY_DOI_ATTRIBUTE,provenance_timestamp=HubmapConst.PROVENANCE_MODIFIED_TIMESTAMP_ATTRIBUTE, 
+#                hubmapid_attr=HubmapConst.LAB_IDENTIFIER_ATTRIBUTE,provenance_group_uuid_clause=provenance_group_uuid_clause, lab_tissue_id_attr=HubmapConst.LAB_SAMPLE_ID_ATTRIBUTE, rui_location_attr=HubmapConst.RUI_LOCATION_ATTRIBUTE)
+#    
+#            provenance_group_uuid_clause = provenance_group_uuid_clause.replace('lucene_node.', 'metadata_node.')
+#
+#            stmt2 = """CALL db.index.fulltext.queryNodes('{lucence_index_name}', '{search_term}') YIELD node AS lucene_node, score 
+#            MATCH (metadata_node:Metadata {{entitytype: 'Metadata'}})<-[:HAS_METADATA]-(lucene_node) WHERE {lucene_type_clause} {provenance_group_uuid_clause}
+#            RETURN score, COALESCE(lucene_node.{hubmapid_attr}, lucene_node.{display_doi_attr}) AS hubmap_identifier, lucene_node.{lab_tissue_id_attr} AS lab_tissue_id, lucene_node.{rui_location_attr} AS rui_location, lucene_node.{uuid_attr} AS entity_uuid, lucene_node.{entitytype_attr} AS datatype, lucene_node.{doi_attr} AS entity_doi, lucene_node.{display_doi_attr} as entity_display_doi, properties(metadata_node) AS metadata_properties, metadata_node.{provenance_timestamp} AS modified_timestamp
+#            ORDER BY score DESC, modified_timestamp DESC""".format(metadata_clause=metadata_clause,entity_type_clause=entity_type_clause,lucene_type_clause=lucene_type_clause,lucence_index_name=lucence_index_name,search_term=search_term,
+#                uuid_attr=HubmapConst.UUID_ATTRIBUTE, entitytype_attr=HubmapConst.ENTITY_TYPE_ATTRIBUTE, activitytype_attr=HubmapConst.ACTIVITY_TYPE_ATTRIBUTE, doi_attr=HubmapConst.DOI_ATTRIBUTE, 
+#                display_doi_attr=HubmapConst.DISPLAY_DOI_ATTRIBUTE,provenance_timestamp=HubmapConst.PROVENANCE_MODIFIED_TIMESTAMP_ATTRIBUTE, 
+#                hubmapid_attr=HubmapConst.LAB_IDENTIFIER_ATTRIBUTE,provenance_group_uuid_clause=provenance_group_uuid_clause, lab_tissue_id_attr=HubmapConst.LAB_SAMPLE_ID_ATTRIBUTE, rui_location_attr=HubmapConst.RUI_LOCATION_ATTRIBUTE)
+#    
+#            stmt_list = [stmt1, stmt2]
+#        return_list = []
+#        display_doi_list = []
+#        for stmt in stmt_list:
+#            print("Search query: " + stmt)
+#            with driver.session() as session:
+#    
+#                try:
+#                    for record in session.run(stmt):
+#                        # skip any records with empty display_doi
+#                        if record['entity_display_doi'] != None:
+#                            # insert any new records
+#                            if str(record['entity_display_doi']) not in display_doi_list:
+#                                data_record = {}
+#                                data_record['uuid'] = record['entity_uuid']
+#                                if record.get('score', None) != None:
+#                                    data_record['score'] = record['score']
+#                                data_record['entity_display_doi'] = record['entity_display_doi']
+#                                data_record['entity_doi'] = record['entity_doi']
+#                                data_record['datatype'] = record['datatype']
+#                                data_record['properties'] = record['metadata_properties']
+#                                data_record['hubmap_identifier'] = record['hubmap_identifier']
+#                                if record.get('lab_tissue_id', None) != None:
+#                                    data_record['properties']['lab_tissue_id'] = record['lab_tissue_id']
+#                                if record.get('rui_location', None) != None:
+#                                    data_record['properties']['rui_location'] = record['rui_location']
+#                                # determine if the record is writable by the current user
+#                                data_record['writeable'] = False
+#                                if record['metadata_properties']['provenance_group_uuid'] in writeable_uuid_list:
+#                                    data_record['writeable'] = True
+#                                display_doi_list.append(str(data_record['entity_display_doi']))
+#                                return_list.append(data_record)
+#                            # find any existing records and update their score (if necessary)
+#                            else:
+#                                if search_term != None:
+#                                    for ret_record in return_list:
+#                                        if record['entity_display_doi'] == ret_record['entity_display_doi']:
+#                                            # update the score if it is higher
+#                                            if record['score'] > ret_record['score']:
+#                                                ret_record['score'] = record['score']
+#                        
+#                except:
+#                    print ('A general error occurred: ')
+#                    traceback.print_exc()
+#                    raise
+#        if search_term != None:
+#            # before returning the list, sort it again if new items were added
+#            return_list.sort(key=lambda x: x['score'], reverse=True)
+#            # promote any items where the entity_display_doi is an exact match to the search term (ex: HBM:234-TRET-596)
+#            # to the top of the list (regardless of score)
+#            if search_term != None:
+#                for ret_record in return_list:
+#                    if str(ret_record['hubmap_identifier']).find(str(search_term)) > -1:
+#                        return_list.remove(ret_record)
+#                        return_list.insert(0,ret_record)     
+#                        break                       
+#
+#        return return_list                    
 
     @staticmethod
     def update_metadata_access_levels(driver, datasets: List[str] = []):
