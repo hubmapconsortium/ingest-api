@@ -42,6 +42,7 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
         def resp3():
             dataset1 = hubmap_sdk.Dataset({'entity_type': 'Sample',
                                            'specimen_type': 'Organ',
+                                           'sample_category': 'organ',
                                            'organ': 'BM'})
             dataset2 = hubmap_sdk.Dataset({'entity_type': 'Donor',
                                            'metadata':
@@ -108,6 +109,7 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
         def resp3():
             dataset1 = hubmap_sdk.Dataset({'entity_type': 'Sample',
                                            'specimen_type': 'Organ',
+                                           'sample_category': 'organ',
                                            'organ': 'BL'})
             dataset2 = hubmap_sdk.Dataset({'entity_type': 'Donor',
                                            'metadata':
@@ -165,6 +167,7 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
             r.status_code = 200
             dataset1 = hubmap_sdk.Dataset({'entity_type': 'Sample',
                                            'specimen_type': 'Organ',
+                                           'sample_category': 'organ',
                                             'organ': 'xx'})
             dataset2 = hubmap_sdk.Dataset({'entity_type': 'Donor',
                                            'metadata':
@@ -217,7 +220,8 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
 
         def resp3():
             dataset1 = hubmap_sdk.Dataset({'entity_type': 'Sample',
-                               'specimen_type': 'Organ'})
+                               'specimen_type': 'Organ',
+                               'sample_category': 'organ',})
             dataset2 = hubmap_sdk.Dataset({'entity_type': 'Donor',
                                'metadata':
                                  {'organ_donor_data': [
@@ -247,7 +251,7 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
         result = self.dataset_helper.verify_dataset_title_info(self.dataset_uuid, self.user_token)
 
         self.assertEqual(len(result), 1)
-        self.assertEqual(result[0], 'Organ key not found in specimen_type organ')
+        self.assertEqual(result[0], 'Organ key not found in sample_category organ')
         mock_assayname.assert_called()
         mock_get_ancestors.assert_called()
         mock_get_entity_by_id.assert_called()
@@ -274,6 +278,7 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
         def resp3():
             dataset1 = hubmap_sdk.Dataset({'entity_type': 'Sample',
                                            'specimen_type': 'Organ',
+                                           'sample_category': 'organ',
                                            'organ': 'BM'})
             dataset2 = hubmap_sdk.Dataset({'entity_type': 'Donor',
                                            'metadata':
@@ -322,6 +327,7 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
         def resp1():
             dataset1 = hubmap_sdk.Dataset({'entity_type': 'Sample',
                                            'specimen_type': 'Organ',
+                                           'sample_category': 'organ',
                                            'organ': 'BM'})
             dataset2 = hubmap_sdk.Dataset({'entity_type': 'Donor',
                                            'metadata':
@@ -381,6 +387,7 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
         def resp3():
             dataset1 = hubmap_sdk.Dataset({'entity_type': 'Sample',
                                            'specimen_type': 'Organ',
+                                           'sample_category': 'organ',
                                            'organ': 'BM'})
             dataset2 = hubmap_sdk.Dataset({'entity_type': 'Donor',
                                            'metadata':

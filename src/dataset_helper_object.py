@@ -98,7 +98,7 @@ class DatasetHelper:
             ancestor_dict = vars(ancestor)
             if 'entity_type' in ancestor_dict:
                 if ancestor_dict['entity_type'] == 'Sample':
-                    if 'specimen_type' in ancestor_dict and ancestor_dict['specimen_type'].lower() == 'organ':
+                    if 'sample_category' in ancestor_dict and ancestor_dict['sample_category'].lower() == 'organ':
                         if 'organ' in ancestor_dict:
                             organ_code = ancestor_dict['organ']
                             organ_types_dict = self.get_organ_types_dict()
@@ -109,7 +109,7 @@ class DatasetHelper:
                             else:
                                 rslt.append(f"Organ code '{organ_code}' not found in organ types file")
                         else:
-                            rslt.append('Organ key not found in specimen_type organ')
+                            rslt.append('Organ key not found in sample_category organ')
 
                 elif ancestor_dict['entity_type'] == 'Donor':
                     try:
