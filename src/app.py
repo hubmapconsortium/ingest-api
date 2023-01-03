@@ -1714,7 +1714,7 @@ def validate_samples(headers, records, header):
                             f"Row Number: {rownum}. If sample type is not organ, source_id must point to a sample")
                     if rui_is_blank is False and source_dict['type'].lower() == 'donor':
                         file_is_valid = False
-                        error_msg.append(f"Row Number: {rownum}. If rui_location is blank, source_id cannot be a donor")
+                        error_msg.append(f"Row Number: {rownum}. If rui_location is not blank, source_id cannot be a donor")
 
 
     if file_is_valid:
