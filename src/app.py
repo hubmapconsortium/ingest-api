@@ -1519,8 +1519,7 @@ def create_samples_from_bulk():
             del item['source_id']
             item['lab_tissue_sample_id'] = item['lab_id']
             del item['lab_id']
-            item['specimen_type'] = item['sample_type']
-            del item['sample_type']
+            
             item['organ'] = item['organ_type']
             del item['organ_type']
             item['protocol_url'] = item['sample_protocol']
@@ -1560,7 +1559,7 @@ def validate_samples(headers, records, header):
     error_msg = []
     file_is_valid = True
 
-    required_headers = ['source_id', 'lab_id', 'sample_type', 'organ_type', 'sample_protocol', 'description', 'rui_location']
+    required_headers = ['source_id', 'lab_id', 'sample_category', 'organ_type', 'sample_protocol', 'description', 'rui_location']
     for field in required_headers:
         if field not in headers:
             file_is_valid = False
@@ -1570,19 +1569,17 @@ def validate_samples(headers, records, header):
         if field not in required_headers:
             file_is_valid = False
             error_msg.append(f"{field} is not an accepted field")
-
-    with urllib.request.urlopen(
-            'https://raw.githubusercontent.com/hubmapconsortium/search-api/main/src/search-schema/data/definitions/enums/tissue_sample_types.yaml') as urlfile:
-        sample_resource_file = yaml.load(urlfile, Loader=yaml.FullLoader)
+    accepted_sample_categories = ["organ", "block", "section", "suspension"]
 
     with urllib.request.urlopen(
             'https://raw.githubusercontent.com/hubmapconsortium/search-api/main/src/search-schema/data/definitions/enums/organ_types.yaml') as urlfile:
         organ_resource_file = yaml.load(urlfile, Loader=yaml.FullLoader)
 
-    rownum = 1
+    rownum = 0
     valid_source_ids = []
     if file_is_valid is True:
         for data_row in records:
+            rownum = rownum + 1
             # validate that no fields in data_row are none. If they are none, then we cannot verify even if the entry we
             # are validating is what it is supposed to be. Mark the entire row as bad if a none field exists.
             none_present = False
@@ -1614,25 +1611,25 @@ def validate_samples(headers, records, header):
                     file_is_valid = False
                     error_msg.append(f"Row Number: {rownum}. rui_location must be a valid json file")
 
-            # validate sample_type
-            sample_type = data_row['sample_type']
-            if rui_is_blank is False and sample_type.lower() == 'organ':
+            # validate sample_category
+            sample_category = data_row['sample_category']
+            if rui_is_blank is False and sample_category.lower() == 'organ':
                 file_is_valid = False
                 error_msg.append(f"Row Number: {rownum}. If rui_location field is not blank, sample type cannot be organ")
-            if sample_type.lower() not in sample_resource_file:
+            if sample_category.lower() not in accepted_sample_categories:
                 file_is_valid = False
-                error_msg.append(f"Row Number: {rownum}. sample_type value must be a sample code listed in tissue sample type files (https://raw.githubusercontent.com/hubmapconsortium/search-api/main/src/search-schema/data/definitions/enums/tissue_sample_types.yaml)")
+                error_msg.append(f"Row Number: {rownum}. sample_category value must be a either 'organ', 'block', 'suspension', or 'section'")
 
             # validate organ_type
             organ_type = data_row['organ_type']
-            if sample_type.lower() != "organ":
+            if sample_category.lower() != "organ":
                 if len(organ_type) > 0:
                     file_is_valid = False
-                    error_msg.append(f"Row Number: {rownum}. organ_type field must be blank if sample_type is not 'organ'")
-            if sample_type.lower() == "organ":
+                    error_msg.append(f"Row Number: {rownum}. organ_type field must be blank if sample_category is not 'organ'")
+            if sample_category.lower() == "organ":
                 if len(organ_type) < 1:
                     file_is_valid = False
-                    error_msg.append(f"Row Number: {rownum}. organ_type field is required if sample_type is 'organ'")
+                    error_msg.append(f"Row Number: {rownum}. organ_type field is required if sample_category is 'organ'")
             if len(organ_type) > 0:
                 if organ_type.upper() not in organ_resource_file:
                     file_is_valid = False
@@ -1707,19 +1704,18 @@ def validate_samples(headers, records, header):
                         resp_status_code = True
                 if source_saved or resp_status_code:
                     data_row['source_id'] = source_dict['hm_uuid']
-                    if sample_type.lower() == 'organ' and source_dict['type'].lower() != 'donor':
+                    if sample_category.lower() == 'organ' and source_dict['type'].lower() != 'donor':
                         file_is_valid = False
                         error_msg.append(
                             f"Row Number: {rownum}. If sample type is organ, source_id must point to a donor")
-                    if sample_type.lower() != 'organ' and source_dict['type'].lower() != 'sample':
+                    if sample_category.lower() != 'organ' and source_dict['type'].lower() != 'sample':
                         file_is_valid = False
                         error_msg.append(
                             f"Row Number: {rownum}. If sample type is not organ, source_id must point to a sample")
                     if rui_is_blank is False and source_dict['type'].lower() == 'donor':
                         file_is_valid = False
-                        error_msg.append(f"Row Number: {rownum}. If rui_location is blank, source_id cannot be a donor")
+                        error_msg.append(f"Row Number: {rownum}. If rui_location is not blank, source_id cannot be a donor")
 
-            rownum = rownum + 1
 
     if file_is_valid:
         return file_is_valid
