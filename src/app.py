@@ -1563,12 +1563,12 @@ def validate_samples(headers, records, header):
     for field in required_headers:
         if field not in headers:
             file_is_valid = False
-            error_msg.append(f"{field} is a required field")
+            error_msg.append(f"{field} is a required header. Even if a field is optional, the column and header must be present in the tsv file.")
     required_headers.append(None)
     for field in headers:
         if field not in required_headers:
             file_is_valid = False
-            error_msg.append(f"{field} is not an accepted field")
+            error_msg.append(f"{field} is not an accepted field. Check for any typo's in header row.")
     accepted_sample_categories = ["organ", "block", "section", "suspension"]
 
     with urllib.request.urlopen(
@@ -1589,7 +1589,7 @@ def validate_samples(headers, records, header):
             if none_present:
                 file_is_valid = False
                 error_msg.append(
-                    f"Row Number: {rownum}. This row has too few entries. Check file; verify spaces were not used where a tab should be")
+                    f"Row Number: {rownum}. This row has too few entries. Check file; verify spaces were not used where a tab should be. There should be as many entries in each column as their are headers, even if some fields are blank")
                 continue
 
             # validate that no headers are None. This indicates that there are fields present.
@@ -1732,15 +1732,16 @@ def validate_donors(headers, records):
     for field in required_headers:
         if field not in headers:
             file_is_valid = False
-            error_msg.append(f"{field} is a required field")
+            error_msg.append(f"{field} is a required header. Even if a field is optional, the column and header must be present in the tsv file.")
     required_headers.append(None)
     for field in headers:
         if field not in required_headers:
             file_is_valid = False
-            error_msg.append(f"{field} is not an accepted field")
-    rownum = 1
+            error_msg.append(f"{field} is not an accepted field. Check for any typo's in header row.")
+    rownum = 0
     if file_is_valid is True:
         for data_row in records:
+            rownum = rownum + 1
             # validate that no fields in data_row are none. If they are none, then we cannot verify even if the entry we
             # are validating is what it is supposed to be. Mark the entire row as bad if a none field exists.
             none_present = False
@@ -1749,7 +1750,7 @@ def validate_donors(headers, records):
                     none_present = True
             if none_present:
                 file_is_valid = False
-                error_msg.append(f"Row Number: {rownum}. This row has too few entries. Check file; verify spaces were not used where a tab should be")
+                error_msg.append(f"Row Number: {rownum}. This row has too few entries. Check file; verify spaces were not used where a tab should be. There should be as many entries in each column as their are headers, even if some fields are blank")
                 continue
 
             # validate that no headers are None. This indicates that there are fields present.
@@ -1789,7 +1790,6 @@ def validate_donors(headers, records):
             #if lab_id_pattern is None:
             #    file_is_valid = False
             #    error_msg.append(f"Row Number: {rownum}. if lab_id is given, it must be an alphanumeric string")
-            rownum = rownum + 1
 
     if file_is_valid:
         return file_is_valid
