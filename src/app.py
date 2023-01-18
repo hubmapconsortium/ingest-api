@@ -1566,7 +1566,10 @@ def validate_samples(headers, records, header):
             error_msg.append(f"{field} is a required header. Even if a field is optional, the column and header must be present in the tsv file.")
     required_headers.append(None)
     for field in headers:
-        if field not in required_headers:
+        if field == "":
+            file_is_valid = False
+            error_msg.append(f"<blank> is not an accepted field. Check for incorrect spaces and tabs in the header line")
+        elif field not in required_headers:
             file_is_valid = False
             error_msg.append(f"{field} is not an accepted field. Check for any typo's in header row.")
     accepted_sample_categories = ["organ", "block", "section", "suspension"]
@@ -1580,8 +1583,10 @@ def validate_samples(headers, records, header):
     if file_is_valid is True:
         for data_row in records:
             rownum = rownum + 1
-            # validate that no fields in data_row are none. If they are none, then we cannot verify even if the entry we
-            # are validating is what it is supposed to be. Mark the entire row as bad if a none field exists.
+
+            # validate that no fields in data_row are none. If they are none, this means that there are more columns in
+            #  the header than the data row and we cannot verify even if the entry we are validating is what it is
+            #  supposed to be. Mark the entire row as bad if a none field exists.
             none_present = False
             for each in data_row.keys():
                 if data_row[each] is None:
@@ -1592,7 +1597,9 @@ def validate_samples(headers, records, header):
                     f"Row Number: {rownum}. This row has too few entries. Check file; verify spaces were not used where a tab should be. There should be as many entries in each column as their are headers, even if some fields are blank")
                 continue
 
-            # validate that no headers are None. This indicates that there are fields present.
+            # validate that no headers are None. This indicates that there are more columns in the data row than there
+            # are columns in the header row. We cannot accurately validate the fields in this row if this is the case,
+            # so mark the entire row as invalid and continue.
             if data_row.get(None) is not None:
                 file_is_valid = False
                 error_msg.append(f"Row Number: {rownum}. This row has too many entries. Check file; verify that there are only as many fields as there are headers")
@@ -1728,6 +1735,7 @@ def validate_donors(headers, records):
     error_msg = []
     file_is_valid = True
 
+    # First we validate the header line. If the header line is wrong, its not necessary to even validate the data rows.
     required_headers = ['lab_name', 'selection_protocol', 'description', 'lab_id']
     for field in required_headers:
         if field not in headers:
@@ -1735,15 +1743,20 @@ def validate_donors(headers, records):
             error_msg.append(f"{field} is a required header. Even if a field is optional, the column and header must be present in the tsv file.")
     required_headers.append(None)
     for field in headers:
-        if field not in required_headers:
+        if field == "":
+            file_is_valid = False
+            error_msg.append(f"<blank> is not an accepted field. Check for incorrect spaces and tabs in the header line")
+        elif field not in required_headers:
             file_is_valid = False
             error_msg.append(f"{field} is not an accepted field. Check for any typo's in header row.")
     rownum = 0
     if file_is_valid is True:
         for data_row in records:
             rownum = rownum + 1
-            # validate that no fields in data_row are none. If they are none, then we cannot verify even if the entry we
-            # are validating is what it is supposed to be. Mark the entire row as bad if a none field exists.
+
+            # validate that no fields in data_row are none. If they are none, this means that there are more columns in
+            #  the header than the data row and we cannot verify even if the entry we are validating is what it is
+            #  supposed to be. Mark the entire row as bad if a none field exists.
             none_present = False
             for each in data_row.keys():
                 if data_row[each] is None:
@@ -1753,7 +1766,9 @@ def validate_donors(headers, records):
                 error_msg.append(f"Row Number: {rownum}. This row has too few entries. Check file; verify spaces were not used where a tab should be. There should be as many entries in each column as their are headers, even if some fields are blank")
                 continue
 
-            # validate that no headers are None. This indicates that there are fields present.
+            # validate that no headers are None. This indicates that there are more columns in the data row than there
+            # are columns in the header row. We cannot accurately validate the fields in this row if this is the case,
+            # so mark the entire row as invalid and continue.
             if data_row.get(None) is not None:
                 file_is_valid = False
                 error_msg.append(
