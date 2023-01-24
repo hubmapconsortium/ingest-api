@@ -1171,7 +1171,20 @@ def allowable_edit_states(hmuuid):
     #if no uuid provided send back a 400
     if hmuuid == None or len(hmuuid) == 0:
         abort(400, jsonify( { 'error': 'hmuuid (HuBMAP UUID) parameter is required.' } ))
-
+    accepted_arguments = ["ignore-publication-status"]
+    ignore_publication_status = False
+    if bool(request.args):
+        for argument in request.args:
+            if argument.lower() not in accepted_arguments:
+                bad_request_error(f"{argument} is an unrecognized argument.")
+        ignore_publication = request.args.get('ignore-publication-status')
+        if ignore_publication is not None:
+            if ignore_publication.lower() == "true":
+                ignore_publication_status = True
+            elif ignore_publication.lower() == "false":
+                ignore_publication_status = False
+            else:
+                bad_request_error(f"The only accepted values for ignore-publication-status are 'true' or 'false'")
     try:
         #the Globus nexus auth token will be in the AUTHORIZATION section of the header
         token = str(request.headers["AUTHORIZATION"])[7:]
@@ -1232,8 +1245,9 @@ def allowable_edit_states(hmuuid):
                             logger.error(msg)
                             return Response(msg, 500)
                         status = status.lower().strip()
-                        if status == 'published' or status == 'reorganized':
-                            return Response(json.dumps(r_val), 200, mimetype='application/json')
+                        if ignore_publication_status is False:
+                            if status == 'published' or status == 'reorganized':
+                                return Response(json.dumps(r_val), 200, mimetype='application/json')
                     #if the entity is public, no write allowed
                     elif entity_type in ['sample', 'donor']:
                         if data_access_level == 'public':
