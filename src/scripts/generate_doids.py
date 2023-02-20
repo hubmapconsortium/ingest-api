@@ -30,10 +30,8 @@ def generate_doids_for_all_published(neo4j_driver_instance, entity_instance, tok
             # create_dataset_draft_doi will blowup if these fields are not present in the record...
             required_fields: list =\
                 ['entity_type', 'status', 'hubmap_id', 'uuid', 'title', 'contacts', 'contributors']
-            missing_fields: list = []
-            for field in required_fields:
-                if field not in entity_dict:
-                    missing_fields.append(field)
+            missing_fields: list =\
+                [i for i in required_fields if i not in entity_dict.keys()]
             if len(missing_fields) != 0:
                 logger.error(f"Dataset associated with uuid '{dataset_uuid}' is missing required field(s): {', '.join(missing_fields)}")
             else:
