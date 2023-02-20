@@ -8,6 +8,7 @@ import json
 from uuid import UUID
 import yaml
 import csv
+from typing import List
 import time
 from threading import Thread
 from hubmap_sdk import EntitySdk
@@ -31,6 +32,8 @@ from hubmap_commons import file_helper as commons_file_helper
 
 # Should be deprecated/refactored but still in use
 from hubmap_commons.hubmap_const import HubmapConst
+
+from app_utils.ontoloty_service import OntologyService
 
 # Local modules
 from specimen import Specimen
@@ -139,6 +142,17 @@ except Exception:
     # Log the full stack trace, prepend a line with our message
     logger.exception(msg)
 
+try:
+    ontology_service = OntologyService(app.config['ONTOLOTY_NEO4J_SERVER'],
+                                       app.config['ONTOLOTY_NEO4J_USERNAME'],
+                                       app.config['ONTOLOTY_NEO4J_PASSWORD'])
+    logger.info("Initialized OntologyService successfully :)")
+except Exception:
+    msg = "Failed to initialize OntologyService"
+    # Log the full stack trace, prepend a line with our message
+    logger.exception(msg)
+
+lab_processed_data_types: List[str] = ontology_service.get_lab_processed_data_types()
 
 """
 Close the current neo4j connection at the end of every request
@@ -636,15 +650,19 @@ def publish_datastage(identifier):
 
             acls_cmd = ingest_helper.set_dataset_permissions(dataset_uuid, dataset_group_uuid, data_access_level, True, no_indexing_and_acls)
 
-            if is_primary:
+            auth_tokens = auth_helper.getAuthorizationTokens(request.headers)
+            entity_instance = EntitySdk(token=auth_tokens, service_url=app.config['ENTITY_WEBSERVICE_URL'])
+            entity = entity_instance.get_entity_by_id(dataset_uuid)
+            entity_dict: dict = vars(entity)
+            entity_lab_processed_data_types: List[str] =\
+                [i for i in entity_dict.get('data_types') if i in lab_processed_data_types]
+
+            # Generating DOI's for lab processed/derived data as well as IEC/pipeline/airflow processed/derived data).
+            if is_primary or len(entity_lab_processed_data_types) > 0:
                 # DOI gets generated here
                 # Note: moved dataset title auto generation to entity-api - Zhou 9/29/2021
-                auth_tokens = auth_helper.getAuthorizationTokens(request.headers)
                 datacite_doi_helper = DataCiteDoiHelper()
 
-                entity_instance = EntitySdk(token=auth_tokens, service_url=app.config['ENTITY_WEBSERVICE_URL'])
-                entity = entity_instance.get_entity_by_id(dataset_uuid)
-                entity_dict = vars(entity)
                 try:
                     datacite_doi_helper.create_dataset_draft_doi(entity_dict, check_publication_status=False)
                 except Exception as e:
