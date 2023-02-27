@@ -1239,7 +1239,7 @@ def allowable_edit_states(hmuuid):
                         data_access_level = 'protected'
         
                     #if it is published, no write allowed
-                    if entity_type == 'dataset' or entity_type == 'upload':
+                    if entity_type in ['dataset', 'publication', 'upload']:
                         if isBlank(status):
                             msg = f"ERROR: unable to obtain status field from db for {entity_type} with uuid:{hmuuid} during a call to allowable-edit-states"
                             logger.error(msg)
