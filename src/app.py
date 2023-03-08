@@ -481,9 +481,14 @@ def create_derived_dataset():
 
 
 @app.route('/datasets', methods=['POST'])
+@app.route('/publications', methods=['POST'])
 def create_datastage():
     if not request.is_json:
         return Response("json request required", 400)
+    if request.path.lower() == '/datasets':
+        entity_type = "dataset"
+    elif request.path.lower() == '/publications':
+        entity_type = "publication"
     try:
         dataset_request = request.json
         auth_helper = AuthHelper.configured_instance(app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'])
@@ -504,7 +509,7 @@ def create_datastage():
         ingest_helper = IngestFileHelper(app.config)
         requested_group_uuid = auth_helper.get_write_group_uuid(token, requested_group_uuid)
         dataset_request['group_uuid'] = requested_group_uuid
-        post_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/dataset'
+        post_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + f'entities/{entity_type}'
         response = requests.post(post_url, json = dataset_request, headers = {'Authorization': 'Bearer ' + token, 'X-Hubmap-Application':'ingest-api' }, verify = False)
         if response.status_code != 200:
             return Response(response.text, response.status_code)
