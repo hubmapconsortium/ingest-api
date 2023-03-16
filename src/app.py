@@ -344,27 +344,27 @@ def get_file_system_relative_path():
             ent_recd['entity_type'] = ent_type_m
             group_uuid = __get_dict_prop(dset, 'group_uuid')
             if ent_type_m is None or ent_type_m.strip() == '':
-                error_id = {'id': ds_uuid, 'message': 'id not for Dataset or Upload', 'status_code': 400}
+                error_id = {'id': ds_uuid, 'message': 'id not for Dataset, Publication or Upload', 'status_code': 400}
                 error_id_list.append(error_id)
             ent_type = ent_type_m.lower().strip()
             ingest_helper = IngestFileHelper(app.config)
             if ent_type == 'upload':
                 path = ingest_helper.get_upload_directory_relative_path(group_uuid=group_uuid, upload_uuid=dset['uuid'])
-            elif ent_type == 'dataset':
+            elif ent_type == 'dataset' or ent_type == 'publication':
                 is_phi = __get_dict_prop(dset, 'contains_human_genetic_sequences')
-                if ent_type is None or not ent_type.lower().strip() == 'dataset':
-                    error_id = {'id': ds_uuid, 'message': 'id not for Dataset or Upload', 'status_code': 400}
+                if ent_type is None or not (ent_type.lower().strip() == 'dataset' or ent_type.lower().strip() == 'publication'):
+                    error_id = {'id': ds_uuid, 'message': 'id not for Dataset, Publication or Upload', 'status_code': 400}
                     error_id_list.append(error_id)
                 if group_uuid is None:
-                    error_id = {'id': ds_uuid, 'message': 'Unable to find group uuid on dataset', 'status_code': 400}
+                    error_id = {'id': ds_uuid, 'message': 'Unable to find group uuid on entity', 'status_code': 400}
                     error_id_list.append(error_id)
                 if is_phi is None:
-                    error_id = {'id': ds_uuid, 'message': 'contains_human_genetic_sequences is not set on dataset',
+                    error_id = {'id': ds_uuid, 'message': f"contains_human_genetic_sequences is not set on {ent_type} entity",
                                 'status_code': 400}
                     error_id_list.append(error_id)
                 path = ingest_helper.get_dataset_directory_relative_path(dset, group_uuid, dset['uuid'])
             else:
-                error_id = {'id': ds_uuid, 'message': f'Unhandled entity type, must be Upload or Dataset, '
+                error_id = {'id': ds_uuid, 'message': f'Unhandled entity type, must be Upload, Publication or Dataset, '
                                                       f'found {ent_type_m}', 'status_code': 400}
                 error_id_list.append(error_id)
             ent_recd['rel_path'] = path['rel_path']
@@ -495,9 +495,14 @@ def create_derived_dataset():
 
 
 @app.route('/datasets', methods=['POST'])
+@app.route('/publications', methods=['POST'])
 def create_datastage():
     if not request.is_json:
         return Response("json request required", 400)
+    if request.path.lower() == '/datasets':
+        entity_type = "dataset"
+    elif request.path.lower() == '/publications':
+        entity_type = "publication"
     try:
         dataset_request = request.json
         auth_helper = AuthHelper.configured_instance(app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'])
@@ -518,7 +523,7 @@ def create_datastage():
         ingest_helper = IngestFileHelper(app.config)
         requested_group_uuid = auth_helper.get_write_group_uuid(token, requested_group_uuid)
         dataset_request['group_uuid'] = requested_group_uuid
-        post_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/dataset'
+        post_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + f'entities/{entity_type}'
         response = requests.post(post_url, json = dataset_request, headers = {'Authorization': 'Bearer ' + token, 'X-Hubmap-Application':'ingest-api' }, verify = False)
         if response.status_code != 200:
             return Response(response.text, response.status_code)
@@ -1257,7 +1262,7 @@ def allowable_edit_states(hmuuid):
                         data_access_level = 'protected'
         
                     #if it is published, no write allowed
-                    if entity_type == 'dataset' or entity_type == 'upload':
+                    if entity_type in ['dataset', 'publication', 'upload']:
                         if isBlank(status):
                             msg = f"ERROR: unable to obtain status field from db for {entity_type} with uuid:{hmuuid} during a call to allowable-edit-states"
                             logger.error(msg)
