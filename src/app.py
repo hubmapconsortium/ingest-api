@@ -33,8 +33,6 @@ from hubmap_commons import file_helper as commons_file_helper
 # Should be deprecated/refactored but still in use
 from hubmap_commons.hubmap_const import HubmapConst
 
-from app_utils.ontoloty_service import OntologyService
-
 # Local modules
 from specimen import Specimen
 from ingest_file_helper import IngestFileHelper
@@ -142,17 +140,6 @@ except Exception:
     # Log the full stack trace, prepend a line with our message
     logger.exception(msg)
 
-try:
-    ontology_service = OntologyService(app.config['ONTOLOTY_NEO4J_SERVER'],
-                                       app.config['ONTOLOTY_NEO4J_USERNAME'],
-                                       app.config['ONTOLOTY_NEO4J_PASSWORD'])
-    logger.info("Initialized OntologyService successfully :)")
-except Exception:
-    msg = "Failed to initialize OntologyService"
-    # Log the full stack trace, prepend a line with our message
-    logger.exception(msg)
-
-lab_processed_data_types: List[str] = ontology_service.get_lab_processed_data_types()
 
 """
 Close the current neo4j connection at the end of every request
@@ -356,10 +343,11 @@ def get_file_system_relative_path():
                     error_id = {'id': ds_uuid, 'message': 'id not for Dataset, Publication or Upload', 'status_code': 400}
                     error_id_list.append(error_id)
                 if group_uuid is None:
-                    error_id = {'id': ds_uuid, 'message': 'Unable to find group uuid on entity', 'status_code': 400}
+                    error_id = {'id': ds_uuid, 'message': 'Unable to find group uuid on dataset', 'status_code': 400}
                     error_id_list.append(error_id)
                 if is_phi is None:
-                    error_id = {'id': ds_uuid, 'message': f"contains_human_genetic_sequences is not set on {ent_type} entity",
+                    error_id = {'id': ds_uuid,
+                                'message': f"contains_human_genetic_sequences is not set on {ent_type} dataset",
                                 'status_code': 400}
                     error_id_list.append(error_id)
                 path = ingest_helper.get_dataset_directory_relative_path(dset, group_uuid, dset['uuid'])
@@ -538,6 +526,24 @@ def create_datastage():
         logger.error(e, exc_info=True)
         return Response("Unexpected error while creating a dataset: " + str(e) + "  Check the logs", 500)
 
+
+def get_data_type_of_external_dataset_providers(ubkg_base_url: str) -> List[str]:
+    """
+    The web service call will return a list of dictionaries having the following keys:
+    'alt-names', 'contains-pii', 'data_type', 'dataset_provider', 'description',
+     'primary', 'vis-only', 'vitessce-hints'.
+
+     This will only return a list of strings that are the 'data_type's.
+    """
+    'https://ontology.api.hubmapconsortium.org/datasets?application_context=HUBMAP&dataset_provider=external'
+
+    url = f"{ubkg_base_url.rstrip('/')}/datasets?application_context=HUBMAP&dataset_provider=external"
+    resp = requests.get(url)
+    if resp.status_code != 200:
+        return {}
+    return [x['data_type'].strip() for x in resp.json()]
+
+
 # Needs to be triggered in the workflow or manually?!
 @app.route('/datasets/<identifier>/publish', methods = ['PUT'])
 @secured(groups="HuBMAP-read")
@@ -659,8 +665,10 @@ def publish_datastage(identifier):
             entity_instance = EntitySdk(token=auth_tokens, service_url=app.config['ENTITY_WEBSERVICE_URL'])
             entity = entity_instance.get_entity_by_id(dataset_uuid)
             entity_dict: dict = vars(entity)
+            data_type_edp: List[str] = \
+                get_data_type_of_external_dataset_providers(app.config['UBKG_WEBSERVICE_URL'])
             entity_lab_processed_data_types: List[str] =\
-                [i for i in entity_dict.get('data_types') if i in lab_processed_data_types]
+                [i for i in entity_dict.get('data_types') if i in data_type_edp]
 
             # Generating DOI's for lab processed/derived data as well as IEC/pipeline/airflow processed/derived data).
             if is_primary or len(entity_lab_processed_data_types) > 0:
