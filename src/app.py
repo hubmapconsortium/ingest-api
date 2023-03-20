@@ -535,7 +535,6 @@ def get_data_type_of_external_dataset_providers(ubkg_base_url: str) -> List[str]
 
      This will only return a list of strings that are the 'data_type's.
     """
-    'https://ontology.api.hubmapconsortium.org/datasets?application_context=HUBMAP&dataset_provider=external'
 
     url = f"{ubkg_base_url.rstrip('/')}/datasets?application_context=HUBMAP&dataset_provider=external"
     resp = requests.get(url)
