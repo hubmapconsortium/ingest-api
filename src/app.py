@@ -8,6 +8,7 @@ import json
 from uuid import UUID
 import yaml
 import csv
+from typing import List
 import time
 from threading import Thread
 from hubmap_sdk import EntitySdk
@@ -342,10 +343,11 @@ def get_file_system_relative_path():
                     error_id = {'id': ds_uuid, 'message': 'id not for Dataset, Publication or Upload', 'status_code': 400}
                     error_id_list.append(error_id)
                 if group_uuid is None:
-                    error_id = {'id': ds_uuid, 'message': 'Unable to find group uuid on entity', 'status_code': 400}
+                    error_id = {'id': ds_uuid, 'message': 'Unable to find group uuid on dataset', 'status_code': 400}
                     error_id_list.append(error_id)
                 if is_phi is None:
-                    error_id = {'id': ds_uuid, 'message': f"contains_human_genetic_sequences is not set on {ent_type} entity",
+                    error_id = {'id': ds_uuid,
+                                'message': f"contains_human_genetic_sequences is not set on {ent_type} dataset",
                                 'status_code': 400}
                     error_id_list.append(error_id)
                 path = ingest_helper.get_dataset_directory_relative_path(dset, group_uuid, dset['uuid'])
@@ -524,6 +526,23 @@ def create_datastage():
         logger.error(e, exc_info=True)
         return Response("Unexpected error while creating a dataset: " + str(e) + "  Check the logs", 500)
 
+
+def get_data_type_of_external_dataset_providers(ubkg_base_url: str) -> List[str]:
+    """
+    The web service call will return a list of dictionaries having the following keys:
+    'alt-names', 'contains-pii', 'data_type', 'dataset_provider', 'description',
+     'primary', 'vis-only', 'vitessce-hints'.
+
+     This will only return a list of strings that are the 'data_type's.
+    """
+
+    url = f"{ubkg_base_url.rstrip('/')}/datasets?application_context=HUBMAP&dataset_provider=external"
+    resp = requests.get(url)
+    if resp.status_code != 200:
+        return {}
+    return [x['data_type'].strip() for x in resp.json()]
+
+
 # Needs to be triggered in the workflow or manually?!
 @app.route('/datasets/<identifier>/publish', methods = ['PUT'])
 @secured(groups="HuBMAP-read")
@@ -641,15 +660,21 @@ def publish_datastage(identifier):
 
             acls_cmd = ingest_helper.set_dataset_permissions(dataset_uuid, dataset_group_uuid, data_access_level, True, no_indexing_and_acls)
 
-            if is_primary:
+            auth_tokens = auth_helper.getAuthorizationTokens(request.headers)
+            entity_instance = EntitySdk(token=auth_tokens, service_url=app.config['ENTITY_WEBSERVICE_URL'])
+            entity = entity_instance.get_entity_by_id(dataset_uuid)
+            entity_dict: dict = vars(entity)
+            data_type_edp: List[str] = \
+                get_data_type_of_external_dataset_providers(app.config['UBKG_WEBSERVICE_URL'])
+            entity_lab_processed_data_types: List[str] =\
+                [i for i in entity_dict.get('data_types') if i in data_type_edp]
+
+            # Generating DOI's for lab processed/derived data as well as IEC/pipeline/airflow processed/derived data).
+            if is_primary or len(entity_lab_processed_data_types) > 0:
                 # DOI gets generated here
                 # Note: moved dataset title auto generation to entity-api - Zhou 9/29/2021
-                auth_tokens = auth_helper.getAuthorizationTokens(request.headers)
                 datacite_doi_helper = DataCiteDoiHelper()
 
-                entity_instance = EntitySdk(token=auth_tokens, service_url=app.config['ENTITY_WEBSERVICE_URL'])
-                entity = entity_instance.get_entity_by_id(dataset_uuid)
-                entity_dict = vars(entity)
                 try:
                     datacite_doi_helper.create_dataset_draft_doi(entity_dict, check_publication_status=False)
                 except Exception as e:
