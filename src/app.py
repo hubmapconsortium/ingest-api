@@ -1303,6 +1303,63 @@ def allowable_edit_states(hmuuid):
         abort(400, msg)
 
 
+"""
+Description
+"""
+@app.route('/datasets/data-status', methods=['GET'])
+def dataset_data_status():
+    query = (
+        "MATCH (ds:Dataset) "
+        "WITH ds "
+        "OPTIONAL MATCH (ds)<-[*]-(o:Sample {sample_category: 'organ'})<-[*]-(dn:Donor) "
+        "WITH ds, o, dn "
+        "OPTIONAL MATCH (ds)<-[:ACTIVITY_OUTPUT]-(a:Activity)<-[:ACTIVITY_INPUT]-(pds:Dataset) "
+        "WITH ds, o, dn, pds "
+        "OPTIONAL MATCH (u:Upload)<-[:IN_UPLOAD]-(ds) "
+        "WITH ds, o, dn, pds, u "
+        "RETURN DISTINCT ds.uuid AS uuid, ds.group_name AS group_name, ds.data_types AS data_types, "
+        "ds.hubmap_id AS hubmap_id, COLLECT(DISTINCT dn.hubmap_id) AS donor_hubmap_id, "
+        "COLLECT(DISTINCT dn.lab_donor_id) AS donor_lab_id, COLLECT(DISTINCT dn.submission_id) AS donor_submission_id, "
+        "COLLECT (DISTINCT dn.uuid) AS donor_uuid, COLLECT(DISTINCT o.organ) AS organ, "
+        "COLLECT(DISTINCT pds.uuid) AS parent_dataset, ds.lab_dataset_id as provider_experiment_id, "
+        "COLLECT(DISTINCT o.hubmap_id) AS sample_hubmap_id, COLLECT(DISTINCT o.submission_id) AS sample_submission_id, "
+        "ds.status AS status, COLLECT(DISTINCT u.uuid) AS upload, "
+        "COALESCE(ds.ingest_metadata IS NOT NULL) AS has_metadata, ds.last_modified_timestamp AS last_touch, "
+        "COALESCE(ds.contributors IS NOT NULL) AS has_contributors, COALESCE(ds.contacts IS NOT NULL) AS has_contacts"
+    )
+    logger.info("=======dataset_data_status() query=====")
+    logger.info(query)
+    with neo4j_driver_instance.session() as session:
+        result = session.run(query).data()
+    for dataset in result:
+        for prop in dataset:
+            if isinstance(dataset[prop], list):
+                dataset[prop] = ", ".join(dataset[prop])
+            if isinstance(dataset[prop], (bool, int)):
+                dataset[prop] = str(dataset[prop])
+            if dataset[prop] and dataset[prop][0] == "[" and dataset[prop][-1] == "]":
+                dataset[prop] = dataset[prop].replace("'",'"')
+                dataset[prop] = json.loads(dataset[prop])
+                dataset[prop] = dataset[prop][0]
+        if dataset['organ'] and dataset['organ'].upper() in ['HT', 'LV', 'LN', 'RK', 'LK']:
+            dataset['has_rui_info'] = "not-applicable"
+
+    has_rui_info_query = (
+        "MATCH (ds:Dataset)"
+        "WHERE ds.rui"
+    )
+
+
+    return jsonify(result[0])
+
+"""
+Description
+"""
+@app.route('/uploads/data-status', methods=['GET'])
+def upload_data_status():
+    pass
+
+
 @app.route('/donors/bulk-upload', methods=['POST'])
 def bulk_donors_upload_and_validate():
     if 'file' not in request.files:
