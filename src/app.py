@@ -1308,25 +1308,6 @@ Description
 """
 @app.route('/datasets/data-status', methods=['GET'])
 def dataset_data_status():
-    query = (
-        "MATCH (ds:Dataset) "
-        "WITH ds "
-        "OPTIONAL MATCH (ds)<-[*]-(o:Sample {sample_category: 'organ'})<-[*]-(dn:Donor) "
-        "WITH ds, o, dn "
-        "OPTIONAL MATCH (ds)<-[:ACTIVITY_OUTPUT]-(a:Activity)<-[:ACTIVITY_INPUT]-(pds:Dataset) "
-        "WITH ds, o, dn, pds "
-        "OPTIONAL MATCH (u:Upload)<-[:IN_UPLOAD]-(ds) "
-        "WITH ds, o, dn, pds, u "
-        "RETURN DISTINCT ds.uuid AS uuid, ds.group_name AS group_name, ds.data_types AS data_types, "
-        "ds.hubmap_id AS hubmap_id, COLLECT(DISTINCT dn.hubmap_id) AS donor_hubmap_id, "
-        "COLLECT(DISTINCT dn.lab_donor_id) AS donor_lab_id, COLLECT(DISTINCT dn.submission_id) AS donor_submission_id, "
-        "COLLECT (DISTINCT dn.uuid) AS donor_uuid, COLLECT(DISTINCT o.organ) AS organ, "
-        "COLLECT(DISTINCT pds.uuid) AS parent_dataset, ds.lab_dataset_id as provider_experiment_id, "
-        "COLLECT(DISTINCT o.hubmap_id) AS sample_hubmap_id, COLLECT(DISTINCT o.submission_id) AS sample_submission_id, "
-        "ds.status AS status, COLLECT(DISTINCT u.uuid) AS upload, "
-        "COALESCE(ds.ingest_metadata IS NOT NULL) AS has_metadata, ds.last_modified_timestamp AS last_touch, "
-        "COALESCE(ds.contributors IS NOT NULL) AS has_contributors, COALESCE(ds.contacts IS NOT NULL) AS has_contacts "
-    )
     all_datasets_query = (
         "MATCH (ds:Dataset) "
         "RETURN ds.uuid as uuid, ds.group_name as group_name, ds.data_types as datatypes, "
