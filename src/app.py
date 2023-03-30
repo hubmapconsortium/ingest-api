@@ -1350,10 +1350,22 @@ def dataset_data_status():
     donor_query = (
         "MATCH (ds:Dataset)<-[*]-(dn:Donor) "
         "RETURN DISTINCT ds.uuid AS uuid, COLLECT(DISTINCT dn.uuid) AS donor_uuid, "
-        "COLLECT(DISTINCT dn.hubmap_id) AS donor_hubmap_id, COLLECT(DISTINCT dn.submission_id) AS donor_submission_id"
+        "COLLECT(DISTINCT dn.hubmap_id) AS donor_hubmap_id, COLLECT(DISTINCT dn.submission_id) AS donor_submission_id, "
+        "COLLECT(DISTINCT dn.lab_donor_id) AS donor_lab_id"
     )
+
+    parent_dataset_query = (
+        "MATCH (ds)<-[:ACTIVITY_OUTPUT]-(a:Activity)<-[:ACTIVITY_INPUT]-(pds:Dataset) "
+        "RETURN DISTINCT ds.uuid AS uuid, COLLECT(DISTINCT pds.uuid) AS parent_dataset"
+    )
+
+    upload_query = (
+        "MATCH (u:Upload)<-[:IN_UPLOAD]-(ds) "
+        "RETURN DISTINCT ds.uuid AS uuid, COLLECT(DISTINCT u.uuid) AS upload"
+    )
+
     with neo4j_driver_instance.session() as session:
-        queries = [all_datasets_query, nearest_sample_query, organ_query, donor_query]
+        queries = [all_datasets_query, nearest_sample_query, organ_query, donor_query, parent_dataset_query, upload_query]
         results = [None] * len(queries)
         threads = []
         for i, query in enumerate(queries):
@@ -1362,40 +1374,38 @@ def dataset_data_status():
             threads.append(thread)
         for thread in threads:
             thread.join()
+
     output_dict = {}
-    logger.info("=======All Datasets Query=====")
-    logger.info(all_datasets_query)
+    # Here we specifically indexed the values in 'results' in case certain threads completed out of order
+    all_datasets_result = results[0]
+    nearest_sample_result = results[1]
+    organ_result = results[2]
+    donor_result = results[3]
+    parent_dataset_result = results[4]
+    upload_result = results[5]
 
-    with neo4j_driver_instance.session() as session:
-        result = session.run(query).data()
-        for dataset in result:
-            output_dict[dataset['uuid']] = dataset
+    for dataset in all_datasets_result:
+        output_dict[dataset['uuid']] = dataset
+    for dataset in nearest_sample_result:
+        output_dict[dataset['uuid']]['sample_hubmap_id'] = dataset['sample_hubmap_id']
+        output_dict[dataset['uuid']]['sample_submission_id'] = dataset['sample_submission_id']
+    for dataset in organ_result:
+        output_dict[dataset['uuid']]['organ'] = dataset['organ']
+    for dataset in donor_result:
+        output_dict[dataset['uuid']]['donor_uuid'] = dataset['donor_uuid']
+        output_dict[dataset['uuid']]['donor_hubmap_id'] = dataset['donor_hubmap_id']
+        output_dict[dataset['uuid']]['donor_submission_id'] = dataset['donor_submission_id']
+        output_dict[dataset['uuid']]['donor_lab_id'] = dataset['lab_donor_id']
+    for dataset in parent_dataset_result:
+        output_dict[dataset['uuid']]['parent_dataset'] = dataset['parent_dataset']
+    for dataset in upload_result:
+        output_dict[dataset['uuid']]['upload'] = dataset['upload']
 
-    logger.info("=======Nearest Sample Query====")
-    logger.info(nearest_sample_query)
-    with neo4j_driver_instance.session() as session:
-        result = session.run(nearest_sample_query).data()
-        for dataset in result:
-            output_dict[dataset['uuid']]['sample_hubmap_id'] = dataset['sample_hubmap_id']
-            output_dict[dataset['uuid']]['sample_submission_id'] = dataset['sample_submission_id']
+    combined_results = []
+    for uuid in output_dict:
+        combined_results.append(output_dict[uuid])
 
-    logger.info("======Organ Query======")
-    logger.info(organ_query)
-    with neo4j_driver_instance.session() as session:
-        result = session.run(organ_query)
-        for dataset in result:
-            output_dict[dataset['uuid']]['organ'] = dataset['organ']
-
-    logger.info("=====Donor Query======")
-    logger.info(donor_query)
-    with neo4j_driver_instance.session() as session:
-        result = session.run(donor_query)
-        for dataset in result:
-            output_dict[dataset['uuid']]['donor_uuid'] = dataset['donor_uuid']
-            output_dict[dataset['uuid']]['donor_hubmap_id'] = dataset['donor_hubmap_id']
-            output_dict[dataset['uuid']]['donor_submission_id'] = dataset['donor_submission_id']
-
-    for dataset in result:
+    for dataset in combined_results:
         for prop in dataset:
             if isinstance(dataset[prop], list):
                 dataset[prop] = ", ".join(dataset[prop])
@@ -1414,7 +1424,7 @@ def dataset_data_status():
     )
 
 
-    return jsonify(result[0])
+    return jsonify(combined_results[0])
 
 """
 Description
@@ -1966,7 +1976,8 @@ def dataset_is_primary(dataset_uuid):
 
 
 def run_query(session, query, results, i):
-    results[index] = session.run(query).data()
+    logger.info(query)
+    results[i] = session.run(query).data()
 
 
 # For local development/testing
