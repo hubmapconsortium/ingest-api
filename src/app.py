@@ -1364,8 +1364,15 @@ def dataset_data_status():
         "RETURN DISTINCT ds.uuid AS uuid, COLLECT(DISTINCT u.uuid) AS upload"
     )
 
+    has_rui_query = (
+        "MATCH (ds:Dataset) "
+        "WITH ds, [(ds)<-[*]-(s:Sample) | s.rui_location] AS rui_locations "
+        "RETURN ds.uuid, any(rui_location IN rui_locations WHERE rui_location IS NOT NULL) AS has_rui_info"
+    )
+
     with neo4j_driver_instance.session() as session:
-        queries = [all_datasets_query, nearest_sample_query, organ_query, donor_query, parent_dataset_query, upload_query]
+        queries = [all_datasets_query, nearest_sample_query, organ_query, donor_query, parent_dataset_query,
+                   upload_query, has_rui_query]
         results = [None] * len(queries)
         threads = []
         for i, query in enumerate(queries):
@@ -1383,6 +1390,7 @@ def dataset_data_status():
     donor_result = results[3]
     parent_dataset_result = results[4]
     upload_result = results[5]
+    has_rui_result = results[6]
 
     for dataset in all_datasets_result:
         output_dict[dataset['uuid']] = dataset
@@ -1400,6 +1408,8 @@ def dataset_data_status():
         output_dict[dataset['uuid']]['parent_dataset'] = dataset['parent_dataset']
     for dataset in upload_result:
         output_dict[dataset['uuid']]['upload'] = dataset['upload']
+    for dataset in has_rui_result:
+        output_dict[dataset['uuid']]['has_rui_info'] = dataset['upload']
 
     combined_results = []
     for uuid in output_dict:
@@ -1415,16 +1425,11 @@ def dataset_data_status():
                 dataset[prop] = dataset[prop].replace("'",'"')
                 dataset[prop] = json.loads(dataset[prop])
                 dataset[prop] = dataset[prop][0]
-        if dataset['organ'] and dataset['organ'].upper() in ['HT', 'LV', 'LN', 'RK', 'LK']:
+        if dataset['organ'] and dataset['organ'].upper() not in ['HT', 'LV', 'LN', 'RK', 'LK']:
             dataset['has_rui_info'] = "not-applicable"
 
-    has_rui_info_query = (
-        "MATCH (ds:Dataset)"
-        "WHERE ds.rui"
-    )
-
-
     return jsonify(combined_results[0])
+
 
 """
 Description
