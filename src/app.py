@@ -1325,12 +1325,76 @@ def dataset_data_status():
         "COLLECT(DISTINCT o.hubmap_id) AS sample_hubmap_id, COLLECT(DISTINCT o.submission_id) AS sample_submission_id, "
         "ds.status AS status, COLLECT(DISTINCT u.uuid) AS upload, "
         "COALESCE(ds.ingest_metadata IS NOT NULL) AS has_metadata, ds.last_modified_timestamp AS last_touch, "
-        "COALESCE(ds.contributors IS NOT NULL) AS has_contributors, COALESCE(ds.contacts IS NOT NULL) AS has_contacts"
+        "COALESCE(ds.contributors IS NOT NULL) AS has_contributors, COALESCE(ds.contacts IS NOT NULL) AS has_contacts "
     )
-    logger.info("=======dataset_data_status() query=====")
-    logger.info(query)
+    all_datasets_query = (
+        "MATCH (ds:Dataset) "
+        "RETURN ds.uuid as uuid, ds.group_name as group_name, ds.data_types as datatypes, "
+        "ds.hubmap_id as hubmap_id, ds.lab_dataset_id as provider_experiment_id, ds.status as status, "
+        "COALESCE(ds.ingest_metadata IS NOT NULL) AS has_metadata, ds.last_modified_timestamp AS last_touch, " 
+        "COALESCE(ds.contributors IS NOT NULL) AS has_contributors, COALESCE(ds.contacts IS NOT NULL) AS has_contacts "
+    )
+
+    nearest_sample_query = (
+        "MATCH (ds:Dataset)<-[*]-(s:Sample) WHERE (:Dataset)<-[:ACTIVITY_OUTPUT]-(:Activity)<-[:ACTIVITY_INPUT]-(s) "
+        "AND not (ds)<-[*]-(:Sample)<-[*]-(s) "
+        "RETURN DISTINCT ds.uuid as uuid, COLLECT(DISTINCT s.hubmap_id) as sample_hubmap_id, "
+        "COLLECT(DISTINCT s.submission_id) as sample_submission_id"
+    )
+
+    organ_query = (
+        "MATCH (ds:Dataset)<-[*]-(o:Sample {sample_category: 'organ'}) "
+        "RETURN DISTINCT ds.uuid, o.organ AS organ "
+    )
+
+    donor_query = (
+        "MATCH (ds:Dataset)<-[*]-(dn:Donor) "
+        "RETURN DISTINCT ds.uuid AS uuid, COLLECT(DISTINCT dn.uuid) AS donor_uuid, "
+        "COLLECT(DISTINCT dn.hubmap_id) AS donor_hubmap_id, COLLECT(DISTINCT dn.submission_id) AS donor_submission_id"
+    )
+    with neo4j_driver_instance.session() as session:
+        queries = [all_datasets_query, nearest_sample_query, organ_query, donor_query]
+        results = [None] * len(queries)
+        threads = []
+        for i, query in enumerate(queries):
+            thread = Thread(target=run_query, args=(session, query, results, i))
+            thread.start()
+            threads.append(thread)
+        for thread in threads:
+            thread.join()
+    output_dict = {}
+    logger.info("=======All Datasets Query=====")
+    logger.info(all_datasets_query)
+
     with neo4j_driver_instance.session() as session:
         result = session.run(query).data()
+        for dataset in result:
+            output_dict[dataset['uuid']] = dataset
+
+    logger.info("=======Nearest Sample Query====")
+    logger.info(nearest_sample_query)
+    with neo4j_driver_instance.session() as session:
+        result = session.run(nearest_sample_query).data()
+        for dataset in result:
+            output_dict[dataset['uuid']]['sample_hubmap_id'] = dataset['sample_hubmap_id']
+            output_dict[dataset['uuid']]['sample_submission_id'] = dataset['sample_submission_id']
+
+    logger.info("======Organ Query======")
+    logger.info(organ_query)
+    with neo4j_driver_instance.session() as session:
+        result = session.run(organ_query)
+        for dataset in result:
+            output_dict[dataset['uuid']]['organ'] = dataset['organ']
+
+    logger.info("=====Donor Query======")
+    logger.info(donor_query)
+    with neo4j_driver_instance.session() as session:
+        result = session.run(donor_query)
+        for dataset in result:
+            output_dict[dataset['uuid']]['donor_uuid'] = dataset['donor_uuid']
+            output_dict[dataset['uuid']]['donor_hubmap_id'] = dataset['donor_hubmap_id']
+            output_dict[dataset['uuid']]['donor_submission_id'] = dataset['donor_submission_id']
+
     for dataset in result:
         for prop in dataset:
             if isinstance(dataset[prop], list):
@@ -1899,6 +1963,10 @@ def dataset_is_primary(dataset_uuid):
         if len(result) == 0:
             return False
         return True
+
+
+def run_query(session, query, results, i):
+    results[index] = session.run(query).data()
 
 
 # For local development/testing
