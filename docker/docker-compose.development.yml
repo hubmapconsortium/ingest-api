@@ -20,8 +20,6 @@ services:
       - "../BUILD:/usr/src/app/BUILD"
       # Mount the source code to container
       - "../src:/usr/src/app/src"
-      # Mount conf.d-dev to the nginx conf.d on container
-      - "./ingest-api/nginx/conf.d-dev:/etc/nginx/conf.d"
       # Mount Globus data
       - "/hive/hubmap-dev:/hive/hubmap-dev"
     depends_on:
