@@ -637,7 +637,20 @@ def publish_datastage(identifier):
                 return Response(f"{dataset_uuid} is not a dataset will not Publish, entity type is {dataset_entitytype}", 400)
             if not dataset_status == 'QA':
                 return Response(f"{dataset_uuid} is not in QA state will not Publish, status is {dataset_status}", 400)
-            if is_primary:
+
+            auth_tokens = auth_helper.getAuthorizationTokens(request.headers)
+            entity_instance = EntitySdk(token=auth_tokens, service_url=app.config['ENTITY_WEBSERVICE_URL'])
+            entity = entity_instance.get_entity_by_id(dataset_uuid)
+            entity_dict: dict = vars(entity)
+            data_type_edp: List[str] = \
+                get_data_type_of_external_dataset_providers(app.config['UBKG_WEBSERVICE_URL'])
+            entity_lab_processed_data_types: List[str] =\
+                [i for i in entity_dict.get('data_types') if i in data_type_edp]
+            has_entity_lab_processed_data_type: bool = len(entity_lab_processed_data_types) > 0
+
+            logger.info(f'is_primary: {is_primary}; has_entity_lab_processed_data_type: {has_entity_lab_processed_data_type}')
+
+            if is_primary or has_entity_lab_processed_data_type:
                 if dataset_contacts is None or dataset_contributors is None:
                     return jsonify({"error": f"{dataset_uuid} missing contacts or contributors. Must have at least one of each"}), 400
                 dataset_contacts = dataset_contacts.replace("'", '"')
@@ -658,19 +671,11 @@ def publish_datastage(identifier):
                 if asset_dir_exists:
                     ingest_helper.relink_to_public(dataset_uuid)
 
-            acls_cmd = ingest_helper.set_dataset_permissions(dataset_uuid, dataset_group_uuid, data_access_level, True, no_indexing_and_acls)
-
-            auth_tokens = auth_helper.getAuthorizationTokens(request.headers)
-            entity_instance = EntitySdk(token=auth_tokens, service_url=app.config['ENTITY_WEBSERVICE_URL'])
-            entity = entity_instance.get_entity_by_id(dataset_uuid)
-            entity_dict: dict = vars(entity)
-            data_type_edp: List[str] = \
-                get_data_type_of_external_dataset_providers(app.config['UBKG_WEBSERVICE_URL'])
-            entity_lab_processed_data_types: List[str] =\
-                [i for i in entity_dict.get('data_types') if i in data_type_edp]
+            acls_cmd = ingest_helper.set_dataset_permissions(dataset_uuid, dataset_group_uuid, data_access_level,
+                                                             True, no_indexing_and_acls)
 
             # Generating DOI's for lab processed/derived data as well as IEC/pipeline/airflow processed/derived data).
-            if is_primary or len(entity_lab_processed_data_types) > 0:
+            if is_primary or has_entity_lab_processed_data_type:
                 # DOI gets generated here
                 # Note: moved dataset title auto generation to entity-api - Zhou 9/29/2021
                 datacite_doi_helper = DataCiteDoiHelper()
