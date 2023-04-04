@@ -1396,37 +1396,12 @@ def dataset_data_status():
         combined_results.append(output_dict[uuid])
 
     for dataset in combined_results:
-        globus_server_uuid = None
-        dir_path = ''
-        # public access
-        if dataset.get('data_access_level') and dataset['data_access_level'].lower() == "public":
-            globus_server_uuid = app.config['GLOBUS_PUBLIC_ENDPOINT_UUID']
-            access_dir = commons_file_helper.ensureTrailingSlashURL(app.config['PUBLIC_DATA_SUBDIR'])
-            dir_path = dir_path + access_dir + "/"
-        # consortium access
-        elif dataset.get('data_access_level') and dataset['data_access_level'].lower() == 'consortium':
-            globus_server_uuid = app.config['GLOBUS_CONSORTIUM_ENDPOINT_UUID']
-            access_dir = commons_file_helper.ensureTrailingSlashURL(app.config['CONSORTIUM_DATA_SUBDIR'])
-            dir_path = dir_path + access_dir + "/"
-        # protected access
-        elif dataset.get('data_access_level') and dataset['data_access_level'].lower() == 'protected':
-            globus_server_uuid = app.config['GLOBUS_PROTECTED_ENDPOINT_UUID']
-            access_dir = commons_file_helper.ensureTrailingSlashURL(app.config['PROTECTED_DATA_SUBDIR'])
-            dir_path = dir_path + access_dir + "/"
-
-        if globus_server_uuid is not None:
-            dir_path = dir_path + dataset['uuid'] + "/"
-            dir_path = urllib.parse.quote(dir_path, safe='')
-
-            #https://app.globus.org/file-manager?origin_id=28bb03c-a87d-4dd7-a661-7ea2fb6ea631&origin_path=2%FIEC%20Testing%20Group%20F03584b3d0f8b46de1b29f04be1568779%2F
-            globus_url = commons_file_helper.ensureTrailingSlash(app.config['GLOBUS_APP_BASE_URL']) + "file-manager?origin_id=" + globus_server_uuid + "&origin_path" + dir_path
-
-        else:
-            globus_url = ""
-
+        globus_url = get_globus_url(dataset.get('data_access_level'), dataset.get('group_name'), dataset.get('uuid'))
         dataset['globus_url'] = globus_url
         portal_url = commons_file_helper.ensureTrailingSlashURL(app.config['PORTAL_URL']) + 'dataset' + '/' + dataset['uuid']
         dataset['portal_url'] = portal_url
+        ingest_url = commons_file_helper.ensureTrailingSlashURL(app.config['INGEST_URL']) + 'dataset' + '/' + dataset['uuid']
+        dataset['ingest_url'] = ingest_url
 
     for dataset in combined_results:
         for prop in dataset:
@@ -1449,7 +1424,24 @@ Description
 """
 @app.route('/uploads/data-status', methods=['GET'])
 def upload_data_status():
-    pass
+    all_uploads_query = (
+        "MATCH (up:Upload) "
+        "OPTIONAL MATCH (up)<-[:IN_UPLOAD]-(ds:Dataset) "
+        "RETURN up.uuid AS uuid, up.group_name AS group_name, up.hubmap_id AS hubmap_id, up.status AS status, "
+        "up.title AS title, COLLECT(DISTINCT ds.uuid) AS datasets "
+    )
+
+    with neo4j_driver_instance.session() as session:
+        results = session.run(all_uploads_query).data()
+        for upload in results:
+        #     globus_url = get_globus_url(upload.get('data_access_level'), upload.get('group_name'), upload.get('uuid'))
+        #     upload['globus_url'] = globus_url
+            ingest_url = commons_file_helper.ensureTrailingSlashURL(app.config['INGEST_URL']) + 'upload' + '/' + upload[
+            'uuid']
+            upload['ingest_url'] = ingest_url
+    # TODO: Once url parameters are implemented in the front-end for the data-status dashboard, we'll need to return a
+    # TODO: link to the datasets page only displaying datasets belonging to a given upload.
+    return jsonify(results)
 
 
 @app.route('/donors/bulk-upload', methods=['POST'])
@@ -1997,6 +1989,39 @@ def run_query(query, results, i):
     logger.info(query)
     with neo4j_driver_instance.session() as session:
         results[i] = session.run(query).data()
+
+def get_globus_url(data_access_level, group_name, uuid):
+    globus_server_uuid = None
+    dir_path = " "
+    # public access
+    if data_access_level == "public":
+        globus_server_uuid = app.config['GLOBUS_PUBLIC_ENDPOINT_UUID']
+        access_dir = commons_file_helper.ensureTrailingSlashURL(app.config['PUBLIC_DATA_SUBDIR'])
+        dir_path = dir_path + access_dir + "/"
+    # consortium access
+    elif data_access_level == 'consortium':
+        globus_server_uuid = app.config['GLOBUS_CONSORTIUM_ENDPOINT_UUID']
+        access_dir = commons_file_helper.ensureTrailingSlashURL(app.config['CONSORTIUM_DATA_SUBDIR'])
+        dir_path = dir_path + access_dir + group_name + "/"
+    # protected access
+    elif data_access_level == 'protected':
+        globus_server_uuid = app.config['GLOBUS_PROTECTED_ENDPOINT_UUID']
+        access_dir = commons_file_helper.ensureTrailingSlashURL(app.config['PROTECTED_DATA_SUBDIR'])
+        dir_path = dir_path + access_dir + group_name + "/"
+
+    if globus_server_uuid is not None:
+        dir_path = dir_path + uuid + "/"
+        dir_path = urllib.parse.quote(dir_path, safe='')
+
+        # https://app.globus.org/file-manager?origin_id=28bb03c-a87d-4dd7-a661-7ea2fb6ea631&origin_path=2%FIEC%20Testing%20Group%20F03584b3d0f8b46de1b29f04be1568779%2F
+        globus_url = commons_file_helper.ensureTrailingSlash(app.config[
+                                                                 'GLOBUS_APP_BASE_URL']) + "file-manager?origin_id=" + globus_server_uuid + "&origin_path=" + dir_path
+
+    else:
+        globus_url = ""
+    if uuid is None:
+        globus_url = ""
+    return globus_url
 
 
 # For local development/testing
