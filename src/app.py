@@ -1384,6 +1384,7 @@ def dataset_data_status():
         output_dict[dataset['uuid']]['donor_hubmap_id'] = dataset['donor_hubmap_id']
         output_dict[dataset['uuid']]['donor_submission_id'] = dataset['donor_submission_id']
         output_dict[dataset['uuid']]['donor_lab_id'] = dataset['donor_lab_id']
+        output_dict[dataset['uuid']]['has_metadata'] = dataset['has_metadata']
     for dataset in parent_dataset_result:
         output_dict[dataset['uuid']]['parent_dataset'] = dataset['parent_dataset']
     for dataset in upload_result:
