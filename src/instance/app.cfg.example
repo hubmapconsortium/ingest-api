@@ -112,5 +112,8 @@ DATACITE_API_URL = ''
 # Use 10.35079 for DataCite Production site with PROD deployment
 DATACITE_HUBMAP_PREFIX = ''
 
-# The base url for the hubmap portal website
+# The base url for the HuBMAP portal website
 PORTAL_URL = 'https://portal.hubmapconsortium.org/browse/'
+
+# The base url for the HuBMAP ingest website
+INGEST_URL = 'https://ingest.hubmapconsortium.org/'
