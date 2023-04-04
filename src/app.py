@@ -1312,7 +1312,7 @@ def dataset_data_status():
         "MATCH (ds:Dataset) "
         "RETURN ds.uuid as uuid, ds.group_name as group_name, ds.data_types as datatypes, "
         "ds.hubmap_id as hubmap_id, ds.lab_dataset_id as provider_experiment_id, ds.status as status, "
-        "COALESCE(ds.ingest_metadata IS NOT NULL) AS has_metadata, ds.last_modified_timestamp AS last_touch, " 
+        "ds.last_modified_timestamp AS last_touch, ds.data_access_level AS data_access_level, " 
         "COALESCE(ds.contributors IS NOT NULL) AS has_contributors, COALESCE(ds.contacts IS NOT NULL) AS has_contacts "
     )
 
@@ -1325,14 +1325,14 @@ def dataset_data_status():
 
     organ_query = (
         "MATCH (ds:Dataset)<-[*]-(o:Sample {sample_category: 'organ'}) "
-        "RETURN DISTINCT ds.uuid, o.organ AS organ "
+        "RETURN DISTINCT ds.uuid AS uuid, o.organ AS organ "
     )
 
     donor_query = (
         "MATCH (ds:Dataset)<-[*]-(dn:Donor) "
         "RETURN DISTINCT ds.uuid AS uuid, COLLECT(DISTINCT dn.uuid) AS donor_uuid, "
         "COLLECT(DISTINCT dn.hubmap_id) AS donor_hubmap_id, COLLECT(DISTINCT dn.submission_id) AS donor_submission_id, "
-        "COLLECT(DISTINCT dn.lab_donor_id) AS donor_lab_id"
+        "COLLECT(DISTINCT dn.lab_donor_id) AS donor_lab_id, COALESCE(dn.metadata IS NOT NULL) AS has_metadata"
     )
 
     parent_dataset_query = (
@@ -1348,21 +1348,20 @@ def dataset_data_status():
     has_rui_query = (
         "MATCH (ds:Dataset) "
         "WITH ds, [(ds)<-[*]-(s:Sample) | s.rui_location] AS rui_locations "
-        "RETURN ds.uuid, any(rui_location IN rui_locations WHERE rui_location IS NOT NULL) AS has_rui_info"
+        "RETURN ds.uuid AS uuid, any(rui_location IN rui_locations WHERE rui_location IS NOT NULL) AS has_rui_info"
     )
 
-    with neo4j_driver_instance.session() as session:
-        queries = [all_datasets_query, nearest_sample_query, organ_query, donor_query, parent_dataset_query,
-                   upload_query, has_rui_query]
-        results = [None] * len(queries)
-        threads = []
-        for i, query in enumerate(queries):
-            thread = Thread(target=run_query, args=(session, query, results, i))
-            thread.start()
-            threads.append(thread)
-        for thread in threads:
-            thread.join()
 
+    queries = [all_datasets_query, nearest_sample_query, organ_query, donor_query, parent_dataset_query,
+               upload_query, has_rui_query]
+    results = [None] * len(queries)
+    threads = []
+    for i, query in enumerate(queries):
+        thread = Thread(target=run_query, args=(query, results, i))
+        thread.start()
+        threads.append(thread)
+    for thread in threads:
+        thread.join()
     output_dict = {}
     # Here we specifically indexed the values in 'results' in case certain threads completed out of order
     all_datasets_result = results[0]
@@ -1384,17 +1383,50 @@ def dataset_data_status():
         output_dict[dataset['uuid']]['donor_uuid'] = dataset['donor_uuid']
         output_dict[dataset['uuid']]['donor_hubmap_id'] = dataset['donor_hubmap_id']
         output_dict[dataset['uuid']]['donor_submission_id'] = dataset['donor_submission_id']
-        output_dict[dataset['uuid']]['donor_lab_id'] = dataset['lab_donor_id']
+        output_dict[dataset['uuid']]['donor_lab_id'] = dataset['donor_lab_id']
     for dataset in parent_dataset_result:
         output_dict[dataset['uuid']]['parent_dataset'] = dataset['parent_dataset']
     for dataset in upload_result:
         output_dict[dataset['uuid']]['upload'] = dataset['upload']
     for dataset in has_rui_result:
-        output_dict[dataset['uuid']]['has_rui_info'] = dataset['upload']
+        output_dict[dataset['uuid']]['has_rui_info'] = dataset['has_rui_info']
 
     combined_results = []
     for uuid in output_dict:
         combined_results.append(output_dict[uuid])
+
+    for dataset in combined_results:
+        globus_server_uuid = None
+        dir_path = ''
+        # public access
+        if dataset.get('data_access_level') and dataset['data_access_level'].lower() == "public":
+            globus_server_uuid = app.config['GLOBUS_PUBLIC_ENDPOINT_UUID']
+            access_dir = commons_file_helper.ensureTrailingSlashURL(app.config['PUBLIC_DATA_SUBDIR'])
+            dir_path = dir_path + access_dir + "/"
+        # consortium access
+        elif dataset.get('data_access_level') and dataset['data_access_level'].lower() == 'consortium':
+            globus_server_uuid = app.config['GLOBUS_CONSORTIUM_ENDPOINT_UUID']
+            access_dir = commons_file_helper.ensureTrailingSlashURL(app.config['CONSORTIUM_DATA_SUBDIR'])
+            dir_path = dir_path + access_dir + "/"
+        # protected access
+        elif dataset.get('data_access_level') and dataset['data_access_level'].lower() == 'protected':
+            globus_server_uuid = app.config['GLOBUS_PROTECTED_ENDPOINT_UUID']
+            access_dir = commons_file_helper.ensureTrailingSlashURL(app.config['PROTECTED_DATA_SUBDIR'])
+            dir_path = dir_path + access_dir + "/"
+
+        if globus_server_uuid is not None:
+            dir_path = dir_path + dataset['uuid'] + "/"
+            dir_path = urllib.parse.quote(dir_path, safe='')
+
+            #https://app.globus.org/file-manager?origin_id=28bb03c-a87d-4dd7-a661-7ea2fb6ea631&origin_path=2%FIEC%20Testing%20Group%20F03584b3d0f8b46de1b29f04be1568779%2F
+            globus_url = commons_file_helper.ensureTrailingSlash(app.config['GLOBUS_APP_BASE_URL']) + "file-manager?origin_id=" + globus_server_uuid + "&origin_path" + dir_path
+
+        else:
+            globus_url = ""
+
+        dataset['globus_url'] = globus_url
+        portal_url = commons_file_helper.ensureTrailingSlashURL(app.config['PORTAL_URL']) + 'dataset' + '/' + dataset['uuid']
+        dataset['portal_url'] = portal_url
 
     for dataset in combined_results:
         for prop in dataset:
@@ -1406,10 +1438,10 @@ def dataset_data_status():
                 dataset[prop] = dataset[prop].replace("'",'"')
                 dataset[prop] = json.loads(dataset[prop])
                 dataset[prop] = dataset[prop][0]
-        if dataset['organ'] and dataset['organ'].upper() not in ['HT', 'LV', 'LN', 'RK', 'LK']:
+        if dataset.get('organ') and dataset['organ'].upper() not in ['HT', 'LV', 'LN', 'RK', 'LK']:
             dataset['has_rui_info'] = "not-applicable"
 
-    return jsonify(combined_results[0])
+    return jsonify(combined_results)
 
 
 """
@@ -1961,9 +1993,10 @@ def dataset_is_primary(dataset_uuid):
         return True
 
 
-def run_query(session, query, results, i):
+def run_query(query, results, i):
     logger.info(query)
-    results[i] = session.run(query).data()
+    with neo4j_driver_instance.session() as session:
+        results[i] = session.run(query).data()
 
 
 # For local development/testing
