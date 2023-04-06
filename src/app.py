@@ -1316,13 +1316,6 @@ def dataset_data_status():
         "COALESCE(ds.contributors IS NOT NULL) AS has_contributors, COALESCE(ds.contacts IS NOT NULL) AS has_contacts "
     )
 
-    nearest_sample_query = (
-        "MATCH (ds:Dataset)<-[*]-(s:Sample) WHERE (:Dataset)<-[:ACTIVITY_OUTPUT]-(:Activity)<-[:ACTIVITY_INPUT]-(s) "
-        "AND not (ds)<-[*]-(:Sample)<-[*]-(s) "
-        "RETURN DISTINCT ds.uuid as uuid, COLLECT(DISTINCT s.hubmap_id) as sample_hubmap_id, "
-        "COLLECT(DISTINCT s.submission_id) as sample_submission_id"
-    )
-
     organ_query = (
         "MATCH (ds:Dataset)<-[*]-(o:Sample {sample_category: 'organ'}) "
         "RETURN DISTINCT ds.uuid AS uuid, o.organ AS organ "
@@ -1330,7 +1323,7 @@ def dataset_data_status():
 
     donor_query = (
         "MATCH (ds:Dataset)<-[*]-(dn:Donor) "
-        "RETURN DISTINCT ds.uuid AS uuid, COLLECT(DISTINCT dn.uuid) AS donor_uuid, "
+        "RETURN DISTINCT ds.uuid AS uuid, "
         "COLLECT(DISTINCT dn.hubmap_id) AS donor_hubmap_id, COLLECT(DISTINCT dn.submission_id) AS donor_submission_id, "
         "COLLECT(DISTINCT dn.lab_donor_id) AS donor_lab_id, COALESCE(dn.metadata IS NOT NULL) AS has_metadata"
     )
@@ -1352,7 +1345,7 @@ def dataset_data_status():
     )
 
 
-    queries = [all_datasets_query, nearest_sample_query, organ_query, donor_query, parent_dataset_query,
+    queries = [all_datasets_query, organ_query, donor_query, parent_dataset_query,
                upload_query, has_rui_query]
     results = [None] * len(queries)
     threads = []
@@ -1365,22 +1358,17 @@ def dataset_data_status():
     output_dict = {}
     # Here we specifically indexed the values in 'results' in case certain threads completed out of order
     all_datasets_result = results[0]
-    nearest_sample_result = results[1]
-    organ_result = results[2]
-    donor_result = results[3]
-    parent_dataset_result = results[4]
-    upload_result = results[5]
-    has_rui_result = results[6]
+    organ_result = results[1]
+    donor_result = results[2]
+    parent_dataset_result = results[3]
+    upload_result = results[4]
+    has_rui_result = results[5]
 
     for dataset in all_datasets_result:
         output_dict[dataset['uuid']] = dataset
-    for dataset in nearest_sample_result:
-        output_dict[dataset['uuid']]['sample_hubmap_id'] = dataset['sample_hubmap_id']
-        output_dict[dataset['uuid']]['sample_submission_id'] = dataset['sample_submission_id']
     for dataset in organ_result:
         output_dict[dataset['uuid']]['organ'] = dataset['organ']
     for dataset in donor_result:
-        output_dict[dataset['uuid']]['donor_uuid'] = dataset['donor_uuid']
         output_dict[dataset['uuid']]['donor_hubmap_id'] = dataset['donor_hubmap_id']
         output_dict[dataset['uuid']]['donor_submission_id'] = dataset['donor_submission_id']
         output_dict[dataset['uuid']]['donor_lab_id'] = dataset['donor_lab_id']
@@ -1399,12 +1387,16 @@ def dataset_data_status():
     for dataset in combined_results:
         globus_url = get_globus_url(dataset.get('data_access_level'), dataset.get('group_name'), dataset.get('uuid'))
         dataset['globus_url'] = globus_url
-        portal_url = commons_file_helper.ensureTrailingSlashURL(app.config['PORTAL_URL']) + 'dataset' + '/' + dataset['uuid']
+        portal_url = commons_file_helper.ensureTrailingSlashURL(app.config['PORTAL_URL']) + 'dataset' + '/' + dataset[
+            'uuid']
         dataset['portal_url'] = portal_url
-        ingest_url = commons_file_helper.ensureTrailingSlashURL(app.config['INGEST_URL']) + 'dataset' + '/' + dataset['uuid']
+        ingest_url = commons_file_helper.ensureTrailingSlashURL(app.config['INGEST_URL']) + 'dataset' + '/' + dataset[
+            'uuid']
         dataset['ingest_url'] = ingest_url
-
-    for dataset in combined_results:
+        if dataset.get('parent_dataset') is None:
+            dataset['is_derived'] = "false"
+        else:
+            dataset['is_derived'] = "true"
         for prop in dataset:
             if isinstance(dataset[prop], list):
                 dataset[prop] = ", ".join(dataset[prop])
