@@ -78,14 +78,14 @@ def generate_doids_for_all_published(neo4j_driver_instance: Driver,
                 try:
                     datacite_doi_helper.create_dataset_draft_doi(entity_dict, check_publication_status=False)
                 except Exception as e:
-                    logger.error("Error occurred while trying to create a draft doi for{dataset_uuid}. {e}")
+                    logger.warning("Unable to create a draft doi for Dataset Uuid: {dataset_uuid}. {e}")
                     continue
                 try:
                     # This will make the draft DOI created above 'findable' and
                     # will update the Dataset doi_url and registered_doi fields.
                     datacite_doi_helper.move_doi_state_from_draft_to_findable(entity_dict, token)
                 except Exception as e:
-                    logger.error(f"Error occurred while trying to change doi draft state to findable doi for{dataset_uuid}. {e}")
+                    logger.warning(f"Unable to change doi draft state to findable doi for{dataset_uuid}. {e}")
                     continue
 
 
