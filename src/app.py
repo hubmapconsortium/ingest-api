@@ -671,11 +671,19 @@ def publish_datastage(identifier):
             acls_cmd = ingest_helper.set_dataset_permissions(dataset_uuid, dataset_group_uuid, data_access_level,
                                                              True, no_indexing_and_acls)
 
+
+            auth_tokens = auth_helper.getAuthorizationTokens(request.headers)
+            entity_instance = EntitySdk(token=auth_tokens, service_url=app.config['ENTITY_WEBSERVICE_URL'])
+
             # Generating DOI's for lab processed/derived data as well as IEC/pipeline/airflow processed/derived data).
             if is_primary or has_entity_lab_processed_data_type:
                 # DOI gets generated here
                 # Note: moved dataset title auto generation to entity-api - Zhou 9/29/2021
                 datacite_doi_helper = DataCiteDoiHelper()
+
+
+                entity = entity_instance.get_entity_by_id(dataset_uuid)
+                entity_dict = vars(entity)
 
                 try:
                     datacite_doi_helper.create_dataset_draft_doi(entity_dict, check_publication_status=False)
@@ -696,6 +704,7 @@ def publish_datastage(identifier):
                            'sub'] + "', e.published_user_displayname = '" + user_info['name'] + "'"
             logger.info(dataset_uuid + "\t" + dataset_uuid + "\tNEO4J-update-base-dataset\t" + update_q)
             neo_session.run(update_q)
+            out = entity_instance.clear_cache(dataset_uuid)
 
             # if all else worked set the list of ids to public that need to be public
             if len(uuids_for_public) > 0:
@@ -703,6 +712,8 @@ def publish_datastage(identifier):
                 update_q = "match (e:Entity) where e.uuid in [" + id_list + "] set e.data_access_level = 'public'"
                 logger.info(identifier + "\t" + dataset_uuid + "\tNEO4J-update-ancestors\t" + update_q)
                 neo_session.run(update_q)
+                for e_id in uuids_for_public:
+                    out = entity_instance.clear_cache(e_id)
 
         if no_indexing_and_acls:
             r_val = {'acl_cmd': acls_cmd, 'donors_for_indexing': donors_to_reindex}
