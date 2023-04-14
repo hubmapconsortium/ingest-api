@@ -44,7 +44,7 @@ from datacite_doi_helper_object import DataCiteDoiHelper
 from app_utils.request_validation import require_json
 from app_utils.error import unauthorized_error, not_found_error, internal_server_error, bad_request_error
 from app_utils.misc import __get_dict_prop
-from app_utils.entity import __get_entity
+from app_utils.entity import __get_entity, get_entity_type_instanceof
 from app_utils.task_queue import TaskQueue
 from werkzeug import utils
 
@@ -337,11 +337,8 @@ def get_file_system_relative_path():
             ingest_helper = IngestFileHelper(app.config)
             if ent_type == 'upload':
                 path = ingest_helper.get_upload_directory_relative_path(group_uuid=group_uuid, upload_uuid=dset['uuid'])
-            elif ent_type == 'dataset' or ent_type == 'publication':
+            elif get_entity_type_instanceof(ent_type, 'Dataset', auth_header="Bearer " + auth_helper_instance.getProcessSecret()):
                 is_phi = __get_dict_prop(dset, 'contains_human_genetic_sequences')
-                if ent_type is None or not (ent_type.lower().strip() == 'dataset' or ent_type.lower().strip() == 'publication'):
-                    error_id = {'id': ds_uuid, 'message': 'id not for Dataset, Publication or Upload', 'status_code': 400}
-                    error_id_list.append(error_id)
                 if group_uuid is None:
                     error_id = {'id': ds_uuid, 'message': 'Unable to find group uuid on dataset', 'status_code': 400}
                     error_id_list.append(error_id)
@@ -1274,7 +1271,8 @@ def allowable_edit_states(hmuuid):
                         data_access_level = 'protected'
         
                     #if it is published, no write allowed
-                    if entity_type in ['dataset', 'publication', 'upload']:
+                    if entity_type in ['upload'] or\
+                            get_entity_type_instanceof(entity_type, 'Dataset', auth_header="Bearer " + auth_helper_instance.getProcessSecret()):
                         if isBlank(status):
                             msg = f"ERROR: unable to obtain status field from db for {entity_type} with uuid:{hmuuid} during a call to allowable-edit-states"
                             logger.error(msg)

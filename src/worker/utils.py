@@ -10,7 +10,7 @@ from ingest_file_helper import IngestFileHelper
 from hubmap_commons.hm_auth import AuthHelper
 
 from app_utils.misc import __get_dict_prop
-from app_utils.entity import __get_entity
+from app_utils.entity import __get_entity, get_entity_type_instanceof
 
 
 logger: logging.Logger = logging.getLogger(__name__)
@@ -68,7 +68,7 @@ def get_ds_path(ds_uuid: str,
     if ent_type.lower().strip() == 'upload':
         return ingest_helper.get_upload_directory_absolute_path(group_uuid=group_uuid, upload_uuid=ds_uuid)
     is_phi = __get_dict_prop(dset, 'contains_human_genetic_sequences')
-    if ent_type is None or not (ent_type.lower().strip() == 'dataset' or ent_type.lower().strip() == 'publication'):
+    if not get_entity_type_instanceof(ent_type, 'Dataset', auth_header=request.headers.get("AUTHORIZATION")):
         raise ResponseException(f"Entity with uuid:{ds_uuid} is not a Dataset, Publication or Upload", 400)
     if group_uuid is None:
         raise ResponseException(f"Unable to find group uuid on dataset {ds_uuid}", 400)
