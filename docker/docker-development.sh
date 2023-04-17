@@ -106,13 +106,13 @@ else
         cp ../VERSION ingest-api
         cp ../BUILD ingest-api
 
-        docker-compose -f docker-compose.yml -f docker-compose.development.yml -p ingest-api build
+        docker-compose -f docker-compose.yml -f docker-compose.dev.yml -p ingest-api build
     elif [ "$1" = "start" ]; then
-        docker-compose -f docker-compose.yml -f docker-compose.development.yml -p ingest-api up -d
+        docker-compose -f docker-compose.yml -f docker-compose.dev.yml -p ingest-api up -d
     elif [ "$1" = "stop" ]; then
-        docker-compose -f docker-compose.yml -f docker-compose.development.yml -p ingest-api stop
+        docker-compose -f docker-compose.yml -f docker-compose.dev.yml -p ingest-api stop
     elif [ "$1" = "down" ]; then
-        docker-compose -f docker-compose.yml -f docker-compose.development.yml -p ingest-api down
+        docker-compose -f docker-compose.yml -f docker-compose.dev.yml -p ingest-api down
     fi
 fi
 
