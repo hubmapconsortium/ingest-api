@@ -35,3 +35,8 @@ src/VERSION
 #ignore PyCharm files
 .idea/
 venv
+
+# Ignore PSC generated files
+.env
+init_env.sh
+docker/docker-compose.dev.yml
