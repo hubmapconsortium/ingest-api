@@ -35,3 +35,5 @@ src/VERSION
 #ignore PyCharm files
 .idea/
 venv
+.env
+init_env.sh
