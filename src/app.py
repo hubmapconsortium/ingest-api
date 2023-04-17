@@ -320,8 +320,8 @@ def notify_slack():
 
     json_data = request.json
 
-    logger.info("++++++++++Calling POST /notify-slack-channel")
-    logger.info("++++++++++Request json:" + json.dumps(json_data))
+    logger.debug(f"======notify_slack() Request json:======")
+    logger.debug(json_data)
 
     if 'channel' in json_data:
         if not isinstance(json_data['channel'], str):
