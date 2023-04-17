@@ -40,3 +40,4 @@ venv
 .env
 init_env.sh
 docker/docker-compose.dev.yml
+docker/ingest-api/nginx/conf.d
