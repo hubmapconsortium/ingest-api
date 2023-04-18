@@ -31,7 +31,7 @@ def get_entity_type_instanceof(type_a, type_b, auth_header=None) -> bool:
     if auth_header is not None:
         headers = {'Authorization': auth_header, 'Accept': 'application/json', 'Content-Type': 'application/json'}
 
-    base_url: str = commons_file_helper.ensureTrailingSlashURL(
+    base_url: str = commons_file_helper.removeTrailingSlashURL(
         current_app.config['ENTITY_WEBSERVICE_URL'])
     get_url: str = f"{base_url}/entities/type/{type_a}/instanceof/{type_b}"
 
