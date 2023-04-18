@@ -341,7 +341,7 @@ def notify_slack():
     }
 
     json_to_post = {
-        "channel": json_data['channel'],
+        "channel": channel,
         "text": f"From {user_name} ({user_email}):\n>{json_data['message']}"
     }
 
