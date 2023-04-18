@@ -311,10 +311,9 @@ def notify_slack():
 
     if user_info is None:
         unauthorized_error("Unable to obtain user information for groups token")
-    
-    if isinstance(user_info, Response):
-        user_name = user_info['name']
-        user_email = user_info['email']
+
+    user_name = user_info['name']
+    user_email = user_info['email']
 
     require_json(request)
 
@@ -342,7 +341,7 @@ def notify_slack():
 
     json_to_post = {
         "channel": channel,
-        "text": f"From {user_name} ({user_email}):\n>{json_data['message']}"
+        "text": f"From {user_name} ({user_email}):\n{json_data['message']}"
     }
 
     logger.debug("======notify_slack() json_to_post======")
@@ -354,7 +353,7 @@ def notify_slack():
         result = response.json()
 
         # 'ok' filed is boolean value
-        if result.ok:
+        if ('ok' in result) and result['ok']:
             output = {
                 "channel": channel,
                 "message": json_data['message'],
@@ -373,7 +372,12 @@ def notify_slack():
             logger.debug(result)
 
             # https://api.slack.com/methods/chat.postMessage#errors
-            bad_request_error(result.error)
+            if 'error' in result:
+                bad_request_error(result['error'])
+            else:
+                internal_server_error("Failed to send notification to Slack channel")
+    else:
+        internal_server_error("Failed to send notification to Slack channel")
 
 
 ####################################################################################################
