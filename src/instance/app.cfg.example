@@ -2,6 +2,10 @@
 # Set to False when deployment with docker (Gateway nginx handles CORS)
 ENABLE_CORS = False
 
+# Slack notification
+SLACK_DEFAULT_CHANNEL = ''
+SLACK_CHANNEL_TOKEN = ''
+
 # Neo4j connection
 NEO4J_SERVER = ''
 NEO4J_USERNAME = ''
@@ -64,6 +68,9 @@ SEARCH_WEBSERVICE_URL = 'https://search-api.dev.hubmapconsortium.org/v3'
 
 # URL to the entity-api web service (shown for DEV)
 ENTITY_WEBSERVICE_URL = 'https://entity-api.dev.hubmapconsortium.org'
+
+# URL to the UBKG web service (shown for DEV)
+UBKG_WEBSERVICE_URL = 'https://ontology-api.dev.hubmapconsortium.org/'
 
 # URL to the spatial-api web service (shown for DEV)
 SPATIAL_WEBSERVICE_URL = 'https://spatial-api.dev.hubmapconsortium.org'

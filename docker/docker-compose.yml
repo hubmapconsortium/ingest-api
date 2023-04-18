@@ -14,14 +14,6 @@ services:
       start_period: 40s
     init: true
     restart: always
-    # Map host machine port 80, 443 to container ports 8080 and 4430
-    # Only root can listen on ports below 1024, we use higher-numbered ports
-    # since nginx is running under non-root user hubmap
-    ports:
-      - "80:8080"
-      - "443:4430"
-      # ingest-api on http 7777 to be used by airflow
-      - "7777:7777"
     environment:
       # This base user `hive` is used to run the application process within the container
       # It's also used for ACL settings of ingest-api app.cfg
@@ -56,3 +48,4 @@ services:
 
 networks:
   hubmap:
+    external: true
