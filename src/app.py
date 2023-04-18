@@ -276,6 +276,107 @@ def status():
 
 
 ####################################################################################################
+## Slack Notification
+####################################################################################################
+
+"""
+Notify data curation/ingest staff of events during the data ingest process by sending a message to the 
+target Slack channel. HuBMAP-Read access is requried and specified in the "old gateway".
+
+Input
+--------
+Input is via POST request body data as a json object:
+
+channel : str
+    The target slack channel, optional. Use default if not specified
+message : str
+    The message to be sent to the channel, required, supports markdown
+
+Returns
+--------
+dict
+    Summary of the sent message including user name and email
+"""
+@app.route('/notify-slack', methods=['POST'])
+def notify_slack():
+    channel = app.config['SLACK_DEFAULT_CHANNEL']
+    user_name = ''
+    user_email = ''
+
+    # The token should be there already since the gateway checks the auth
+    token = AuthHelper.parseAuthorizationTokens(request.headers)
+
+    # Get user info
+    user_info = auth_helper_instance.getUserInfo(token)
+
+    if user_info is None:
+        unauthorized_error(Unable to obtain user information for groups token)
+    
+    if isinstance(user_info, Response):
+        user_name = user_info['name']
+        user_email = user_info['email']
+
+    require_json(request)
+
+    json_data = request.json
+
+    logger.debug(f"======notify_slack() Request json:======")
+    logger.debug(json_data)
+
+    if 'channel' in json_data:
+        if not isinstance(json_data['channel'], str):
+            bad_request_error("The value of 'channel' must be a string")
+        else:
+            channel = json_data['channel']
+
+    if 'message' not in json_data:
+        bad_request_error("The 'message' field is required.")
+
+    if not isinstance(json_data['message'], str):
+        bad_request_error("The value of 'message' must be a string")
+
+    # Send message to Slack
+    request_header = {
+        "Authorization": f"Bearer {app.config['SLACK_CHANNEL_TOKEN']}"
+    }
+
+    json_to_post = {
+        "channel": json_data['channel'],
+        "text": f"From {user_name} ({user_email}):\n>{json_data['message']}"
+    }
+
+    logger.debug("======notify_slack() json_to_post======")
+    logger.debug(json_to_post)
+
+    response = requests.post(url = 'https://slack.com/api/chat.postMessage', headers = request_header, json = json_to_post, verify = False)
+
+    if response.status_code == 200:
+        result = response.json()
+
+        # 'ok' filed is boolean value
+        if result.ok:
+            output = {
+                "channel": channel,
+                "message": json_data['message'],
+                "user_name": user_name,
+                "user_email": user_email
+            }
+
+            return jsonify(output), 200
+        else: 
+            msg = f"Unable to notify Slack channel: {json_data['channel']} with the message: {json_data['message']}" 
+            
+            # Log the full stack trace, prepend a line with our message
+            logger.exception(msg)
+
+            logger.debug("======notify_slack() response json from Slack API======")
+            logger.debug(result)
+
+            # https://api.slack.com/methods/chat.postMessage#errors
+            bad_request_error(result.error)
+
+
+####################################################################################################
 ## Ingest API Endpoints
 ####################################################################################################
 
@@ -371,6 +472,7 @@ def get_file_system_relative_path():
                 status_code = 500
         return jsonify(error_id_list), status_code
     return jsonify(out_list), 200
+
 #passthrough method to call mirror method on entity-api
 #this is need by ingest-pipeline that can only call
 #methods via http (running on the same machine for security reasons)
