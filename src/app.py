@@ -310,7 +310,7 @@ def notify_slack():
     user_info = auth_helper_instance.getUserInfo(token)
 
     if user_info is None:
-        unauthorized_error(Unable to obtain user information for groups token)
+        unauthorized_error("Unable to obtain user information for groups token")
     
     if isinstance(user_info, Response):
         user_name = user_info['name']
