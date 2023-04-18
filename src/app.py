@@ -281,16 +281,15 @@ def status():
 
 """
 Notify data curation/ingest staff of events during the data ingest process by sending a message to the 
-target Slack channel. HuBMAP-Read access is requried and specified in the "old gateway".
+target Slack channel. HuBMAP-Read access is requried in the "old gateway".
 
 Input
 --------
-Input is via POST request body data as a json object:
-
-channel : str
-    The target slack channel, optional. Use default if not specified
-message : str
-    The message to be sent to the channel, required, supports markdown
+POST request body data as a json object containing the following fields:
+    channel : str
+        The target slack channel, optional. Use default from configuration if not specified
+    message : str
+        The message to be sent to the channel, required. Markdown syntax is supported
 
 Returns
 --------
@@ -303,20 +302,15 @@ def notify_slack():
     user_name = ''
     user_email = ''
 
-    # The token should be there already since the gateway checks the auth
-    token = AuthHelper.parseAuthorizationTokens(request.headers)
-
-    # Get user info
-    user_info = auth_helper_instance.getUserInfo(token)
-
+    # Get user info based on token
+    # At this point we should have a valid token since the gateway already checked the auth
+    user_info = auth_helper_instance.getUserInfo(AuthHelper.parseAuthorizationTokens(request.headers))
     if user_info is None:
         unauthorized_error("Unable to obtain user information for groups token")
-
     user_name = user_info['name']
     user_email = user_info['email']
 
     require_json(request)
-
     json_data = request.json
 
     logger.debug(f"======notify_slack() Request json:======")
@@ -325,8 +319,8 @@ def notify_slack():
     if 'channel' in json_data:
         if not isinstance(json_data['channel'], str):
             bad_request_error("The value of 'channel' must be a string")
-        else:
-            channel = json_data['channel']
+        # Use the user provided channel rather than the configured default value
+        channel = json_data['channel']
 
     if 'message' not in json_data:
         bad_request_error("The 'message' field is required.")
@@ -335,10 +329,10 @@ def notify_slack():
         bad_request_error("The value of 'message' must be a string")
 
     # Send message to Slack
+    target_url = 'https://slack.com/api/chat.postMessage'
     request_header = {
         "Authorization": f"Bearer {app.config['SLACK_CHANNEL_TOKEN']}"
     }
-
     json_to_post = {
         "channel": channel,
         "text": f"From {user_name} ({user_email}):\n{json_data['message']}"
@@ -347,37 +341,40 @@ def notify_slack():
     logger.debug("======notify_slack() json_to_post======")
     logger.debug(json_to_post)
 
-    response = requests.post(url = 'https://slack.com/api/chat.postMessage', headers = request_header, json = json_to_post, verify = False)
+    response = requests.post(url = target_url, headers = request_header, json = json_to_post, verify = False)
 
+    # Note: Slack API wrapps the error response in the 200 response instead of using non-200 status code
+    # Callers should always check the value of the 'ok' params in the response
     if response.status_code == 200:
         result = response.json()
-
         # 'ok' filed is boolean value
-        if ('ok' in result) and result['ok']:
-            output = {
-                "channel": channel,
-                "message": json_data['message'],
-                "user_name": user_name,
-                "user_email": user_email
-            }
+        if 'ok' in result:
+            if result['ok']:
+                output = {
+                    "channel": channel,
+                    "message": json_data['message'],
+                    "user_name": user_name,
+                    "user_email": user_email
+                }
 
-            return jsonify(output), 200
-        else: 
-            msg = f"Unable to notify Slack channel: {json_data['channel']} with the message: {json_data['message']}" 
-            
-            # Log the full stack trace, prepend a line with our message
-            logger.exception(msg)
+                logger.debug("======notify_slack() Sent Notification Summary======")
+                logger.info(output)
 
-            logger.debug("======notify_slack() response json from Slack API======")
-            logger.debug(result)
+                return jsonify(output), 200
+            else: 
+                logger.error(f"Unable to notify Slack channel: {channel} with the message: {json_data['message']}")
+                logger.debug("======notify_slack() response json from Slack API======")
+                logger.debug(result)
 
-            # https://api.slack.com/methods/chat.postMessage#errors
-            if 'error' in result:
-                bad_request_error(result['error'])
-            else:
-                internal_server_error("Failed to send notification to Slack channel")
+                # https://api.slack.com/methods/chat.postMessage#errors
+                if 'error' in result:
+                    bad_request_error(result['error'])
+                else:
+                    internal_server_error("Slack API unable to process the request, 'error' param/field missing from Slack API response json")
+        else:
+            internal_server_error("The 'ok' param/field missing from Slack API response json")
     else:
-        internal_server_error("Failed to send notification to Slack channel")
+        internal_server_error("Failed to send a request to Slack API")
 
 
 ####################################################################################################
