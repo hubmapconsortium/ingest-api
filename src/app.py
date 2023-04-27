@@ -1,3 +1,4 @@
+import datetime
 import os
 import sys
 import logging
@@ -1344,6 +1345,11 @@ def dataset_data_status():
         "RETURN ds.uuid AS uuid, any(rui_location IN rui_locations WHERE rui_location IS NOT NULL) AS has_rui_info"
     )
 
+    displayed_fields = [
+        "hubmap_id", "group_name", "status", "organ", "provider_experiment_id", "last_touch", "has_contacts",
+        "has_contributors", "data_types", "donor_hubmap_id", "donor_submission_id", "donor_lab_id",
+        "has_metadata", "parent_dataset", "upload", "has_rui_info", "globus_url", "portal_url", "ingest_url"
+    ]
 
     queries = [all_datasets_query, organ_query, donor_query, parent_dataset_query,
                upload_query, has_rui_query]
@@ -1393,6 +1399,7 @@ def dataset_data_status():
         ingest_url = commons_file_helper.ensureTrailingSlashURL(app.config['INGEST_URL']) + 'dataset' + '/' + dataset[
             'uuid']
         dataset['ingest_url'] = ingest_url
+        dataset['last_touch'] = str(datetime.datetime.utcfromtimestamp(dataset['last_touch']/1000))
         if dataset.get('parent_dataset') is None:
             dataset['is_derived'] = "false"
         else:
@@ -1406,6 +1413,11 @@ def dataset_data_status():
                 dataset[prop] = dataset[prop].replace("'",'"')
                 dataset[prop] = json.loads(dataset[prop])
                 dataset[prop] = dataset[prop][0]
+            if dataset[prop] is None:
+                dataset[prop] = " "
+        for field in displayed_fields:
+            if dataset.get(field) is None:
+                dataset[field] = " "
         if dataset.get('organ') and dataset['organ'].upper() not in ['HT', 'LV', 'LN', 'RK', 'LK']:
             dataset['has_rui_info'] = "not-applicable"
 
