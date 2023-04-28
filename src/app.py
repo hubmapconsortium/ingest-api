@@ -1311,7 +1311,7 @@ Description
 def dataset_data_status():
     all_datasets_query = (
         "MATCH (ds:Dataset) "
-        "RETURN ds.uuid as uuid, ds.group_name as group_name, ds.data_types as datatypes, "
+        "RETURN ds.uuid as uuid, ds.group_name as group_name, ds.data_types as data_types, "
         "ds.hubmap_id as hubmap_id, ds.lab_dataset_id as provider_experiment_id, ds.status as status, "
         "ds.last_modified_timestamp AS last_touch, ds.data_access_level AS data_access_level, " 
         "COALESCE(ds.contributors IS NOT NULL) AS has_contributors, COALESCE(ds.contacts IS NOT NULL) AS has_contacts "
@@ -1436,6 +1436,10 @@ def upload_data_status():
         "up.title AS title, COLLECT(DISTINCT ds.uuid) AS datasets "
     )
 
+    displayed_fields = [
+        "uuid", "group_name", "hubmap_id", "status", "title", "datasets"
+    ]
+
     with neo4j_driver_instance.session() as session:
         results = session.run(all_uploads_query).data()
         for upload in results:
@@ -1444,6 +1448,20 @@ def upload_data_status():
             ingest_url = commons_file_helper.ensureTrailingSlashURL(app.config['INGEST_URL']) + 'upload' + '/' + upload[
             'uuid']
             upload['ingest_url'] = ingest_url
+            for prop in upload:
+                if isinstance(upload[prop], list):
+                    upload[prop] = ", ".join(upload[prop])
+                if isinstance(upload[prop], (bool, int)):
+                    upload[prop] = str(upload[prop])
+                if upload[prop] and upload[prop][0] == "[" and upload[prop][-1] == "]":
+                    upload[prop] = upload[prop].replace("'",'"')
+                    upload[prop] = json.loads(upload[prop])
+                    upload[prop] = upload[prop][0]
+                if upload[prop] is None:
+                    upload[prop] = " "
+            for field in displayed_fields:
+                if upload.get(field) is None:
+                    upload[field] = " "
     # TODO: Once url parameters are implemented in the front-end for the data-status dashboard, we'll need to return a
     # TODO: link to the datasets page only displaying datasets belonging to a given upload.
     return jsonify(results)
