@@ -1348,7 +1348,7 @@ def dataset_data_status():
     displayed_fields = [
         "hubmap_id", "group_name", "status", "organ", "provider_experiment_id", "last_touch", "has_contacts",
         "has_contributors", "data_types", "donor_hubmap_id", "donor_submission_id", "donor_lab_id",
-        "has_metadata", "parent_dataset", "upload", "has_rui_info", "globus_url", "portal_url", "ingest_url"
+        "has_metadata", "parent_dataset", "upload", "has_rui_info", "globus_url", "portal_url", "ingest_url", "has_data"
     ]
 
     queries = [all_datasets_query, organ_query, donor_query, parent_dataset_query,
@@ -1404,6 +1404,9 @@ def dataset_data_status():
             dataset['is_derived'] = "false"
         else:
             dataset['is_derived'] = "true"
+        has_data = files_exist(dataset.get('uuid'), dataset.get('data_access_level'))
+        dataset['has_data'] = has_data
+
         for prop in dataset:
             if isinstance(dataset[prop], list):
                 dataset[prop] = ", ".join(dataset[prop])
@@ -2013,6 +2016,7 @@ def run_query(query, results, i):
     with neo4j_driver_instance.session() as session:
         results[i] = session.run(query).data()
 
+
 def get_globus_url(data_access_level, group_name, uuid):
     globus_server_uuid = None
     dir_path = " "
@@ -2045,6 +2049,26 @@ def get_globus_url(data_access_level, group_name, uuid):
     if uuid is None:
         globus_url = ""
     return globus_url
+
+
+def files_exist(uuid, data_access_level):
+    if not uuid or not data_access_level:
+        return False
+    if data_access_level == "public":
+        absolute_path = commons_file_helper.ensureTrailingSlashURL(app.config['GLOBUS_PUBLIC_ENDPOINT_FILEPATH'])
+    # consortium access
+    elif data_access_level == 'consortium':
+        absolute_path = commons_file_helper.ensureTrailingSlashURL(app.config['GLOBUS_CONSORTIUM_ENDPOINT_FILEPATH'])
+    # protected access
+    elif data_access_level == 'protected':
+        absolute_path = commons_file_helper.ensureTrailingSlashURL(app.config['GLOBUS_PROTECTED_ENDPOINT_FILEPATH'])
+
+    file_path = absolute_path + uuid
+    if os.path.exists(file_path) and os.path.isdir(file_path) and os.listdir(file_path):
+        return True
+    else:
+        return False
+
 
 
 # For local development/testing
