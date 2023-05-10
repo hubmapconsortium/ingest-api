@@ -2,6 +2,10 @@
 # Set to False when deployment with docker (Gateway nginx handles CORS)
 ENABLE_CORS = False
 
+# Slack notification
+SLACK_DEFAULT_CHANNEL = ''
+SLACK_CHANNEL_TOKEN = ''
+
 # Neo4j connection
 NEO4J_SERVER = ''
 NEO4J_USERNAME = ''
