@@ -22,3 +22,24 @@ def __get_entity(entity_uuid, auth_header=None):
         raise HTTPException(err_msg, response.status_code)
 
     return response.json()
+
+
+def get_entity_type_instanceof(type_a, type_b, auth_header=None) -> bool:
+    if type_a is None:
+        return False
+    headers = None
+    if auth_header is not None:
+        headers = {'Authorization': auth_header, 'Accept': 'application/json', 'Content-Type': 'application/json'}
+
+    base_url: str = commons_file_helper.removeTrailingSlashURL(
+        current_app.config['ENTITY_WEBSERVICE_URL'])
+    get_url: str = f"{base_url}/entities/type/{type_a}/instanceof/{type_b}"
+
+    response = requests.get(get_url, headers=headers, verify=False)
+    if response.status_code != 200:
+        err_msg = f"Error while calling {get_url} status code:{response.status_code}  message:{response.text}"
+        logger.error(err_msg)
+        raise HTTPException(err_msg, response.status_code)
+
+    resp_json: dict = response.json()
+    return resp_json['instanceof']

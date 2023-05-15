@@ -9,6 +9,7 @@ import json
 from uuid import UUID
 import yaml
 import csv
+from typing import List
 import time
 from threading import Thread
 from hubmap_sdk import EntitySdk
@@ -44,7 +45,7 @@ from datacite_doi_helper_object import DataCiteDoiHelper
 from app_utils.request_validation import require_json
 from app_utils.error import unauthorized_error, not_found_error, internal_server_error, bad_request_error
 from app_utils.misc import __get_dict_prop
-from app_utils.entity import __get_entity
+from app_utils.entity import __get_entity, get_entity_type_instanceof
 from app_utils.task_queue import TaskQueue
 from werkzeug import utils
 
@@ -276,6 +277,108 @@ def status():
 
 
 ####################################################################################################
+## Slack Notification
+####################################################################################################
+
+"""
+Notify data curation/ingest staff of events during the data ingest process by sending a message to the 
+target Slack channel. HuBMAP-Read access is requried in the "old gateway".
+
+Input
+--------
+POST request body data as a json object containing the following fields:
+    channel : str
+        The target slack channel, optional. Use default from configuration if not specified
+    message : str
+        The message to be sent to the channel, required. Markdown syntax is supported
+
+Returns
+--------
+dict
+    Summary of the sent message including user name and email
+"""
+@app.route('/notify-slack', methods=['POST'])
+def notify_slack():
+    channel = app.config['SLACK_DEFAULT_CHANNEL']
+    user_name = ''
+    user_email = ''
+
+    # Get user info based on token
+    # At this point we should have a valid token since the gateway already checked the auth
+    user_info = auth_helper_instance.getUserInfo(AuthHelper.parseAuthorizationTokens(request.headers))
+    if user_info is None:
+        unauthorized_error("Unable to obtain user information for groups token")
+    user_name = user_info['name']
+    user_email = user_info['email']
+
+    require_json(request)
+    json_data = request.json
+
+    logger.debug(f"======notify_slack() Request json:======")
+    logger.debug(json_data)
+
+    if 'channel' in json_data:
+        if not isinstance(json_data['channel'], str):
+            bad_request_error("The value of 'channel' must be a string")
+        # Use the user provided channel rather than the configured default value
+        channel = json_data['channel']
+
+    if 'message' not in json_data:
+        bad_request_error("The 'message' field is required.")
+
+    if not isinstance(json_data['message'], str):
+        bad_request_error("The value of 'message' must be a string")
+
+    # Send message to Slack
+    target_url = 'https://slack.com/api/chat.postMessage'
+    request_header = {
+        "Authorization": f"Bearer {app.config['SLACK_CHANNEL_TOKEN']}"
+    }
+    json_to_post = {
+        "channel": channel,
+        "text": f"From {user_name} ({user_email}):\n{json_data['message']}"
+    }
+
+    logger.debug("======notify_slack() json_to_post======")
+    logger.debug(json_to_post)
+
+    response = requests.post(url = target_url, headers = request_header, json = json_to_post, verify = False)
+
+    # Note: Slack API wrapps the error response in the 200 response instead of using non-200 status code
+    # Callers should always check the value of the 'ok' params in the response
+    if response.status_code == 200:
+        result = response.json()
+        # 'ok' filed is boolean value
+        if 'ok' in result:
+            if result['ok']:
+                output = {
+                    "channel": channel,
+                    "message": json_data['message'],
+                    "user_name": user_name,
+                    "user_email": user_email
+                }
+
+                logger.debug("======notify_slack() Sent Notification Summary======")
+                logger.info(output)
+
+                return jsonify(output), 200
+            else: 
+                logger.error(f"Unable to notify Slack channel: {channel} with the message: {json_data['message']}")
+                logger.debug("======notify_slack() response json from Slack API======")
+                logger.debug(result)
+
+                # https://api.slack.com/methods/chat.postMessage#errors
+                if 'error' in result:
+                    bad_request_error(result['error'])
+                else:
+                    internal_server_error("Slack API unable to process the request, 'error' param/field missing from Slack API response json")
+        else:
+            internal_server_error("The 'ok' param/field missing from Slack API response json")
+    else:
+        internal_server_error("Failed to send a request to Slack API")
+
+
+####################################################################################################
 ## Ingest API Endpoints
 ####################################################################################################
 
@@ -337,16 +440,14 @@ def get_file_system_relative_path():
             ingest_helper = IngestFileHelper(app.config)
             if ent_type == 'upload':
                 path = ingest_helper.get_upload_directory_relative_path(group_uuid=group_uuid, upload_uuid=dset['uuid'])
-            elif ent_type == 'dataset' or ent_type == 'publication':
+            elif get_entity_type_instanceof(ent_type, 'Dataset', auth_header="Bearer " + auth_helper_instance.getProcessSecret()):
                 is_phi = __get_dict_prop(dset, 'contains_human_genetic_sequences')
-                if ent_type is None or not (ent_type.lower().strip() == 'dataset' or ent_type.lower().strip() == 'publication'):
-                    error_id = {'id': ds_uuid, 'message': 'id not for Dataset, Publication or Upload', 'status_code': 400}
-                    error_id_list.append(error_id)
                 if group_uuid is None:
-                    error_id = {'id': ds_uuid, 'message': 'Unable to find group uuid on entity', 'status_code': 400}
+                    error_id = {'id': ds_uuid, 'message': 'Unable to find group uuid on dataset', 'status_code': 400}
                     error_id_list.append(error_id)
                 if is_phi is None:
-                    error_id = {'id': ds_uuid, 'message': f"contains_human_genetic_sequences is not set on {ent_type} entity",
+                    error_id = {'id': ds_uuid,
+                                'message': f"contains_human_genetic_sequences is not set on {ent_type} dataset",
                                 'status_code': 400}
                     error_id_list.append(error_id)
                 path = ingest_helper.get_dataset_directory_relative_path(dset, group_uuid, dset['uuid'])
@@ -373,6 +474,7 @@ def get_file_system_relative_path():
                 status_code = 500
         return jsonify(error_id_list), status_code
     return jsonify(out_list), 200
+
 #passthrough method to call mirror method on entity-api
 #this is need by ingest-pipeline that can only call
 #methods via http (running on the same machine for security reasons)
@@ -525,6 +627,23 @@ def create_datastage():
         logger.error(e, exc_info=True)
         return Response("Unexpected error while creating a dataset: " + str(e) + "  Check the logs", 500)
 
+
+def get_data_type_of_external_dataset_providers(ubkg_base_url: str) -> List[str]:
+    """
+    The web service call will return a list of dictionaries having the following keys:
+    'alt-names', 'contains-pii', 'data_type', 'dataset_provider', 'description',
+     'primary', 'vis-only', 'vitessce-hints'.
+
+     This will only return a list of strings that are the 'data_type's.
+    """
+
+    url = f"{ubkg_base_url.rstrip('/')}/datasets?application_context=HUBMAP&dataset_provider=external"
+    resp = requests.get(url)
+    if resp.status_code != 200:
+        return {}
+    return [x['data_type'].strip() for x in resp.json()]
+
+
 # Needs to be triggered in the workflow or manually?!
 @app.route('/datasets/<identifier>/publish', methods = ['PUT'])
 @secured(groups="HuBMAP-read")
@@ -619,7 +738,20 @@ def publish_datastage(identifier):
                 return Response(f"{dataset_uuid} is not a dataset will not Publish, entity type is {dataset_entitytype}", 400)
             if not dataset_status == 'QA':
                 return Response(f"{dataset_uuid} is not in QA state will not Publish, status is {dataset_status}", 400)
-            if is_primary:
+
+            auth_tokens = auth_helper.getAuthorizationTokens(request.headers)
+            entity_instance = EntitySdk(token=auth_tokens, service_url=app.config['ENTITY_WEBSERVICE_URL'])
+            entity = entity_instance.get_entity_by_id(dataset_uuid)
+            entity_dict: dict = vars(entity)
+            data_type_edp: List[str] = \
+                get_data_type_of_external_dataset_providers(app.config['UBKG_WEBSERVICE_URL'])
+            entity_lab_processed_data_types: List[str] =\
+                [i for i in entity_dict.get('data_types') if i in data_type_edp]
+            has_entity_lab_processed_data_type: bool = len(entity_lab_processed_data_types) > 0
+
+            logger.info(f'is_primary: {is_primary}; has_entity_lab_processed_data_type: {has_entity_lab_processed_data_type}')
+
+            if is_primary or has_entity_lab_processed_data_type:
                 if dataset_contacts is None or dataset_contributors is None:
                     return jsonify({"error": f"{dataset_uuid} missing contacts or contributors. Must have at least one of each"}), 400
                 dataset_contacts = dataset_contacts.replace("'", '"')
@@ -640,17 +772,23 @@ def publish_datastage(identifier):
                 if asset_dir_exists:
                     ingest_helper.relink_to_public(dataset_uuid)
 
-            acls_cmd = ingest_helper.set_dataset_permissions(dataset_uuid, dataset_group_uuid, data_access_level, True, no_indexing_and_acls)
+            acls_cmd = ingest_helper.set_dataset_permissions(dataset_uuid, dataset_group_uuid, data_access_level,
+                                                             True, no_indexing_and_acls)
 
-            if is_primary:
+
+            auth_tokens = auth_helper.getAuthorizationTokens(request.headers)
+            entity_instance = EntitySdk(token=auth_tokens, service_url=app.config['ENTITY_WEBSERVICE_URL'])
+
+            # Generating DOI's for lab processed/derived data as well as IEC/pipeline/airflow processed/derived data).
+            if is_primary or has_entity_lab_processed_data_type:
                 # DOI gets generated here
                 # Note: moved dataset title auto generation to entity-api - Zhou 9/29/2021
-                auth_tokens = auth_helper.getAuthorizationTokens(request.headers)
                 datacite_doi_helper = DataCiteDoiHelper()
 
-                entity_instance = EntitySdk(token=auth_tokens, service_url=app.config['ENTITY_WEBSERVICE_URL'])
+
                 entity = entity_instance.get_entity_by_id(dataset_uuid)
                 entity_dict = vars(entity)
+
                 try:
                     datacite_doi_helper.create_dataset_draft_doi(entity_dict, check_publication_status=False)
                 except Exception as e:
@@ -670,6 +808,7 @@ def publish_datastage(identifier):
                            'sub'] + "', e.published_user_displayname = '" + user_info['name'] + "'"
             logger.info(dataset_uuid + "\t" + dataset_uuid + "\tNEO4J-update-base-dataset\t" + update_q)
             neo_session.run(update_q)
+            out = entity_instance.clear_cache(dataset_uuid)
 
             # if all else worked set the list of ids to public that need to be public
             if len(uuids_for_public) > 0:
@@ -677,6 +816,8 @@ def publish_datastage(identifier):
                 update_q = "match (e:Entity) where e.uuid in [" + id_list + "] set e.data_access_level = 'public'"
                 logger.info(identifier + "\t" + dataset_uuid + "\tNEO4J-update-ancestors\t" + update_q)
                 neo_session.run(update_q)
+                for e_id in uuids_for_public:
+                    out = entity_instance.clear_cache(e_id)
 
         if no_indexing_and_acls:
             r_val = {'acl_cmd': acls_cmd, 'donors_for_indexing': donors_to_reindex}
@@ -1245,7 +1386,8 @@ def allowable_edit_states(hmuuid):
                         data_access_level = 'protected'
         
                     #if it is published, no write allowed
-                    if entity_type in ['dataset', 'publication', 'upload']:
+                    if entity_type in ['upload'] or\
+                            get_entity_type_instanceof(entity_type, 'Dataset', auth_header="Bearer " + auth_helper_instance.getProcessSecret()):
                         if isBlank(status):
                             msg = f"ERROR: unable to obtain status field from db for {entity_type} with uuid:{hmuuid} during a call to allowable-edit-states"
                             logger.error(msg)
