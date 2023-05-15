@@ -1,3 +1,4 @@
+import datetime
 import os
 import sys
 import logging
@@ -1445,6 +1446,172 @@ def allowable_edit_states(hmuuid):
         abort(400, msg)
 
 
+"""
+Description
+"""
+@app.route('/datasets/data-status', methods=['GET'])
+def dataset_data_status():
+    all_datasets_query = (
+        "MATCH (ds:Dataset) "
+        "RETURN ds.uuid as uuid, ds.group_name as group_name, ds.data_types as data_types, "
+        "ds.hubmap_id as hubmap_id, ds.lab_dataset_id as provider_experiment_id, ds.status as status, "
+        "ds.last_modified_timestamp AS last_touch, ds.data_access_level AS data_access_level, " 
+        "COALESCE(ds.contributors IS NOT NULL) AS has_contributors, COALESCE(ds.contacts IS NOT NULL) AS has_contacts "
+    )
+
+    organ_query = (
+        "MATCH (ds:Dataset)<-[*]-(o:Sample {sample_category: 'organ'}) "
+        "RETURN DISTINCT ds.uuid AS uuid, o.organ AS organ "
+    )
+
+    donor_query = (
+        "MATCH (ds:Dataset)<-[*]-(dn:Donor) "
+        "RETURN DISTINCT ds.uuid AS uuid, "
+        "COLLECT(DISTINCT dn.hubmap_id) AS donor_hubmap_id, COLLECT(DISTINCT dn.submission_id) AS donor_submission_id, "
+        "COLLECT(DISTINCT dn.lab_donor_id) AS donor_lab_id, COALESCE(dn.metadata IS NOT NULL) AS has_metadata"
+    )
+
+    parent_dataset_query = (
+        "MATCH (ds)<-[:ACTIVITY_OUTPUT]-(a:Activity)<-[:ACTIVITY_INPUT]-(pds:Dataset) "
+        "RETURN DISTINCT ds.uuid AS uuid, COLLECT(DISTINCT pds.uuid) AS parent_dataset"
+    )
+
+    upload_query = (
+        "MATCH (u:Upload)<-[:IN_UPLOAD]-(ds) "
+        "RETURN DISTINCT ds.uuid AS uuid, COLLECT(DISTINCT u.uuid) AS upload"
+    )
+
+    has_rui_query = (
+        "MATCH (ds:Dataset) "
+        "WITH ds, [(ds)<-[*]-(s:Sample) | s.rui_location] AS rui_locations "
+        "RETURN ds.uuid AS uuid, any(rui_location IN rui_locations WHERE rui_location IS NOT NULL) AS has_rui_info"
+    )
+
+    displayed_fields = [
+        "hubmap_id", "group_name", "status", "organ", "provider_experiment_id", "last_touch", "has_contacts",
+        "has_contributors", "data_types", "donor_hubmap_id", "donor_submission_id", "donor_lab_id",
+        "has_metadata", "parent_dataset", "upload", "has_rui_info", "globus_url", "portal_url", "ingest_url", "has_data"
+    ]
+
+    queries = [all_datasets_query, organ_query, donor_query, parent_dataset_query,
+               upload_query, has_rui_query]
+    results = [None] * len(queries)
+    threads = []
+    for i, query in enumerate(queries):
+        thread = Thread(target=run_query, args=(query, results, i))
+        thread.start()
+        threads.append(thread)
+    for thread in threads:
+        thread.join()
+    output_dict = {}
+    # Here we specifically indexed the values in 'results' in case certain threads completed out of order
+    all_datasets_result = results[0]
+    organ_result = results[1]
+    donor_result = results[2]
+    parent_dataset_result = results[3]
+    upload_result = results[4]
+    has_rui_result = results[5]
+
+    for dataset in all_datasets_result:
+        output_dict[dataset['uuid']] = dataset
+    for dataset in organ_result:
+        output_dict[dataset['uuid']]['organ'] = dataset['organ']
+    for dataset in donor_result:
+        output_dict[dataset['uuid']]['donor_hubmap_id'] = dataset['donor_hubmap_id']
+        output_dict[dataset['uuid']]['donor_submission_id'] = dataset['donor_submission_id']
+        output_dict[dataset['uuid']]['donor_lab_id'] = dataset['donor_lab_id']
+        output_dict[dataset['uuid']]['has_metadata'] = dataset['has_metadata']
+    for dataset in parent_dataset_result:
+        output_dict[dataset['uuid']]['parent_dataset'] = dataset['parent_dataset']
+    for dataset in upload_result:
+        output_dict[dataset['uuid']]['upload'] = dataset['upload']
+    for dataset in has_rui_result:
+        output_dict[dataset['uuid']]['has_rui_info'] = dataset['has_rui_info']
+
+    combined_results = []
+    for uuid in output_dict:
+        combined_results.append(output_dict[uuid])
+
+    for dataset in combined_results:
+        globus_url = get_globus_url(dataset.get('data_access_level'), dataset.get('group_name'), dataset.get('uuid'))
+        dataset['globus_url'] = globus_url
+        portal_url = commons_file_helper.ensureTrailingSlashURL(app.config['PORTAL_URL']) + 'dataset' + '/' + dataset[
+            'uuid']
+        dataset['portal_url'] = portal_url
+        ingest_url = commons_file_helper.ensureTrailingSlashURL(app.config['INGEST_URL']) + 'dataset' + '/' + dataset[
+            'uuid']
+        dataset['ingest_url'] = ingest_url
+        dataset['last_touch'] = str(datetime.datetime.utcfromtimestamp(dataset['last_touch']/1000))
+        if dataset.get('parent_dataset') is None:
+            dataset['is_derived'] = "false"
+        else:
+            dataset['is_derived'] = "true"
+        has_data = files_exist(dataset.get('uuid'), dataset.get('data_access_level'))
+        dataset['has_data'] = has_data
+
+        for prop in dataset:
+            if isinstance(dataset[prop], list):
+                dataset[prop] = ", ".join(dataset[prop])
+            if isinstance(dataset[prop], (bool, int)):
+                dataset[prop] = str(dataset[prop])
+            if dataset[prop] and dataset[prop][0] == "[" and dataset[prop][-1] == "]":
+                dataset[prop] = dataset[prop].replace("'",'"')
+                dataset[prop] = json.loads(dataset[prop])
+                dataset[prop] = dataset[prop][0]
+            if dataset[prop] is None:
+                dataset[prop] = " "
+        for field in displayed_fields:
+            if dataset.get(field) is None:
+                dataset[field] = " "
+        if dataset.get('organ') and dataset['organ'].upper() not in ['HT', 'LV', 'LN', 'RK', 'LK']:
+            dataset['has_rui_info'] = "not-applicable"
+
+    return jsonify(combined_results)
+
+
+"""
+Description
+"""
+@app.route('/uploads/data-status', methods=['GET'])
+def upload_data_status():
+    all_uploads_query = (
+        "MATCH (up:Upload) "
+        "OPTIONAL MATCH (up)<-[:IN_UPLOAD]-(ds:Dataset) "
+        "RETURN up.uuid AS uuid, up.group_name AS group_name, up.hubmap_id AS hubmap_id, up.status AS status, "
+        "up.title AS title, COLLECT(DISTINCT ds.uuid) AS datasets "
+    )
+
+    displayed_fields = [
+        "uuid", "group_name", "hubmap_id", "status", "title", "datasets"
+    ]
+
+    with neo4j_driver_instance.session() as session:
+        results = session.run(all_uploads_query).data()
+        for upload in results:
+        #     globus_url = get_globus_url(upload.get('data_access_level'), upload.get('group_name'), upload.get('uuid'))
+        #     upload['globus_url'] = globus_url
+            ingest_url = commons_file_helper.ensureTrailingSlashURL(app.config['INGEST_URL']) + 'upload' + '/' + upload[
+            'uuid']
+            upload['ingest_url'] = ingest_url
+            for prop in upload:
+                if isinstance(upload[prop], list):
+                    upload[prop] = ", ".join(upload[prop])
+                if isinstance(upload[prop], (bool, int)):
+                    upload[prop] = str(upload[prop])
+                if upload[prop] and upload[prop][0] == "[" and upload[prop][-1] == "]":
+                    upload[prop] = upload[prop].replace("'",'"')
+                    upload[prop] = json.loads(upload[prop])
+                    upload[prop] = upload[prop][0]
+                if upload[prop] is None:
+                    upload[prop] = " "
+            for field in displayed_fields:
+                if upload.get(field) is None:
+                    upload[field] = " "
+    # TODO: Once url parameters are implemented in the front-end for the data-status dashboard, we'll need to return a
+    # TODO: link to the datasets page only displaying datasets belonging to a given upload.
+    return jsonify(results)
+
+
 @app.route('/donors/bulk-upload', methods=['POST'])
 def bulk_donors_upload_and_validate():
     if 'file' not in request.files:
@@ -1984,6 +2151,66 @@ def dataset_is_primary(dataset_uuid):
         if len(result) == 0:
             return False
         return True
+
+
+def run_query(query, results, i):
+    logger.info(query)
+    with neo4j_driver_instance.session() as session:
+        results[i] = session.run(query).data()
+
+
+def get_globus_url(data_access_level, group_name, uuid):
+    globus_server_uuid = None
+    dir_path = " "
+    # public access
+    if data_access_level == "public":
+        globus_server_uuid = app.config['GLOBUS_PUBLIC_ENDPOINT_UUID']
+        access_dir = commons_file_helper.ensureTrailingSlashURL(app.config['PUBLIC_DATA_SUBDIR'])
+        dir_path = dir_path + access_dir + "/"
+    # consortium access
+    elif data_access_level == 'consortium':
+        globus_server_uuid = app.config['GLOBUS_CONSORTIUM_ENDPOINT_UUID']
+        access_dir = commons_file_helper.ensureTrailingSlashURL(app.config['CONSORTIUM_DATA_SUBDIR'])
+        dir_path = dir_path + access_dir + group_name + "/"
+    # protected access
+    elif data_access_level == 'protected':
+        globus_server_uuid = app.config['GLOBUS_PROTECTED_ENDPOINT_UUID']
+        access_dir = commons_file_helper.ensureTrailingSlashURL(app.config['PROTECTED_DATA_SUBDIR'])
+        dir_path = dir_path + access_dir + group_name + "/"
+
+    if globus_server_uuid is not None:
+        dir_path = dir_path + uuid + "/"
+        dir_path = urllib.parse.quote(dir_path, safe='')
+
+        # https://app.globus.org/file-manager?origin_id=28bb03c-a87d-4dd7-a661-7ea2fb6ea631&origin_path=2%FIEC%20Testing%20Group%20F03584b3d0f8b46de1b29f04be1568779%2F
+        globus_url = commons_file_helper.ensureTrailingSlash(app.config[
+                                                                 'GLOBUS_APP_BASE_URL']) + "file-manager?origin_id=" + globus_server_uuid + "&origin_path=" + dir_path
+
+    else:
+        globus_url = ""
+    if uuid is None:
+        globus_url = ""
+    return globus_url
+
+
+def files_exist(uuid, data_access_level):
+    if not uuid or not data_access_level:
+        return False
+    if data_access_level == "public":
+        absolute_path = commons_file_helper.ensureTrailingSlashURL(app.config['GLOBUS_PUBLIC_ENDPOINT_FILEPATH'])
+    # consortium access
+    elif data_access_level == 'consortium':
+        absolute_path = commons_file_helper.ensureTrailingSlashURL(app.config['GLOBUS_CONSORTIUM_ENDPOINT_FILEPATH'])
+    # protected access
+    elif data_access_level == 'protected':
+        absolute_path = commons_file_helper.ensureTrailingSlashURL(app.config['GLOBUS_PROTECTED_ENDPOINT_FILEPATH'])
+
+    file_path = absolute_path + uuid
+    if os.path.exists(file_path) and os.path.isdir(file_path) and os.listdir(file_path):
+        return True
+    else:
+        return False
+
 
 
 # For local development/testing

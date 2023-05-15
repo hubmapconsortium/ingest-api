@@ -38,10 +38,18 @@ FILE_UPLOAD_TEMP_DIR = '/hive/hubmap-dev/hm_uploads_tmp'
 # Remember to set the proper file system user and group permission
 FILE_UPLOAD_DIR = '/hive/hubmap-dev/hm_uploads'
 
+#The Base URL to the Globus transfer application site
+GLOBUS_APP_BASE_URL = 'https://app.globus.org'
+
 # UUIDs of the Globus endpoints (shown for DEV)
 GLOBUS_PUBLIC_ENDPOINT_UUID = 'a00a00b8-d1d1-4ab9-b915-0bada54c27a3'
 GLOBUS_CONSORTIUM_ENDPOINT_UUID = '3cb7d673-a3db-40e9-8376-f2ead6cb5a45'
 GLOBUS_PROTECTED_ENDPOINT_UUID = 'bdaf8547-aab3-4142-97bd-0a16d5cd9f58'
+
+# Sub directories under the base data/globus directory where different access levels of data sits
+PROTECTED_DATA_SUBDIR = 'private'
+CONSORTIUM_DATA_SUBDIR = 'consortium'
+PUBLIC_DATA_SUBDIR = 'public'
 
 # Absolute file paths of the Globus endpoints (shown for DEV, change for TEST/PROD deployment)
 GLOBUS_PUBLIC_ENDPOINT_FILEPATH = '/hive/hubmap-dev/data/public'
@@ -110,3 +118,9 @@ DATACITE_API_URL = ''
 # Use 10.80478 for DataCite Test site with DEV/TEST deployment
 # Use 10.35079 for DataCite Production site with PROD deployment
 DATACITE_HUBMAP_PREFIX = ''
+
+# The base url for the HuBMAP portal website
+PORTAL_URL = 'https://portal.hubmapconsortium.org/browse/'
+
+# The base url for the HuBMAP ingest website
+INGEST_URL = 'https://ingest.hubmapconsortium.org/'
