@@ -1452,28 +1452,31 @@ Description
 @app.route('/datasets/data-status', methods=['GET'])
 def dataset_data_status():
     all_datasets_query = (
-        "MATCH (ds:Dataset) "
-        "RETURN ds.uuid as uuid, ds.group_name as group_name, ds.data_types as data_types, "
-        "ds.hubmap_id as hubmap_id, ds.lab_dataset_id as provider_experiment_id, ds.status as status, "
+        "MATCH (ds:Dataset)<-[:ACTIVITY_OUTPUT]-(:Activity)<-[:ACTIVITY_INPUT]-(ancestor) "
+        "RETURN ds.uuid AS uuid, ds.group_name AS group_name, ds.data_types AS data_types, "
+        "ds.hubmap_id AS hubmap_id, ds.lab_dataset_id AS provider_experiment_id, ds.status AS status, "
         "ds.last_modified_timestamp AS last_touch, ds.data_access_level AS data_access_level, " 
-        "COALESCE(ds.contributors IS NOT NULL) AS has_contributors, COALESCE(ds.contacts IS NOT NULL) AS has_contacts "
+        "COALESCE(ds.contributors IS NOT NULL) AS has_contributors, COALESCE(ds.contacts IS NOT NULL) AS has_contacts, "
+        "ancestor.entity_type AS ancestor_entity_type"
     )
 
     organ_query = (
         "MATCH (ds:Dataset)<-[*]-(o:Sample {sample_category: 'organ'}) "
+        "WHERE (ds)<-[:ACTIVITY_OUTPUT]-(:Activity) "
         "RETURN DISTINCT ds.uuid AS uuid, o.organ AS organ "
     )
 
     donor_query = (
         "MATCH (ds:Dataset)<-[*]-(dn:Donor) "
+        "WHERE (ds)<-[:ACTIVITY_OUTPUT]-(:Activity) "
         "RETURN DISTINCT ds.uuid AS uuid, "
         "COLLECT(DISTINCT dn.hubmap_id) AS donor_hubmap_id, COLLECT(DISTINCT dn.submission_id) AS donor_submission_id, "
         "COLLECT(DISTINCT dn.lab_donor_id) AS donor_lab_id, COALESCE(dn.metadata IS NOT NULL) AS has_metadata"
     )
 
-    parent_dataset_query = (
-        "MATCH (ds)<-[:ACTIVITY_OUTPUT]-(a:Activity)<-[:ACTIVITY_INPUT]-(pds:Dataset) "
-        "RETURN DISTINCT ds.uuid AS uuid, COLLECT(DISTINCT pds.uuid) AS parent_dataset"
+    descendant_datasets_query = (
+        "MATCH (dds:Dataset)<-[*]-(ds:Dataset)<-[:ACTIVITY_OUTPUT]-(:Activity)<-[:ACTIVITY_INPUT]-(:Sample) "
+        "RETURN DISTINCT ds.uuid AS uuid, COLLECT(DISTINCT dds.uuid) AS descendant_datasets"
     )
 
     upload_query = (
@@ -1483,6 +1486,7 @@ def dataset_data_status():
 
     has_rui_query = (
         "MATCH (ds:Dataset) "
+        "WHERE (ds)<-[:ACTIVITY_OUTPUT]-(:Activity) "
         "WITH ds, [(ds)<-[*]-(s:Sample) | s.rui_location] AS rui_locations "
         "RETURN ds.uuid AS uuid, any(rui_location IN rui_locations WHERE rui_location IS NOT NULL) AS has_rui_info"
     )
@@ -1490,10 +1494,10 @@ def dataset_data_status():
     displayed_fields = [
         "hubmap_id", "group_name", "status", "organ", "provider_experiment_id", "last_touch", "has_contacts",
         "has_contributors", "data_types", "donor_hubmap_id", "donor_submission_id", "donor_lab_id",
-        "has_metadata", "parent_dataset", "upload", "has_rui_info", "globus_url", "portal_url", "ingest_url", "has_data"
+        "has_metadata", "descendant_datasets", "upload", "has_rui_info", "globus_url", "portal_url", "ingest_url", "has_data"
     ]
 
-    queries = [all_datasets_query, organ_query, donor_query, parent_dataset_query,
+    queries = [all_datasets_query, organ_query, donor_query, descendant_datasets_query,
                upload_query, has_rui_query]
     results = [None] * len(queries)
     threads = []
@@ -1508,25 +1512,30 @@ def dataset_data_status():
     all_datasets_result = results[0]
     organ_result = results[1]
     donor_result = results[2]
-    parent_dataset_result = results[3]
+    descendant_datasets_result = results[3]
     upload_result = results[4]
     has_rui_result = results[5]
 
     for dataset in all_datasets_result:
         output_dict[dataset['uuid']] = dataset
     for dataset in organ_result:
-        output_dict[dataset['uuid']]['organ'] = dataset['organ']
+        if output_dict.get(dataset['uuid']):
+            output_dict[dataset['uuid']]['organ'] = dataset['organ']
     for dataset in donor_result:
-        output_dict[dataset['uuid']]['donor_hubmap_id'] = dataset['donor_hubmap_id']
-        output_dict[dataset['uuid']]['donor_submission_id'] = dataset['donor_submission_id']
-        output_dict[dataset['uuid']]['donor_lab_id'] = dataset['donor_lab_id']
-        output_dict[dataset['uuid']]['has_metadata'] = dataset['has_metadata']
-    for dataset in parent_dataset_result:
-        output_dict[dataset['uuid']]['parent_dataset'] = dataset['parent_dataset']
+        if output_dict.get(dataset['uuid']):
+            output_dict[dataset['uuid']]['donor_hubmap_id'] = dataset['donor_hubmap_id']
+            output_dict[dataset['uuid']]['donor_submission_id'] = dataset['donor_submission_id']
+            output_dict[dataset['uuid']]['donor_lab_id'] = dataset['donor_lab_id']
+            output_dict[dataset['uuid']]['has_metadata'] = dataset['has_metadata']
+    for dataset in descendant_datasets_result:
+        if output_dict.get(dataset['uuid']):
+            output_dict[dataset['uuid']]['descendant_datasets'] = dataset['descendant_datasets']
     for dataset in upload_result:
-        output_dict[dataset['uuid']]['upload'] = dataset['upload']
+        if output_dict.get(dataset['uuid']):
+            output_dict[dataset['uuid']]['upload'] = dataset['upload']
     for dataset in has_rui_result:
-        output_dict[dataset['uuid']]['has_rui_info'] = dataset['has_rui_info']
+        if output_dict.get(dataset['uuid']):
+            output_dict[dataset['uuid']]['has_rui_info'] = dataset['has_rui_info']
 
     combined_results = []
     for uuid in output_dict:
@@ -1542,10 +1551,10 @@ def dataset_data_status():
             'uuid']
         dataset['ingest_url'] = ingest_url
         dataset['last_touch'] = str(datetime.datetime.utcfromtimestamp(dataset['last_touch']/1000))
-        if dataset.get('parent_dataset') is None:
-            dataset['is_derived'] = "false"
+        if dataset.get('ancestor_entity_type').lower() != "dataset":
+            dataset['is_primary'] = "true"
         else:
-            dataset['is_derived'] = "true"
+            dataset['is_primary'] = "false"
         has_data = files_exist(dataset.get('uuid'), dataset.get('data_access_level'))
         dataset['has_data'] = has_data
 
