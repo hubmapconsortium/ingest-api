@@ -1476,7 +1476,7 @@ def dataset_data_status():
 
     descendant_datasets_query = (
         "MATCH (dds:Dataset)<-[*]-(ds:Dataset)<-[:ACTIVITY_OUTPUT]-(:Activity)<-[:ACTIVITY_INPUT]-(:Sample) "
-        "RETURN DISTINCT ds.uuid AS uuid, COLLECT(DISTINCT dds.uuid) AS descendant_datasets"
+        "RETURN DISTINCT ds.uuid AS uuid, COLLECT(DISTINCT dds.hubmap_id) AS descendant_datasets"
     )
 
     upload_query = (
