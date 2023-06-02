@@ -1451,6 +1451,13 @@ Description
 """
 @app.route('/datasets/data-status', methods=['GET'])
 def dataset_data_status():
+    primary_assays_url = app.config['UBKG_WEBSERVICE_URL'] + 'assaytype?application_context=HUBMAP&primary=true'
+    alt_assays_url = app.config['UBKG_WEBSERVICE_URL'] + 'assaytype?application_context=HUBMAP&primary=false'
+    primary_assay_types_list = requests.get(primary_assays_url).json().get("result")
+    alt_assay_types_list = requests.get(alt_assays_url).json().get("result")
+    assay_types_dict = {item["name"].strip(): item for item in primary_assay_types_list + alt_assay_types_list}
+    organ_types_url = app.config['UBKG_WEBSERVICE_URL'] + 'organs/by-code?application_context=HUBMAP'
+    organ_types_dict = requests.get(organ_types_url).json()
     all_datasets_query = (
         "MATCH (ds:Dataset)<-[:ACTIVITY_OUTPUT]-(:Activity)<-[:ACTIVITY_INPUT]-(ancestor) "
         "RETURN ds.uuid AS uuid, ds.group_name AS group_name, ds.data_types AS data_types, "
@@ -1569,9 +1576,13 @@ def dataset_data_status():
                 dataset[prop] = dataset[prop][0]
             if dataset[prop] is None:
                 dataset[prop] = " "
+        if dataset.get('data_types') and dataset.get('data_types') in assay_types_dict:
+            dataset['data_types'] = assay_types_dict[dataset['data_types']]['description'].strip()
         for field in displayed_fields:
             if dataset.get(field) is None:
                 dataset[field] = " "
+        if dataset.get('organ') and dataset.get('organ') in organ_types_dict:
+            dataset['organ'] = organ_types_dict[dataset['organ']]
         if dataset.get('organ') and dataset['organ'].upper() not in ['HT', 'LV', 'LN', 'RK', 'LK']:
             dataset['has_rui_info'] = "not-applicable"
 
