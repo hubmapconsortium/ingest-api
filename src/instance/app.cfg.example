@@ -97,6 +97,8 @@ FLASK_APP_BASE_URI = 'https://ingest-api.dev.hubmapconsortium.org/'
 # React app name and deployment URI (shown for DEV)
 GLOBUS_CLIENT_APP_NAME = 'HuBMAP Data Ingest - DEV'
 GLOBUS_CLIENT_APP_URI = 'https://ingest.dev.hubmapconsortium.org/'
+DATA_INGEST_BOARD_APP_URI = ''
+DATA_INGEST_BOARD_NAME = 'Data Ingest Board - DEV'
 
 # URL for the ingest pipeline API.  No trailing '/' (shown for DEV)
 # Port 5555 is open on the host, not mapped via ingest-api container
