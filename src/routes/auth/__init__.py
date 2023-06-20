@@ -101,8 +101,7 @@ def logout():
 # Redirect users from the Data Ingest Board login page to Globus auth login widget then redirect back
 @auth_blueprint.route('/data-ingest-board-login')
 def ingest_board_login():
-    redirect_uri = current_app.config['FLASK_APP_BASE_URI'] + 'login'
-
+    redirect_uri = current_app.config['FLASK_APP_BASE_URI'] + 'data-ingest-board-login'
     confidential_app_auth_client =\
         ConfidentialAppAuthClient(current_app.config['APP_CLIENT_ID'],
                                   current_app.config['APP_CLIENT_SECRET'])
