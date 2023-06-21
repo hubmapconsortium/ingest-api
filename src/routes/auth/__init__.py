@@ -167,7 +167,7 @@ def ingest_board_logout():
     # Revoke the tokens with Globus Auth
     if 'ingest_board_tokens' in session:
         for token in (token_info['access_token']
-            for token_info in session['tokens'].values()):
+            for token_info in session['ingest_board_tokens'].values()):
                 confidential_app_auth_client.oauth2_revoke_token(token)
 
     # Destroy the session state
