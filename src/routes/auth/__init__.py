@@ -145,7 +145,7 @@ def ingest_board_login():
 
         # Store the resulting tokens in server session
         session.update(
-            tokens=token_response.by_resource_server
+            ingest_board_tokens=token_response.by_resource_server
         )
 
         # Finally redirect back to the client
@@ -165,7 +165,7 @@ def ingest_board_logout():
                                   current_app.config['APP_CLIENT_SECRET'])
 
     # Revoke the tokens with Globus Auth
-    if 'tokens' in session:
+    if 'ingest_board_tokens' in session:
         for token in (token_info['access_token']
             for token_info in session['tokens'].values()):
                 confidential_app_auth_client.oauth2_revoke_token(token)
