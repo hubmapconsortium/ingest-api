@@ -1451,6 +1451,13 @@ Description
 """
 @app.route('/datasets/data-status', methods=['GET'])
 def dataset_data_status():
+    primary_assays_url = app.config['UBKG_WEBSERVICE_URL'] + 'assaytype?application_context=HUBMAP&primary=true'
+    alt_assays_url = app.config['UBKG_WEBSERVICE_URL'] + 'assaytype?application_context=HUBMAP&primary=false'
+    primary_assay_types_list = requests.get(primary_assays_url).json().get("result")
+    alt_assay_types_list = requests.get(alt_assays_url).json().get("result")
+    assay_types_dict = {item["name"].strip(): item for item in primary_assay_types_list + alt_assay_types_list}
+    organ_types_url = app.config['UBKG_WEBSERVICE_URL'] + 'organs/by-code?application_context=HUBMAP'
+    organ_types_dict = requests.get(organ_types_url).json()
     all_datasets_query = (
         "MATCH (ds:Dataset)<-[:ACTIVITY_OUTPUT]-(:Activity)<-[:ACTIVITY_INPUT]-(ancestor) "
         "RETURN ds.uuid AS uuid, ds.group_name AS group_name, ds.data_types AS data_types, "
@@ -1463,7 +1470,7 @@ def dataset_data_status():
     organ_query = (
         "MATCH (ds:Dataset)<-[*]-(o:Sample {sample_category: 'organ'}) "
         "WHERE (ds)<-[:ACTIVITY_OUTPUT]-(:Activity) "
-        "RETURN DISTINCT ds.uuid AS uuid, o.organ AS organ "
+        "RETURN DISTINCT ds.uuid AS uuid, o.organ AS organ, o.hubmap_id as organ_hubmap_id, o.uuid as organ_uuid "
     )
 
     donor_query = (
@@ -1481,7 +1488,7 @@ def dataset_data_status():
 
     upload_query = (
         "MATCH (u:Upload)<-[:IN_UPLOAD]-(ds) "
-        "RETURN DISTINCT ds.uuid AS uuid, COLLECT(DISTINCT u.uuid) AS upload"
+        "RETURN DISTINCT ds.uuid AS uuid, COLLECT(DISTINCT u.hubmap_id) AS upload"
     )
 
     has_rui_query = (
@@ -1494,7 +1501,8 @@ def dataset_data_status():
     displayed_fields = [
         "hubmap_id", "group_name", "status", "organ", "provider_experiment_id", "last_touch", "has_contacts",
         "has_contributors", "data_types", "donor_hubmap_id", "donor_submission_id", "donor_lab_id",
-        "has_metadata", "descendant_datasets", "upload", "has_rui_info", "globus_url", "portal_url", "ingest_url", "has_data"
+        "has_metadata", "descendant_datasets", "upload", "has_rui_info", "globus_url", "portal_url", "ingest_url",
+        "has_data", "organ_hubmap_id"
     ]
 
     queries = [all_datasets_query, organ_query, donor_query, descendant_datasets_query,
@@ -1521,6 +1529,8 @@ def dataset_data_status():
     for dataset in organ_result:
         if output_dict.get(dataset['uuid']):
             output_dict[dataset['uuid']]['organ'] = dataset['organ']
+            output_dict[dataset['uuid']]['organ_hubmap_id'] = dataset['organ_hubmap_id']
+            output_dict[dataset['uuid']]['organ_uuid'] = dataset['organ_uuid']
     for dataset in donor_result:
         if output_dict.get(dataset['uuid']):
             output_dict[dataset['uuid']]['donor_hubmap_id'] = dataset['donor_hubmap_id']
@@ -1550,6 +1560,11 @@ def dataset_data_status():
         ingest_url = commons_file_helper.ensureTrailingSlashURL(app.config['INGEST_URL']) + 'dataset' + '/' + dataset[
             'uuid']
         dataset['ingest_url'] = ingest_url
+        if dataset.get('organ_uuid'):
+            organ_portal_url = commons_file_helper.ensureTrailingSlashURL(app.config['PORTAL_URL']) + 'sample' + '/' + dataset['organ_uuid']
+            dataset['organ_portal_url'] = organ_portal_url
+        else:
+            dataset['organ_portal_url'] = ""
         dataset['last_touch'] = str(datetime.datetime.utcfromtimestamp(dataset['last_touch']/1000))
         if dataset.get('ancestor_entity_type').lower() != "dataset":
             dataset['is_primary'] = "true"
@@ -1569,9 +1584,13 @@ def dataset_data_status():
                 dataset[prop] = dataset[prop][0]
             if dataset[prop] is None:
                 dataset[prop] = " "
+        if dataset.get('data_types') and dataset.get('data_types') in assay_types_dict:
+            dataset['data_types'] = assay_types_dict[dataset['data_types']]['description'].strip()
         for field in displayed_fields:
             if dataset.get(field) is None:
                 dataset[field] = " "
+        if dataset.get('organ') and dataset.get('organ') in organ_types_dict:
+            dataset['organ'] = organ_types_dict[dataset['organ']]
         if dataset.get('organ') and dataset['organ'].upper() not in ['HT', 'LV', 'LN', 'RK', 'LK']:
             dataset['has_rui_info'] = "not-applicable"
 
