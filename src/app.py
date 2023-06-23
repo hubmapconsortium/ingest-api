@@ -1,3 +1,4 @@
+from datetime import datetime
 import os
 import sys
 import logging
@@ -17,8 +18,9 @@ from queue import Queue
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 import argparse
 from pathlib import Path
-from flask import Flask, g, jsonify, abort, request, json, Response
+from flask import Flask, g, jsonify, abort, request, json, Response, render_template
 from flask_cors import CORS
+from flask_mail import Mail, Message
 
 # HuBMAP commons
 from hubmap_commons import neo4j_driver
@@ -77,6 +79,28 @@ requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
 # Enable/disable CORS from configuration based on docker or non-docker deployment
 if app.config['ENABLE_CORS']:
     CORS(app)
+
+# Instantiate the Flask Mail instance
+try:
+    if  'MAIL_SERVER' not in app.config or not app.config['MAIL_SERVER'] or \
+        'MAIL_PORT' not in app.config or not isinstance(app.config['MAIL_PORT'], int) or \
+        'MAIL_USE_TLS' not in app.config or not isinstance(app.config['MAIL_USE_TLS'], bool) or \
+        'MAIL_USERNAME' not in app.config or not app.config['MAIL_USERNAME'] or \
+        'MAIL_PASSWORD' not in app.config or not app.config['MAIL_PASSWORD'] or \
+        'MAIL_DEBUG' not in app.config or not isinstance(app.config['MAIL_DEBUG'], bool) or \
+        'MAIL_DEFAULT_SENDER' not in app.config or not isinstance(app.config['MAIL_DEFAULT_SENDER'], tuple) or \
+        len(app.config['MAIL_DEFAULT_SENDER']) != 2 or \
+        not app.config['MAIL_DEFAULT_SENDER'][0] or not app.config['MAIL_DEFAULT_SENDER'][1]:
+            logger.fatal(f"Flask Mail settings are not correct.")
+    if 'MAIL_ADMIN_LIST' not in app.config or not isinstance(app.config['MAIL_ADMIN_LIST'], list) or \
+        len(app.config['MAIL_ADMIN_LIST']) < 1 or \
+        not app.config['MAIL_ADMIN_LIST'][0]:
+            # Admin emails, not part of Flask-Mail configuration
+            logger.fatal(f"ingest-api custom email setting for MAIL_ADMIN_LIST are not correct.")
+
+    flask_mail = Mail(app)
+except Exception as e:
+    logger.fatal(f"An error occurred configuring the app to email. {str(e)}")
 
 ####################################################################################################
 ## Register error handlers
@@ -279,25 +303,36 @@ def status():
 ## Slack Notification
 ####################################################################################################
 
+# Send an email with the specified text in the body and the specified subject line to
+# the  data curation/ingest staff email addresses specified in the app.cfg MAIL_ADMIN_LIST entry.
+def email_admin_list(message_text, subject):
+    msg = Message(  body=message_text
+                    ,recipients=app.config['MAIL_ADMIN_LIST']
+                    ,subject=subject)
+    flask_mail.send(msg)
+
 """
 Notify data curation/ingest staff of events during the data ingest process by sending a message to the 
-target Slack channel. HuBMAP-Read access is requried in the "old gateway".
+target Slack channel, with an option to email the same message to addresses in the MAIL_ADMIN_LIST value
+of app.cfg. HuBMAP-Read access is required in the "old gateway" used by ingest-api, running on a PSC VM.
 
 Input
 --------
-POST request body data as a json object containing the following fields:
-    channel : str
-        The target slack channel, optional. Use default from configuration if not specified
+POST request body data is a JSON object containing the following fields:
     message : str
-        The message to be sent to the channel, required. Markdown syntax is supported
-
+        The message to be sent to the channel. Required.
+    channel : str
+        The target Slack channel. Optional, with default from configuration used if not specified.
+    send_to_email : bool
+        Indication if the message should also be sent via email to addresses configured in MAIL_ADMIN_LIST.
+        Optional, defaulting to False when not in the JSON.
 Returns
 --------
 dict
-    Summary of the sent message including user name and email
+    Dictionary with separate dictionary entries for 'Slack' and 'Email', each containing a summary of the notification.
 """
-@app.route('/notify-slack', methods=['POST'])
-def notify_slack():
+@app.route('/notify', methods=['POST'])
+def notify():
     channel = app.config['SLACK_DEFAULT_CHANNEL']
     user_name = ''
     user_email = ''
@@ -307,13 +342,20 @@ def notify_slack():
     user_info = auth_helper_instance.getUserInfo(AuthHelper.parseAuthorizationTokens(request.headers))
     if user_info is None:
         unauthorized_error("Unable to obtain user information for groups token")
-    user_name = user_info['name']
-    user_email = user_info['email']
+    elif isinstance(user_info, Response) and user_info.status_code in [400, 401, 403]:
+        unauthorized_error(f"Unable to dispatch notifications with the groups token presented.")
+    else:
+        try:
+            user_name = user_info['name']
+            user_email = user_info['email']
+        except Exception as e:
+            logger.error(f"An exception occurred authorizing the user for notification dispatching. {str(e)}")
+            unauthorized_error(f"An error occurred authorizing the notification.  See logs.")
 
     require_json(request)
     json_data = request.json
 
-    logger.debug(f"======notify_slack() Request json:======")
+    logger.debug(f"======notify() Request json:======")
     logger.debug(json_data)
 
     if 'channel' in json_data:
@@ -338,12 +380,13 @@ def notify_slack():
         "text": f"From {user_name} ({user_email}):\n{json_data['message']}"
     }
 
-    logger.debug("======notify_slack() json_to_post======")
+    logger.debug("======notify() json_to_post======")
     logger.debug(json_to_post)
 
     response = requests.post(url = target_url, headers = request_header, json = json_to_post, verify = False)
 
-    # Note: Slack API wrapps the error response in the 200 response instead of using non-200 status code
+    notification_results = {'Slack': None, 'Email': None}
+    # Note: Slack API wraps the error response in the 200 response instead of using non-200 status code
     # Callers should always check the value of the 'ok' params in the response
     if response.status_code == 200:
         result = response.json()
@@ -357,13 +400,13 @@ def notify_slack():
                     "user_email": user_email
                 }
 
-                logger.debug("======notify_slack() Sent Notification Summary======")
+                logger.debug("======notify() Sent Notification Summary======")
                 logger.info(output)
 
-                return jsonify(output), 200
-            else: 
+                notification_results['Slack'] = output
+            else:
                 logger.error(f"Unable to notify Slack channel: {channel} with the message: {json_data['message']}")
-                logger.debug("======notify_slack() response json from Slack API======")
+                logger.debug("======notify() response json from Slack API======")
                 logger.debug(result)
 
                 # https://api.slack.com/methods/chat.postMessage#errors
@@ -376,6 +419,30 @@ def notify_slack():
     else:
         internal_server_error("Failed to send a request to Slack API")
 
+    logger.debug(json_data['send_to_email'])
+    if json_data['send_to_email']:
+        try:
+            subject_line = app.config['MAIL_SUBJECT_LINE'].format(  channel=channel
+                                                                    ,sent_dt=str(datetime.now().strftime("%c")))
+            email_admin_list(   message_text=json_data['message']
+                                ,subject=subject_line)
+            output = {
+                "email_recipient_list": str(app.config['MAIL_ADMIN_LIST']),
+                "message": json_data['message'],
+                "user_name": user_name,
+                "user_email": user_email
+            }
+
+            logger.debug("======notify() Sent Email Summary======")
+            logger.info(output)
+
+            notification_results['Email'] = output
+        except Exception as e:
+            logger.error(f"Failed to send email message. {str(e)}", exc_info=True)
+            return jsonify( f"Failed to send email message, after Slack notification resulted in"
+                            f" {notification_results['Slack']}"), 400
+
+    return jsonify(notification_results)
 
 ####################################################################################################
 ## Ingest API Endpoints
