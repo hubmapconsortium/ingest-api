@@ -18,7 +18,7 @@ from queue import Queue
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 import argparse
 from pathlib import Path
-from flask import Flask, g, jsonify, abort, request, json, Response, render_template
+from flask import Flask, g, jsonify, abort, request, json, Response
 from flask_cors import CORS
 from flask_mail import Mail, Message
 
