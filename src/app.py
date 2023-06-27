@@ -800,7 +800,7 @@ def publish_datastage(identifier):
             dataset_group_uuid = rval[0]['group_uuid']
             dataset_contacts = rval[0]['contacts']
             dataset_contributors = rval[0]['contributors']
-            if not get_entity_type_instanceof(entity_type, 'Dataset', auth_header="Bearer " + auth_helper_instance.getProcessSecret()):
+            if not get_entity_type_instanceof(dataset_entitytype, 'Dataset', auth_header="Bearer " + auth_helper_instance.getProcessSecret()):
                 return Response(f"{dataset_uuid} is not a dataset will not Publish, entity type is {dataset_entitytype}", 400)
             if not dataset_status == 'QA':
                 return Response(f"{dataset_uuid} is not in QA state will not Publish, status is {dataset_status}", 400)
