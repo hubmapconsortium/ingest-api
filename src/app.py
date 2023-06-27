@@ -1,4 +1,4 @@
-from datetime import datetime
+import datetime
 import os
 import sys
 import logging
@@ -419,11 +419,11 @@ def notify():
     else:
         internal_server_error("Failed to send a request to Slack API")
 
-    logger.debug(json_data['send_to_email'])
-    if json_data['send_to_email']:
+    if 'send_to_email' in json_data and json_data['send_to_email']:
+        logger.debug(json_data['send_to_email'])
         try:
             subject_line = app.config['MAIL_SUBJECT_LINE'].format(  channel=channel
-                                                                    ,sent_dt=str(datetime.now().strftime("%c")))
+                                                                    ,sent_dt=str(datetime.datetime.now().strftime("%c")))
             email_admin_list(   message_text=json_data['message']
                                 ,subject=subject_line)
             output = {
