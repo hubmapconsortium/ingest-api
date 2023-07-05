@@ -16,7 +16,7 @@ MAIL_DEFAULT_SENDER = ('name', 'email address')
 MAIL_DEBUG = False
 # Admin emails, not part of Flask-Mail configuration
 MAIL_ADMIN_LIST = ['recipient #1']
-MAIL_SUBJECT_LINE = 'Copy of Slack message on channel {channel} at {sent_dt}'
+MAIL_SUBJECT_LINE = 'Submitted by {user_name} ({user_email}) [Slack message copy]'
 
 # Neo4j connection
 NEO4J_SERVER = ''
