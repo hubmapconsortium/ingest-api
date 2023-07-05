@@ -6,6 +6,18 @@ ENABLE_CORS = False
 SLACK_DEFAULT_CHANNEL = ''
 SLACK_CHANNEL_TOKEN = ''
 
+# Email settings for Flask-Mail extension
+MAIL_SERVER = ''
+MAIL_PORT = 587
+MAIL_USE_TLS = True
+MAIL_USERNAME = ''
+MAIL_PASSWORD = '' # This is the token for authentication, not the account password
+MAIL_DEFAULT_SENDER = ('name', 'email address')
+MAIL_DEBUG = False
+# Admin emails, not part of Flask-Mail configuration
+MAIL_ADMIN_LIST = ['recipient #1']
+MAIL_SUBJECT_LINE = 'Submitted by {user_name} ({user_email}) [Slack message copy]'
+
 # Neo4j connection
 NEO4J_SERVER = ''
 NEO4J_USERNAME = ''
