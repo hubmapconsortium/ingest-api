@@ -423,8 +423,7 @@ def notify():
         logger.debug(json_data['send_to_email'])
         try:
             subject_line = app.config['MAIL_SUBJECT_LINE'].format(  user_name=user_name
-                                                                    ,user_email=user_email
-                                                                    ,slack_msg_body=json_data['message'])
+                                                                    ,user_email=user_email)
             email_admin_list(   message_text=json_data['message']
                                 ,subject=subject_line)
             output = {
