@@ -422,8 +422,8 @@ def notify():
     if 'send_to_email' in json_data and json_data['send_to_email']:
         logger.debug(json_data['send_to_email'])
         try:
-            subject_line = app.config['MAIL_SUBJECT_LINE'].format(  channel=channel
-                                                                    ,sent_dt=str(datetime.datetime.now().strftime("%c")))
+            subject_line = app.config['MAIL_SUBJECT_LINE'].format(  user_name=user_name
+                                                                    ,user_email=user_email)
             email_admin_list(   message_text=json_data['message']
                                 ,subject=subject_line)
             output = {
