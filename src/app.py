@@ -1589,10 +1589,10 @@ def dataset_data_status():
         for field in displayed_fields:
             if dataset.get(field) is None:
                 dataset[field] = " "
-        if dataset.get('organ') and dataset.get('organ') in organ_types_dict:
-            dataset['organ'] = organ_types_dict[dataset['organ']]
         if dataset.get('organ') and dataset['organ'].upper() not in ['HT', 'LV', 'LN', 'RK', 'LK']:
             dataset['has_rui_info'] = "not-applicable"
+        if dataset.get('organ') and dataset.get('organ') in organ_types_dict:
+            dataset['organ'] = organ_types_dict[dataset['organ']]
 
     return jsonify(combined_results)
 
@@ -1616,8 +1616,8 @@ def upload_data_status():
     with neo4j_driver_instance.session() as session:
         results = session.run(all_uploads_query).data()
         for upload in results:
-        #     globus_url = get_globus_url(upload.get('data_access_level'), upload.get('group_name'), upload.get('uuid'))
-        #     upload['globus_url'] = globus_url
+            globus_url = get_globus_url('protected', upload.get('group_name'), upload.get('uuid'))
+            upload['globus_url'] = globus_url
             ingest_url = commons_file_helper.ensureTrailingSlashURL(app.config['INGEST_URL']) + 'upload' + '/' + upload[
             'uuid']
             upload['ingest_url'] = ingest_url
