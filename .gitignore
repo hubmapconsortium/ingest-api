@@ -39,5 +39,8 @@ venv
 # Ignore PSC generated files
 .env
 init_env.sh
+docker/docker-compose.yml
 docker/docker-compose.dev.yml
+docker/docker-compose.test.yml
+docker/docker-compose.prod.yml
 docker/ingest-api/nginx/conf.d
