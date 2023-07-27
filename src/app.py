@@ -1623,14 +1623,6 @@ def dataset_data_status():
         portal_url = commons_file_helper.ensureTrailingSlashURL(app.config['PORTAL_URL']) + 'dataset' + '/' + dataset[
             'uuid']
         dataset['portal_url'] = portal_url
-        ingest_url = commons_file_helper.ensureTrailingSlashURL(app.config['INGEST_URL']) + 'dataset' + '/' + dataset[
-            'uuid']
-        dataset['ingest_url'] = ingest_url
-        if dataset.get('organ_uuid'):
-            organ_portal_url = commons_file_helper.ensureTrailingSlashURL(app.config['PORTAL_URL']) + 'sample' + '/' + dataset['organ_uuid']
-            dataset['organ_portal_url'] = organ_portal_url
-        else:
-            dataset['organ_portal_url'] = ""
         dataset['last_touch'] = str(datetime.datetime.utcfromtimestamp(dataset['last_touch']/1000))
         if dataset.get('ancestor_entity_type').lower() != "dataset":
             dataset['is_primary'] = "true"
