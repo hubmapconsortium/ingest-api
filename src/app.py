@@ -1620,17 +1620,6 @@ def dataset_data_status():
     for dataset in combined_results:
         globus_url = get_globus_url(dataset.get('data_access_level'), dataset.get('group_name'), dataset.get('uuid'))
         dataset['globus_url'] = globus_url
-        portal_url = commons_file_helper.ensureTrailingSlashURL(app.config['PORTAL_URL']) + 'dataset' + '/' + dataset[
-            'uuid']
-        dataset['portal_url'] = portal_url
-        ingest_url = commons_file_helper.ensureTrailingSlashURL(app.config['INGEST_URL']) + 'dataset' + '/' + dataset[
-            'uuid']
-        dataset['ingest_url'] = ingest_url
-        if dataset.get('organ_uuid'):
-            organ_portal_url = commons_file_helper.ensureTrailingSlashURL(app.config['PORTAL_URL']) + 'sample' + '/' + dataset['organ_uuid']
-            dataset['organ_portal_url'] = organ_portal_url
-        else:
-            dataset['organ_portal_url'] = ""
         dataset['last_touch'] = str(datetime.datetime.utcfromtimestamp(dataset['last_touch']/1000))
         if dataset.get('ancestor_entity_type').lower() != "dataset":
             dataset['is_primary'] = "true"
@@ -1684,9 +1673,6 @@ def upload_data_status():
         for upload in results:
             globus_url = get_globus_url('protected', upload.get('group_name'), upload.get('uuid'))
             upload['globus_url'] = globus_url
-            ingest_url = commons_file_helper.ensureTrailingSlashURL(app.config['INGEST_URL']) + 'upload' + '/' + upload[
-            'uuid']
-            upload['ingest_url'] = ingest_url
             for prop in upload:
                 if isinstance(upload[prop], list):
                     upload[prop] = ", ".join(upload[prop])
