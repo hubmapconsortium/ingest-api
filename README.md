@@ -58,39 +58,6 @@ export FLASK_ENV=development
 python3 -m flask run -p 5000
 ````
 
-
-## Docker build for DEV development
-
-There are a few configurable environment variables to keep in mind:
-
-- `COMMONS_BRANCH`: build argument only to be used during image creation when we need to use a branch of commons from github rather than the published PyPI package. Default to main branch if not set or null.
-- `HOST_UID`: the user id on the host machine to be mapped to the container. Default to 1000 if not set or null.
-- `HOST_GID`: the user's group id on the host machine to be mapped to the container. Default to 1000 if not set or null.
-
-We can set and verify the environment variable like below:
-
-````
-export COMMONS_BRANCH=main
-echo $COMMONS_BRANCH
-````
-
-Note: Environment variables set like this are only stored temporally. When you exit the running instance of bash by exiting the terminal, they get discarded. So for rebuilding the docker image, we'll need to make sure to set the environment variables again if necessary.
-
-```
-cd docker
-./docker-development.sh [check|config|build|start|stop|down]
-```
-
-## Docker build for deployment on TEST/STAGE/PROD
-
-```
-cd docker
-export INGEST_API_VERSION=a.b.c (replace with the actual released version number)
-./docker-deployment.sh [test|stage|prod] [start|stop|down]
-```
-
-
-
 ### Updating API Documentation
 
 The documentation for the API calls is hosted on SmartAPI.  Modifying the `ingest-api-spec.yaml` file and commititng the changes to github should update the API shown on SmartAPI.  SmartAPI allows users to register API documents.  The documentation is associated with this github account: api-developers@hubmapconsortium.org. 
