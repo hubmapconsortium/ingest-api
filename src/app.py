@@ -1624,7 +1624,7 @@ def dataset_data_status():
             dataset['is_primary'] = "true"
         else:
             dataset['is_primary'] = "false"
-        has_data = files_exist(dataset.get('uuid'), dataset.get('data_access_level'))
+        has_data = files_exist(dataset.get('uuid'), dataset.get('data_access_level'), data.get('group_name'))
         dataset['has_data'] = has_data
 
         for prop in dataset:
@@ -2240,21 +2240,21 @@ def run_query(query, results, i):
 
 def get_globus_url(data_access_level, group_name, uuid):
     globus_server_uuid = None
-    dir_path = " "
+    dir_path = ''
     # public access
     if data_access_level == "public":
         globus_server_uuid = app.config['GLOBUS_PUBLIC_ENDPOINT_UUID']
-        access_dir = commons_file_helper.ensureTrailingSlashURL(app.config['PUBLIC_DATA_SUBDIR'])
+        access_dir = access_level_prefix_dir(app.config['PUBLIC_DATA_SUBDIR'])
         dir_path = dir_path + access_dir + "/"
     # consortium access
     elif data_access_level == 'consortium':
         globus_server_uuid = app.config['GLOBUS_CONSORTIUM_ENDPOINT_UUID']
-        access_dir = commons_file_helper.ensureTrailingSlashURL(app.config['CONSORTIUM_DATA_SUBDIR'])
+        access_dir = access_level_prefix_dir(app.config['CONSORTIUM_DATA_SUBDIR'])
         dir_path = dir_path + access_dir + group_name + "/"
     # protected access
     elif data_access_level == 'protected':
         globus_server_uuid = app.config['GLOBUS_PROTECTED_ENDPOINT_UUID']
-        access_dir = commons_file_helper.ensureTrailingSlashURL(app.config['PROTECTED_DATA_SUBDIR'])
+        access_dir = access_level_prefix_dir(app.config['PROTECTED_DATA_SUBDIR'])
         dir_path = dir_path + access_dir + group_name + "/"
 
     if globus_server_uuid is not None:
@@ -2271,18 +2271,39 @@ def get_globus_url(data_access_level, group_name, uuid):
         globus_url = ""
     return globus_url
 
+"""
+Ensure the access level dir with leading and trailing slashes
 
-def files_exist(uuid, data_access_level):
+Parameters
+----------
+dir_name : str
+    The name of the sub directory corresponding to each access level
+
+Returns
+-------
+str 
+    One of the formatted dir path string: /public/, /protected/, /consortium/
+"""
+def access_level_prefix_dir(dir_name):
+    if isBlank(dir_name):
+        return ''
+
+    return commons_file_helper.ensureTrailingSlashURL(commons_file_helper.ensureBeginningSlashURL(dir_name))
+
+
+
+
+def files_exist(uuid, data_access_level, group_name):
     if not uuid or not data_access_level:
         return False
     if data_access_level == "public":
         absolute_path = commons_file_helper.ensureTrailingSlashURL(app.config['GLOBUS_PUBLIC_ENDPOINT_FILEPATH'])
     # consortium access
     elif data_access_level == 'consortium':
-        absolute_path = commons_file_helper.ensureTrailingSlashURL(app.config['GLOBUS_CONSORTIUM_ENDPOINT_FILEPATH'])
+        absolute_path = commons_file_helper.ensureTrailingSlashURL(app.config['GLOBUS_CONSORTIUM_ENDPOINT_FILEPATH'] + '/' + group_name)
     # protected access
     elif data_access_level == 'protected':
-        absolute_path = commons_file_helper.ensureTrailingSlashURL(app.config['GLOBUS_PROTECTED_ENDPOINT_FILEPATH'])
+        absolute_path = commons_file_helper.ensureTrailingSlashURL(app.config['GLOBUS_PROTECTED_ENDPOINT_FILEPATH'] + '/' group_name)
 
     file_path = absolute_path + uuid
     if os.path.exists(file_path) and os.path.isdir(file_path) and os.listdir(file_path):
