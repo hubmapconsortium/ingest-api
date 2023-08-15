@@ -61,7 +61,7 @@ GLOBUS_PROTECTED_ENDPOINT_UUID = 'bdaf8547-aab3-4142-97bd-0a16d5cd9f58'
 # Sub directories under the base data/globus directory where different access levels of data sits
 PROTECTED_DATA_SUBDIR = 'private'
 CONSORTIUM_DATA_SUBDIR = 'consortium'
-PUBLIC_DATA_SUBDIR = 'public'
+PUBLIC_DATA_SUBDIR = ''
 
 # Absolute file paths of the Globus endpoints (shown for DEV, change for TEST/PROD deployment)
 GLOBUS_PUBLIC_ENDPOINT_FILEPATH = '/hive/hubmap-dev/data/public'
