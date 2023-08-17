@@ -217,10 +217,13 @@ class DataCiteDoiHelper:
                 # Then update the dataset DOI properties via entity-api after the DOI gets published
                 try:
                     doi_name = datacite_api.build_doi_name(dataset['hubmap_id'])
-                    entity_api = EntitySdk(user_token, self.entity_api_url)
-                    updated_dataset = self.update_dataset_after_doi_published(dataset['uuid'], doi_name, entity_api)
-
-                    return updated_dataset
+                    #entity_api = EntitySdk(user_token, self.entity_api_url)
+                    #updated_dataset = self.update_dataset_after_doi_published(dataset['uuid'], doi_name, entity_api)
+                    doi_info = {
+                        'registered_doi': doi_name,
+                        'doi_url': f'https://doi.org/{doi_name}'
+                    }
+                    return doi_info
                 except requests.exceptions.RequestException as e:
                     raise requests.exceptions.RequestException(e)
             else:
@@ -252,34 +255,34 @@ class DataCiteDoiHelper:
     dict
         The entity dict with updated DOI properties
     """
-    def update_dataset_after_doi_published(self, dataset_uuid: str, doi_name: str, entity_api: EntitySdk) -> object:
-
-        # Update the registered_doi, and doi_url properties after DOI made findable
-        # Changing Dataset.status to "Published" and setting the published_* properties
-        # are handled by another script
-        # See https://github.com/hubmapconsortium/ingest-ui/issues/354
-        dataset_properties_to_update = {
-            'registered_doi': doi_name,
-            'doi_url': f'https://doi.org/{doi_name}'
-        }
-
-        try:
-            entity = entity_api.update_entity(dataset_uuid, dataset_properties_to_update)
-            logger.info("======The dataset {dataset['uuid']}  has been updated with DOI info======")
-            updated_entity = vars(entity)
-            logger.debug("======updated_entity======")
-            logger.debug(updated_entity)
-            return updated_entity
-
-        except HTTPException as e:
-            # Log the full stack trace, prepend a line with our message
-            logger.exception(f"Unable to update the DOI properties of dataset {dataset_uuid}")
-            logger.debug(f'======Status code from DataCite {e.status_code} ======')
-            logger.debug("======response text from entity-api======")
-            logger.debug(e.description)
-
-            # Also bubble up the error message from entity-api
-            raise requests.exceptions.RequestException(e.description)
+#    def update_dataset_after_doi_published(self, dataset_uuid: str, doi_name: str, entity_api: EntitySdk) -> object:
+#
+#        # Update the registered_doi, and doi_url properties after DOI made findable
+#        # Changing Dataset.status to "Published" and setting the published_* properties
+#        # are handled by another script
+#        # See https://github.com/hubmapconsortium/ingest-ui/issues/354
+#        dataset_properties_to_update = {
+#            'registered_doi': doi_name,
+#            'doi_url': f'https://doi.org/{doi_name}'
+#        }
+#
+#        try:
+#            entity = entity_api.update_entity(dataset_uuid, dataset_properties_to_update)
+#            logger.info("======The dataset {dataset['uuid']}  has been updated with DOI info======")
+#            updated_entity = vars(entity)
+#            logger.debug("======updated_entity======")
+#            logger.debug(updated_entity)
+#            return updated_entity
+#
+#        except HTTPException as e:
+#            # Log the full stack trace, prepend a line with our message
+#            logger.exception(f"Unable to update the DOI properties of dataset {dataset_uuid}")
+#            logger.debug(f'======Status code from DataCite {e.status_code} ======')
+#            logger.debug("======response text from entity-api======")
+#            logger.debug(e.description)
+#
+#            # Also bubble up the error message from entity-api
+#            raise requests.exceptions.RequestException(e.description)
 
 
 # Running this python file as a script
