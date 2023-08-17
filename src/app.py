@@ -858,12 +858,14 @@ def publish_datastage(identifier):
                 try:
                     datacite_doi_helper.create_dataset_draft_doi(entity_dict, check_publication_status=False)
                 except Exception as e:
-                    return jsonify({"error": f"Error occurred while trying to create a draft doi for{dataset_uuid}. {e}"}), 500
+                    logger.exception(f"Exception while creating a draft doi for {dataset_uuid}")
+                    return jsonify({"error": f"Error occurred while trying to create a draft doi for {dataset_uuid}. Check logs."}), 500
                 # This will make the draft DOI created above 'findable'....
                 try:
                     datacite_doi_helper.move_doi_state_from_draft_to_findable(entity_dict, auth_tokens)
                 except Exception as e:
-                    return jsonify({"error": f"Error occurred while trying to change doi draft state to findable doi for{dataset_uuid}. {e}"}), 500
+                    logger.exception(f"Exception while creating making doi findable and saving to entity for {dataset_uuid}")
+                    return jsonify({"error": f"Error occurred while making doi findable and saving to entity for {dataset_uuid}. Check logs."}), 500
 
             # set dataset status to published and set the last modified user info and user who published
             update_q = "match (e:Entity {uuid:'" + dataset_uuid + "'}) set e.status = 'Published', e.last_modified_user_sub = '" + \
