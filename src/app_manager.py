@@ -87,21 +87,16 @@ def update_ingest_status_title_thumbnail(app_config: object, request_json: objec
     # Applying extra headers once more in case an exception occurs in handle_thumbnail_file and its is not changed
     entity_api.header.update(extra_headers)
     try:
-        entity = entity_api.update_entity(dataset_uuid, updated_ds)
+        # The PUT call just returns a message
+        result = entity_api.update_entity(dataset_uuid, updated_ds)
     except HTTPException as e:
         err_msg = f"Error while updating the dataset status using EntitySdk.update_entity() status code: {e.status_code} message: {e.description}"
         logger.error(err_msg)
         logger.error("Sent: " + json.dumps(updated_ds))
         return Response(e.description, e.status_code)
 
-    # The PUT call returns the latest dataset...
-    lastest_dataset = vars(entity)
-
-    logger.debug('=======lastest_dataset before title update=======')
-    logger.debug(lastest_dataset)
-
     # By this point, the response code can only be 200
-    return jsonify({'result': lastest_dataset}), 200
+    return jsonify(result), 200
 
 
 def verify_dataset_title_info(uuid: str, request_headers: object) -> object:

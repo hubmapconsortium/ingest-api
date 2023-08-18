@@ -27,6 +27,7 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
         self.datacite_doi_helper = DataCiteDoiHelper()
 
         self.response_doi = {'data': {'id': 'HBM836.LNMM.773', 'type': 'dois', 'attributes': {'doi': '10.80478/HBM836.LNMM.773', 'creators': [{'name': 'HuBMAP'}], 'titles': [{'title': 'sciATAC-seq data from the heart of a 25-year-old white female'}], 'publisher': 'HuBMAP Consortium', 'publicationYear': 2021, 'types': {'resourceTypeGeneral': 'Dataset'}, 'url': 'https://entity-api.test.hubmapconsortium.org/doi/redirect/2d4d2f368c6f74cc3aa17177924003b8'}}}
+        self.doi_info = {'registered_doi': '10.80478/HBM627.RSGW.898', 'doi_url': 'https://doi.org/10.80478/HBM627.RSGW.898'}
         self.hubmap_id = "HBM627.RSGW.898"
         self.uuid = "8690897fced9931da34d66d669c1d698"
         # The 'dataset' below is from this query to find datasets where any contributor is a contact:
@@ -224,30 +225,22 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
                           self.datacite_doi_helper.create_dataset_draft_doi, self.dataset)
         mock_create_new_draft_doi.assert_called()
 
-    @patch('datacite_doi_helper_object.EntitySdk.update_entity')
     @patch('datacite_doi_helper_object.DataCiteApi.update_doi_event_publish')
-    def test_move_doi_state_from_draft_to_findable_happy_path(self, mock_update_doi_event_publish, mock_update_entity):
+    def test_move_doi_state_from_draft_to_findable_happy_path(self, mock_update_doi_event_publish):
         def resp1():
             r = requests.Response()
             r.status_code = 200
-            r.json = lambda: self.response_doi
+            r.json = lambda: self.doi_info
             return r
         mock_update_doi_event_publish.side_effect = [resp1()]
 
-        def resp2():
-            dataset = hubmap_sdk.Dataset(self.response_doi)
-            return dataset
-        mock_update_entity.side_effect = [resp2()]
-
-        doi_data = self.datacite_doi_helper.move_doi_state_from_draft_to_findable(self.dataset, "User Token String")
+        doi_info = self.datacite_doi_helper.move_doi_state_from_draft_to_findable(self.dataset, "User Token String")
 
         mock_update_doi_event_publish.assert_called()
-        mock_update_entity.assert_called()
-        self.assertEqual(doi_data, self.response_doi)
+        self.assertEqual(doi_info, self.doi_info)
 
-    @patch('datacite_doi_helper_object.EntitySdk.update_entity')
     @patch('datacite_doi_helper_object.DataCiteApi.update_doi_event_publish')
-    def test_move_doi_state_from_draft_to_findable_fail1(self, mock_update_doi_event_publish, mock_update_entity):
+    def test_move_doi_state_from_draft_to_findable_fail1(self, mock_update_doi_event_publish):
         def resp1():
             r = requests.Response()
             r.status_code = 400
@@ -259,11 +252,9 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
                           self.datacite_doi_helper.move_doi_state_from_draft_to_findable,
                           self.dataset, "Dataset Title String")
         mock_update_doi_event_publish.assert_called()
-        mock_update_entity.assert_not_called()
 
-    @patch('datacite_doi_helper_object.EntitySdk.update_entity')
     @patch('datacite_doi_helper_object.DataCiteApi.update_doi_event_publish')
-    def test_move_doi_state_from_draft_to_findable_fail2(self, mock_update_doi_event_publish, mock_update_entity):
+    def test_move_doi_state_from_draft_to_findable_fail2(self, mock_update_doi_event_publish):
         def resp1():
             r = requests.Response()
             r.status_code = 200
@@ -271,11 +262,6 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
             return r
         mock_update_doi_event_publish.side_effect = [resp1()]
 
+        self.datacite_doi_helper.move_doi_state_from_draft_to_findable(self.dataset, "User Token String")
 
-        mock_update_entity.side_effect = [requests.RequestException]
-
-        self.assertRaises(requests.RequestException,
-                          self.datacite_doi_helper.move_doi_state_from_draft_to_findable,
-                          self.dataset, "User Token String")
         mock_update_doi_event_publish.assert_called()
-        mock_update_entity.assert_called()
