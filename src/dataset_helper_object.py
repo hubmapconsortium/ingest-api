@@ -164,7 +164,8 @@ class DatasetHelper:
             }
             entity_api.header.update(extra_headers)
             try:
-                entity = entity_api.update_entity(dataset_uuid, put_data)
+                # The PUT call just returns a message
+                result = entity_api.update_entity(dataset_uuid, put_data)
             # All exceptions that occur in EntitySdk are HTTPExceptions
             except HTTPException as e:
                 err_msg = f"Failed to remove the existing thumbnail file for dataset of uuid {dataset_uuid} while calling EntitySdk.put_entities() status code:{e.status_code}  message:{e.description}"
@@ -176,11 +177,6 @@ class DatasetHelper:
         except KeyError:
             logger.info(f"No existing thumbnail file found for the dataset uuid {dataset_uuid}")
             pass
-
-        entity_dict = vars(entity)
-
-        logger.debug('=======EntitySdk.update_entity() resulting entity_dict=======')
-        logger.debug(entity_dict)
 
         # Create the temp file dir under the temp uploads for the thumbnail
         # /hive/hubmap/hm_uploads_tmp/<temp_file_id> (for PROD)

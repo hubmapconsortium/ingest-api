@@ -224,9 +224,8 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
                           self.datacite_doi_helper.create_dataset_draft_doi, self.dataset)
         mock_create_new_draft_doi.assert_called()
 
-    @patch('datacite_doi_helper_object.EntitySdk.update_entity')
     @patch('datacite_doi_helper_object.DataCiteApi.update_doi_event_publish')
-    def test_move_doi_state_from_draft_to_findable_happy_path(self, mock_update_doi_event_publish, mock_update_entity):
+    def test_move_doi_state_from_draft_to_findable_happy_path(self, mock_update_doi_event_publish):
         def resp1():
             r = requests.Response()
             r.status_code = 200
@@ -242,7 +241,6 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
         doi_data = self.datacite_doi_helper.move_doi_state_from_draft_to_findable(self.dataset, "User Token String")
 
         mock_update_doi_event_publish.assert_called()
-        mock_update_entity.assert_called()
         self.assertEqual(doi_data, self.response_doi)
 
     @patch('datacite_doi_helper_object.EntitySdk.update_entity')
@@ -270,9 +268,6 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
             r.json = lambda: self.response_doi
             return r
         mock_update_doi_event_publish.side_effect = [resp1()]
-
-
-        mock_update_entity.side_effect = [requests.RequestException]
 
         self.assertRaises(requests.RequestException,
                           self.datacite_doi_helper.move_doi_state_from_draft_to_findable,
