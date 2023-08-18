@@ -844,7 +844,7 @@ def publish_datastage(identifier):
 
             auth_tokens = auth_helper.getAuthorizationTokens(request.headers)
             entity_instance = EntitySdk(token=auth_tokens, service_url=app.config['ENTITY_WEBSERVICE_URL'])
-
+            doi_info = None
             # Generating DOI's for lab processed/derived data as well as IEC/pipeline/airflow processed/derived data).
             if is_primary or has_entity_lab_processed_data_type:
                 # DOI gets generated here
@@ -858,20 +858,24 @@ def publish_datastage(identifier):
                 try:
                     datacite_doi_helper.create_dataset_draft_doi(entity_dict, check_publication_status=False)
                 except Exception as e:
-                    return jsonify({"error": f"Error occurred while trying to create a draft doi for{dataset_uuid}. {e}"}), 500
+                    logger.exception(f"Exception while creating a draft doi for {dataset_uuid}")
+                    return jsonify({"error": f"Error occurred while trying to create a draft doi for {dataset_uuid}. Check logs."}), 500
                 # This will make the draft DOI created above 'findable'....
                 try:
-                    datacite_doi_helper.move_doi_state_from_draft_to_findable(entity_dict, auth_tokens)
+                    doi_info = datacite_doi_helper.move_doi_state_from_draft_to_findable(entity_dict, auth_tokens)
                 except Exception as e:
-                    return jsonify({"error": f"Error occurred while trying to change doi draft state to findable doi for{dataset_uuid}. {e}"}), 500
-
+                    logger.exception(f"Exception while creating making doi findable and saving to entity for {dataset_uuid}")
+                    return jsonify({"error": f"Error occurred while making doi findable and saving to entity for {dataset_uuid}. Check logs."}), 500
+            doi_update_clause = ""
+            if not doi_info is None:
+                doi_update_clause = f", e.registered_doi = '{doi_info['registered_doi'}', e.doi_url = '{doi_info['doi_url']}'"
             # set dataset status to published and set the last modified user info and user who published
             update_q = "match (e:Entity {uuid:'" + dataset_uuid + "'}) set e.status = 'Published', e.last_modified_user_sub = '" + \
                        user_info['sub'] + "', e.last_modified_user_email = '" + user_info[
                            'email'] + "', e.last_modified_user_displayname = '" + user_info[
                            'name'] + "', e.last_modified_timestamp = TIMESTAMP(), e.published_timestamp = TIMESTAMP(), e.published_user_email = '" + \
                        user_info['email'] + "', e.published_user_sub = '" + user_info[
-                           'sub'] + "', e.published_user_displayname = '" + user_info['name'] + "'"
+                           'sub'] + "', e.published_user_displayname = '" + user_info['name'] + "'" + doi_update_clause
             logger.info(dataset_uuid + "\t" + dataset_uuid + "\tNEO4J-update-base-dataset\t" + update_q)
             neo_session.run(update_q)
             out = entity_instance.clear_cache(dataset_uuid)

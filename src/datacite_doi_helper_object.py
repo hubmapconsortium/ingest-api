@@ -188,7 +188,9 @@ class DataCiteDoiHelper:
             raise KeyError('Either the entity_type of the given Dataset is missing or the entity is not a Dataset')
 
     """
-    Move the DOI state from draft to findable, meaning publish this dataset 
+    Move the DOI state from draft to findable, meaning publish this dataset. 
+    No PUT call made against entity-api to update the two DOI fields here. 
+    Will need to call `update_dataset_after_doi_published()` separately if needed
     
     Parameters
     ----------
@@ -200,7 +202,7 @@ class DataCiteDoiHelper:
     Returns
     -------
     dict
-        The published datset entity dict with updated DOI properties
+        The updated DOI properties
     """
     def move_doi_state_from_draft_to_findable(self, dataset: dict, user_token: str) -> object:
         if ('entity_type' in dataset) and (dataset['entity_type'] == 'Dataset'):
@@ -214,15 +216,12 @@ class DataCiteDoiHelper:
                 logger.debug("======resulting json from DataCite======")
                 logger.debug(doi_data)
 
-                # Then update the dataset DOI properties via entity-api after the DOI gets published
-                try:
-                    doi_name = datacite_api.build_doi_name(dataset['hubmap_id'])
-                    entity_api = EntitySdk(user_token, self.entity_api_url)
-                    updated_dataset = self.update_dataset_after_doi_published(dataset['uuid'], doi_name, entity_api)
-
-                    return updated_dataset
-                except requests.exceptions.RequestException as e:
-                    raise requests.exceptions.RequestException(e)
+                doi_name = datacite_api.build_doi_name(dataset['hubmap_id'])
+                doi_info = {
+                    'registered_doi': doi_name,
+                    'doi_url': f'https://doi.org/{doi_name}'
+                }
+                return doi_info
             else:
                 # Log the full stack trace, prepend a line with our message
                 logger.exception(f"Unable to publish DOI for dataset {dataset['uuid']} via DataCite")
@@ -242,35 +241,28 @@ class DataCiteDoiHelper:
     ----------
     dataset_uuid: str
         The dataset uuid
-    doi_name: str
-        The registered doi: prefix/suffix
+    doi_info: dict
+        The `doi_info` returned from `move_doi_state_from_draft_to_findable()` method
     entity_api
         The EntitySdk object instance
     
     Returns
     -------
     dict
-        The entity dict with updated DOI properties
+        A json message in the format: {'message': f"{normalized_entity_type} of {id} has been updated"}
     """
-    def update_dataset_after_doi_published(self, dataset_uuid: str, doi_name: str, entity_api: EntitySdk) -> object:
-
+    def update_dataset_after_doi_published(self, dataset_uuid: dict, doi_info: str, entity_api: EntitySdk) -> object:
         # Update the registered_doi, and doi_url properties after DOI made findable
         # Changing Dataset.status to "Published" and setting the published_* properties
         # are handled by another script
         # See https://github.com/hubmapconsortium/ingest-ui/issues/354
-        dataset_properties_to_update = {
-            'registered_doi': doi_name,
-            'doi_url': f'https://doi.org/{doi_name}'
-        }
-
         try:
-            entity = entity_api.update_entity(dataset_uuid, dataset_properties_to_update)
+            # Entity update via PUT call only returns a json message, no entity details
+            result = entity_api.update_entity(dataset_uuid, doi_info)
             logger.info("======The dataset {dataset['uuid']}  has been updated with DOI info======")
-            updated_entity = vars(entity)
-            logger.debug("======updated_entity======")
-            logger.debug(updated_entity)
-            return updated_entity
+            logger.info(doi_info)
 
+            return result
         except HTTPException as e:
             # Log the full stack trace, prepend a line with our message
             logger.exception(f"Unable to update the DOI properties of dataset {dataset_uuid}")
@@ -316,8 +308,9 @@ if __name__ == "__main__":
             try:
                 logger.debug("Create Draft DOI")
 
-                # DISABLED
-                #data_cite_doi_helper.create_dataset_draft_doi(dataset)
+                ### DISABLED, need to enable when use
+
+                # data_cite_doi_helper.create_dataset_draft_doi(dataset)
             except Exception as e:
                 logger.exception(e)
                 sys.exit(e)
@@ -325,9 +318,11 @@ if __name__ == "__main__":
             try:
                 logger.debug("Move Draft DOI -> Findable DOI")
 
-                # DISABLED
-                # To publish an existing draft DOI (change the state from draft to findable)
-                #data_cite_doi_helper.move_doi_state_from_draft_to_findable(dataset, user_token)
+                ### DISABLED, need to enable when use
+
+                # doi_info = data_cite_doi_helper.move_doi_state_from_draft_to_findable(dataset, user_token)
+                # result = data_cite_doi_helper.update_dataset_after_doi_published(dataset['uuid'], doi_info, entity_api)
+                # logger.info("======The dataset {dataset['uuid']}  has been updated with DOI info======")
             except Exception as e:
                 logger.exception(e)
                 sys.exit(e)
