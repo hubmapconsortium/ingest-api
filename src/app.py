@@ -868,7 +868,7 @@ def publish_datastage(identifier):
                     return jsonify({"error": f"Error occurred while making doi findable and saving to entity for {dataset_uuid}. Check logs."}), 500
             doi_update_clause = ""
             if not doi_info is None:
-                doi_update_clause = f", e.registered_doi = '{doi_info['registered_doi'}', e.doi_url = '{doi_info['doi_url']}'"
+                doi_update_clause = f", e.registered_doi = '{doi_info['registered_doi']}', e.doi_url = '{doi_info['doi_url']}'"
             # set dataset status to published and set the last modified user info and user who published
             update_q = "match (e:Entity {uuid:'" + dataset_uuid + "'}) set e.status = 'Published', e.last_modified_user_sub = '" + \
                        user_info['sub'] + "', e.last_modified_user_email = '" + user_info[
