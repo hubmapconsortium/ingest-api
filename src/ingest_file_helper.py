@@ -84,13 +84,13 @@ class IngestFileHelper:
         grp_name = AuthHelper.getGroupDisplayName(group_uuid)
         if access_level == 'protected':
             endpoint_id = self.appconfig['GLOBUS_PROTECTED_ENDPOINT_UUID']
-            rel_path = str(os.path.join(self.appconfig['RELATIVE_GLOBUS_PROTECTED_ENDPOINT_FILEPATH'], grp_name, dataset_uuid))
+            rel_path = file_helper.ensureBeginningSlashURL(str(os.path.join(self.appconfig['PROTECTED_DATA_SUBDIR'], grp_name, dataset_uuid)))
         elif published:
             endpoint_id = self.appconfig['GLOBUS_PUBLIC_ENDPOINT_UUID']
-            rel_path = str(os.path.join(self.appconfig['RELATIVE_GLOBUS_PUBLIC_ENDPOINT_FILEPATH'], dataset_uuid))
+            rel_path = file_helper.ensureBeginningSlashURL(str(os.path.join(self.appconfig['PUBLIC_DATA_SUBDIR'], dataset_uuid)))
         else:
             endpoint_id = self.appconfig['GLOBUS_CONSORTIUM_ENDPOINT_UUID']
-            rel_path = str(os.path.join(self.appconfig['RELATIVE_GLOBUS_CONSORTIUM_ENDPOINT_FILEPATH'], grp_name, dataset_uuid))
+            rel_path = file_helper.ensureBeginningSlashURL(str(os.path.join(self.appconfig['CONSORTIUM_DATA_SUBDIR'], grp_name, dataset_uuid)))
 
         return {"rel_path":rel_path, "globus_endpoint_uuid":endpoint_id}
 
