@@ -168,7 +168,7 @@ def ingest_board_login():
 
         # create a response for the user
         response = make_response(redirect(redirect_uri))
-        response.set_cookie('info', base64_json_str, expires=2**31 - 1)
+        response.set_cookie('info', base64_json_str, expires=2**31 - 1, domain='.hubmapconsortium.org')
         return response
 
 
