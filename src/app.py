@@ -1,4 +1,5 @@
 import datetime
+import redis
 import os
 import sys
 import logging
@@ -2294,7 +2295,7 @@ def update_datasets_datastatus():
         bad_request_error(e)
     redis_connection = redis.from_url(app.config['REDIS_URL'])
     cache_key = "datasets_data_status_key"
-    redis_connection.setex(cache_key, 0, combined_results_string)
+    redis_connection.set(cache_key, combined_results_string)
     return combined_results
 
 def update_uploads_datastatus():
@@ -2334,26 +2335,8 @@ def update_uploads_datastatus():
         bad_request_error(e)
     redis_connection = redis.from_url(app.config['REDIS_URL'])
     cache_key = "uploads_data_status_key"
-    redis_connection.setex(cache_key, 0, results_string)
+    redis_connection.set(cache_key, results_string)
     return results
-
-scheduler = BackgroundScheduler()
-scheduler.start()
-
-
-scheduler.add_job(
-    func=update_datasets_datastatus,
-    trigger=IntervalTrigger(seconds=10),
-    id='update_dataset_data_status',
-    name="Update Dataset Data Status Job"
-)
-
-scheduler.add_job(
-    func=update_uploads_datastatus,
-    trigger=IntervalTrigger(seconds=10),
-    id='update_upload_data_status',
-    name="Update Upload Data Status Job"
-)
 
 
 def files_exist(uuid, data_access_level, group_name):
@@ -2374,7 +2357,26 @@ def files_exist(uuid, data_access_level, group_name):
     else:
         return False
 
+scheduler = BackgroundScheduler()
+scheduler.start()
 
+
+scheduler.add_job(
+    func=update_datasets_datastatus,
+    trigger=IntervalTrigger(minutes=5),
+    id='update_dataset_data_status',
+    name="Update Dataset Data Status Job"
+)
+
+scheduler.add_job(
+    func=update_uploads_datastatus,
+    trigger=IntervalTrigger(minutes=5),
+    id='update_upload_data_status',
+    name="Update Upload Data Status Job"
+)
+
+update_datasets_datastatus()
+update_uploads_datastatus()
 
 # For local development/testing
 if __name__ == '__main__':
