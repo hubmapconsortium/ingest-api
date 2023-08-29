@@ -132,3 +132,6 @@ DATACITE_API_URL = ''
 # Use 10.80478 for DataCite Test site with DEV/TEST deployment
 # Use 10.35079 for DataCite Production site with PROD deployment
 DATACITE_HUBMAP_PREFIX = ''
+
+# Sets cookie domain context upon login. Use None for development
+COOKIE_DOMAIN = '.hubmapconsortium.org'
