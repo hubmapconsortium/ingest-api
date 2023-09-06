@@ -1280,6 +1280,24 @@ def reorganize_upload(upload_uuid):
     return(Response("Upload reorganize started successfully", 200))
 
 
+# method to fetch all groups available through Hubmap Commons
+# Returns an Object with nested objects containing all groups
+# Groups are bundled up in Three Objects:
+# "by_id", "by_name", and "by tsm prefix"
+@app.route('/metadata/allgroups', methods=['GET'])
+@secured(groups="HuBMAP-read")
+def all_group_list():
+    token = str(request.headers["AUTHORIZATION"])[7:]
+    try:
+        auth_helper = AuthHelper.configured_instance(
+            app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'])
+        group_list = auth_helper.get_globus_groups_info()
+        return jsonify({'groups': group_list}), 200
+    except HTTPException as hte:
+        return Response(hte.get_description(), hte.get_status_code())
+    except Exception as e:
+        logger.error(e, exc_info=True)
+        return Response("Unexpected error while fetching group list: " + str(e) + "  Check the logs", 500)
 
 @app.route('/metadata/usergroups', methods = ['GET'])
 @secured(groups="HuBMAP-read")

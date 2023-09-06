@@ -1,8 +1,10 @@
 # Ignore config file, except for the example config file
 src/instance/*
+src/instance/app.cfg
 !src/instance/app.cfg.example
 *~
-
+mock_airflow/instance/app.cfg
+!mock_airflow/instance/app.cfg.example
 ingest-venv
 
 #Ignore OS X DS Store
@@ -46,3 +48,6 @@ docker/docker-compose.deployment.prod.yml
 docker/docker-development.sh
 docker/docker-deployment.sh
 docker/ingest-api/nginx/conf.d
+
+# Ignore installed pip bits
+venv-hm-ingest-api/*
