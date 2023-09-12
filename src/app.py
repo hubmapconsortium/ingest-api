@@ -2363,14 +2363,14 @@ scheduler.start()
 
 scheduler.add_job(
     func=update_datasets_datastatus,
-    trigger=IntervalTrigger(minutes=5),
+    trigger=IntervalTrigger(hours=1),
     id='update_dataset_data_status',
     name="Update Dataset Data Status Job"
 )
 
 scheduler.add_job(
     func=update_uploads_datastatus,
-    trigger=IntervalTrigger(minutes=5),
+    trigger=IntervalTrigger(hours=1),
     id='update_upload_data_status',
     name="Update Upload Data Status Job"
 )
