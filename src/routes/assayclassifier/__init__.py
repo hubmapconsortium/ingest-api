@@ -23,6 +23,7 @@ def calculate_assay_info(metadata: dict) -> dict:
     print("metadata above")
     return {"hello": "world"}
 
+
 @bp.route('/assaytype/<ds_uuid>', methods=['GET'])
 def get_ds_assaytype(ds_uuid: str):
     try:

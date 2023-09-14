@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "$id": "http://schemata.hubmapconsortium.org/rule_chain_schema.json",
+  "title": "rule chain schema",
+  "description": "rule chain schema",
+  "allOf":[{"$ref": "#/definitions/rule_chain"}],
+  "definitions": {
+    "chain_record": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+	  "enum": [
+            "match",
+            "note"
+	    ]
+        },
+	"match": {
+	  "type": "string"
+	},
+	"value": {
+	  "type": "string"
+	}
+      },
+      "required": ["type", "match", "value"],
+      "additionalProperties": false
+    },
+    "rule_chain": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/chain_record" }
+    }
+  }
+}
