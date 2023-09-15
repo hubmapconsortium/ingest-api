@@ -1282,7 +1282,26 @@ def reorganize_upload(upload_uuid):
 
     return(Response("Upload reorganize started successfully", 200))
 
-
+# method to fetch all Data Provider groups through Hubmap Commons
+# Returns an Array of nested objects containing all groups
+@app.route('/metadata/allgroups', methods=['GET'])
+@secured(groups="HuBMAP-read")
+def all_group_list():
+    token = str(request.headers["AUTHORIZATION"])[7:]
+    try:
+        auth_helper = AuthHelper.configured_instance(
+            app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'])
+        group_list = auth_helper.getHuBMAPGroupInfo(token)
+        return_list = []
+        for group_info in group_list.keys():
+            if group_list[group_info]['data_provider'] == True:
+                return_list.append(group_list[group_info])
+        return jsonify({'groups': return_list}), 200
+    except HTTPException as hte:
+        return Response(hte.get_description(), hte.get_status_code())
+    except Exception as e:
+        logger.error(e, exc_info=True)
+        return Response("Unexpected error while fetching group list: " + str(e) + "  Check the logs", 500)
 
 @app.route('/metadata/usergroups', methods = ['GET'])
 @secured(groups="HuBMAP-read")
