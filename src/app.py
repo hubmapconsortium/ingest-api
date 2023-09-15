@@ -1279,11 +1279,8 @@ def reorganize_upload(upload_uuid):
 
     return(Response("Upload reorganize started successfully", 200))
 
-
-# method to fetch all groups available through Hubmap Commons
-# Returns an Object with nested objects containing all groups
-# Groups are bundled up in Three Objects:
-# "by_id", "by_name", and "by tsm prefix"
+# method to fetch all Data Provider groups through Hubmap Commons
+# Returns an Array of nested objects containing all groups
 @app.route('/metadata/allgroups', methods=['GET'])
 @secured(groups="HuBMAP-read")
 def all_group_list():
@@ -1291,8 +1288,12 @@ def all_group_list():
     try:
         auth_helper = AuthHelper.configured_instance(
             app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'])
-        group_list = auth_helper.get_globus_groups_info()
-        return jsonify({'groups': group_list}), 200
+        group_list = auth_helper.getHuBMAPGroupInfo(token)
+        return_list = []
+        for group_info in group_list.keys():
+            if group_list[group_info]['data_provider'] == True:
+                return_list.append(group_list[group_info])
+        return jsonify({'groups': return_list}), 200
     except HTTPException as hte:
         return Response(hte.get_description(), hte.get_status_code())
     except Exception as e:

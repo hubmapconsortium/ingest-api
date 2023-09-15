@@ -51,3 +51,5 @@ docker/ingest-api/nginx/conf.d
 
 # Ignore installed pip bits
 venv-hm-ingest-api/*
+.vscode/bookmarks.json
+.vscode/settings.json
