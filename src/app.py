@@ -1,4 +1,5 @@
 import datetime
+import redis
 import os
 import sys
 import logging
@@ -14,6 +15,8 @@ import time
 from threading import Thread
 from hubmap_sdk import EntitySdk
 from queue import Queue
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.interval import IntervalTrigger
 # Don't confuse urllib (Python native library) with urllib3 (3rd-party library, requests also uses urllib3)
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 import argparse
@@ -1521,138 +1524,18 @@ Description
 """
 @app.route('/datasets/data-status', methods=['GET'])
 def dataset_data_status():
-    primary_assays_url = app.config['UBKG_WEBSERVICE_URL'] + 'assaytype?application_context=HUBMAP&primary=true'
-    alt_assays_url = app.config['UBKG_WEBSERVICE_URL'] + 'assaytype?application_context=HUBMAP&primary=false'
-    primary_assay_types_list = requests.get(primary_assays_url).json().get("result")
-    alt_assay_types_list = requests.get(alt_assays_url).json().get("result")
-    assay_types_dict = {item["name"].strip(): item for item in primary_assay_types_list + alt_assay_types_list}
-    organ_types_url = app.config['UBKG_WEBSERVICE_URL'] + 'organs/by-code?application_context=HUBMAP'
-    organ_types_dict = requests.get(organ_types_url).json()
-    all_datasets_query = (
-        "MATCH (ds:Dataset)<-[:ACTIVITY_OUTPUT]-(:Activity)<-[:ACTIVITY_INPUT]-(ancestor) "
-        "RETURN ds.uuid AS uuid, ds.group_name AS group_name, ds.data_types AS data_types, "
-        "ds.hubmap_id AS hubmap_id, ds.lab_dataset_id AS provider_experiment_id, ds.status AS status, "
-        "ds.last_modified_timestamp AS last_touch, ds.data_access_level AS data_access_level, " 
-        "COALESCE(ds.contributors IS NOT NULL) AS has_contributors, COALESCE(ds.contacts IS NOT NULL) AS has_contacts, "
-        "ancestor.entity_type AS ancestor_entity_type"
-    )
-
-    organ_query = (
-        "MATCH (ds:Dataset)<-[*]-(o:Sample {sample_category: 'organ'}) "
-        "WHERE (ds)<-[:ACTIVITY_OUTPUT]-(:Activity) "
-        "RETURN DISTINCT ds.uuid AS uuid, o.organ AS organ, o.hubmap_id as organ_hubmap_id, o.uuid as organ_uuid "
-    )
-
-    donor_query = (
-        "MATCH (ds:Dataset)<-[*]-(dn:Donor) "
-        "WHERE (ds)<-[:ACTIVITY_OUTPUT]-(:Activity) "
-        "RETURN DISTINCT ds.uuid AS uuid, "
-        "COLLECT(DISTINCT dn.hubmap_id) AS donor_hubmap_id, COLLECT(DISTINCT dn.submission_id) AS donor_submission_id, "
-        "COLLECT(DISTINCT dn.lab_donor_id) AS donor_lab_id, COALESCE(dn.metadata IS NOT NULL) AS has_metadata"
-    )
-
-    descendant_datasets_query = (
-        "MATCH (dds:Dataset)<-[*]-(ds:Dataset)<-[:ACTIVITY_OUTPUT]-(:Activity)<-[:ACTIVITY_INPUT]-(:Sample) "
-        "RETURN DISTINCT ds.uuid AS uuid, COLLECT(DISTINCT dds.hubmap_id) AS descendant_datasets"
-    )
-
-    upload_query = (
-        "MATCH (u:Upload)<-[:IN_UPLOAD]-(ds) "
-        "RETURN DISTINCT ds.uuid AS uuid, COLLECT(DISTINCT u.hubmap_id) AS upload"
-    )
-
-    has_rui_query = (
-        "MATCH (ds:Dataset) "
-        "WHERE (ds)<-[:ACTIVITY_OUTPUT]-(:Activity) "
-        "WITH ds, [(ds)<-[*]-(s:Sample) | s.rui_location] AS rui_locations "
-        "RETURN ds.uuid AS uuid, any(rui_location IN rui_locations WHERE rui_location IS NOT NULL) AS has_rui_info"
-    )
-
-    displayed_fields = [
-        "hubmap_id", "group_name", "status", "organ", "provider_experiment_id", "last_touch", "has_contacts",
-        "has_contributors", "data_types", "donor_hubmap_id", "donor_submission_id", "donor_lab_id",
-        "has_metadata", "descendant_datasets", "upload", "has_rui_info", "globus_url", "has_data", "organ_hubmap_id"
-    ]
-
-    queries = [all_datasets_query, organ_query, donor_query, descendant_datasets_query,
-               upload_query, has_rui_query]
-    results = [None] * len(queries)
-    threads = []
-    for i, query in enumerate(queries):
-        thread = Thread(target=run_query, args=(query, results, i))
-        thread.start()
-        threads.append(thread)
-    for thread in threads:
-        thread.join()
-    output_dict = {}
-    # Here we specifically indexed the values in 'results' in case certain threads completed out of order
-    all_datasets_result = results[0]
-    organ_result = results[1]
-    donor_result = results[2]
-    descendant_datasets_result = results[3]
-    upload_result = results[4]
-    has_rui_result = results[5]
-
-    for dataset in all_datasets_result:
-        output_dict[dataset['uuid']] = dataset
-    for dataset in organ_result:
-        if output_dict.get(dataset['uuid']):
-            output_dict[dataset['uuid']]['organ'] = dataset['organ']
-            output_dict[dataset['uuid']]['organ_hubmap_id'] = dataset['organ_hubmap_id']
-            output_dict[dataset['uuid']]['organ_uuid'] = dataset['organ_uuid']
-    for dataset in donor_result:
-        if output_dict.get(dataset['uuid']):
-            output_dict[dataset['uuid']]['donor_hubmap_id'] = dataset['donor_hubmap_id']
-            output_dict[dataset['uuid']]['donor_submission_id'] = dataset['donor_submission_id']
-            output_dict[dataset['uuid']]['donor_lab_id'] = dataset['donor_lab_id']
-            output_dict[dataset['uuid']]['has_metadata'] = dataset['has_metadata']
-    for dataset in descendant_datasets_result:
-        if output_dict.get(dataset['uuid']):
-            output_dict[dataset['uuid']]['descendant_datasets'] = dataset['descendant_datasets']
-    for dataset in upload_result:
-        if output_dict.get(dataset['uuid']):
-            output_dict[dataset['uuid']]['upload'] = dataset['upload']
-    for dataset in has_rui_result:
-        if output_dict.get(dataset['uuid']):
-            output_dict[dataset['uuid']]['has_rui_info'] = dataset['has_rui_info']
-
-    combined_results = []
-    for uuid in output_dict:
-        combined_results.append(output_dict[uuid])
-
-    for dataset in combined_results:
-        globus_url = get_globus_url(dataset.get('data_access_level'), dataset.get('group_name'), dataset.get('uuid'))
-        dataset['globus_url'] = globus_url
-        dataset['last_touch'] = str(datetime.datetime.utcfromtimestamp(dataset['last_touch']/1000))
-        if dataset.get('ancestor_entity_type').lower() != "dataset":
-            dataset['is_primary'] = "true"
+    redis_connection = redis.from_url(app.config['REDIS_URL'])
+    try:
+        cached_data = redis_connection.get("datasets_data_status_key")
+        if cached_data:
+            cached_data_json = json.loads(cached_data.decode('utf-8'))
+            return jsonify(cached_data_json)
         else:
-            dataset['is_primary'] = "false"
-        has_data = files_exist(dataset.get('uuid'), dataset.get('data_access_level'), dataset.get('group_name'))
-        dataset['has_data'] = has_data
-
-        for prop in dataset:
-            if isinstance(dataset[prop], list):
-                dataset[prop] = ", ".join(dataset[prop])
-            if isinstance(dataset[prop], (bool, int)):
-                dataset[prop] = str(dataset[prop])
-            if dataset[prop] and dataset[prop][0] == "[" and dataset[prop][-1] == "]":
-                dataset[prop] = dataset[prop].replace("'",'"')
-                dataset[prop] = json.loads(dataset[prop])
-                dataset[prop] = dataset[prop][0]
-            if dataset[prop] is None:
-                dataset[prop] = " "
-        if dataset.get('data_types') and dataset.get('data_types') in assay_types_dict:
-            dataset['data_types'] = assay_types_dict[dataset['data_types']]['description'].strip()
-        for field in displayed_fields:
-            if dataset.get(field) is None:
-                dataset[field] = " "
-        if dataset.get('organ') and dataset['organ'].upper() not in ['HT', 'LV', 'LN', 'RK', 'LK']:
-            dataset['has_rui_info'] = "not-applicable"
-        if dataset.get('organ') and dataset.get('organ') in organ_types_dict:
-            dataset['organ'] = organ_types_dict[dataset['organ']]
-
-    return jsonify(combined_results)
+            raise Exception
+    except Exception:
+        logger.error("Failed to retrieve datasets data-status from cache. Retrieving new data")
+        combined_results = update_datasets_datastatus()
+        return jsonify(combined_results)
 
 
 """
@@ -1660,39 +1543,18 @@ Description
 """
 @app.route('/uploads/data-status', methods=['GET'])
 def upload_data_status():
-    all_uploads_query = (
-        "MATCH (up:Upload) "
-        "OPTIONAL MATCH (up)<-[:IN_UPLOAD]-(ds:Dataset) "
-        "RETURN up.uuid AS uuid, up.group_name AS group_name, up.hubmap_id AS hubmap_id, up.status AS status, "
-        "up.title AS title, COLLECT(DISTINCT ds.uuid) AS datasets "
-    )
-
-    displayed_fields = [
-        "uuid", "group_name", "hubmap_id", "status", "title", "datasets"
-    ]
-
-    with neo4j_driver_instance.session() as session:
-        results = session.run(all_uploads_query).data()
-        for upload in results:
-            globus_url = get_globus_url('protected', upload.get('group_name'), upload.get('uuid'))
-            upload['globus_url'] = globus_url
-            for prop in upload:
-                if isinstance(upload[prop], list):
-                    upload[prop] = ", ".join(upload[prop])
-                if isinstance(upload[prop], (bool, int)):
-                    upload[prop] = str(upload[prop])
-                if upload[prop] and upload[prop][0] == "[" and upload[prop][-1] == "]":
-                    upload[prop] = upload[prop].replace("'",'"')
-                    upload[prop] = json.loads(upload[prop])
-                    upload[prop] = upload[prop][0]
-                if upload[prop] is None:
-                    upload[prop] = " "
-            for field in displayed_fields:
-                if upload.get(field) is None:
-                    upload[field] = " "
-    # TODO: Once url parameters are implemented in the front-end for the data-status dashboard, we'll need to return a
-    # TODO: link to the datasets page only displaying datasets belonging to a given upload.
-    return jsonify(results)
+    redis_connection = redis.from_url(app.config['REDIS_URL'])
+    try:
+        cached_data = redis_connection.get("uploads_data_status_key")
+        if cached_data:
+            cached_data_json = json.loads(cached_data.decode('utf-8'))
+            return jsonify(cached_data_json)
+        else:
+            raise Exception
+    except Exception:
+        logger.error("Failed to retrieve uploads data-status from cache. Retrieving new data")
+        results = update_uploads_datastatus()
+        return jsonify(results)
 
 
 @app.route('/donors/bulk-upload', methods=['POST'])
@@ -2295,6 +2157,186 @@ def access_level_prefix_dir(dir_name):
     return commons_file_helper.ensureTrailingSlashURL(commons_file_helper.ensureBeginningSlashURL(dir_name))
 
 
+def update_datasets_datastatus():
+    primary_assays_url = app.config['UBKG_WEBSERVICE_URL'] + 'assaytype?application_context=HUBMAP&primary=true'
+    alt_assays_url = app.config['UBKG_WEBSERVICE_URL'] + 'assaytype?application_context=HUBMAP&primary=false'
+    primary_assay_types_list = requests.get(primary_assays_url).json().get("result")
+    alt_assay_types_list = requests.get(alt_assays_url).json().get("result")
+    assay_types_dict = {item["name"].strip(): item for item in primary_assay_types_list + alt_assay_types_list}
+    organ_types_url = app.config['UBKG_WEBSERVICE_URL'] + 'organs/by-code?application_context=HUBMAP'
+    organ_types_dict = requests.get(organ_types_url).json()
+    all_datasets_query = (
+        "MATCH (ds:Dataset)<-[:ACTIVITY_OUTPUT]-(:Activity)<-[:ACTIVITY_INPUT]-(ancestor) "
+        "RETURN ds.uuid AS uuid, ds.group_name AS group_name, ds.data_types AS data_types, "
+        "ds.hubmap_id AS hubmap_id, ds.lab_dataset_id AS provider_experiment_id, ds.status AS status, "
+        "ds.last_modified_timestamp AS last_touch, ds.data_access_level AS data_access_level, "
+        "COALESCE(ds.contributors IS NOT NULL) AS has_contributors, COALESCE(ds.contacts IS NOT NULL) AS has_contacts, "
+        "ancestor.entity_type AS ancestor_entity_type"
+    )
+
+    organ_query = (
+        "MATCH (ds:Dataset)<-[*]-(o:Sample {sample_category: 'organ'}) "
+        "WHERE (ds)<-[:ACTIVITY_OUTPUT]-(:Activity) "
+        "RETURN DISTINCT ds.uuid AS uuid, o.organ AS organ, o.hubmap_id as organ_hubmap_id, o.uuid as organ_uuid "
+    )
+
+    donor_query = (
+        "MATCH (ds:Dataset)<-[*]-(dn:Donor) "
+        "WHERE (ds)<-[:ACTIVITY_OUTPUT]-(:Activity) "
+        "RETURN DISTINCT ds.uuid AS uuid, "
+        "COLLECT(DISTINCT dn.hubmap_id) AS donor_hubmap_id, COLLECT(DISTINCT dn.submission_id) AS donor_submission_id, "
+        "COLLECT(DISTINCT dn.lab_donor_id) AS donor_lab_id, COALESCE(dn.metadata IS NOT NULL) AS has_metadata"
+    )
+
+    descendant_datasets_query = (
+        "MATCH (dds:Dataset)<-[*]-(ds:Dataset)<-[:ACTIVITY_OUTPUT]-(:Activity)<-[:ACTIVITY_INPUT]-(:Sample) "
+        "RETURN DISTINCT ds.uuid AS uuid, COLLECT(DISTINCT dds.hubmap_id) AS descendant_datasets"
+    )
+
+    upload_query = (
+        "MATCH (u:Upload)<-[:IN_UPLOAD]-(ds) "
+        "RETURN DISTINCT ds.uuid AS uuid, COLLECT(DISTINCT u.hubmap_id) AS upload"
+    )
+
+    has_rui_query = (
+        "MATCH (ds:Dataset) "
+        "WHERE (ds)<-[:ACTIVITY_OUTPUT]-(:Activity) "
+        "WITH ds, [(ds)<-[*]-(s:Sample) | s.rui_location] AS rui_locations "
+        "RETURN ds.uuid AS uuid, any(rui_location IN rui_locations WHERE rui_location IS NOT NULL) AS has_rui_info"
+    )
+
+    displayed_fields = [
+        "hubmap_id", "group_name", "status", "organ", "provider_experiment_id", "last_touch", "has_contacts",
+        "has_contributors", "data_types", "donor_hubmap_id", "donor_submission_id", "donor_lab_id",
+        "has_metadata", "descendant_datasets", "upload", "has_rui_info", "globus_url", "has_data", "organ_hubmap_id"
+    ]
+
+    queries = [all_datasets_query, organ_query, donor_query, descendant_datasets_query,
+               upload_query, has_rui_query]
+    results = [None] * len(queries)
+    threads = []
+    for i, query in enumerate(queries):
+        thread = Thread(target=run_query, args=(query, results, i))
+        thread.start()
+        threads.append(thread)
+    for thread in threads:
+        thread.join()
+    output_dict = {}
+    # Here we specifically indexed the values in 'results' in case certain threads completed out of order
+    all_datasets_result = results[0]
+    organ_result = results[1]
+    donor_result = results[2]
+    descendant_datasets_result = results[3]
+    upload_result = results[4]
+    has_rui_result = results[5]
+
+    for dataset in all_datasets_result:
+        output_dict[dataset['uuid']] = dataset
+    for dataset in organ_result:
+        if output_dict.get(dataset['uuid']):
+            output_dict[dataset['uuid']]['organ'] = dataset['organ']
+            output_dict[dataset['uuid']]['organ_hubmap_id'] = dataset['organ_hubmap_id']
+            output_dict[dataset['uuid']]['organ_uuid'] = dataset['organ_uuid']
+    for dataset in donor_result:
+        if output_dict.get(dataset['uuid']):
+            output_dict[dataset['uuid']]['donor_hubmap_id'] = dataset['donor_hubmap_id']
+            output_dict[dataset['uuid']]['donor_submission_id'] = dataset['donor_submission_id']
+            output_dict[dataset['uuid']]['donor_lab_id'] = dataset['donor_lab_id']
+            output_dict[dataset['uuid']]['has_metadata'] = dataset['has_metadata']
+    for dataset in descendant_datasets_result:
+        if output_dict.get(dataset['uuid']):
+            output_dict[dataset['uuid']]['descendant_datasets'] = dataset['descendant_datasets']
+    for dataset in upload_result:
+        if output_dict.get(dataset['uuid']):
+            output_dict[dataset['uuid']]['upload'] = dataset['upload']
+    for dataset in has_rui_result:
+        if output_dict.get(dataset['uuid']):
+            output_dict[dataset['uuid']]['has_rui_info'] = dataset['has_rui_info']
+
+    combined_results = []
+    for uuid in output_dict:
+        combined_results.append(output_dict[uuid])
+
+    for dataset in combined_results:
+        globus_url = get_globus_url(dataset.get('data_access_level'), dataset.get('group_name'), dataset.get('uuid'))
+        dataset['globus_url'] = globus_url
+        dataset['last_touch'] = str(datetime.datetime.utcfromtimestamp(dataset['last_touch'] / 1000))
+        if dataset.get('ancestor_entity_type').lower() != "dataset":
+            dataset['is_primary'] = "true"
+        else:
+            dataset['is_primary'] = "false"
+        has_data = files_exist(dataset.get('uuid'), dataset.get('data_access_level'), dataset.get('group_name'))
+        dataset['has_data'] = has_data
+
+        for prop in dataset:
+            if isinstance(dataset[prop], list):
+                dataset[prop] = ", ".join(dataset[prop])
+            if isinstance(dataset[prop], (bool, int)):
+                dataset[prop] = str(dataset[prop])
+            if dataset[prop] and dataset[prop][0] == "[" and dataset[prop][-1] == "]":
+                dataset[prop] = dataset[prop].replace("'", '"')
+                dataset[prop] = json.loads(dataset[prop])
+                dataset[prop] = dataset[prop][0]
+            if dataset[prop] is None:
+                dataset[prop] = " "
+        if dataset.get('data_types') and dataset.get('data_types') in assay_types_dict:
+            dataset['data_types'] = assay_types_dict[dataset['data_types']]['description'].strip()
+        for field in displayed_fields:
+            if dataset.get(field) is None:
+                dataset[field] = " "
+        if dataset.get('organ') and dataset['organ'].upper() not in ['HT', 'LV', 'LN', 'RK', 'LK']:
+            dataset['has_rui_info'] = "not-applicable"
+        if dataset.get('organ') and dataset.get('organ') in organ_types_dict:
+            dataset['organ'] = organ_types_dict[dataset['organ']]
+
+    try:
+        combined_results_string = json.dumps(combined_results)
+    except json.JSONDecodeError as e:
+        bad_request_error(e)
+    redis_connection = redis.from_url(app.config['REDIS_URL'])
+    cache_key = "datasets_data_status_key"
+    redis_connection.set(cache_key, combined_results_string)
+    return combined_results
+
+def update_uploads_datastatus():
+    all_uploads_query = (
+        "MATCH (up:Upload) "
+        "OPTIONAL MATCH (up)<-[:IN_UPLOAD]-(ds:Dataset) "
+        "RETURN up.uuid AS uuid, up.group_name AS group_name, up.hubmap_id AS hubmap_id, up.status AS status, "
+        "up.title AS title, COLLECT(DISTINCT ds.uuid) AS datasets "
+    )
+
+    displayed_fields = [
+        "uuid", "group_name", "hubmap_id", "status", "title", "datasets"
+    ]
+
+    with neo4j_driver_instance.session() as session:
+        results = session.run(all_uploads_query).data()
+        for upload in results:
+            globus_url = get_globus_url('protected', upload.get('group_name'), upload.get('uuid'))
+            upload['globus_url'] = globus_url
+            for prop in upload:
+                if isinstance(upload[prop], list):
+                    upload[prop] = ", ".join(upload[prop])
+                if isinstance(upload[prop], (bool, int)):
+                    upload[prop] = str(upload[prop])
+                if upload[prop] and upload[prop][0] == "[" and upload[prop][-1] == "]":
+                    upload[prop] = upload[prop].replace("'", '"')
+                    upload[prop] = json.loads(upload[prop])
+                    upload[prop] = upload[prop][0]
+                if upload[prop] is None:
+                    upload[prop] = " "
+            for field in displayed_fields:
+                if upload.get(field) is None:
+                    upload[field] = " "
+    try:
+        results_string = json.dumps(results)
+    except json.JSONDecodeError as e:
+        bad_request_error(e)
+    redis_connection = redis.from_url(app.config['REDIS_URL'])
+    cache_key = "uploads_data_status_key"
+    redis_connection.set(cache_key, results_string)
+    return results
 
 
 def files_exist(uuid, data_access_level, group_name):
@@ -2315,7 +2357,26 @@ def files_exist(uuid, data_access_level, group_name):
     else:
         return False
 
+scheduler = BackgroundScheduler()
+scheduler.start()
 
+
+scheduler.add_job(
+    func=update_datasets_datastatus,
+    trigger=IntervalTrigger(hours=1),
+    id='update_dataset_data_status',
+    name="Update Dataset Data Status Job"
+)
+
+scheduler.add_job(
+    func=update_uploads_datastatus,
+    trigger=IntervalTrigger(hours=1),
+    id='update_upload_data_status',
+    name="Update Upload Data Status Job"
+)
+
+update_datasets_datastatus()
+update_uploads_datastatus()
 
 # For local development/testing
 if __name__ == '__main__':
