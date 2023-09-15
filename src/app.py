@@ -1287,11 +1287,10 @@ def reorganize_upload(upload_uuid):
 @app.route('/metadata/allgroups', methods=['GET'])
 @secured(groups="HuBMAP-read")
 def all_group_list():
-    token = str(request.headers["AUTHORIZATION"])[7:]
     try:
         auth_helper = AuthHelper.configured_instance(
             app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'])
-        group_list = auth_helper.getHuBMAPGroupInfo(token)
+        group_list = auth_helper.getHuBMAPGroupInfo()
         return_list = []
         for group_info in group_list.keys():
             if group_list[group_info]['data_provider'] == True:
