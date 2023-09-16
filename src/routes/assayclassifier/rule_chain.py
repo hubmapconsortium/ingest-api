@@ -3,7 +3,7 @@ import logging
 import yaml
 import json
 from pathlib import Path
-from rule_engine import Rule
+from rule_engine import Rule, EngineError
 from hubmap_commons.schema_tools import check_json_matches_schema
 
 logger: logging.Logger = logging.getLogger(__name__)
@@ -20,18 +20,30 @@ class RuleSyntaxException(Exception):
     pass
 
 
+class RuleLogicException(Exception):
+    pass
+
+
 class RuleLoader:
-    def __init__(self, stream):
+    def __init__(self, stream, format='yaml'):
         self.stream = stream
+        assert format in ['yaml', 'json'], f"unknown format {format}"
+        self.format = format
     def load(self):
         rule_chain = RuleChain()
-        json_recs = yaml.safe_load(self.stream)
-        print(f"PING {json_recs}")
+        if self.format == 'yaml':
+            json_recs = yaml.safe_load(self.stream)
+        elif self.format == 'json':
+            if isinstance(self.stream, string):
+                json_recs = json.loads(self.stream)
+            else:
+                json_recs = json.load(self.stream)
+        else:
+            raise RuntimeError(f"Unknown format {self.format} for input stream")
         check_json_matches_schema(json_recs,
                                   SCHEMA_FILE,
                                   str(Path(__file__).parent),
                                   SCHEMA_BASE_URI)
-        print('PINGPING')
         for rec in json_recs:
             for rule in [rec[key] for key in ['match', 'value']]:
                 assert Rule.is_valid(rule), f"Syntax error in rule string {rule}"
@@ -85,15 +97,18 @@ class RuleChain:
         for elt in iter(self):
             logger.debug(f"applying {elt} to rec:{rec}  ctx:{ctx}")
             rec_dict = rec | ctx;
-            if elt.match_rule.matches(rec_dict):
-                val = elt.val_rule.evaluate(rec_dict)
-                if isinstance(elt, MatchRule):
-                    return self.cleanup(val)
-                elif isinstance(elt, NoteRule):
-                    assert isinstance(val, dict), f"Rule {elt} applied to {rec_dict} did not produce a dict"
-                    ctx.update(val)
-                else:
-                    raise NotImplementedError(f"Unknown rule type {type(elt)}")
+            try:
+                if elt.match_rule.matches(rec_dict):
+                    val = elt.val_rule.evaluate(rec_dict)
+                    if isinstance(elt, MatchRule):
+                        return self.cleanup(val)
+                    elif isinstance(elt, NoteRule):
+                        assert isinstance(val, dict), f"Rule {elt} applied to {rec_dict} did not produce a dict"
+                        ctx.update(val)
+                    else:
+                        raise NotImplementedError(f"Unknown rule type {type(elt)}")
+            except EngineError as excp:
+                raise RuleLogicException(excp) from excp
         raise NoMatchException(f"No rule matched record {rec}")
 
 

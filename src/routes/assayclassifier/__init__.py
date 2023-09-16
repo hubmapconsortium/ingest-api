@@ -1,7 +1,10 @@
 from flask import Blueprint, request, Response, current_app, jsonify
 import logging
 from rq import Retry
+from sys import stdout
 from pprint import pprint
+import json
+import urllib.request
 
 from hubmap_commons.exceptions import HTTPException
 from hubmap_sdk import EntitySdk
@@ -12,16 +15,44 @@ from app_utils.request_validation import require_json
 
 from app_manager import groups_token_from_request_headers
 
+from .rule_chain import (
+    RuleLoader,
+    RuleChain,
+    NoMatchException,
+    RuleSyntaxException,
+    RuleLogicException
+)
+
 bp = Blueprint('assayclassifier', __name__)
 
 logger: logging.Logger = logging.getLogger(__name__)
 
 
+rule_chain = None
+
+rule_src_uri = "file:///tmp/testing_rule_chain.json"
+
+def initialize_rule_chain():
+    global rule_chain
+    try:
+        json_rules = urllib.request.urlopen(rule_src_uri)
+    except json.decoder.JSONDecodeError as excp:
+        raise RuleSyntaxException(excp) from excp
+    rule_chain = RuleLoader(json_rules).load()
+    pprint('RULE CHAIN FOLLOWS')
+    rule_chain.dump(stdout)
+    pprint('RULE CHAIN ABOVE')
+
+
 def calculate_assay_info(metadata: dict) -> dict:
+    if not rule_chain:
+        initialize_rule_chain()
     print("metadata follows")
     pprint(metadata)
     print("metadata above")
-    return {"hello": "world"}
+    rslt = rule_chain.apply(metadata)
+    # TODO: check that rslt has the expected parts
+    return rslt
 
 
 @bp.route('/assaytype/<ds_uuid>', methods=['GET'])
@@ -36,6 +67,10 @@ def get_ds_assaytype(ds_uuid: str):
     except ResponseException as re:
         logger.error(re, exc_info=True)
         return re.response
+    except NoMatchException as excp:
+        return Response(f"Cannot find match: {excp}", 500)
+    except (RuleSyntaxException, RuleLogicException) as excp:
+        return Response(f"Error applying classification rules: {excp}", 500)
     except (HTTPException, SDKException) as hte:
         return Response(f"Error while getting assay type for {ds_uuid}: " +
                         hte.get_description(), hte.get_status_code())
@@ -53,12 +88,13 @@ def get_assaytype_from_metadata():
     except ResponseException as re:
         logger.error(re, exc_info=True)
         return re.response
+    except NoMatchException as excp:
+        return Response(f"Cannot find match: {excp}", 500)
+    except (RuleSyntaxException, RuleLogicException) as excp:
+        return Response(f"Error applying classification rules: {excp}", 500)
     except (HTTPException, SDKException) as hte:
         return Response(f"Error while getting assay type from metadata: " +
                         hte.get_description(), hte.get_status_code())
     except Exception as e:
         logger.error(e, exc_info=True)
         return Response(f"Unexpected error while getting assay type from metadata: " + str(e), 500)
-
-
-          
