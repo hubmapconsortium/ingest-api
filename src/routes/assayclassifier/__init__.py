@@ -30,10 +30,10 @@ logger: logging.Logger = logging.getLogger(__name__)
 
 rule_chain = None
 
-rule_src_uri = "file:///tmp/testing_rule_chain.json"
 
 def initialize_rule_chain():
     global rule_chain
+    rule_src_uri = current_app.config['RULE_CHAIN_URI']
     try:
         json_rules = urllib.request.urlopen(rule_src_uri)
     except json.decoder.JSONDecodeError as excp:
