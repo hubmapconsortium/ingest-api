@@ -98,3 +98,21 @@ def get_assaytype_from_metadata():
     except Exception as e:
         logger.error(e, exc_info=True)
         return Response(f"Unexpected error while getting assay type from metadata: " + str(e), 500)
+
+
+@bp.route('/reload', methods=['PUT'])
+def reload_chain():
+    try:
+        initialize_rule_chain()
+        return jsonify({})
+    except ResponseException as re:
+        logger.error(re, exc_info=True)
+        return re.response
+    except (RuleSyntaxException, RuleLogicException) as excp:
+        return Response(f"Error applying classification rules: {excp}", 500)
+    except (HTTPException, SDKException) as hte:
+        return Response(f"Error while getting assay type for {ds_uuid}: " +
+                        hte.get_description(), hte.get_status_code())
+    except Exception as e:
+        logger.error(e, exc_info=True)
+        return Response(f"Unexpected error while retrieving entity {ds_uuid}: " + str(e), 500)
