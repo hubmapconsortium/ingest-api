@@ -2178,8 +2178,10 @@ def access_level_prefix_dir(dir_name):
 def update_datasets_datastatus():
     primary_assays_url = app.config['UBKG_WEBSERVICE_URL'] + 'assaytype?application_context=HUBMAP&primary=true'
     alt_assays_url = app.config['UBKG_WEBSERVICE_URL'] + 'assaytype?application_context=HUBMAP&primary=false'
+    rui_organs_url = app.config['UBKG_WEBSERVICE_URL'] + 'organs?application_context=HUBMAP'
     primary_assay_types_list = requests.get(primary_assays_url).json().get("result")
     alt_assay_types_list = requests.get(alt_assays_url).json().get("result")
+    rui_organs_list = requests.get(rui_organs_url).json()
     assay_types_dict = {item["name"].strip(): item for item in primary_assay_types_list + alt_assay_types_list}
     organ_types_url = app.config['UBKG_WEBSERVICE_URL'] + 'organs/by-code?application_context=HUBMAP'
     organ_types_dict = requests.get(organ_types_url).json()
@@ -2302,8 +2304,10 @@ def update_datasets_datastatus():
         for field in displayed_fields:
             if dataset.get(field) is None:
                 dataset[field] = " "
-        if dataset.get('organ') and dataset['organ'].upper() not in ['HT', 'LV', 'LN', 'RK', 'LK']:
-            dataset['has_rui_info'] = "not-applicable"
+        if dataset.get('organ') and rui_organs_list:
+            rui_codes = [organ['rui_code'] for organ in rui_organs_list]
+            if dataset['organ'].upper() not in rui_codes:
+                dataset['has_rui_info'] = "not-applicable"
         if dataset.get('organ') and dataset.get('organ') in organ_types_dict:
             dataset['organ'] = organ_types_dict[dataset['organ']]
 
