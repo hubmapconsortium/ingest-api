@@ -1523,7 +1523,7 @@ Description
 def dataset_data_status():
     primary_assays_url = app.config['UBKG_WEBSERVICE_URL'] + 'assaytype?application_context=HUBMAP&primary=true'
     alt_assays_url = app.config['UBKG_WEBSERVICE_URL'] + 'assaytype?application_context=HUBMAP&primary=false'
-    rui_organs_url = app.config['UBKG_WEBSERVICE_URL'] + 'organs?application_context=hubmap'
+    rui_organs_url = app.config['UBKG_WEBSERVICE_URL'] + 'organs?application_context=HUBMAP'
     primary_assay_types_list = requests.get(primary_assays_url).json().get("result")
     alt_assay_types_list = requests.get(alt_assays_url).json().get("result")
     rui_organs_list = requests.get(rui_organs_url).json()
