@@ -3,7 +3,7 @@ import logging
 import yaml
 import json
 from pathlib import Path
-from rule_engine import Rule, EngineError
+from rule_engine import Rule, EngineError, Context
 from hubmap_commons.schema_tools import check_json_matches_schema
 
 logger: logging.Logger = logging.getLogger(__name__)
@@ -95,7 +95,7 @@ class RuleChain:
     def apply(self, rec):
         ctx = {}  # so rules can leave notes for later rules
         for elt in iter(self):
-            logger.debug(f"applying {elt} to rec:{rec}  ctx:{ctx}")
+            #logger.debug(f"applying {elt} to rec:{rec}  ctx:{ctx}")
             rec_dict = rec | ctx;
             try:
                 if elt.match_rule.matches(rec_dict):
@@ -108,14 +108,16 @@ class RuleChain:
                     else:
                         raise NotImplementedError(f"Unknown rule type {type(elt)}")
             except EngineError as excp:
+                print(f"ENGINE_ERROR {type(excp)} {excp}")
                 raise RuleLogicException(excp) from excp
         raise NoMatchException(f"No rule matched record {rec}")
 
 
 class BaseRule:
     def __init__(self, rule_str, val_str):
-        self.match_rule = Rule(rule_str)
-        self.val_rule = Rule(val_str)
+        rule_ctx = Context(default_value=None)
+        self.match_rule = Rule(rule_str, context=rule_ctx)
+        self.val_rule = Rule(val_str, context=rule_ctx)
 
 
 class MatchRule(BaseRule):
