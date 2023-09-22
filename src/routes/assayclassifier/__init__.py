@@ -9,6 +9,7 @@ import urllib.request
 from hubmap_commons.exceptions import HTTPException
 from hubmap_sdk import EntitySdk
 from hubmap_sdk.sdk_helper import HTTPException as SDKException
+from werkzeug.exceptions import HTTPException as WerkzeugException
 from worker.utils import ResponseException
 
 from app_utils.request_validation import require_json
@@ -47,9 +48,6 @@ def initialize_rule_chain():
 def calculate_assay_info(metadata: dict) -> dict:
     if not rule_chain:
         initialize_rule_chain()
-    print("metadata follows")
-    pprint(metadata)
-    print("metadata above")
     rslt = rule_chain.apply(metadata)
     # TODO: check that rslt has the expected parts
     return rslt
@@ -62,15 +60,21 @@ def get_ds_assaytype(ds_uuid: str):
         groups_token = groups_token_from_request_headers(request.headers)
         entity_api = EntitySdk(token=groups_token, service_url=entity_api_url)
         entity = entity_api.get_entity_by_id(ds_uuid)
-        metadata = entity.ingest_metadata['metadata']
+        if 'metadata' in entity.ingest_metadata:
+            metadata = entity.ingest_metadata['metadata']
+        else:
+            metadata = {'entity_type': entity.entity_type,
+                        'data_types': entity.data_types}
         return jsonify(calculate_assay_info(metadata))
     except ResponseException as re:
         logger.error(re, exc_info=True)
         return re.response
     except NoMatchException as excp:
-        return Response(f"Cannot find match: {excp}", 500)
+        return {}
     except (RuleSyntaxException, RuleLogicException) as excp:
         return Response(f"Error applying classification rules: {excp}", 500)
+    except WerkzeugException as excp:
+        return excp
     except (HTTPException, SDKException) as hte:
         return Response(f"Error while getting assay type for {ds_uuid}: " +
                         hte.get_description(), hte.get_status_code())
@@ -89,9 +93,11 @@ def get_assaytype_from_metadata():
         logger.error(re, exc_info=True)
         return re.response
     except NoMatchException as excp:
-        return Response(f"Cannot find match: {excp}", 500)
+        return {}
     except (RuleSyntaxException, RuleLogicException) as excp:
         return Response(f"Error applying classification rules: {excp}", 500)
+    except WerkzeugException as excp:
+        return excp
     except (HTTPException, SDKException) as hte:
         return Response(f"Error while getting assay type from metadata: " +
                         hte.get_description(), hte.get_status_code())
