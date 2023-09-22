@@ -6,13 +6,7 @@ import re
 import pandas as pd
 from pprint import pprint
 
-AUTH_TOK = 'AgloVpmN88Gwq1rkXmKEpD9y438v94V8QX1Dq1jDJjn8dN410S8CxJppxBgQV2nga61pJlN03086KHY757VYh0Kkm'
-
-TEST_BASE_URL = 'http://localhost:5000/'
-import pandas as pd
-from pprint import pprint
-
-AUTH_TOK = 'AgloVpmN88Gwq1rkXmKEpD9y438v94V8QX1Dq1jDJjn8dN410S8CxJppxBgQV2nga61pJlN03086KHY757VYh0Kkm'
+AUTH_TOK = 'AgDDB6l0kEXpjm6Gp2yvxwO6a4OjmpvM9PljQ9Jmlp4NOjMdgasaCzm940Gdr7a4vr1qq1wY4n2dx6IoBN7DmUk7Mm'
 
 TEST_BASE_URL = 'http://localhost:5000/'
 
@@ -21,12 +15,21 @@ def main() -> None:
         arg_df = None
         if argfile.endswith('.tsv'):
             arg_df = pd.read_csv(argfile, sep='\t')
-            mode = 'post'
-        elif re.match('^[A-Fa-f0-9]{32}$', argfile):
-            mode = 'get'
         else:
             raise RuntimeError(f"Arg file {argfile} is of an unrecognized type")
-        if mode == 'post':
+        if len(arg_df.columns) == 1 and 'uuid' in arg_df.columns:
+            for idx, row in arg_df.iterrows():
+                rply = requests.get(
+                    TEST_BASE_URL + 'assaytype' + '/' + row['uuid'],
+                    headers={
+                        'Authorization': 'Bearer ' + AUTH_TOK,
+                        'content-type': 'application/json'
+                    }
+                )
+                rply.raise_for_status()
+                print(f"{row['uuid']} ->")
+                pprint(rply.json())
+        else:
             print(arg_df)
             for idx, row in arg_df.iterrows():
                 payload = {col: row[col] for col in arg_df.columns}
@@ -42,19 +45,6 @@ def main() -> None:
                 rply.raise_for_status()
                 print(f"{argfile} {idx} ->")
                 pprint(rply.json())
-        elif mode == 'get':
-            rply = requests.get(
-                TEST_BASE_URL + 'assaytype' + '/' + argfile,
-                headers={
-                    'Authorization': 'Bearer ' + AUTH_TOK,
-                    'content-type': 'application/json'
-                }
-            )
-            rply.raise_for_status()
-            print(f"{argfile} ->")
-            pprint(rply.json())
-        else:
-            raise RuntimeError(f"Internal Error: unknown mode {mode}")
     print('done')
 
 if __name__ == '__main__':
