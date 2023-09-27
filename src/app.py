@@ -11,10 +11,8 @@ from uuid import UUID
 import yaml
 import csv
 from typing import List
-import time
 from threading import Thread
 from hubmap_sdk import EntitySdk
-from queue import Queue
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 # Don't confuse urllib (Python native library) with urllib3 (3rd-party library, requests also uses urllib3)
@@ -24,9 +22,6 @@ from pathlib import Path
 from flask import Flask, g, jsonify, abort, request, json, Response
 from flask_cors import CORS
 from flask_mail import Mail, Message
-
-import ast
-import unicodedata
 
 # HuBMAP commons
 from hubmap_commons import neo4j_driver
@@ -53,7 +48,6 @@ from app_utils.request_validation import require_json
 from app_utils.error import unauthorized_error, not_found_error, internal_server_error, bad_request_error
 from app_utils.misc import __get_dict_prop
 from app_utils.entity import __get_entity, get_entity_type_instanceof
-from app_utils.task_queue import TaskQueue
 from werkzeug import utils
 
 from routes.auth import auth_blueprint
@@ -716,33 +710,6 @@ def get_data_type_of_external_dataset_providers(ubkg_base_url: str) -> List[str]
     return [x['data_type'].strip() for x in resp.json()]
 
 
-def convert_str_literal(data_str):
-    if isinstance(data_str, str):
-        """
-        This was copied from:
-        https://github.com/hubmapconsortium/entity-api/blob/a832a906124623a889a943c15ff7c8d93f2bb068/src/schema/schema_manager.py#L1666
-
-        TODO: Ask Zhou for advice on how to convert and possibly copy this function to the hubmap-commons package
-        and use from there (no need to use from hubmap-commons in entity-api at this point, but can be done later)
-        """
-        data_str = "".join(char for char in data_str if unicodedata.category(char)[0] != "C")
-        try:
-            data = ast.literal_eval(data_str)
-
-            if isinstance(data, (list, dict)):
-                logger.info(f"The input string literal has been converted to {type(data)} successfully")
-                return data
-            else:
-                logger.info(f"The input string literal is not list or dict after evaluation, return the original string input")
-                return data_str
-        except (SyntaxError, ValueError, TypeError) as e:
-            msg = f"Invalid expression (string value): {data_str} to be evaluated by ast.literal_eval()"
-            logger.exception(msg)
-    else:
-        # Skip any non-string data types
-        return data_str
-
-
 # Needs to be triggered in the workflow or manually?!
 @app.route('/datasets/<identifier>/publish', methods=['PUT'])
 @secured(groups="HuBMAP-read")
@@ -865,7 +832,8 @@ def publish_datastage(identifier):
             if is_primary:
                 dataset_ingest_metadata = rval[0].get('ingest_metadata')
                 if dataset_ingest_metadata is not None:
-                    dataset_ingest_matadata_dict: dict = convert_str_literal(dataset_ingest_metadata)
+                    dataset_ingest_matadata_dict: dict =\
+                        string_helper.convert_str_literal(dataset_ingest_metadata)
                 logger.info(f"publish_datastage; ingest_matadata: {dataset_ingest_matadata_dict}")
             if not get_entity_type_instanceof(dataset_entitytype, 'Dataset', auth_header="Bearer " + auth_helper_instance.getProcessSecret()):
                 return Response(f"{dataset_uuid} is not a dataset will not Publish, entity type is {dataset_entitytype}", 400)
