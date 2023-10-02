@@ -730,7 +730,7 @@ def publish_datastage(identifier):
     In that directory create the directories with the values of `ds.group_name/ds.uuid`.
     In Globus Groups (https://app.globus.org/groups) you will also need to be associated with
     the group for `ds.group_name`.
-    Use 'https://ingest.dev.hubmapconsortium.org/' to get the 'Local Storag/info/groups_token' for the $TOKEN
+    Use 'https://ingest.dev.hubmapconsortium.org/' to get the 'Local Storage/info/groups_token' for the $TOKEN
 
     Then use this call replacing ds.uuid with the value of ds.uuid...
     curl -v --location --request PUT 'http://localhost:8484/datasets/ds.uuid/publish?suspend-indexing-and-acls=true' --header "Authorization: Bearer $TOKEN"
