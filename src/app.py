@@ -1335,7 +1335,7 @@ def reorganize_upload(upload_uuid):
 
 # method to fetch all Data Provider groups through Hubmap Commons
 # Returns an Array of nested objects containing all groups
-@app.route('/metadata/allgroups', methods=['GET'])
+@app.route('/metadata/data-provider-groups', methods=['GET'])
 @secured(groups="HuBMAP-read")
 def all_group_list():
     try:
