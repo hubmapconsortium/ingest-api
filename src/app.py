@@ -11,8 +11,10 @@ from uuid import UUID
 import yaml
 import csv
 from typing import List
+import time
 from threading import Thread
 from hubmap_sdk import EntitySdk
+from queue import Queue
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 # Don't confuse urllib (Python native library) with urllib3 (3rd-party library, requests also uses urllib3)
@@ -48,6 +50,7 @@ from app_utils.request_validation import require_json
 from app_utils.error import unauthorized_error, not_found_error, internal_server_error, bad_request_error
 from app_utils.misc import __get_dict_prop
 from app_utils.entity import __get_entity, get_entity_type_instanceof
+from app_utils.task_queue import TaskQueue
 from werkzeug import utils
 
 from routes.auth import auth_blueprint
@@ -210,7 +213,7 @@ data_curator_group_uuid = app.config['HUBMAP_DATA_CURATOR_GROUP_UUID']
 try:
     redis_url = app.config['REDIS_URL']
     logger.info(f'Initializing TaskQueue class successfully :) REDIS_URL={redis_url}')
-    # TaskQueue.create(redis_url, 'Cell Type Count Processing')
+    TaskQueue.create(redis_url, 'Cell Type Count Processing')
 except Exception:
     logger.exception("Failed to Initializing class TaskQueue")
 
