@@ -876,9 +876,9 @@ def publish_datastage(identifier):
                 try:
                     with open(md_file, "w") as outfile:
                         outfile.write(json_object)
-                except IOError as ioe:
-                    logger.exception(f"Error while writing md_file {md_file}; {ioe}")
-                    return jsonify({"error": f"{dataset_uuid} problem writing json file."}), 400
+                except Exception as e:
+                    logger.exception(f"Fatal error while writing md_file {md_file}; {str(e)}")
+                    return jsonify({"error": f"{dataset_uuid} problem writing json file."}), 500
 
             data_access_level = dataset_data_access_level
             #if consortium access level convert to public dataset, if protected access leave it protected
