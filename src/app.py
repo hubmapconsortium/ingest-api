@@ -825,8 +825,9 @@ def publish_datastage(identifier):
             if is_primary:
                 q += ", e.ingest_metadata as ingest_metadata"
             rval = neo_session.run(q).data()
-            dataset_status = rval[0]['status']
+            dataset_uuid = rval[0]['uuid']
             dataset_entitytype = rval[0]['entitytype']
+            dataset_status = rval[0]['status']
             dataset_data_access_level = rval[0]['data_access_level']
             dataset_group_uuid = rval[0]['group_uuid']
             dataset_contacts = rval[0]['contacts']
@@ -869,7 +870,7 @@ def publish_datastage(identifier):
                 json_object = json.dumps(dataset_ingest_matadata_dict['metadata'], indent=4)
                 json_object += '\n'
                 ds_path = ingest_helper.dataset_directory_absolute_path(dataset_data_access_level,
-                                                                        dataset_group_uuid, uuid, False)
+                                                                        dataset_group_uuid, dataset_uuid, False)
                 md_file = os.path.join(ds_path, "metadata.json")
                 logger.info(f"publish_datastage; writing md_file: '{md_file}'; "
                             f"containing ingest_matadata.metadata: '{json_object}'")
