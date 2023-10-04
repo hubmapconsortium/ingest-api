@@ -963,7 +963,96 @@ def publish_datastage(identifier):
     except Exception as e:
         logger.error(e, exc_info=True)
         return Response("Unexpected error while creating a dataset: " + str(e) + "  Check the logs", 500)
-             
+
+
+@app.route('/datasets/metadata-json', methods=['PUT'])
+@secured(groups="HuBMAP-read")
+def publish_datastage():
+    """
+    Needs a dataset in 'Q/A' status and needs to be primary.
+
+    http://18.205.215.12:7474/browser/ (see app.cfg for username and password)
+    Use the data from this query...
+    match (dn:Donor)-[*]->(s:Sample)-[:ACTIVITY_INPUT]->(:Activity)-[:ACTIVITY_OUTPUT]->(ds:Dataset {status:'QA'})
+    where not ds.ingest_metadata is null and not ds.contacts is null and not ds.contributors is null
+    and ds.data_access_level in ['consortium', 'protected'] and not dn.metadata is null
+    return ds.uuid, ds.data_access_level, ds.group_name;
+
+    From this query 'ds.data_access_level' tells you whether you need to use the directory in
+    GLOBUS_PUBLIC_ENDPOINT_FILEPATH (public), GLOBUS_CONSORTIUM_ENDPOINT_FILEPATH (consortium),
+    or GLOBUS_PROTECTED_ENDPOINT_FILEPATH (protected).
+    In that directory create the directories with the values of `ds.group_name/ds.uuid`.
+    In Globus Groups (https://app.globus.org/groups) you will also need to be associated with
+    the group for `ds.group_name`.
+    Use 'https://ingest.dev.hubmapconsortium.org/' to get the 'Local Storage/info/groups_token' for the $TOKEN
+
+    Then use this call replacing ds.uuid with the value of ds.uuid...
+    curl -v --location --request PUT 'http://localhost:8484/datasets/ds.uuid/publish?suspend-indexing-and-acls=true' --header "Authorization: Bearer $TOKEN"
+
+    Test using both protected and consortium identifiers.
+    """
+    if not request.is_json:
+        return Response("json request required", 400)
+    dataset_uuids = request.json.get('uuid')
+    if type(dataset_uuids) is not list:
+        return Response("json request must contain a uuid key which is an array of dataset uuids", 400)
+
+    try:
+        auth_helper = AuthHelper.configured_instance(app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'])
+        ingest_helper = IngestFileHelper(app.config)
+        user_info = auth_helper.getUserInfoUsingRequest(request, getGroups=True)
+        if user_info is None:
+            return Response("Unable to obtain user information for auth token", 401)
+        if isinstance(user_info, Response):
+            return user_info
+
+        if 'hmgroupids' not in user_info:
+            return Response("User has no valid group information.", 403)
+        if data_admin_group_uuid not in user_info['hmgroupids']:
+            return Response("User must be a member of the HuBMAP Data Admin group.", 403)
+
+        for dataset_uuid in dataset_uuids:
+            q = f"MATCH (e:Dataset {{uuid: '{dataset_uuid}'}}) RETURN " \
+                "e.uuid as uuid, e.entity_type as entitytype, e.status as status, " \
+                "e.data_access_level as data_access_level, e.group_uuid as group_uuid, " \
+                "e.contacts as contacts, e.contributors as contributors, " \
+                "e.ingest_metadata as ingest_metadata"
+            with neo4j_driver_instance.session() as neo_session:
+                rval = neo_session.run(q).data()
+
+                dataset_data_access_level = rval[0]['data_access_level']
+                dataset_group_uuid = rval[0]['group_uuid']
+                dataset_ingest_metadata = rval[0].get('ingest_metadata')
+
+                dataset_ingest_matadata_dict = None
+                if dataset_ingest_metadata is not None:
+                    dataset_ingest_matadata_dict: dict =\
+                        string_helper.convert_str_literal(dataset_ingest_metadata)
+
+                # Save a .json file with the metadata information at the top level directory...
+                if dataset_ingest_matadata_dict is not None:
+                    logger.info(f"ingest_matadata: {dataset_ingest_matadata_dict}")
+                    json_object = json.dumps(dataset_ingest_matadata_dict['metadata'], indent=4)
+                    json_object += '\n'
+                    ds_path = ingest_helper.dataset_directory_absolute_path(dataset_data_access_level,
+                                                                            dataset_group_uuid, dataset_uuid, False)
+                    md_file = os.path.join(ds_path, "metadata.json")
+                    logger.info(f"publish_datastage; writing md_file: '{md_file}'; "
+                                f"containing ingest_matadata.metadata: '{json_object}'")
+                    try:
+                        with open(md_file, "w") as outfile:
+                            outfile.write(json_object)
+                    except IOError as ioe:
+                        logger.error(ioe, exc_info=True)
+                        return Response(f"Error writing file: {md_file}? {str(ioe)}")
+
+    except HTTPException as hte:
+        return Response(hte.get_description(), hte.get_status_code())
+    except Exception as e:
+        logger.error(e, exc_info=True)
+        return Response("Unexpected error: " + str(e) + "  Check the logs", 500)
+
+
 @app.route('/datasets/<uuid>/status/<new_status>', methods = ['PUT'])
 #@secured(groups="HuBMAP-read")
 def update_dataset_status(uuid, new_status):
