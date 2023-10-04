@@ -869,7 +869,7 @@ def publish_datastage(identifier):
                 json_object = json.dumps(dataset_ingest_matadata_dict['metadata'], indent=4)
                 json_object += '\n'
                 ds_path = ingest_helper.dataset_directory_absolute_path(dataset_data_access_level,
-                                                                        dataset_group_uuid, uuid, False)
+                                                                        dataset_group_uuid, dataset_uuid, False)
                 md_file = os.path.join(ds_path, "metadata.json")
                 logger.info(f"publish_datastage; writing md_file: '{md_file}'; "
                             f"containing ingest_matadata.metadata: '{json_object}'")
