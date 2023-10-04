@@ -168,7 +168,11 @@ def ingest_board_login():
 
         # create a response for the user
         response = make_response(redirect(redirect_uri))
-        response.set_cookie('info', base64_json_str, expires=2**31 - 1, domain=current_app.config['COOKIE_DOMAIN'])
+        #Use max_age (seconds) as opposed to expires (date). Set token to expire after 1 day
+        if current_app.config['COOKIE_DOMAIN'] == 'localhost':
+            response.set_cookie('info', base64_json_str, max_age=86400)
+        else:
+            response.set_cookie('info', base64_json_str, max_age=86400, domain=current_app.config['COOKIE_DOMAIN'])
         return response
 
 
