@@ -825,7 +825,6 @@ def publish_datastage(identifier):
             if is_primary:
                 q += ", e.ingest_metadata as ingest_metadata"
             rval = neo_session.run(q).data()
-            dataset_uuid = rval[0]['uuid']
             dataset_entitytype = rval[0]['entitytype']
             dataset_status = rval[0]['status']
             dataset_data_access_level = rval[0]['data_access_level']
