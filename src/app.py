@@ -876,9 +876,9 @@ def publish_datastage(identifier):
                 try:
                     with open(md_file, "w") as outfile:
                         outfile.write(json_object)
-                except IOError as ioe:
-                    logger.exception(f"Error while writing md_file {md_file}; {ioe}")
-                    return jsonify({"error": f"{dataset_uuid} problem writing json file."}), 400
+                except Exception as e:
+                    logger.exception(f"Fatal error while writing md_file {md_file}; {str(e)}")
+                    return jsonify({"error": f"{dataset_uuid} problem writing json file."}), 500
 
             data_access_level = dataset_data_access_level
             #if consortium access level convert to public dataset, if protected access leave it protected
@@ -967,34 +967,22 @@ def publish_datastage(identifier):
 
 @app.route('/datasets/metadata-json', methods=['PUT'])
 @secured(groups="HuBMAP-read")
-def publish_datastage():
+def datasets_metadata_json():
     """
-    Needs a dataset in 'Q/A' status and needs to be primary.
+    See publish_datastage() for additional information.
 
-    http://18.205.215.12:7474/browser/ (see app.cfg for username and password)
-    Use the data from this query...
-    match (dn:Donor)-[*]->(s:Sample)-[:ACTIVITY_INPUT]->(:Activity)-[:ACTIVITY_OUTPUT]->(ds:Dataset {status:'QA'})
-    where not ds.ingest_metadata is null and not ds.contacts is null and not ds.contributors is null
-    and ds.data_access_level in ['consortium', 'protected'] and not dn.metadata is null
-    return ds.uuid, ds.data_access_level, ds.group_name;
-
-    From this query 'ds.data_access_level' tells you whether you need to use the directory in
-    GLOBUS_PUBLIC_ENDPOINT_FILEPATH (public), GLOBUS_CONSORTIUM_ENDPOINT_FILEPATH (consortium),
-    or GLOBUS_PROTECTED_ENDPOINT_FILEPATH (protected).
-    In that directory create the directories with the values of `ds.group_name/ds.uuid`.
-    In Globus Groups (https://app.globus.org/groups) you will also need to be associated with
-    the group for `ds.group_name`.
-    Use 'https://ingest.dev.hubmapconsortium.org/' to get the 'Local Storage/info/groups_token' for the $TOKEN
-
-    Then use this call replacing ds.uuid with the value of ds.uuid...
-    curl -v --location --request PUT 'http://localhost:8484/datasets/ds.uuid/publish?suspend-indexing-and-acls=true' --header "Authorization: Bearer $TOKEN"
-
-    Test using both protected and consortium identifiers.
+    Use the Neo4J query (above) replacing ds.uuid with the value of ds.uuid, e.g.:
+    curl --verbose --request PUT \
+     --url ${INGESTAPI_URL}/datasets/metadata-json \
+     --header "Content-Type: application/json" \
+     --header "Accept: application/json" \
+     --header "Authorization: Bearer ${TOKEN}" \
+     --data '{"uuid":["fdacb21245e14fd126bfce05ae191857", "b4ed22922fe9efcc68bb656da04052cb"]}'
     """
     if not request.is_json:
         return Response("json request required", 400)
     dataset_uuids = request.json.get('uuid')
-    if type(dataset_uuids) is not list:
+    if type(dataset_uuids) is not list or len(dataset_uuids) == 0:
         return Response("json request must contain a uuid key which is an array of dataset uuids", 400)
 
     try:
@@ -1042,16 +1030,17 @@ def publish_datastage():
                     try:
                         with open(md_file, "w") as outfile:
                             outfile.write(json_object)
-                    except IOError as ioe:
-                        logger.error(ioe, exc_info=True)
-                        return Response(f"Error writing file: {md_file}? {str(ioe)}")
+                    except Exception as e:
+                        logger.exception(f"Fatal error while writing md_file {md_file}; {str(e)}")
+                        return jsonify({"error": f"{dataset_uuid} problem writing json file."}), 500
+
+        return Response("Success", 200)
 
     except HTTPException as hte:
         return Response(hte.get_description(), hte.get_status_code())
     except Exception as e:
         logger.error(e, exc_info=True)
         return Response("Unexpected error: " + str(e) + "  Check the logs", 500)
-
 
 @app.route('/datasets/<uuid>/status/<new_status>', methods = ['PUT'])
 #@secured(groups="HuBMAP-read")
