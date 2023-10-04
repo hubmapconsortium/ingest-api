@@ -714,12 +714,35 @@ def get_data_type_of_external_dataset_providers(ubkg_base_url: str) -> List[str]
 
 
 # Needs to be triggered in the workflow or manually?!
-@app.route('/datasets/<identifier>/publish', methods = ['PUT'])
+@app.route('/datasets/<identifier>/publish', methods=['PUT'])
 @secured(groups="HuBMAP-read")
 def publish_datastage(identifier):
+    """
+    Needs a dataset in 'Q/A' status and needs to be primary.
+
+    http://18.205.215.12:7474/browser/ (see app.cfg for username and password)
+    Use the data from this query...
+    match (dn:Donor)-[*]->(s:Sample)-[:ACTIVITY_INPUT]->(:Activity)-[:ACTIVITY_OUTPUT]->(ds:Dataset {status:'QA'})
+    where not ds.ingest_metadata is null and not ds.contacts is null and not ds.contributors is null
+    and ds.data_access_level in ['consortium', 'protected'] and not dn.metadata is null
+    return ds.uuid, ds.data_access_level, ds.group_name;
+
+    From this query 'ds.data_access_level' tells you whether you need to use the directory in
+    GLOBUS_PUBLIC_ENDPOINT_FILEPATH (public), GLOBUS_CONSORTIUM_ENDPOINT_FILEPATH (consortium),
+    or GLOBUS_PROTECTED_ENDPOINT_FILEPATH (protected).
+    In that directory create the directories with the values of `ds.group_name/ds.uuid`.
+    In Globus Groups (https://app.globus.org/groups) you will also need to be associated with
+    the group for `ds.group_name`.
+    Use 'https://ingest.dev.hubmapconsortium.org/' to get the 'Local Storage/info/groups_token' for the $TOKEN
+
+    Then use this call replacing ds.uuid with the value of ds.uuid...
+    curl -v --location --request PUT 'http://localhost:8484/datasets/ds.uuid/publish?suspend-indexing-and-acls=true' --header "Authorization: Bearer $TOKEN"
+
+    Test using both protected and consortium identifiers.
+    """
     try:
         auth_helper = AuthHelper.configured_instance(app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'])
-        user_info = auth_helper.getUserInfoUsingRequest(request, getGroups = True)
+        user_info = auth_helper.getUserInfoUsingRequest(request, getGroups=True)
         if user_info is None:
             return Response("Unable to obtain user information for auth token", 401)
         if isinstance(user_info, Response):
@@ -795,14 +818,26 @@ def publish_datastage(identifier):
                 return Response(f"{dataset_uuid}: no donor found for dataset, will not Publish")
 
             #get info for the dataset to be published
-            q = f"MATCH (e:Dataset {{uuid: '{dataset_uuid}'}}) RETURN e.uuid as uuid, e.entity_type as entitytype, e.status as status, e.data_access_level as data_access_level, e.group_uuid as group_uuid, e.contacts as contacts, e.contributors as contributors"
+            q = f"MATCH (e:Dataset {{uuid: '{dataset_uuid}'}}) RETURN " \
+                "e.uuid as uuid, e.entity_type as entitytype, e.status as status, " \
+                "e.data_access_level as data_access_level, e.group_uuid as group_uuid, " \
+                "e.contacts as contacts, e.contributors as contributors"
+            if is_primary:
+                q += ", e.ingest_metadata as ingest_metadata"
             rval = neo_session.run(q).data()
-            dataset_status = rval[0]['status']
             dataset_entitytype = rval[0]['entitytype']
+            dataset_status = rval[0]['status']
             dataset_data_access_level = rval[0]['data_access_level']
             dataset_group_uuid = rval[0]['group_uuid']
             dataset_contacts = rval[0]['contacts']
             dataset_contributors = rval[0]['contributors']
+            dataset_ingest_matadata_dict = None
+            if is_primary:
+                dataset_ingest_metadata = rval[0].get('ingest_metadata')
+                if dataset_ingest_metadata is not None:
+                    dataset_ingest_matadata_dict: dict =\
+                        string_helper.convert_str_literal(dataset_ingest_metadata)
+                logger.info(f"publish_datastage; ingest_matadata: {dataset_ingest_matadata_dict}")
             if not get_entity_type_instanceof(dataset_entitytype, 'Dataset', auth_header="Bearer " + auth_helper_instance.getProcessSecret()):
                 return Response(f"{dataset_uuid} is not a dataset will not Publish, entity type is {dataset_entitytype}", 400)
             if not dataset_status == 'QA':
@@ -828,6 +863,22 @@ def publish_datastage(identifier):
                 if len(json.loads(dataset_contacts)) < 1 or len(json.loads(dataset_contributors)) < 1:
                     return jsonify({"error": f"{dataset_uuid} missing contacts or contributors. Must have at least one of each"}), 400
             ingest_helper = IngestFileHelper(app.config)
+
+            # Save a .json file with the metadata information at the top level directory...
+            if dataset_ingest_matadata_dict is not None:
+                json_object = json.dumps(dataset_ingest_matadata_dict['metadata'], indent=4)
+                json_object += '\n'
+                ds_path = ingest_helper.dataset_directory_absolute_path(dataset_data_access_level,
+                                                                        dataset_group_uuid, dataset_uuid, False)
+                md_file = os.path.join(ds_path, "metadata.json")
+                logger.info(f"publish_datastage; writing md_file: '{md_file}'; "
+                            f"containing ingest_matadata.metadata: '{json_object}'")
+                try:
+                    with open(md_file, "w") as outfile:
+                        outfile.write(json_object)
+                except Exception as e:
+                    logger.exception(f"Fatal error while writing md_file {md_file}; {str(e)}")
+                    return jsonify({"error": f"{dataset_uuid} problem writing json file."}), 500
 
             data_access_level = dataset_data_access_level
             #if consortium access level convert to public dataset, if protected access leave it protected
