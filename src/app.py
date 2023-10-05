@@ -825,8 +825,8 @@ def publish_datastage(identifier):
             if is_primary:
                 q += ", e.ingest_metadata as ingest_metadata"
             rval = neo_session.run(q).data()
-            dataset_status = rval[0]['status']
             dataset_entitytype = rval[0]['entitytype']
+            dataset_status = rval[0]['status']
             dataset_data_access_level = rval[0]['data_access_level']
             dataset_group_uuid = rval[0]['group_uuid']
             dataset_contacts = rval[0]['contacts']
@@ -1413,7 +1413,7 @@ def reorganize_upload(upload_uuid):
 
 # method to fetch all Data Provider groups through Hubmap Commons
 # Returns an Array of nested objects containing all groups
-@app.route('/metadata/allgroups', methods=['GET'])
+@app.route('/metadata/data-provider-groups', methods=['GET'])
 @secured(groups="HuBMAP-read")
 def all_group_list():
     try:
