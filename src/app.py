@@ -696,6 +696,49 @@ def create_datastage():
         logger.error(e, exc_info=True)
         return Response("Unexpected error while creating a dataset: " + str(e) + "  Check the logs", 500)
 
+@app.route('/components', methods['POST'])
+def multiple_components():
+    if not request.is_json:
+        return Response("json request required", 400)
+    entity_type = 'dataset'
+    try:
+        component_request = request.json
+        auth_helper = AuthHelper.configured_instance(app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'])
+        auth_tokens = auth_helper.getAuthorizationTokens(request.headers)
+        if isinstance(auth_tokens, Response):
+            return(auth_tokens)
+        elif isinstance(auth_tokens, str):
+            token = auth_tokens
+        elif 'nexus_token' in auth_tokens:
+            token = auth_tokens['nexus_token']
+        else:
+            return(Response("Valid nexus auth token required", 401))
+
+        requested_group_uuid = None
+        if 'group_uuid' in component_request:
+            requested_group_uuid = component_request['group_uuid']
+
+        ingest_helper = IngestFileHelper(app.config)
+        requested_group_uuid = auth_helper.get_write_group_uuid(token, requested_group_uuid)
+        component_request['group_uuid'] = requested_group_uuid
+        post_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'datasets/components'
+        response = requests.post(post_url, json = components_request, headers = {'Authorization': 'Bearer ' + token, 'X-Hubmap-Application':'ingest-api' }, verify = False)
+        if response.status_code != 200:
+            return Response(response.text, response.status_code)
+        new_datasets_list = response.json()
+
+        for dataset in new_datasets_list:
+            ingest_helper.create_dataset_directory(dataset, requested_group_uuid, new_dataset['uuid'])
+
+        return jsonify(new_datasets_list)
+    except HTTPException as hte:
+        return Response(hte.get_description(), hte.get_status_code())
+    except Exception as e:
+        logger.error(e, exc_info=True)
+        return Response("Unexpected error while creating a dataset: " + str(e) + " Check the logs", 500)
+
+
+
 
 def get_data_type_of_external_dataset_providers(ubkg_base_url: str) -> List[str]:
     """
