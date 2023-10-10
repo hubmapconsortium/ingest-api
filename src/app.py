@@ -753,6 +753,8 @@ def publish_datastage(identifier):
         if data_admin_group_uuid not in user_info['hmgroupids']:
             return Response("User must be a member of the HuBMAP Data Admin group to publish data.", 403)
 
+
+
         if identifier is None or len(identifier) == 0:
             abort(400, jsonify( { 'error': 'identifier parameter is required to publish a dataset' } ))
         r = requests.get(app.config['UUID_WEBSERVICE_URL'] + "/" + identifier, headers={'Authorization': request.headers["AUTHORIZATION"]})
@@ -821,7 +823,7 @@ def publish_datastage(identifier):
             q = f"MATCH (e:Dataset {{uuid: '{dataset_uuid}'}}) RETURN " \
                 "e.uuid as uuid, e.entity_type as entitytype, e.status as status, " \
                 "e.data_access_level as data_access_level, e.group_uuid as group_uuid, " \
-                "e.contacts as contacts, e.contributors as contributors"
+                "e.contacts as contacts, e.contributors as contributors, e.status_history as status_history"
             if is_primary:
                 q += ", e.ingest_metadata as ingest_metadata"
             rval = neo_session.run(q).data()
@@ -853,6 +855,17 @@ def publish_datastage(identifier):
                 [i for i in entity_dict.get('data_types') if i in data_type_edp]
             has_entity_lab_processed_data_type: bool = len(entity_lab_processed_data_types) > 0
 
+
+            #set up a status_history list to add a "Published" entry to below
+            if 'status_history' in rval[0]:
+                status_history_str = rval[0]['status_history']
+                if status_history_str is None:
+                    status_history_list = []
+                else:
+                    status_history_list = string_helper.convert_str_literal(status_history_str)
+            else:
+                status_history_list = []
+            
             logger.info(f'is_primary: {is_primary}; has_entity_lab_processed_data_type: {has_entity_lab_processed_data_type}')
 
             if is_primary or has_entity_lab_processed_data_type:
@@ -923,13 +936,29 @@ def publish_datastage(identifier):
             doi_update_clause = ""
             if not doi_info is None:
                 doi_update_clause = f", e.registered_doi = '{doi_info['registered_doi']}', e.doi_url = '{doi_info['doi_url']}'"
+                
+                
+            #add Published status change to status history
+            status_update = {
+               "status": "Published",
+               "changed_by_email":user_info['email'],
+               "change_timestamp": "@#TIMESTAMP#@"
+            }            
+            status_history_list.append(status_update)
+            #convert from list to string that is used for storage in database
+            new_status_history_str = string_helper.convert_py_obj_to_string(status_history_list)
+            #substitute the TIMESTAMP function to let Neo4j set the change_timestamp value of this status change record
+            status_history_with_timestamp = new_status_history_str.replace("'@#TIMESTAMP#@'", '" + TIMESTAMP() + "')
+            status_history_update_clause = f', e.status_history = "{status_history_with_timestamp}"'
+            
             # set dataset status to published and set the last modified user info and user who published
             update_q = "match (e:Entity {uuid:'" + dataset_uuid + "'}) set e.status = 'Published', e.last_modified_user_sub = '" + \
                        user_info['sub'] + "', e.last_modified_user_email = '" + user_info[
                            'email'] + "', e.last_modified_user_displayname = '" + user_info[
                            'name'] + "', e.last_modified_timestamp = TIMESTAMP(), e.published_timestamp = TIMESTAMP(), e.published_user_email = '" + \
                        user_info['email'] + "', e.published_user_sub = '" + user_info[
-                           'sub'] + "', e.published_user_displayname = '" + user_info['name'] + "'" + doi_update_clause
+                           'sub'] + "', e.published_user_displayname = '" + user_info['name'] + "'" + doi_update_clause + status_history_update_clause
+
             logger.info(dataset_uuid + "\t" + dataset_uuid + "\tNEO4J-update-base-dataset\t" + update_q)
             neo_session.run(update_q)
             out = entity_instance.clear_cache(dataset_uuid)
