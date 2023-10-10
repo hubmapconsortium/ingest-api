@@ -696,7 +696,7 @@ def create_datastage():
         logger.error(e, exc_info=True)
         return Response("Unexpected error while creating a dataset: " + str(e) + "  Check the logs", 500)
 
-@app.route('/components', methods['POST'])
+@app.route('/datasets/components', methods=['POST'])
 def multiple_components():
     if not request.is_json:
         return Response("json request required", 400)
@@ -722,13 +722,13 @@ def multiple_components():
         requested_group_uuid = auth_helper.get_write_group_uuid(token, requested_group_uuid)
         component_request['group_uuid'] = requested_group_uuid
         post_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'datasets/components'
-        response = requests.post(post_url, json = components_request, headers = {'Authorization': 'Bearer ' + token, 'X-Hubmap-Application':'ingest-api' }, verify = False)
+        response = requests.post(post_url, json = component_request, headers = {'Authorization': 'Bearer ' + token, 'X-Hubmap-Application':'ingest-api' }, verify = False)
         if response.status_code != 200:
             return Response(response.text, response.status_code)
         new_datasets_list = response.json()
 
         for dataset in new_datasets_list:
-            ingest_helper.create_dataset_directory(dataset, requested_group_uuid, new_dataset['uuid'])
+            ingest_helper.create_dataset_directory(dataset, requested_group_uuid, dataset['uuid'])
 
         return jsonify(new_datasets_list)
     except HTTPException as hte:
