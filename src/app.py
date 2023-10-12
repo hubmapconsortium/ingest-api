@@ -1036,6 +1036,10 @@ def datasets_metadata_json():
                 "e.ingest_metadata as ingest_metadata"
             with neo4j_driver_instance.session() as neo_session:
                 rval = neo_session.run(q).data()
+                if len(rval) == 0:
+                    msg: str = f"Dataset uuid '{dataset_uuid}' was not found."
+                    logger.info(msg)
+                    return jsonify({"error": msg}), 400
 
                 dataset_data_access_level = rval[0]['data_access_level']
                 dataset_group_uuid = rval[0]['group_uuid']
