@@ -20,6 +20,10 @@
 	},
 	"value": {
 	  "type": "string"
+	},
+	"rule_description": {
+	  "type": "string",
+	  "description": "human-readable free-form identifier for the rule"
 	}
       },
       "required": ["type", "match", "value"],
