@@ -9,7 +9,6 @@ hubmap-sdk==1.0.5
 jsonref==0.3.0
 jsonschema==3.2.0
 neo4j==4.4
-py2neo==2021.0.1
 selenium==3.141.0
 PyYAML==6.0
 
@@ -20,7 +19,7 @@ requests==2.25.1
 # Use the branch name of commons from github for testing new changes made in commons from different branch
 # Default is main branch specified in docker-compose.development.yml if not set
 # git+https://github.com/hubmapconsortium/commons.git@${COMMONS_BRANCH}#egg=hubmap-commons
-hubmap-commons==2.1.8
+hubmap-commons==2.1.12
 
 # For parsing the secondary analysis files...
 anndata==0.7.8
@@ -37,4 +36,9 @@ rule_engine==4.1.0
 nose2==0.11.0
 pyfakefs==4.5.5
 
-Werkzeug~=2.2.2
+# Flask 2.1.3 installs the latest Werkzeug==3.0.0 (released on 9/30/2023) and causing import issues 
+# Use a pinned version 2.3.7 (the latest release before 3.0.0) to mitigate temporaryly
+# Will upgrade Flask to newer version later on across all APIs. 10/3/2023 - Zhou
+Werkzeug==2.3.7
+
+APScheduler==3.10.4

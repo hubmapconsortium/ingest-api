@@ -93,6 +93,9 @@ SPATIAL_WEBSERVICE_URL = 'https://spatial-api.dev.hubmapconsortium.org'
 # URL to the Redis server used by the cell_count_type computation queuing mechanism.
 # Use port 6379 exposed on the ingest-api-rq-server container, not the port on host
 REDIS_URL = 'redis://ingest-api-rq-server:6379'
+# For local debugging....
+# $ docker run -d -p 6379:6379 --name rq-server redis
+# REDIS_URL = 'redis://localhost:6379'
 
 # For UI login/logout
 # Flask app session key
@@ -127,6 +130,9 @@ DATACITE_API_URL = ''
 # Use 10.80478 for DataCite Test site with DEV/TEST deployment
 # Use 10.35079 for DataCite Production site with PROD deployment
 DATACITE_HUBMAP_PREFIX = ''
+
+# Sets cookie domain context upon login. Use None for development
+COOKIE_DOMAIN = '.hubmapconsortium.org'
 
 # URI from which to load the assay classifier rules.
 RULE_CHAIN_URI = ''

@@ -1,4 +1,5 @@
 import datetime
+import redis
 import os
 import sys
 import logging
@@ -14,6 +15,8 @@ import time
 from threading import Thread
 from hubmap_sdk import EntitySdk
 from queue import Queue
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.interval import IntervalTrigger
 # Don't confuse urllib (Python native library) with urllib3 (3rd-party library, requests also uses urllib3)
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 import argparse
@@ -713,12 +716,35 @@ def get_data_type_of_external_dataset_providers(ubkg_base_url: str) -> List[str]
 
 
 # Needs to be triggered in the workflow or manually?!
-@app.route('/datasets/<identifier>/publish', methods = ['PUT'])
+@app.route('/datasets/<identifier>/publish', methods=['PUT'])
 @secured(groups="HuBMAP-read")
 def publish_datastage(identifier):
+    """
+    Needs a dataset in 'Q/A' status and needs to be primary.
+
+    http://18.205.215.12:7474/browser/ (see app.cfg for username and password)
+    Use the data from this query...
+    match (dn:Donor)-[*]->(s:Sample)-[:ACTIVITY_INPUT]->(:Activity)-[:ACTIVITY_OUTPUT]->(ds:Dataset {status:'QA'})
+    where not ds.ingest_metadata is null and not ds.contacts is null and not ds.contributors is null
+    and ds.data_access_level in ['consortium', 'protected'] and not dn.metadata is null
+    return ds.uuid, ds.data_access_level, ds.group_name;
+
+    From this query 'ds.data_access_level' tells you whether you need to use the directory in
+    GLOBUS_PUBLIC_ENDPOINT_FILEPATH (public), GLOBUS_CONSORTIUM_ENDPOINT_FILEPATH (consortium),
+    or GLOBUS_PROTECTED_ENDPOINT_FILEPATH (protected).
+    In that directory create the directories with the values of `ds.group_name/ds.uuid`.
+    In Globus Groups (https://app.globus.org/groups) you will also need to be associated with
+    the group for `ds.group_name`.
+    Use 'https://ingest.dev.hubmapconsortium.org/' to get the 'Local Storage/info/groups_token' for the $TOKEN
+
+    Then use this call replacing ds.uuid with the value of ds.uuid...
+    curl -v --location --request PUT 'http://localhost:8484/datasets/ds.uuid/publish?suspend-indexing-and-acls=true' --header "Authorization: Bearer $TOKEN"
+
+    Test using both protected and consortium identifiers.
+    """
     try:
         auth_helper = AuthHelper.configured_instance(app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'])
-        user_info = auth_helper.getUserInfoUsingRequest(request, getGroups = True)
+        user_info = auth_helper.getUserInfoUsingRequest(request, getGroups=True)
         if user_info is None:
             return Response("Unable to obtain user information for auth token", 401)
         if isinstance(user_info, Response):
@@ -728,6 +754,8 @@ def publish_datastage(identifier):
             return Response("User has no valid group information to authorize publication.", 403)
         if data_admin_group_uuid not in user_info['hmgroupids']:
             return Response("User must be a member of the HuBMAP Data Admin group to publish data.", 403)
+
+
 
         if identifier is None or len(identifier) == 0:
             abort(400, jsonify( { 'error': 'identifier parameter is required to publish a dataset' } ))
@@ -794,14 +822,26 @@ def publish_datastage(identifier):
                 return Response(f"{dataset_uuid}: no donor found for dataset, will not Publish")
 
             #get info for the dataset to be published
-            q = f"MATCH (e:Dataset {{uuid: '{dataset_uuid}'}}) RETURN e.uuid as uuid, e.entity_type as entitytype, e.status as status, e.data_access_level as data_access_level, e.group_uuid as group_uuid, e.contacts as contacts, e.contributors as contributors"
+            q = f"MATCH (e:Dataset {{uuid: '{dataset_uuid}'}}) RETURN " \
+                "e.uuid as uuid, e.entity_type as entitytype, e.status as status, " \
+                "e.data_access_level as data_access_level, e.group_uuid as group_uuid, " \
+                "e.contacts as contacts, e.contributors as contributors, e.status_history as status_history"
+            if is_primary:
+                q += ", e.ingest_metadata as ingest_metadata"
             rval = neo_session.run(q).data()
-            dataset_status = rval[0]['status']
             dataset_entitytype = rval[0]['entitytype']
+            dataset_status = rval[0]['status']
             dataset_data_access_level = rval[0]['data_access_level']
             dataset_group_uuid = rval[0]['group_uuid']
             dataset_contacts = rval[0]['contacts']
             dataset_contributors = rval[0]['contributors']
+            dataset_ingest_matadata_dict = None
+            if is_primary:
+                dataset_ingest_metadata = rval[0].get('ingest_metadata')
+                if dataset_ingest_metadata is not None:
+                    dataset_ingest_matadata_dict: dict =\
+                        string_helper.convert_str_literal(dataset_ingest_metadata)
+                logger.info(f"publish_datastage; ingest_matadata: {dataset_ingest_matadata_dict}")
             if not get_entity_type_instanceof(dataset_entitytype, 'Dataset', auth_header="Bearer " + auth_helper_instance.getProcessSecret()):
                 return Response(f"{dataset_uuid} is not a dataset will not Publish, entity type is {dataset_entitytype}", 400)
             if not dataset_status == 'QA':
@@ -817,6 +857,17 @@ def publish_datastage(identifier):
                 [i for i in entity_dict.get('data_types') if i in data_type_edp]
             has_entity_lab_processed_data_type: bool = len(entity_lab_processed_data_types) > 0
 
+
+            #set up a status_history list to add a "Published" entry to below
+            if 'status_history' in rval[0]:
+                status_history_str = rval[0]['status_history']
+                if status_history_str is None:
+                    status_history_list = []
+                else:
+                    status_history_list = string_helper.convert_str_literal(status_history_str)
+            else:
+                status_history_list = []
+            
             logger.info(f'is_primary: {is_primary}; has_entity_lab_processed_data_type: {has_entity_lab_processed_data_type}')
 
             if is_primary or has_entity_lab_processed_data_type:
@@ -827,6 +878,22 @@ def publish_datastage(identifier):
                 if len(json.loads(dataset_contacts)) < 1 or len(json.loads(dataset_contributors)) < 1:
                     return jsonify({"error": f"{dataset_uuid} missing contacts or contributors. Must have at least one of each"}), 400
             ingest_helper = IngestFileHelper(app.config)
+
+            # Save a .json file with the metadata information at the top level directory...
+            if dataset_ingest_matadata_dict is not None:
+                json_object = json.dumps(dataset_ingest_matadata_dict['metadata'], indent=4)
+                json_object += '\n'
+                ds_path = ingest_helper.dataset_directory_absolute_path(dataset_data_access_level,
+                                                                        dataset_group_uuid, dataset_uuid, False)
+                md_file = os.path.join(ds_path, "metadata.json")
+                logger.info(f"publish_datastage; writing md_file: '{md_file}'; "
+                            f"containing ingest_matadata.metadata: '{json_object}'")
+                try:
+                    with open(md_file, "w") as outfile:
+                        outfile.write(json_object)
+                except Exception as e:
+                    logger.exception(f"Fatal error while writing md_file {md_file}; {str(e)}")
+                    return jsonify({"error": f"{dataset_uuid} problem writing json file."}), 500
 
             data_access_level = dataset_data_access_level
             #if consortium access level convert to public dataset, if protected access leave it protected
@@ -871,13 +938,29 @@ def publish_datastage(identifier):
             doi_update_clause = ""
             if not doi_info is None:
                 doi_update_clause = f", e.registered_doi = '{doi_info['registered_doi']}', e.doi_url = '{doi_info['doi_url']}'"
+                
+                
+            #add Published status change to status history
+            status_update = {
+               "status": "Published",
+               "changed_by_email":user_info['email'],
+               "change_timestamp": "@#TIMESTAMP#@"
+            }            
+            status_history_list.append(status_update)
+            #convert from list to string that is used for storage in database
+            new_status_history_str = string_helper.convert_py_obj_to_string(status_history_list)
+            #substitute the TIMESTAMP function to let Neo4j set the change_timestamp value of this status change record
+            status_history_with_timestamp = new_status_history_str.replace("'@#TIMESTAMP#@'", '" + TIMESTAMP() + "')
+            status_history_update_clause = f', e.status_history = "{status_history_with_timestamp}"'
+            
             # set dataset status to published and set the last modified user info and user who published
             update_q = "match (e:Entity {uuid:'" + dataset_uuid + "'}) set e.status = 'Published', e.last_modified_user_sub = '" + \
                        user_info['sub'] + "', e.last_modified_user_email = '" + user_info[
                            'email'] + "', e.last_modified_user_displayname = '" + user_info[
                            'name'] + "', e.last_modified_timestamp = TIMESTAMP(), e.published_timestamp = TIMESTAMP(), e.published_user_email = '" + \
                        user_info['email'] + "', e.published_user_sub = '" + user_info[
-                           'sub'] + "', e.published_user_displayname = '" + user_info['name'] + "'" + doi_update_clause
+                           'sub'] + "', e.published_user_displayname = '" + user_info['name'] + "'" + doi_update_clause + status_history_update_clause
+
             logger.info(dataset_uuid + "\t" + dataset_uuid + "\tNEO4J-update-base-dataset\t" + update_q)
             neo_session.run(update_q)
             out = entity_instance.clear_cache(dataset_uuid)
@@ -911,7 +994,74 @@ def publish_datastage(identifier):
     except Exception as e:
         logger.error(e, exc_info=True)
         return Response("Unexpected error while creating a dataset: " + str(e) + "  Check the logs", 500)
-             
+
+
+@app.route('/datasets/<identifier>/metadata-json', methods=['PUT'])
+@secured(groups="HuBMAP-read")
+def datasets_metadata_json(identifier):
+    """
+    See publish_datastage() for additional information.
+
+    Use the Neo4J query (above) to get dataset and file system information.
+    File system mapping is explained above.
+    Replacing ds.uuid in the URL with the value of ds.uuid, e.g.:
+    curl --verbose --request PUT \
+     --url ${INGESTAPI_URL}/datasets/ds.uuid/metadata-json \
+     --header "Authorization: Bearer ${TOKEN}"
+    """
+    try:
+        if identifier is None or len(identifier) == 0:
+            return Response("Missing or improper dataset identifier", 400)
+
+        auth_helper = AuthHelper.configured_instance(app.config['APP_CLIENT_ID'],
+                                                     app.config['APP_CLIENT_SECRET'])
+        user_info = auth_helper.getUserInfoUsingRequest(request, getGroups=True)
+        if user_info is None:
+            return Response("Unable to obtain user information for auth token", 401)
+        if 'hmgroupids' not in user_info:
+            return Response("User has no valid group information", 403)
+        if data_admin_group_uuid not in user_info['hmgroupids']:
+            return Response("User must be a member of the HuBMAP Data Admin group", 403)
+
+        auth_tokens = auth_helper.getAuthorizationTokens(request.headers)
+        entity_instance = EntitySdk(token=auth_tokens, service_url=app.config['ENTITY_WEBSERVICE_URL'])
+        entity = entity_instance.get_entity_by_id(identifier)
+        entity_dict: dict = vars(entity)
+        dataset_group_uuid = entity_dict.get('group_uuid')
+        dataset_data_access_level = entity_dict.get('data_access_level')
+        dataset_ingest_metadata = entity_dict.get('ingest_metadata')
+        dataset_published = entity_dict.get('status') == 'Published'
+
+        if dataset_ingest_metadata is None:
+            return Response(f"Could not find ingest_metadata for {identifier}", 500)
+
+        logger.info(f"ingest_matadata: {dataset_ingest_metadata}")
+        json_object = json.dumps(dataset_ingest_metadata['metadata'], indent=4)
+        json_object += '\n'
+        ingest_helper = IngestFileHelper(app.config)
+        # Save a .json file with the metadata information at the top level directory...
+        ds_path = ingest_helper.dataset_directory_absolute_path(dataset_data_access_level,
+                                                                dataset_group_uuid,
+                                                                identifier,
+                                                                dataset_published)
+        md_file = os.path.join(ds_path, "metadata.json")
+        logger.info(f"publish_datastage; writing md_file: '{md_file}'; "
+                    f"containing ingest_matadata.metadata: '{json_object}'")
+        try:
+            with open(md_file, "w") as outfile:
+                outfile.write(json_object)
+        except Exception as e:
+            logger.exception(f"Fatal error while writing md_file {md_file}; {str(e)}")
+            return Response(f"Fatal error while writing md_file for {identifier}", 500)
+
+        return Response("Success", 201)
+
+    except HTTPException as hte:
+        return Response(hte.get_description(), hte.get_status_code())
+    except Exception as e:
+        logger.error(e, exc_info=True)
+        return Response("Unexpected error: " + str(e) + "  Check the logs", 500)
+
 @app.route('/datasets/<uuid>/status/<new_status>', methods = ['PUT'])
 #@secured(groups="HuBMAP-read")
 def update_dataset_status(uuid, new_status):
@@ -1281,7 +1431,25 @@ def reorganize_upload(upload_uuid):
 
     return(Response("Upload reorganize started successfully", 200))
 
-
+# method to fetch all Data Provider groups through Hubmap Commons
+# Returns an Array of nested objects containing all groups
+@app.route('/metadata/data-provider-groups', methods=['GET'])
+@secured(groups="HuBMAP-read")
+def all_group_list():
+    try:
+        auth_helper = AuthHelper.configured_instance(
+            app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'])
+        group_list = auth_helper.getHuBMAPGroupInfo()
+        return_list = []
+        for group_info in group_list.keys():
+            if group_list[group_info]['data_provider'] == True:
+                return_list.append(group_list[group_info])
+        return jsonify({'groups': return_list}), 200
+    except HTTPException as hte:
+        return Response(hte.get_description(), hte.get_status_code())
+    except Exception as e:
+        logger.error(e, exc_info=True)
+        return Response("Unexpected error while fetching group list: " + str(e) + "  Check the logs", 500)
 
 @app.route('/metadata/usergroups', methods = ['GET'])
 @secured(groups="HuBMAP-read")
@@ -1523,138 +1691,18 @@ Description
 """
 @app.route('/datasets/data-status', methods=['GET'])
 def dataset_data_status():
-    primary_assays_url = app.config['UBKG_WEBSERVICE_URL'] + 'assaytype?application_context=HUBMAP&primary=true'
-    alt_assays_url = app.config['UBKG_WEBSERVICE_URL'] + 'assaytype?application_context=HUBMAP&primary=false'
-    primary_assay_types_list = requests.get(primary_assays_url).json().get("result")
-    alt_assay_types_list = requests.get(alt_assays_url).json().get("result")
-    assay_types_dict = {item["name"].strip(): item for item in primary_assay_types_list + alt_assay_types_list}
-    organ_types_url = app.config['UBKG_WEBSERVICE_URL'] + 'organs/by-code?application_context=HUBMAP'
-    organ_types_dict = requests.get(organ_types_url).json()
-    all_datasets_query = (
-        "MATCH (ds:Dataset)<-[:ACTIVITY_OUTPUT]-(:Activity)<-[:ACTIVITY_INPUT]-(ancestor) "
-        "RETURN ds.uuid AS uuid, ds.group_name AS group_name, ds.data_types AS data_types, "
-        "ds.hubmap_id AS hubmap_id, ds.lab_dataset_id AS provider_experiment_id, ds.status AS status, "
-        "ds.last_modified_timestamp AS last_touch, ds.data_access_level AS data_access_level, " 
-        "COALESCE(ds.contributors IS NOT NULL) AS has_contributors, COALESCE(ds.contacts IS NOT NULL) AS has_contacts, "
-        "ancestor.entity_type AS ancestor_entity_type"
-    )
-
-    organ_query = (
-        "MATCH (ds:Dataset)<-[*]-(o:Sample {sample_category: 'organ'}) "
-        "WHERE (ds)<-[:ACTIVITY_OUTPUT]-(:Activity) "
-        "RETURN DISTINCT ds.uuid AS uuid, o.organ AS organ, o.hubmap_id as organ_hubmap_id, o.uuid as organ_uuid "
-    )
-
-    donor_query = (
-        "MATCH (ds:Dataset)<-[*]-(dn:Donor) "
-        "WHERE (ds)<-[:ACTIVITY_OUTPUT]-(:Activity) "
-        "RETURN DISTINCT ds.uuid AS uuid, "
-        "COLLECT(DISTINCT dn.hubmap_id) AS donor_hubmap_id, COLLECT(DISTINCT dn.submission_id) AS donor_submission_id, "
-        "COLLECT(DISTINCT dn.lab_donor_id) AS donor_lab_id, COALESCE(dn.metadata IS NOT NULL) AS has_metadata"
-    )
-
-    descendant_datasets_query = (
-        "MATCH (dds:Dataset)<-[*]-(ds:Dataset)<-[:ACTIVITY_OUTPUT]-(:Activity)<-[:ACTIVITY_INPUT]-(:Sample) "
-        "RETURN DISTINCT ds.uuid AS uuid, COLLECT(DISTINCT dds.hubmap_id) AS descendant_datasets"
-    )
-
-    upload_query = (
-        "MATCH (u:Upload)<-[:IN_UPLOAD]-(ds) "
-        "RETURN DISTINCT ds.uuid AS uuid, COLLECT(DISTINCT u.hubmap_id) AS upload"
-    )
-
-    has_rui_query = (
-        "MATCH (ds:Dataset) "
-        "WHERE (ds)<-[:ACTIVITY_OUTPUT]-(:Activity) "
-        "WITH ds, [(ds)<-[*]-(s:Sample) | s.rui_location] AS rui_locations "
-        "RETURN ds.uuid AS uuid, any(rui_location IN rui_locations WHERE rui_location IS NOT NULL) AS has_rui_info"
-    )
-
-    displayed_fields = [
-        "hubmap_id", "group_name", "status", "organ", "provider_experiment_id", "last_touch", "has_contacts",
-        "has_contributors", "data_types", "donor_hubmap_id", "donor_submission_id", "donor_lab_id",
-        "has_metadata", "descendant_datasets", "upload", "has_rui_info", "globus_url", "has_data", "organ_hubmap_id"
-    ]
-
-    queries = [all_datasets_query, organ_query, donor_query, descendant_datasets_query,
-               upload_query, has_rui_query]
-    results = [None] * len(queries)
-    threads = []
-    for i, query in enumerate(queries):
-        thread = Thread(target=run_query, args=(query, results, i))
-        thread.start()
-        threads.append(thread)
-    for thread in threads:
-        thread.join()
-    output_dict = {}
-    # Here we specifically indexed the values in 'results' in case certain threads completed out of order
-    all_datasets_result = results[0]
-    organ_result = results[1]
-    donor_result = results[2]
-    descendant_datasets_result = results[3]
-    upload_result = results[4]
-    has_rui_result = results[5]
-
-    for dataset in all_datasets_result:
-        output_dict[dataset['uuid']] = dataset
-    for dataset in organ_result:
-        if output_dict.get(dataset['uuid']):
-            output_dict[dataset['uuid']]['organ'] = dataset['organ']
-            output_dict[dataset['uuid']]['organ_hubmap_id'] = dataset['organ_hubmap_id']
-            output_dict[dataset['uuid']]['organ_uuid'] = dataset['organ_uuid']
-    for dataset in donor_result:
-        if output_dict.get(dataset['uuid']):
-            output_dict[dataset['uuid']]['donor_hubmap_id'] = dataset['donor_hubmap_id']
-            output_dict[dataset['uuid']]['donor_submission_id'] = dataset['donor_submission_id']
-            output_dict[dataset['uuid']]['donor_lab_id'] = dataset['donor_lab_id']
-            output_dict[dataset['uuid']]['has_metadata'] = dataset['has_metadata']
-    for dataset in descendant_datasets_result:
-        if output_dict.get(dataset['uuid']):
-            output_dict[dataset['uuid']]['descendant_datasets'] = dataset['descendant_datasets']
-    for dataset in upload_result:
-        if output_dict.get(dataset['uuid']):
-            output_dict[dataset['uuid']]['upload'] = dataset['upload']
-    for dataset in has_rui_result:
-        if output_dict.get(dataset['uuid']):
-            output_dict[dataset['uuid']]['has_rui_info'] = dataset['has_rui_info']
-
-    combined_results = []
-    for uuid in output_dict:
-        combined_results.append(output_dict[uuid])
-
-    for dataset in combined_results:
-        globus_url = get_globus_url(dataset.get('data_access_level'), dataset.get('group_name'), dataset.get('uuid'))
-        dataset['globus_url'] = globus_url
-        dataset['last_touch'] = str(datetime.datetime.utcfromtimestamp(dataset['last_touch']/1000))
-        if dataset.get('ancestor_entity_type').lower() != "dataset":
-            dataset['is_primary'] = "true"
+    redis_connection = redis.from_url(app.config['REDIS_URL'])
+    try:
+        cached_data = redis_connection.get("datasets_data_status_key")
+        if cached_data:
+            cached_data_json = json.loads(cached_data.decode('utf-8'))
+            return jsonify(cached_data_json)
         else:
-            dataset['is_primary'] = "false"
-        has_data = files_exist(dataset.get('uuid'), dataset.get('data_access_level'), dataset.get('group_name'))
-        dataset['has_data'] = has_data
-
-        for prop in dataset:
-            if isinstance(dataset[prop], list):
-                dataset[prop] = ", ".join(dataset[prop])
-            if isinstance(dataset[prop], (bool, int)):
-                dataset[prop] = str(dataset[prop])
-            if dataset[prop] and dataset[prop][0] == "[" and dataset[prop][-1] == "]":
-                dataset[prop] = dataset[prop].replace("'",'"')
-                dataset[prop] = json.loads(dataset[prop])
-                dataset[prop] = dataset[prop][0]
-            if dataset[prop] is None:
-                dataset[prop] = " "
-        if dataset.get('data_types') and dataset.get('data_types') in assay_types_dict:
-            dataset['data_types'] = assay_types_dict[dataset['data_types']]['description'].strip()
-        for field in displayed_fields:
-            if dataset.get(field) is None:
-                dataset[field] = " "
-        if dataset.get('organ') and dataset['organ'].upper() not in ['HT', 'LV', 'LN', 'RK', 'LK']:
-            dataset['has_rui_info'] = "not-applicable"
-        if dataset.get('organ') and dataset.get('organ') in organ_types_dict:
-            dataset['organ'] = organ_types_dict[dataset['organ']]
-
-    return jsonify(combined_results)
+            raise Exception
+    except Exception:
+        logger.error("Failed to retrieve datasets data-status from cache. Retrieving new data")
+        combined_results = update_datasets_datastatus()
+        return jsonify(combined_results)
 
 
 """
@@ -1662,39 +1710,18 @@ Description
 """
 @app.route('/uploads/data-status', methods=['GET'])
 def upload_data_status():
-    all_uploads_query = (
-        "MATCH (up:Upload) "
-        "OPTIONAL MATCH (up)<-[:IN_UPLOAD]-(ds:Dataset) "
-        "RETURN up.uuid AS uuid, up.group_name AS group_name, up.hubmap_id AS hubmap_id, up.status AS status, "
-        "up.title AS title, COLLECT(DISTINCT ds.uuid) AS datasets "
-    )
-
-    displayed_fields = [
-        "uuid", "group_name", "hubmap_id", "status", "title", "datasets"
-    ]
-
-    with neo4j_driver_instance.session() as session:
-        results = session.run(all_uploads_query).data()
-        for upload in results:
-            globus_url = get_globus_url('protected', upload.get('group_name'), upload.get('uuid'))
-            upload['globus_url'] = globus_url
-            for prop in upload:
-                if isinstance(upload[prop], list):
-                    upload[prop] = ", ".join(upload[prop])
-                if isinstance(upload[prop], (bool, int)):
-                    upload[prop] = str(upload[prop])
-                if upload[prop] and upload[prop][0] == "[" and upload[prop][-1] == "]":
-                    upload[prop] = upload[prop].replace("'",'"')
-                    upload[prop] = json.loads(upload[prop])
-                    upload[prop] = upload[prop][0]
-                if upload[prop] is None:
-                    upload[prop] = " "
-            for field in displayed_fields:
-                if upload.get(field) is None:
-                    upload[field] = " "
-    # TODO: Once url parameters are implemented in the front-end for the data-status dashboard, we'll need to return a
-    # TODO: link to the datasets page only displaying datasets belonging to a given upload.
-    return jsonify(results)
+    redis_connection = redis.from_url(app.config['REDIS_URL'])
+    try:
+        cached_data = redis_connection.get("uploads_data_status_key")
+        if cached_data:
+            cached_data_json = json.loads(cached_data.decode('utf-8'))
+            return jsonify(cached_data_json)
+        else:
+            raise Exception
+    except Exception:
+        logger.error("Failed to retrieve uploads data-status from cache. Retrieving new data")
+        results = update_uploads_datastatus()
+        return jsonify(results)
 
 
 @app.route('/donors/bulk-upload', methods=['POST'])
@@ -2064,8 +2091,8 @@ def validate_samples(headers, records, header):
 
             # validate sample_protocol
             protocol = data_row['sample_protocol']
-            selection_protocol_pattern1 = re.match('^https://dx\.doi\.org/[\d]+\.[\d]+/protocols\.io\.[\w]*$', protocol)
-            selection_protocol_pattern2 = re.match('^[\d]+\.[\d]+/protocols\.io\.[\w]*$', protocol)
+            selection_protocol_pattern1 = re.match('^https://dx\.doi\.org/[\d]+\.[\d]+/protocols\.io\.[\w/]*$', protocol)
+            selection_protocol_pattern2 = re.match('^[\d]+\.[\d]+/protocols\.io\.[\w/]*$', protocol)
             if selection_protocol_pattern2 is None and selection_protocol_pattern1 is None:
                 file_is_valid = False
                 error_msg.append(
@@ -2297,6 +2324,190 @@ def access_level_prefix_dir(dir_name):
     return commons_file_helper.ensureTrailingSlashURL(commons_file_helper.ensureBeginningSlashURL(dir_name))
 
 
+def update_datasets_datastatus():
+    primary_assays_url = app.config['UBKG_WEBSERVICE_URL'] + 'assaytype?application_context=HUBMAP&primary=true'
+    alt_assays_url = app.config['UBKG_WEBSERVICE_URL'] + 'assaytype?application_context=HUBMAP&primary=false'
+    rui_organs_url = app.config['UBKG_WEBSERVICE_URL'] + 'organs?application_context=HUBMAP'
+    primary_assay_types_list = requests.get(primary_assays_url).json().get("result")
+    alt_assay_types_list = requests.get(alt_assays_url).json().get("result")
+    rui_organs_list = requests.get(rui_organs_url).json()
+    assay_types_dict = {item["name"].strip(): item for item in primary_assay_types_list + alt_assay_types_list}
+    organ_types_url = app.config['UBKG_WEBSERVICE_URL'] + 'organs/by-code?application_context=HUBMAP'
+    organ_types_dict = requests.get(organ_types_url).json()
+    all_datasets_query = (
+        "MATCH (ds:Dataset)<-[:ACTIVITY_OUTPUT]-(:Activity)<-[:ACTIVITY_INPUT]-(ancestor) "
+        "RETURN ds.uuid AS uuid, ds.group_name AS group_name, ds.data_types AS data_types, "
+        "ds.hubmap_id AS hubmap_id, ds.lab_dataset_id AS provider_experiment_id, ds.status AS status, "
+        "ds.last_modified_timestamp AS last_touch, ds.data_access_level AS data_access_level, "
+        "COALESCE(ds.contributors IS NOT NULL) AS has_contributors, COALESCE(ds.contacts IS NOT NULL) AS has_contacts, "
+        "ancestor.entity_type AS ancestor_entity_type"
+    )
+
+    organ_query = (
+        "MATCH (ds:Dataset)<-[*]-(o:Sample {sample_category: 'organ'}) "
+        "WHERE (ds)<-[:ACTIVITY_OUTPUT]-(:Activity) "
+        "RETURN DISTINCT ds.uuid AS uuid, o.organ AS organ, o.hubmap_id as organ_hubmap_id, o.uuid as organ_uuid "
+    )
+
+    donor_query = (
+        "MATCH (ds:Dataset)<-[*]-(dn:Donor) "
+        "WHERE (ds)<-[:ACTIVITY_OUTPUT]-(:Activity) "
+        "RETURN DISTINCT ds.uuid AS uuid, "
+        "COLLECT(DISTINCT dn.hubmap_id) AS donor_hubmap_id, COLLECT(DISTINCT dn.submission_id) AS donor_submission_id, "
+        "COLLECT(DISTINCT dn.lab_donor_id) AS donor_lab_id, COALESCE(dn.metadata IS NOT NULL) AS has_metadata"
+    )
+
+    descendant_datasets_query = (
+        "MATCH (dds:Dataset)<-[*]-(ds:Dataset)<-[:ACTIVITY_OUTPUT]-(:Activity)<-[:ACTIVITY_INPUT]-(:Sample) "
+        "RETURN DISTINCT ds.uuid AS uuid, COLLECT(DISTINCT dds.hubmap_id) AS descendant_datasets"
+    )
+
+    upload_query = (
+        "MATCH (u:Upload)<-[:IN_UPLOAD]-(ds) "
+        "RETURN DISTINCT ds.uuid AS uuid, COLLECT(DISTINCT u.hubmap_id) AS upload"
+    )
+
+    has_rui_query = (
+        "MATCH (ds:Dataset) "
+        "WHERE (ds)<-[:ACTIVITY_OUTPUT]-(:Activity) "
+        "WITH ds, [(ds)<-[*]-(s:Sample) | s.rui_location] AS rui_locations "
+        "RETURN ds.uuid AS uuid, any(rui_location IN rui_locations WHERE rui_location IS NOT NULL) AS has_rui_info"
+    )
+
+    displayed_fields = [
+        "hubmap_id", "group_name", "status", "organ", "provider_experiment_id", "last_touch", "has_contacts",
+        "has_contributors", "data_types", "donor_hubmap_id", "donor_submission_id", "donor_lab_id",
+        "has_metadata", "descendant_datasets", "upload", "has_rui_info", "globus_url", "has_data", "organ_hubmap_id"
+    ]
+
+    queries = [all_datasets_query, organ_query, donor_query, descendant_datasets_query,
+               upload_query, has_rui_query]
+    results = [None] * len(queries)
+    threads = []
+    for i, query in enumerate(queries):
+        thread = Thread(target=run_query, args=(query, results, i))
+        thread.start()
+        threads.append(thread)
+    for thread in threads:
+        thread.join()
+    output_dict = {}
+    # Here we specifically indexed the values in 'results' in case certain threads completed out of order
+    all_datasets_result = results[0]
+    organ_result = results[1]
+    donor_result = results[2]
+    descendant_datasets_result = results[3]
+    upload_result = results[4]
+    has_rui_result = results[5]
+
+    for dataset in all_datasets_result:
+        output_dict[dataset['uuid']] = dataset
+    for dataset in organ_result:
+        if output_dict.get(dataset['uuid']):
+            output_dict[dataset['uuid']]['organ'] = dataset['organ']
+            output_dict[dataset['uuid']]['organ_hubmap_id'] = dataset['organ_hubmap_id']
+            output_dict[dataset['uuid']]['organ_uuid'] = dataset['organ_uuid']
+    for dataset in donor_result:
+        if output_dict.get(dataset['uuid']):
+            output_dict[dataset['uuid']]['donor_hubmap_id'] = dataset['donor_hubmap_id']
+            output_dict[dataset['uuid']]['donor_submission_id'] = dataset['donor_submission_id']
+            output_dict[dataset['uuid']]['donor_lab_id'] = dataset['donor_lab_id']
+            output_dict[dataset['uuid']]['has_metadata'] = dataset['has_metadata']
+    for dataset in descendant_datasets_result:
+        if output_dict.get(dataset['uuid']):
+            output_dict[dataset['uuid']]['descendant_datasets'] = dataset['descendant_datasets']
+    for dataset in upload_result:
+        if output_dict.get(dataset['uuid']):
+            output_dict[dataset['uuid']]['upload'] = dataset['upload']
+    for dataset in has_rui_result:
+        if output_dict.get(dataset['uuid']):
+            output_dict[dataset['uuid']]['has_rui_info'] = dataset['has_rui_info']
+
+    combined_results = []
+    for uuid in output_dict:
+        combined_results.append(output_dict[uuid])
+
+    for dataset in combined_results:
+        globus_url = get_globus_url(dataset.get('data_access_level'), dataset.get('group_name'), dataset.get('uuid'))
+        dataset['globus_url'] = globus_url
+        dataset['last_touch'] = str(datetime.datetime.utcfromtimestamp(dataset['last_touch'] / 1000))
+        if dataset.get('ancestor_entity_type').lower() != "dataset":
+            dataset['is_primary'] = "true"
+        else:
+            dataset['is_primary'] = "false"
+        has_data = files_exist(dataset.get('uuid'), dataset.get('data_access_level'), dataset.get('group_name'))
+        dataset['has_data'] = has_data
+
+        for prop in dataset:
+            if isinstance(dataset[prop], list):
+                dataset[prop] = ", ".join(dataset[prop])
+            if isinstance(dataset[prop], (bool, int)):
+                dataset[prop] = str(dataset[prop])
+            if dataset[prop] and dataset[prop][0] == "[" and dataset[prop][-1] == "]":
+                dataset[prop] = dataset[prop].replace("'", '"')
+                dataset[prop] = json.loads(dataset[prop])
+                dataset[prop] = dataset[prop][0]
+            if dataset[prop] is None:
+                dataset[prop] = " "
+        if dataset.get('data_types') and dataset.get('data_types') in assay_types_dict:
+            dataset['data_types'] = assay_types_dict[dataset['data_types']]['description'].strip()
+        for field in displayed_fields:
+            if dataset.get(field) is None:
+                dataset[field] = " "
+        if dataset.get('organ') and rui_organs_list:
+            rui_codes = [organ['rui_code'] for organ in rui_organs_list]
+            if dataset['organ'].upper() not in rui_codes:
+                dataset['has_rui_info'] = "not-applicable"
+        if dataset.get('organ') and dataset.get('organ') in organ_types_dict:
+            dataset['organ'] = organ_types_dict[dataset['organ']]
+
+    try:
+        combined_results_string = json.dumps(combined_results)
+    except json.JSONDecodeError as e:
+        bad_request_error(e)
+    redis_connection = redis.from_url(app.config['REDIS_URL'])
+    cache_key = "datasets_data_status_key"
+    redis_connection.set(cache_key, combined_results_string)
+    return combined_results
+
+def update_uploads_datastatus():
+    all_uploads_query = (
+        "MATCH (up:Upload) "
+        "OPTIONAL MATCH (up)<-[:IN_UPLOAD]-(ds:Dataset) "
+        "RETURN up.uuid AS uuid, up.group_name AS group_name, up.hubmap_id AS hubmap_id, up.status AS status, "
+        "up.title AS title, COLLECT(DISTINCT ds.uuid) AS datasets "
+    )
+
+    displayed_fields = [
+        "uuid", "group_name", "hubmap_id", "status", "title", "datasets"
+    ]
+
+    with neo4j_driver_instance.session() as session:
+        results = session.run(all_uploads_query).data()
+        for upload in results:
+            globus_url = get_globus_url('protected', upload.get('group_name'), upload.get('uuid'))
+            upload['globus_url'] = globus_url
+            for prop in upload:
+                if isinstance(upload[prop], list):
+                    upload[prop] = ", ".join(upload[prop])
+                if isinstance(upload[prop], (bool, int)):
+                    upload[prop] = str(upload[prop])
+                if upload[prop] and upload[prop][0] == "[" and upload[prop][-1] == "]":
+                    upload[prop] = upload[prop].replace("'", '"')
+                    upload[prop] = json.loads(upload[prop])
+                    upload[prop] = upload[prop][0]
+                if upload[prop] is None:
+                    upload[prop] = " "
+            for field in displayed_fields:
+                if upload.get(field) is None:
+                    upload[field] = " "
+    try:
+        results_string = json.dumps(results)
+    except json.JSONDecodeError as e:
+        bad_request_error(e)
+    redis_connection = redis.from_url(app.config['REDIS_URL'])
+    cache_key = "uploads_data_status_key"
+    redis_connection.set(cache_key, results_string)
+    return results
 
 
 def files_exist(uuid, data_access_level, group_name):
@@ -2317,7 +2528,26 @@ def files_exist(uuid, data_access_level, group_name):
     else:
         return False
 
+scheduler = BackgroundScheduler()
+scheduler.start()
 
+
+scheduler.add_job(
+    func=update_datasets_datastatus,
+    trigger=IntervalTrigger(hours=1),
+    id='update_dataset_data_status',
+    name="Update Dataset Data Status Job"
+)
+
+scheduler.add_job(
+    func=update_uploads_datastatus,
+    trigger=IntervalTrigger(hours=1),
+    id='update_upload_data_status',
+    name="Update Upload Data Status Job"
+)
+
+update_datasets_datastatus()
+update_uploads_datastatus()
 
 # For local development/testing
 if __name__ == '__main__':
