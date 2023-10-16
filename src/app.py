@@ -994,76 +994,65 @@ def publish_datastage(identifier):
         return Response("Unexpected error while creating a dataset: " + str(e) + "  Check the logs", 500)
 
 
-@app.route('/datasets/metadata-json', methods=['PUT'])
+@app.route('/datasets/<identifier>/metadata-json', methods=['PUT'])
 @secured(groups="HuBMAP-read")
-def datasets_metadata_json():
+def datasets_metadata_json(identifier):
     """
     See publish_datastage() for additional information.
 
-    Use the Neo4J query (above) replacing ds.uuid with the value of ds.uuid, e.g.:
+    Use the Neo4J query (above) to get dataset and file system information.
+    File system mapping is explained above.
+    Replacing ds.uuid in the URL with the value of ds.uuid, e.g.:
     curl --verbose --request PUT \
-     --url ${INGESTAPI_URL}/datasets/metadata-json \
-     --header "Content-Type: application/json" \
-     --header "Accept: application/json" \
-     --header "Authorization: Bearer ${TOKEN}" \
-     --data '{"uuid":["fdacb21245e14fd126bfce05ae191857", "b4ed22922fe9efcc68bb656da04052cb"]}'
+     --url ${INGESTAPI_URL}/datasets/ds.uuid/metadata-json \
+     --header "Authorization: Bearer ${TOKEN}"
     """
-    if not request.is_json:
-        return Response("json request required", 400)
-    dataset_uuids = request.json.get('uuid')
-    if type(dataset_uuids) is not list or len(dataset_uuids) == 0:
-        return Response("json request must contain a uuid key which is an array of dataset uuids", 400)
-
     try:
-        auth_helper = AuthHelper.configured_instance(app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'])
-        ingest_helper = IngestFileHelper(app.config)
+        if identifier is None or len(identifier) == 0:
+            return Response("Missing or improper dataset identifier", 400)
+
+        auth_helper = AuthHelper.configured_instance(app.config['APP_CLIENT_ID'],
+                                                     app.config['APP_CLIENT_SECRET'])
         user_info = auth_helper.getUserInfoUsingRequest(request, getGroups=True)
         if user_info is None:
             return Response("Unable to obtain user information for auth token", 401)
-        if isinstance(user_info, Response):
-            return user_info
-
         if 'hmgroupids' not in user_info:
-            return Response("User has no valid group information.", 403)
+            return Response("User has no valid group information", 403)
         if data_admin_group_uuid not in user_info['hmgroupids']:
-            return Response("User must be a member of the HuBMAP Data Admin group.", 403)
+            return Response("User must be a member of the HuBMAP Data Admin group", 403)
 
-        for dataset_uuid in dataset_uuids:
-            q = f"MATCH (e:Dataset {{uuid: '{dataset_uuid}'}}) RETURN " \
-                "e.uuid as uuid, e.entity_type as entitytype, e.status as status, " \
-                "e.data_access_level as data_access_level, e.group_uuid as group_uuid, " \
-                "e.contacts as contacts, e.contributors as contributors, " \
-                "e.ingest_metadata as ingest_metadata"
-            with neo4j_driver_instance.session() as neo_session:
-                rval = neo_session.run(q).data()
+        auth_tokens = auth_helper.getAuthorizationTokens(request.headers)
+        entity_instance = EntitySdk(token=auth_tokens, service_url=app.config['ENTITY_WEBSERVICE_URL'])
+        entity = entity_instance.get_entity_by_id(identifier)
+        entity_dict: dict = vars(entity)
+        dataset_group_uuid = entity_dict.get('group_uuid')
+        dataset_data_access_level = entity_dict.get('data_access_level')
+        dataset_ingest_metadata = entity_dict.get('ingest_metadata')
+        dataset_published = entity_dict.get('status') == 'Published'
 
-                dataset_data_access_level = rval[0]['data_access_level']
-                dataset_group_uuid = rval[0]['group_uuid']
-                dataset_ingest_metadata = rval[0].get('ingest_metadata')
+        if dataset_ingest_metadata is None:
+            return Response(f"Could not find ingest_metadata for {identifier}", 500)
 
-                dataset_ingest_matadata_dict = None
-                if dataset_ingest_metadata is not None:
-                    dataset_ingest_matadata_dict: dict =\
-                        string_helper.convert_str_literal(dataset_ingest_metadata)
+        logger.info(f"ingest_matadata: {dataset_ingest_metadata}")
+        json_object = json.dumps(dataset_ingest_metadata['metadata'], indent=4)
+        json_object += '\n'
+        ingest_helper = IngestFileHelper(app.config)
+        # Save a .json file with the metadata information at the top level directory...
+        ds_path = ingest_helper.dataset_directory_absolute_path(dataset_data_access_level,
+                                                                dataset_group_uuid,
+                                                                identifier,
+                                                                dataset_published)
+        md_file = os.path.join(ds_path, "metadata.json")
+        logger.info(f"publish_datastage; writing md_file: '{md_file}'; "
+                    f"containing ingest_matadata.metadata: '{json_object}'")
+        try:
+            with open(md_file, "w") as outfile:
+                outfile.write(json_object)
+        except Exception as e:
+            logger.exception(f"Fatal error while writing md_file {md_file}; {str(e)}")
+            return Response(f"Fatal error while writing md_file for {identifier}", 500)
 
-                # Save a .json file with the metadata information at the top level directory...
-                if dataset_ingest_matadata_dict is not None:
-                    logger.info(f"ingest_matadata: {dataset_ingest_matadata_dict}")
-                    json_object = json.dumps(dataset_ingest_matadata_dict['metadata'], indent=4)
-                    json_object += '\n'
-                    ds_path = ingest_helper.dataset_directory_absolute_path(dataset_data_access_level,
-                                                                            dataset_group_uuid, dataset_uuid, False)
-                    md_file = os.path.join(ds_path, "metadata.json")
-                    logger.info(f"publish_datastage; writing md_file: '{md_file}'; "
-                                f"containing ingest_matadata.metadata: '{json_object}'")
-                    try:
-                        with open(md_file, "w") as outfile:
-                            outfile.write(json_object)
-                    except Exception as e:
-                        logger.exception(f"Fatal error while writing md_file {md_file}; {str(e)}")
-                        return jsonify({"error": f"{dataset_uuid} problem writing json file."}), 500
-
-        return Response("Success", 200)
+        return Response("Success", 201)
 
     except HTTPException as hte:
         return Response(hte.get_description(), hte.get_status_code())
