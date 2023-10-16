@@ -1031,7 +1031,7 @@ def datasets_metadata_json(identifier):
         dataset_published = entity_dict.get('status') == 'Published'
 
         if dataset_ingest_metadata is None:
-            return Response(f"Could not find ingest_metadata for {identifier}", 412)
+            return Response(f"Could not find ingest_metadata for {identifier}", 500)
 
         logger.info(f"ingest_matadata: {dataset_ingest_metadata}")
         json_object = json.dumps(dataset_ingest_metadata['metadata'], indent=4)
