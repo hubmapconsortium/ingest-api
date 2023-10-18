@@ -742,8 +742,6 @@ def multiple_components():
                 if not os.path.isdir(dataset.get('dataset_link_abs_dir')):
                     return Response(f"{dataset.get('dataset_link_abs_dir')} is not a directory", 500)
                 new_directory_path = ingest_helper.get_dataset_directory_absolute_path(dataset, requested_group_uuid, dataset['uuid'])
-                print(f"new_directory_path is: {new_directory_path}")
-                print(f"dataset_link_abs_dir is: {dataset['dataset_link_abs_dir']}")
                 logger.info(f"Creating a directory as: {new_directory_path} with a symbolic link to: {dataset['dataset_link_abs_dir']}")
                 os.symlink(dataset['dataset_link_abs_dir'], new_directory_path, True)
             else:
