@@ -56,6 +56,7 @@ from werkzeug import utils
 from routes.auth import auth_blueprint
 from routes.datasets import datasets_blueprint
 from routes.file import file_blueprint
+from routes.assayclassifier import bp as assayclassifier_blueprint
 
 # Set logging format and level (default is warning)
 # All the API logging is forwarded to the uWSGI server and gets written into the log file `uwsgi-ingest-api.log`
@@ -75,6 +76,7 @@ app.config.from_pyfile('app.cfg')
 app.register_blueprint(auth_blueprint)
 app.register_blueprint(datasets_blueprint)
 app.register_blueprint(file_blueprint)
+app.register_blueprint(assayclassifier_blueprint)
 
 # Suppress InsecureRequestWarning warning when requesting status on https with ssl cert verify disabled
 requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)

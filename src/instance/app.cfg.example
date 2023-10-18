@@ -133,3 +133,6 @@ DATACITE_HUBMAP_PREFIX = ''
 
 # Sets cookie domain context upon login. Use None for development
 COOKIE_DOMAIN = '.hubmapconsortium.org'
+
+# URI from which to load the assay classifier rules.
+RULE_CHAIN_URI = ''

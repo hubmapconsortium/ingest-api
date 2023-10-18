@@ -1,0 +1,488 @@
+[
+    {
+        "type": "note",
+        "match": "metadata_schema_id == null",
+        "value": "{'not_dcwg': true, 'is_dcwg': false}",
+        "rule_description": "Preamble rule identifying DCWG"
+    },
+    {
+        "type": "note",
+        "match": "metadata_schema_id != null",
+        "value": "{'not_dcwg': false, 'is_dcwg': true}",
+        "rule_description": "Preamble rule identifying non-DCWG"
+    },
+    {
+        "type": "note",
+        "match": "not_dcwg and assay_type == null and data_types != null",
+        "value": "{'is_derived': true, 'not_derived': false}",
+        "rule_description": "Preamble rule identifying derived non-DCWG"
+    },
+    {
+        "type": "note",
+        "match": "not_dcwg and is_derived == null",
+        "value": "{'is_derived': false, 'not_derived': true}",
+        "rule_description": "Preamble rule identifying non-derived non-DCWG"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and not_derived and assay_type in ['AF']",
+        "value": "{'assaytype': 'AF', 'vitessce_hints': [], 'description': 'Autofluorescence Microscopy'}",
+        "rule_description": "non-DCWG primary AF"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and is_derived and data_types[0] in ['AF_pyramid']",
+        "value": "{'assaytype': 'AF_pyramid', 'vitessce_hints': ['pyramid'], 'description': 'Autofluorescence Microscopy [Image Pyramid]'}",
+        "rule_description": "non-DCWG derived AF_pyramid"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and not_derived and assay_type in ['ATACseq-bulk', 'bulkATACseq']",
+        "value": "{'assaytype': 'ATACseq-bulk', 'vitessce_hints': [], 'description': 'Bulk ATAC-seq'}",
+        "rule_description": "non-DCWG primary ATACseq-bulk"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and is_derived and data_types[0] in ['bulk_atacseq']",
+        "value": "{'assaytype': 'bulk_atacseq', 'vitessce_hints': [], 'description': 'Bulk ATAC-seq [BWA + MACS2]'}",
+        "rule_description": "non-DCWG derived bulk_atacseq"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and not_derived and assay_type in ['cell-dive', 'cell DIVE', 'Cell DIVE']",
+        "value": "{'assaytype': 'cell-dive', 'vitessce_hints': [], 'description': 'Cell DIVE'}",
+        "rule_description": "non-DCWG primary cell-dive"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and is_derived and data_types[0] in ['celldive_deepcell']",
+        "value": "{'assaytype': 'celldive_deepcell', 'vitessce_hints': ['sprm', 'anndata', 'is_image', 'is_tiled'], 'description': 'CellDIVE [DeepCell + SPRM]'}",
+        "rule_description": "non-DCWG derived celldive_deepcell"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and not_derived and assay_type in ['CODEX']",
+        "value": "{'assaytype': 'CODEX', 'vitessce_hints': [], 'description': 'CODEX'}",
+        "rule_description": "non-DCWG primary CODEX"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and not_derived and assay_type in ['CODEX2']",
+        "value": "{'assaytype': 'CODEX2', 'vitessce_hints': [], 'description': 'CODEX (CODEX2 assay type)'}",
+        "rule_description": "non-DCWG primary CODEX2"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and is_derived and data_types[0] in ['codex_cytokit_v1']",
+        "value": "{'assaytype': 'codex_cytokit_v1', 'vitessce_hints': ['codex', 'is_image', 'is_tiled'], 'description': 'CODEX [Cytokit + SPRM]'}",
+        "rule_description": "non-DCWG derived codex_cytokit_v1"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and is_derived and data_types[0] in ['codex_cytokit']",
+        "value": "{'assaytype': 'codex_cytokit', 'vitessce_hints': ['sprm', 'anndata', 'is_image', 'is_tiled'], 'description': 'CODEX [Cytokit + SPRM]'}",
+        "rule_description": "non-DCWG derived codex_cytokit"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and not_derived and assay_type in ['DART-FISH']",
+        "value": "{'assaytype': 'DART-FISH', 'vitessce_hints': [], 'description': 'DART-FISH'}",
+        "rule_description": "non-DCWG primary DART-FISH"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and not_derived and assay_type in ['DESI', 'DESI-IMS', 'DESI IMS']",
+        "value": "{'assaytype': 'DESI', 'vitessce_hints': [], 'description': 'DESI'}",
+        "rule_description": "non-DCWG primary DESI"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and is_derived and data_types[0] in ['DESI_pyramid']",
+        "value": "{'assaytype': 'DESI_pyramid', 'vitessce_hints': ['pyramid'], 'description': 'DESI [Image Pyramid]'}",
+        "rule_description": "non-DCWG derived DESI_pyramid"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and is_derived and data_types[0] in ['image_pyramid', 'Image Pyramid']",
+        "value": "{'assaytype': 'image_pyramid', 'vitessce_hints': ['is_image', 'pyramid'], 'description': 'Image Pyramid'}",
+        "rule_description": "non-DCWG derived image_pyramid"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and not_derived and assay_type in ['IMC2D', 'IMC', '2D-IMC', 'Imaging Mass Cytometry']",
+        "value": "{'assaytype': 'IMC2D', 'vitessce_hints': [], 'description': 'Imaging Mass Cytometry (2D)'}",
+        "rule_description": "non-DCWG primary IMC2D"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and not_derived and assay_type in ['IMC3D', '3D-IMC', '3D Imaging Mass Cytometry']",
+        "value": "{'assaytype': 'IMC3D', 'vitessce_hints': [], 'description': 'Imaging Mass Cytometry (3D)'}",
+        "rule_description": "non-DCWG primary IMC3D"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and is_derived and data_types[0] in ['IMC2D_pyramid', 'IMC_pyramid']",
+        "value": "{'assaytype': 'IMC2D_pyramid', 'vitessce_hints': ['pyramid'], 'description': 'Imaging Mass Cytometry (2D) [Image Pyramid]'}",
+        "rule_description": "non-DCWG derived IMC2D_pyramid"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and is_derived and data_types[0] in ['IMC3D_pyramid', '3D-IMC_pyramid']",
+        "value": "{'assaytype': 'IMC3D_pyramid', 'vitessce_hints': ['pyramid'], 'description': 'Imaging Mass Cytometry (3D) [Image Pyramid]'}",
+        "rule_description": "non-DCWG derived IMC3D_pyramid"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and not_derived and assay_type in ['lc-ms_label-free']",
+        "value": "{'assaytype': 'lc-ms_label-free', 'vitessce_hints': [], 'description': 'Label-free LC-MS'}",
+        "rule_description": "non-DCWG primary lc-ms_label-free"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and not_derived and assay_type in ['lc-ms_labeled']",
+        "value": "{'assaytype': 'lc-ms_labeled', 'vitessce_hints': [], 'description': 'Labeled LC-MS'}",
+        "rule_description": "non-DCWG primary lc-ms_labeled"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and not_derived and assay_type in ['lc-ms-ms_label-free', 'LC-MS/MS (label-free proteomics)']",
+        "value": "{'assaytype': 'lc-ms-ms_label-free', 'vitessce_hints': [], 'description': 'Label-free LC-MS/MS'}",
+        "rule_description": "non-DCWG primary lc-ms-ms_label-free"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and not_derived and assay_type in ['lc-ms-ms_labeled']",
+        "value": "{'assaytype': 'lc-ms-ms_labeled', 'vitessce_hints': [], 'description': 'Labeled LC-MS/MS'}",
+        "rule_description": "non-DCWG primary lc-ms-ms_labeled"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and not_derived and assay_type in ['LC-MS-untargeted']",
+        "value": "{'assaytype': 'LC-MS-untargeted', 'vitessce_hints': [], 'description': 'Untargeted LC-MS'}",
+        "rule_description": "non-DCWG primary LC-MS-untargeted"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and not_derived and assay_type in ['Lightsheet', 'Light Sheet']",
+        "value": "{'assaytype': 'Lightsheet', 'vitessce_hints': [], 'description': 'Lightsheet Microscopy'}",
+        "rule_description": "non-DCWG primary Lightsheet"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and not_derived and assay_type in ['MALDI-IMS', 'MALDI-IMS-neg', 'MALDI-IMS-pos']",
+        "value": "{'assaytype': 'MALDI-IMS', 'vitessce_hints': ['maldi'], 'description': 'MALDI IMS'}",
+        "rule_description": "non-DCWG primary MALDI-IMS"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and is_derived and data_types[0] in ['MALDI-IMS_pyramid', 'MALDI-IMS-neg_pyramid', 'MALDI-IMS-pos_pyramid']",
+        "value": "{'assaytype': 'MALDI-IMS_pyramid', 'vitessce_hints': ['pyramid', 'maldi'], 'description': 'MALDI IMS [Image Pyramid]'}",
+        "rule_description": "non-DCWG derived MALDI-IMS_pyramid"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and not_derived and assay_type in ['MIBI', 'Multiplex Ion Beam Imaging', 'mibi']",
+        "value": "{'assaytype': 'MIBI', 'vitessce_hints': [], 'description': 'Multiplex Ion Beam Imaging'}",
+        "rule_description": "non-DCWG primary MIBI"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and is_derived and data_types[0] in ['mibi_deepcell']",
+        "value": "{'assaytype': 'mibi_deepcell', 'vitessce_hints': ['is_image', 'is_tiled', 'sprm', 'anndata'], 'description': 'Multiplex Ion Beam Imaging [DeepCell + SPRM]'}",
+        "rule_description": "non-DCWG derived mibi_deepcell"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and not_derived and assay_type in ['NanoDESI']",
+        "value": "{'assaytype': 'NanoDESI', 'vitessce_hints': [], 'description': 'NanoDESI'}",
+        "rule_description": "non-DCWG primary NanoDESI"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and is_derived and data_types[0] in ['NanoDESI_pyramid']",
+        "value": "{'assaytype': 'NanoDESI_pyramid', 'vitessce_hints': ['pyramid'], 'description': 'NanoDESI [Image Pyramid]'}",
+        "rule_description": "non-DCWG derived NanoDESI_pyramid"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and not_derived and assay_type in ['NanoPOTS']",
+        "value": "{'assaytype': 'NanoPOTS', 'vitessce_hints': [], 'description': 'NanoPOTS'}",
+        "rule_description": "non-DCWG primary NanoPOTS"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and is_derived and data_types[0] in ['NanoPOTS_pyramid']",
+        "value": "{'assaytype': 'NanoPOTS_pyramid', 'vitessce_hints': ['pyramid'], 'description': 'NanoPOTS [Image Pyramid]'}",
+        "rule_description": "non-DCWG derived NanoPOTS_pyramid"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and not_derived and assay_type in ['MxIF']",
+        "value": "{'assaytype': 'MxIF', 'vitessce_hints': [], 'description': 'Multiplexed IF Microscopy'}",
+        "rule_description": "non-DCWG primary MxIF"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and is_derived and data_types[0] in ['MxIF_pyramid']",
+        "value": "{'assaytype': 'MxIF_pyramid', 'vitessce_hints': ['pyramid'], 'description': 'Multiplexed IF Microscopy [Image Pyramid]'}",
+        "rule_description": "non-DCWG derived MxIF_pyramid"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and not_derived and assay_type in ['PAS', 'PAS microscopy']",
+        "value": "{'assaytype': 'PAS', 'vitessce_hints': [], 'description': 'PAS Stained Microscopy'}",
+        "rule_description": "non-DCWG primary PAS"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and is_derived and data_types[0] in ['PAS_pyramid']",
+        "value": "{'assaytype': 'PAS_pyramid', 'vitessce_hints': ['pyramid'], 'description': 'PAS Stained Microscopy [Image Pyramid]'}",
+        "rule_description": "non-DCWG derived PAS_pyramid"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and is_derived and data_types[0] in ['publication']",
+        "value": "{'assaytype': 'publication', 'vitessce_hints': [], 'description': 'Publication Data'}",
+        "rule_description": "non-DCWG derived publication"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and is_derived and data_types[0] in ['publication_ancillary']",
+        "value": "{'assaytype': 'publication_ancillary', 'vitessce_hints': ['json'], 'description': 'Publication Data [ancillary]'}",
+        "rule_description": "non-DCWG derived publication_ancillary"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and not_derived and assay_type in ['bulk-RNA', 'bulk RNA']",
+        "value": "{'assaytype': 'bulk-RNA', 'vitessce_hints': [], 'description': 'Bulk RNA-seq'}",
+        "rule_description": "non-DCWG primary bulk-RNA"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and is_derived and data_types[0] in ['salmon_rnaseq_bulk']",
+        "value": "{'assaytype': 'salmon_rnaseq_bulk', 'vitessce_hints': [], 'description': 'Bulk RNA-seq [Salmon]'}",
+        "rule_description": "non-DCWG derived salmon_rnaseq_bulk"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and not_derived and assay_type in ['SNARE-ATACseq2', 'SNAREseq', 'SNARE-seq2', 'SNARE2-ATACseq']",
+        "value": "{'assaytype': 'SNARE-ATACseq2', 'vitessce_hints': [], 'description': 'snATACseq (SNARE-seq2)'}",
+        "rule_description": "non-DCWG primary SNARE-ATACseq2"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and not_derived and assay_type in ['SNARE-RNAseq2', 'SNARE2-RNAseq']",
+        "value": "{'assaytype': 'SNARE-RNAseq2', 'vitessce_hints': [], 'description': 'snRNAseq (SNARE-seq2)'}",
+        "rule_description": "non-DCWG primary SNARE-RNAseq2"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and is_derived and data_types[0] in ['sc_atac_seq_snare_lab']",
+        "value": "{'assaytype': 'sc_atac_seq_snare_lab', 'vitessce_hints': [], 'description': 'snATAC-seq (SNARE-seq2) [Lab Processed]'}",
+        "rule_description": "non-DCWG derived sc_atac_seq_snare_lab"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and is_derived and data_types[0] in ['sc_rna_seq_snare_lab']",
+        "value": "{'assaytype': 'sc_rna_seq_snare_lab', 'vitessce_hints': [], 'description': 'snRNA-seq (SNARE-seq2) [Lab Processed]'}",
+        "rule_description": "non-DCWG derived sc_rna_seq_snare_lab"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and is_derived and data_types[0] in ['salmon_rnaseq_snareseq']",
+        "value": "{'assaytype': 'salmon_rnaseq_snareseq', 'vitessce_hints': ['is_sc', 'rna'], 'description': 'snRNA-seq (SNARE-seq2) [Salmon]'}",
+        "rule_description": "non-DCWG derived salmon_rnaseq_snareseq"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and is_derived and data_types[0] in ['sc_atac_seq_snare']",
+        "value": "{'assaytype': 'sc_atac_seq_snare', 'vitessce_hints': ['is_sc', 'atac'], 'description': 'snATAC-seq (SNARE-seq2) [SnapATAC]'}",
+        "rule_description": "non-DCWG derived sc_atac_seq_snare"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and not_derived and assay_type in ['scRNAseq-10xGenomics-v2']",
+        "value": "{'assaytype': 'scRNAseq-10xGenomics-v2', 'vitessce_hints': [], 'description': 'scRNA-seq (10x Genomics v2)'}",
+        "rule_description": "non-DCWG primary scRNAseq-10xGenomics-v2"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and not_derived and assay_type in ['scRNAseq-10xGenomics-v3', 'scRNA-Seq(10xGenomics)', 'scRNA-Seq-10x', 'scRNAseq-10xGenomics']",
+        "value": "{'assaytype': 'scRNAseq-10xGenomics-v3', 'vitessce_hints': [], 'description': 'scRNA-seq (10x Genomics v3)'}",
+        "rule_description": "non-DCWG primary scRNAseq-10xGenomics-v3"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and is_derived and data_types[0] in ['salmon_rnaseq_10x']",
+        "value": "{'assaytype': 'salmon_rnaseq_10x', 'vitessce_hints': ['is_sc', 'rna'], 'description': 'scRNA-seq (10x Genomics) [Salmon]'}",
+        "rule_description": "non-DCWG derived salmon_rnaseq_10x"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and not_derived and assay_type in ['sciATACseq']",
+        "value": "{'assaytype': 'sciATACseq', 'vitessce_hints': [], 'description': 'sciATAC-seq'}",
+        "rule_description": "non-DCWG primary sciATACseq"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and is_derived and data_types[0] in ['sc_atac_seq_sci']",
+        "value": "{'assaytype': 'sc_atac_seq_sci', 'vitessce_hints': ['is_sc', 'atac'], 'description': 'sciATAC-seq [SnapATAC]'}",
+        "rule_description": "non-DCWG derived sc_atac_seq_sci"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and not_derived and assay_type in ['sciRNAseq']",
+        "value": "{'assaytype': 'sciRNAseq', 'vitessce_hints': [], 'description': 'sciRNA-seq'}",
+        "rule_description": "non-DCWG primary sciRNAseq"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and is_derived and data_types[0] in ['salmon_rnaseq_sciseq']",
+        "value": "{'assaytype': 'salmon_rnaseq_sciseq', 'vitessce_hints': ['is_sc', 'rna'], 'description': 'sciRNA-seq [Salmon]'}",
+        "rule_description": "non-DCWG derived salmon_rnaseq_sciseq"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and not_derived and assay_type in ['seqFish', 'seqFISH']",
+        "value": "{'assaytype': 'seqFish', 'vitessce_hints': [], 'description': 'seqFISH'}",
+        "rule_description": "non-DCWG primary seqFish"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and not_derived and assay_type in ['seqFish_pyramid']",
+        "value": "{'assaytype': 'seqFish_pyramid', 'vitessce_hints': ['pyramid'], 'description': 'seqFISH [Image Pyramid]'}",
+        "rule_description": "non-DCWG primary seqFish_pyramid"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and is_derived and data_types[0] in ['seqFish_lab_processed']",
+        "value": "{'assaytype': 'seqFish_lab_processed', 'vitessce_hints': [], 'description': 'seqFISH [Lab Processed]'}",
+        "rule_description": "non-DCWG derived seqFish_lab_processed"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and not_derived and assay_type in ['SIMS-IMS', 'SIMS']",
+        "value": "{'assaytype': 'SIMS-IMS', 'vitessce_hints': [], 'description': 'SIMS-IMS'}",
+        "rule_description": "non-DCWG primary SIMS-IMS"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and not_derived and assay_type in ['snATACseq']",
+        "value": "{'assaytype': 'snATACseq', 'vitessce_hints': [], 'description': 'snATAC-seq'}",
+        "rule_description": "non-DCWG primary snATACseq"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and is_derived and data_types[0] in ['sn_atac_seq', 'sn_atac_seq_multiome_10x']",
+        "value": "{'assaytype': 'sn_atac_seq', 'vitessce_hints': ['is_sc', 'atac'], 'description': 'snATAC-seq [SnapATAC]'}",
+        "rule_description": "non-DCWG derived sn_atac_seq"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and not_derived and assay_type in ['snRNAseq-10xGenomics-v2', 'snRNAseq-v2']",
+        "value": "{'assaytype': 'snRNAseq-10xGenomics-v2', 'vitessce_hints': [], 'description': 'snRNA-seq (10x Genomics v2)'}",
+        "rule_description": "non-DCWG primary snRNAseq-10xGenomics-v2"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and not_derived and assay_type in ['snRNAseq-10xGenomics-v3', 'snRNAseq', 'snRNAseq-v3']",
+        "value": "{'assaytype': 'snRNAseq-10xGenomics-v3', 'vitessce_hints': [], 'description': 'snRNA-seq (10x Genomics v3)'}",
+        "rule_description": "non-DCWG primary snRNAseq-10xGenomics-v3"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and is_derived and data_types[0] in ['salmon_sn_rnaseq_10x', 'salmon_rnaseq_10x_sn']",
+        "value": "{'assaytype': 'salmon_sn_rnaseq_10x', 'vitessce_hints': ['is_sc', 'rna'], 'description': 'snRNA-seq [Salmon]'}",
+        "rule_description": "non-DCWG derived salmon_sn_rnaseq_10x"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and not_derived and assay_type in ['Slide-seq']",
+        "value": "{'assaytype': 'Slide-seq', 'vitessce_hints': [], 'description': 'Slide-seq'}",
+        "rule_description": "non-DCWG primary Slide-seq"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and is_derived and data_types[0] in ['salmon_rnaseq_slideseq']",
+        "value": "{'assaytype': 'salmon_rnaseq_slideseq', 'vitessce_hints': ['is_sc', 'rna'], 'description': 'Slide-seq [Salmon]'}",
+        "rule_description": "non-DCWG derived salmon_rnaseq_slideseq"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and not_derived and assay_type in ['Targeted-Shotgun-LC-MS']",
+        "value": "{'assaytype': 'Targeted-Shotgun-LC-MS', 'vitessce_hints': [], 'description': 'Targeted Shotgun / Flow-injection LC-MS'}",
+        "rule_description": "non-DCWG primary Targeted-Shotgun-LC-MS"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and not_derived and assay_type in ['TMT-LC-MS']",
+        "value": "{'assaytype': 'TMT-LC-MS', 'vitessce_hints': [], 'description': 'TMT LC-MS'}",
+        "rule_description": "non-DCWG primary TMT-LC-MS"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and not_derived and assay_type in ['WGS', 'Whole Transcriptome Sequencing', 'Whole Genome Sequencing']",
+        "value": "{'assaytype': 'WGS', 'vitessce_hints': [], 'description': 'Whole Genome Sequencing'}",
+        "rule_description": "non-DCWG primary WGS"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and not_derived and assay_type in ['LC-MS']",
+        "value": "{'assaytype': 'LC-MS', 'vitessce_hints': [], 'description': 'LC-MS'}",
+        "rule_description": "non-DCWG primary LC-MS"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and not_derived and assay_type in ['MS']",
+        "value": "{'assaytype': 'MS', 'vitessce_hints': [], 'description': 'MS'}",
+        "rule_description": "non-DCWG primary MS"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and not_derived and assay_type in ['LC-MS_bottom_up', 'LC-MS Bottom-Up']",
+        "value": "{'assaytype': 'LC-MS_bottom_up', 'vitessce_hints': [], 'description': 'LC-MS Bottom Up'}",
+        "rule_description": "non-DCWG primary LC-MS_bottom_up"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and not_derived and assay_type in ['MS_bottom_up', 'MS Bottom-Up']",
+        "value": "{'assaytype': 'MS_bottom_up', 'vitessce_hints': [], 'description': 'MS Bottom Up'}",
+        "rule_description": "non-DCWG primary MS_bottom_up"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and not_derived and assay_type in ['LC-MS_top_down', 'LC-MS Top-Down']",
+        "value": "{'assaytype': 'LC-MS_top_down', 'vitessce_hints': [], 'description': 'LC-MS Top Down'}",
+        "rule_description": "non-DCWG primary LC-MS_top_down"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and not_derived and assay_type in ['MS_top_down', 'MS Top-Down']",
+        "value": "{'assaytype': 'MS_top_down', 'vitessce_hints': [], 'description': 'MS Top Down'}",
+        "rule_description": "non-DCWG primary MS_top_down"
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and dataset_type == 'Histology'",
+        "value": "{'assaytype': 'histology', 'vitessce_hints': [], 'description': 'Histology'}",
+        "rule_description": "DCWG Histology"
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and dataset_type == '10X Multiome'",
+        "value": "{'assaytype': '10x_multiome', 'vitessce_hints': [], 'description': '10X Multiome', 'can_contain': ['ATACseq', 'RNAseq', 'Histology']}",
+        "rule_description": "DCWG 10X Multiome"
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and dataset_type == 'RNAseq'  and assay_input_entity == 'single nucleus' and barcode_size == 16 and umi_size == 12",
+        "value": "{'assaytype': 'snRNAseq-10xGenomics-v3', 'vitessce_hints': [], 'description': 'snRNA-seq (10x Genomics v3)'}",
+        "rule_description": "DCWG 10X snRNAseq v3"
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and dataset_type == 'ATACseq'  and assay_input_entity == 'single nucleus' and barcode_read =~~ 'Read 2'",
+        "value": "{'assaytype': 'snATACseq', 'vitessce_hints': [], 'description': 'snATACseq'}",
+        "rule_description": "DCWG snATACseq"
+    }
+]
