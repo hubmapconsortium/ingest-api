@@ -700,7 +700,6 @@ def create_datastage():
 def multiple_components():
     if not request.is_json:
         return Response("json request required", 400)
-    entity_type = 'dataset'
     try:
         component_request = request.json
         auth_helper = AuthHelper.configured_instance(app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'])
@@ -717,11 +716,11 @@ def multiple_components():
         for dataset in json_data_dict.get('datasets'):
             if 'dataset_link_abs_dir' in dataset:
                 if not os.path.exists(dataset['dataset_link_abs_dir']):
-                    return Response(
-                        f"The filepath specified with 'dataset_link_abs_dir' does not exist: {dataset['dataset_link_abs_dir']}",
-                        500)
+                    return Response(f"The filepath specified with 'dataset_link_abs_dir' does not exist: {dataset['dataset_link_abs_dir']}", 400)
+                if not os.path.isdir(dataset.get('dataset_link_abs_dir')):
+                    return Response(f"{dataset.get('dataset_link_abs_dir')} is not a directory", 400)
             else:
-                return Response("Required field 'dataset_link_abs_dir' is missing from dataset", 500)
+                return Response("Required field 'dataset_link_abs_dir' is missing from dataset", 400)
 
         requested_group_uuid = None
         if 'group_uuid' in component_request:
@@ -737,15 +736,11 @@ def multiple_components():
         new_datasets_list = response.json()
         for dataset in new_datasets_list:
             if dataset.get('dataset_link_abs_dir'):
-                if not os.path.exists(dataset.get('dataset_link_abs_dir')):
-                    return Response(f"Path {dataset.get('dataset_link_abs_dir')} not found", 500)
-                if not os.path.isdir(dataset.get('dataset_link_abs_dir')):
-                    return Response(f"{dataset.get('dataset_link_abs_dir')} is not a directory", 500)
                 new_directory_path = ingest_helper.get_dataset_directory_absolute_path(dataset, requested_group_uuid, dataset['uuid'])
                 logger.info(f"Creating a directory as: {new_directory_path} with a symbolic link to: {dataset['dataset_link_abs_dir']}")
                 os.symlink(dataset['dataset_link_abs_dir'], new_directory_path, True)
             else:
-                return Response("Required field 'dataset_link_abs_dir' is missing from dataset", 500)
+                return Response("Required field 'dataset_link_abs_dir' is missing from dataset", 400)
 
         return jsonify(new_datasets_list)
     except HTTPException as hte:
