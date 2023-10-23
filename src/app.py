@@ -696,6 +696,61 @@ def create_datastage():
         logger.error(e, exc_info=True)
         return Response("Unexpected error while creating a dataset: " + str(e) + "  Check the logs", 500)
 
+@app.route('/datasets/components', methods=['POST'])
+def multiple_components():
+    if not request.is_json:
+        return Response("json request required", 400)
+    try:
+        component_request = request.json
+        auth_helper = AuthHelper.configured_instance(app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'])
+        auth_tokens = auth_helper.getAuthorizationTokens(request.headers)
+        if isinstance(auth_tokens, Response):
+            return(auth_tokens)
+        elif isinstance(auth_tokens, str):
+            token = auth_tokens
+        else:
+            return(Response("Valid globus groups token required", 401))
+
+        # Check that `dataset_link_abs_dir` exists for both datasets and that it is a valid directory
+        json_data_dict = request.get_json()
+        for dataset in json_data_dict.get('datasets'):
+            if 'dataset_link_abs_dir' in dataset:
+                if not os.path.exists(dataset['dataset_link_abs_dir']):
+                    return Response(f"The filepath specified with 'dataset_link_abs_dir' does not exist: {dataset['dataset_link_abs_dir']}", 400)
+                if not os.path.isdir(dataset.get('dataset_link_abs_dir')):
+                    return Response(f"{dataset.get('dataset_link_abs_dir')} is not a directory", 400)
+            else:
+                return Response("Required field 'dataset_link_abs_dir' is missing from dataset", 400)
+
+        requested_group_uuid = None
+        if 'group_uuid' in component_request:
+            requested_group_uuid = component_request['group_uuid']
+
+        ingest_helper = IngestFileHelper(app.config)
+        requested_group_uuid = auth_helper.get_write_group_uuid(token, requested_group_uuid)
+        component_request['group_uuid'] = requested_group_uuid
+        post_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'datasets/components'
+        response = requests.post(post_url, json = component_request, headers = {'Authorization': 'Bearer ' + token, 'X-Hubmap-Application':'ingest-api' }, verify = False)
+        if response.status_code != 200:
+            return Response(response.text, response.status_code)
+        new_datasets_list = response.json()
+        for dataset in new_datasets_list:
+            if dataset.get('dataset_link_abs_dir'):
+                new_directory_path = ingest_helper.get_dataset_directory_absolute_path(dataset, requested_group_uuid, dataset['uuid'])
+                logger.info(f"Creating a directory as: {new_directory_path} with a symbolic link to: {dataset['dataset_link_abs_dir']}")
+                os.symlink(dataset['dataset_link_abs_dir'], new_directory_path, True)
+            else:
+                return Response("Required field 'dataset_link_abs_dir' is missing from dataset", 400)
+
+        return jsonify(new_datasets_list)
+    except HTTPException as hte:
+        return Response(hte.get_description(), hte.get_status_code())
+    except Exception as e:
+        logger.error(e, exc_info=True)
+        return Response("Unexpected error while creating a dataset: " + str(e) + " Check the logs", 500)
+
+
+
 
 def get_data_type_of_external_dataset_providers(ubkg_base_url: str) -> List[str]:
     """
