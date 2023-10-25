@@ -106,7 +106,7 @@ def get_assaytype_from_metadata():
         return Response(f"Unexpected error while getting assay type from metadata: " + str(e), 500)
 
 
-@bp.route('/reload', methods=['PUT'])
+@bp.route('/reload-assaytypes', methods=['PUT'])
 def reload_chain():
     try:
         initialize_rule_chain()
