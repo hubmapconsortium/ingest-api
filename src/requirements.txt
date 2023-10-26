@@ -34,8 +34,13 @@ nose2==0.11.0
 pyfakefs==4.5.5
 
 # Flask 2.1.3 installs the latest Werkzeug==3.0.0 (released on 9/30/2023) and causing import issues 
-# Use a pinned version 2.3.7 (the latest release before 3.0.0) to mitigate temporaryly
+# Use a pinned version 2.3.7 (the latest release before 3.0.0) to mitigate temporarily
 # Will upgrade Flask to newer version later on across all APIs. 10/3/2023 - Zhou
 Werkzeug==2.3.7
 
 APScheduler==3.10.4
+
+atlas-consortia-commons==1.0.5
+# from ingest_validation_tools/src/ingest_validation_tools/table_validator.py:26 frictionless.__version__ == "4.0.0"
+frictionless==4.0.0
+fsspec==2023.10.0
