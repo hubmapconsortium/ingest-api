@@ -41,6 +41,3 @@ Werkzeug==2.3.7
 APScheduler==3.10.4
 
 atlas-consortia-commons==1.0.5
-# from ingest_validation_tools/src/ingest_validation_tools/table_validator.py:26 frictionless.__version__ == "4.0.0"
-frictionless==4.0.0
-fsspec==2023.10.0
