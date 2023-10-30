@@ -644,21 +644,15 @@ paths:
     post:
       summary: "Validate uploaded tsv file"
       requestBody:
+        description: Metadata information to be validated
+        required: true
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                pathname:
-                  type: string
-                entity_type:
-                  type: string
-                sub_type:
-                  type: string
-                validate_uuids:
-                  type: string
-                tsv_row:
-                  type: string
+              $ref: '#/components/schemas/metadata_validate'
+          application/xml:
+            schema:
+              $ref: '#/components/schemas/metadata_validate'
       responses:
         '200':
           description: The tsv file was successfully validated.
@@ -780,3 +774,19 @@ components:
           example: Sample, Donor
       xml:
         name: Specimen
+    metadata_validate:
+      type: object
+      required:
+        - entity_type
+        - validate_uuids
+      properties:
+        pathname:
+          type: string
+        entity_type:
+          type: string
+        sub_type:
+          type: string
+        validate_uuids:
+          type: string
+        tsv_row:
+          type: string

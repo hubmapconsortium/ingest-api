@@ -1,5 +1,8 @@
 # Parent image
 FROM hubmap/api-base-image:1.0.0
+ENV LANG=en_US.UTF-8
+ENV LANGUAGE en_US:en
+ENV LC_ALL en_US.UTF-8
 
 LABEL description="HuBMAP Ingest API Service"
 
@@ -41,8 +44,10 @@ RUN yum install -y yum-utils && \
     mv nginx/nginx.conf /etc/nginx/nginx.conf && \
     rm -rf nginx && \
     pip install --upgrade pip -r src/requirements.txt && \
+    pip install -r src/routes/validation/ingest_validation_tools/requirements.txt && \
     chmod +x start.sh && \
-    yum clean all 
+    dnf install langpacks-en glibc-all-langpacks -y && \
+    yum clean all
 
 # The EXPOSE instruction informs Docker that the container listens on the specified network ports at runtime. 
 # EXPOSE does not make the ports of the container accessible to the host.
