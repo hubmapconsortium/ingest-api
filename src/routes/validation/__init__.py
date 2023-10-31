@@ -43,9 +43,6 @@ __all__ = ["ingest_validation_tools_upload",
            "ingest_validation_tools_table_validator"
            ]
 
-# sys.path.pop()
-# sys.path.pop()
-
 
 validation_blueprint: Blueprint = Blueprint('validation', __name__)
 
