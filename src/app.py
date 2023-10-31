@@ -2313,7 +2313,7 @@ def validate_donors(headers, records):
 # Determines if a dataset is Primary. If the list returned from the neo4j query is empty, the dataset is not primary
 def dataset_is_primary(dataset_uuid):
     with neo4j_driver_instance.session() as neo_session:
-        q = (f"MATCH (ds:Dataset {{uuid: '{dataset_uuid}'}})<-[:ACTIVITY_OUTPUT]-(:Activity)<-[:ACTIVITY_INPUT]-(s:Sample) RETURN ds.uuid")
+        q = (f"MATCH (ds:Dataset {{uuid: '{dataset_uuid}'}})<-[:ACTIVITY_OUTPUT]-(a:Activity) WHERE NOT toLower(a.creation_action) ENDS WITH 'process' RETURN ds.uuid")
         result = neo_session.run(q).data()
         if len(result) == 0:
             return False
