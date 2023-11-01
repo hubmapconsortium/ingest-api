@@ -77,8 +77,10 @@ class RuleChain:
     def add(self, link):
         self.links.append(link)
     def dump(self, ofile):
+        print(f"START DUMP of {len(list(iter(self)))} rules")
         for idx, elt in enumerate(iter(self)):
             print(f"{idx}: {elt}")
+        print(f"END DUMP of rules")
     def __iter__(self):
         return _RuleChainIter(self)
     @classmethod

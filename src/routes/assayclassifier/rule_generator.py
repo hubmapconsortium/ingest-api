@@ -219,62 +219,118 @@ def main() -> None:
     mapping_failures = list(set(mapping_failures))
     print(f"MAPPING FAILURES: {mapping_failures}")
             
-    # Histology example
-    json_block.append(
-        {"type": "match",
-         "match": f"is_dcwg and dataset_type == 'Histology'",
-         "value": ("{'assaytype': 'histology',"
-                   " 'vitessce_hints': [],"
-                   " 'description': 'Histology'}"
-                   ),
-         "rule_description": "DCWG Histology"
-         }
-    )
-
     # 10X Multiome example
     json_block.append(
         {"type": "match",
-         "match": f"is_dcwg and dataset_type == '10X Multiome'",
+         "match": ("is_dcwg and dataset_type == '10X Multiome'"
+                   " and barcode_size == 16"
+                   " and barcode_offset == 8"
+                   ),
          "value": ("{'assaytype': '10x_multiome',"
                    " 'vitessce_hints': [],"
                    " 'description': '10X Multiome',"
-                   " 'can_contain': ['ATACseq', 'RNAseq', 'Histology']}"
+                   " 'must_contain': ['????', '????']}"
                    ),
          "rule_description": "DCWG 10X Multiome"
          }
     )
 
-    # RNAseq example
-    json_block.append(
-        {"type": "match",
-         "match": ("is_dcwg and dataset_type == 'RNAseq' "
-                   " and assay_input_entity == 'single nucleus'"
-                   " and barcode_size == 16"
-                   " and umi_size == 12"
-                   ),
-         "value": ("{'assaytype': 'snRNAseq-10xGenomics-v3',"
-                   " 'vitessce_hints': [],"
-                   " 'description': 'snRNA-seq (10x Genomics v3)'}"
-                   ),
-         "rule_description": "DCWG 10X snRNAseq v3"
-         }
-    )
+    # RNAseq [sn/sc]RNAseq-10xGenomics-[v2/v3]
+    for entity, umi_size, assay, description in [
+            ('single nucleus', 12, 'snRNAseq-10xGenomics-v3', 'snRNA-seq (10x Genomics v3)'),
+            ('single nucleus', 10, 'snRNAseq-10xGenomics-v2', 'snRNA-seq (10x Genomics v2)'),
+            ('single cell', 12, 'scRNAseq-10xGenomics-v3', 'scRNA-seq (10x Genomics v3)'),
+            ('single cell', 10, 'scRNAseq-10xGenomics-v2', 'scRNA-seq (10x Genomics v2)'),
+    ]:
+        json_block.append(
+            {"type": "match",
+             "match": ("is_dcwg and dataset_type == 'RNAseq'"
+                       f" and assay_input_entity == '{entity}'"
+                       " and barcode_read =~~ 'Read 1'"
+                       " and barcode_size == 16"
+                       " and barcode_offset == 0"
+                       " and umi_read =~~ 'Read 1'"
+                       f" and umi_size == {umi_size}"
+                       " and umi_offset == 16"
+                       ),
+             "value": ("{"
+                       f"'assaytype': '{assay}',"
+                       " 'vitessce_hints': [],"
+                       " 'dir_schema': 'scrnaseq-v2',"
+                       f" 'description': '{description}'"
+                       "}"
+                       ),
+             "rule_description": "DCWG {assay}"
+             }
+        )
 
-    # ATACseq example
-    json_block.append(
-        {"type": "match",
-         "match": ("is_dcwg and dataset_type == 'ATACseq' "
-                   " and assay_input_entity == 'single nucleus'"
-                   " and barcode_read =~~ 'Read 2'"
-                   ),
-         "value": ("{'assaytype': 'snATACseq',"
-                   " 'vitessce_hints': [],"
-                   " 'description': 'snATACseq'}"
-                   ),
-         "rule_description": "DCWG snATACseq"
-         }
-    )    
+    # ATACseq cases
+    for entity, barcode_read, barcode_size, barcode_offset, assay, description, schema in [
+            ("single nucleus", "Read 2", 16, 0, "snATACseq", "snATAC-seq", "scatacseq-v2"),
+            ("single cell", "Not applicable", None, None, "sciATACseq", "sciATAC-seq", "scatacseq-v2"),
+            #("single nucleus", "Read 2", 16, 8, "????", "10X Multiome ATACseq", "scatacseq-v2"),
+    ]:
+        bc_size_line = (f" and barcode_size == {barcode_size}"
+                        if barcode_size is not None else "")
+        bc_offset_line = (f" and barcode_offset == {barcode_offset}"
+                          if barcode_offset is not None else "")
+        json_block.append(
+            {"type": "match",
+             "match": ("is_dcwg and dataset_type == 'ATACseq' "
+                       f" and assay_input_entity == '{entity}'"
+                       f" and barcode_read =~~ '{barcode_read}'"
+                       f"{bc_size_line}"
+                       f"{bc_offset_line}"
+                       ),
+             "value": ("{"
+                       f"'assaytype': '{assay}',"
+                       " 'vitessce_hints': [],"
+                       f" 'dir_schema': '{schema}',"
+                       f" 'description': '{description}'"
+                       "}"
+                       ),
+             "rule_description": f"DCWG {assay}"
+             }
+        )    
 
+    # Simple assays
+    for data_type, assay, description, schema in [
+            ('Histology', 'histology', 'Histology', 'histology-v2'),
+            ('CODEX', 'CODEX', 'CODEX', 'codex-v2'),
+            ('PhenoCycler', 'phenocycler', 'PhenoCycler', 'phenocycler-v2'),
+            ('CycIF', 'cycif', 'CycIF', 'cycif-v2'),
+            ('MERFISH', 'merfish', 'MERFISH', 'merfish-v2'),
+            ('Cell Dive', 'cell-dive', 'Cell DIVE', 'celldive-v2'),
+            ('MALDI', 'MALDI-IMS', 'MALDI IMS', 'maldi-v2'),
+            ('SIMS', 'SIMS-IMS', 'SIMS-IMS', 'sims-v2'),
+            ('DESI', 'DESI', 'DESI', 'desi-v2'),
+            ('MIBI', 'MIBI', 'Multiplex Ion Beam Imaging', 'mibi-v2'),
+            ('2D Imaging Mass Cytometry', 'IMC2D', 'Imaging Mass Cytometry (2D)', 'imc-v2'),
+            #('LC-MS', '', '', 'lcms-v2'),
+            ('nanoSPLITS', 'nano-splits', '', 'nano-splits-v2'),
+            ('Auto-fluorescence', 'AF', 'Autofluorescence Microscopy', 'af-v2'),
+            ('Light Sheet', 'Lightsheet', 'Lightsheet Microsopy', 'lightsheet-v2'),
+            ('Confocal', 'confocal', 'Confocal Microscopy', 'confocal-v2'),
+            ('Thick section Multiphoton MxIF', 'thick-section-multiphoton-mxif', 'Thick section Multiphoton MxIF', 'thick-section-multiphoton-mxif-v2'),
+            ('Second Harmonic Generation (SHG)', 'second-harmonic-generation', 'Second Harmonic Generatin (SHG)', 'second-harmonic-generation-v2'),
+            ('Enhanced Stimulated Raman Spectroscopy (SRS)', 'enhanced-srs', 'Enhanced Stimulated Raman Spectroscopy (SRS)', 'enhanced-srs-v2'),
+            #('Molecular Cartography', '', '', ''),
+    ]:
+        json_block.append(
+            {"type": "match",
+             "match": (f"is_dcwg and dataset_type == '{data_type}'"
+                       ),
+             "value": ("{"
+                       f"'assaytype': '{assay}',"
+                       " 'vitessce_hints': [],"
+                       f" 'dir_schema': '{schema}',"
+                       f" 'description': '{description}'"
+                       "}"
+                       ),
+             "rule_description": f"DCWG {assay}"
+             }
+        )
+    
     with open(CHAIN_OUTPUT_PATH, 'w') as ofile:
         json.dump(json_block, ofile, indent=4)
 

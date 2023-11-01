@@ -121,4 +121,4 @@ def reload_chain():
                         hte.get_description(), hte.get_status_code())
     except Exception as e:
         logger.error(e, exc_info=True)
-        return Response(f"Unexpected error while retrieving entity {ds_uuid}: " + str(e), 500)
+        return Response(f"Unexpected error while reloading rule chain: " + str(e), 500)

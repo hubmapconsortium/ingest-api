@@ -194,7 +194,7 @@
     {
         "type": "match",
         "match": "not_dcwg and not_derived and assay_type in ['NanoDESI']",
-        "value": "{'assaytype': 'NanoDESI', 'dir_schema': 'nano-v0', 'vitessce_hints': [], 'description': 'NanoDESI'}",
+        "value": "{'assaytype': 'NanoDESI', 'dir_schema': 'ims-v0', 'vitessce_hints': [], 'description': 'NanoDESI'}",
         "rule_description": "non-DCWG primary NanoDESI"
     },
     {
@@ -463,26 +463,152 @@
     },
     {
         "type": "match",
-        "match": "is_dcwg and dataset_type == 'Histology'",
-        "value": "{'assaytype': 'histology', 'vitessce_hints': [], 'description': 'Histology'}",
-        "rule_description": "DCWG Histology"
-    },
-    {
-        "type": "match",
-        "match": "is_dcwg and dataset_type == '10X Multiome'",
-        "value": "{'assaytype': '10x_multiome', 'vitessce_hints': [], 'description': '10X Multiome', 'can_contain': ['ATACseq', 'RNAseq', 'Histology']}",
+        "match": "is_dcwg and dataset_type == '10X Multiome' and barcode_size == 16 and barcode_offset == 8",
+        "value": "{'assaytype': '10x_multiome', 'vitessce_hints': [], 'description': '10X Multiome', 'must_contain': ['????', '????']}",
         "rule_description": "DCWG 10X Multiome"
     },
     {
         "type": "match",
-        "match": "is_dcwg and dataset_type == 'RNAseq'  and assay_input_entity == 'single nucleus' and barcode_size == 16 and umi_size == 12",
-        "value": "{'assaytype': 'snRNAseq-10xGenomics-v3', 'vitessce_hints': [], 'description': 'snRNA-seq (10x Genomics v3)'}",
-        "rule_description": "DCWG 10X snRNAseq v3"
+        "match": "is_dcwg and dataset_type == 'RNAseq' and assay_input_entity == 'single nucleus' and barcode_read =~~ 'Read 1' and barcode_size == 16 and barcode_offset == 0 and umi_read =~~ 'Read 1' and umi_size == 12 and umi_offset == 16",
+        "value": "{'assaytype': 'snRNAseq-10xGenomics-v3', 'vitessce_hints': [], 'dir_schema': 'scrnaseq-v2', 'description': 'snRNA-seq (10x Genomics v3)'}",
+        "rule_description": "DCWG {assay}"
     },
     {
         "type": "match",
-        "match": "is_dcwg and dataset_type == 'ATACseq'  and assay_input_entity == 'single nucleus' and barcode_read =~~ 'Read 2'",
-        "value": "{'assaytype': 'snATACseq', 'vitessce_hints': [], 'description': 'snATACseq'}",
+        "match": "is_dcwg and dataset_type == 'RNAseq' and assay_input_entity == 'single nucleus' and barcode_read =~~ 'Read 1' and barcode_size == 16 and barcode_offset == 0 and umi_read =~~ 'Read 1' and umi_size == 10 and umi_offset == 16",
+        "value": "{'assaytype': 'snRNAseq-10xGenomics-v2', 'vitessce_hints': [], 'dir_schema': 'scrnaseq-v2', 'description': 'snRNA-seq (10x Genomics v2)'}",
+        "rule_description": "DCWG {assay}"
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and dataset_type == 'RNAseq' and assay_input_entity == 'single cell' and barcode_read =~~ 'Read 1' and barcode_size == 16 and barcode_offset == 0 and umi_read =~~ 'Read 1' and umi_size == 12 and umi_offset == 16",
+        "value": "{'assaytype': 'scRNAseq-10xGenomics-v3', 'vitessce_hints': [], 'dir_schema': 'scrnaseq-v2', 'description': 'scRNA-seq (10x Genomics v3)'}",
+        "rule_description": "DCWG {assay}"
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and dataset_type == 'RNAseq' and assay_input_entity == 'single cell' and barcode_read =~~ 'Read 1' and barcode_size == 16 and barcode_offset == 0 and umi_read =~~ 'Read 1' and umi_size == 10 and umi_offset == 16",
+        "value": "{'assaytype': 'scRNAseq-10xGenomics-v2', 'vitessce_hints': [], 'dir_schema': 'scrnaseq-v2', 'description': 'scRNA-seq (10x Genomics v2)'}",
+        "rule_description": "DCWG {assay}"
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and dataset_type == 'ATACseq'  and assay_input_entity == 'single nucleus' and barcode_read =~~ 'Read 2' and barcode_size == 16 and barcode_offset == 0",
+        "value": "{'assaytype': 'snATACseq', 'vitessce_hints': [], 'dir_schema': 'scatacseq-v2', 'description': 'snATAC-seq'}",
         "rule_description": "DCWG snATACseq"
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and dataset_type == 'ATACseq'  and assay_input_entity == 'single cell' and barcode_read =~~ 'Not applicable'",
+        "value": "{'assaytype': 'sciATACseq', 'vitessce_hints': [], 'dir_schema': 'scatacseq-v2', 'description': 'sciATAC-seq'}",
+        "rule_description": "DCWG sciATACseq"
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and dataset_type == 'Histology'",
+        "value": "{'assaytype': 'histology', 'vitessce_hints': [], 'dir_schema': 'histology-v2', 'description': 'Histology'}",
+        "rule_description": "DCWG histology"
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and dataset_type == 'CODEX'",
+        "value": "{'assaytype': 'CODEX', 'vitessce_hints': [], 'dir_schema': 'codex-v2', 'description': 'CODEX'}",
+        "rule_description": "DCWG CODEX"
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and dataset_type == 'PhenoCycler'",
+        "value": "{'assaytype': 'phenocycler', 'vitessce_hints': [], 'dir_schema': 'phenocycler-v2', 'description': 'PhenoCycler'}",
+        "rule_description": "DCWG phenocycler"
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and dataset_type == 'CycIF'",
+        "value": "{'assaytype': 'cycif', 'vitessce_hints': [], 'dir_schema': 'cycif-v2', 'description': 'CycIF'}",
+        "rule_description": "DCWG cycif"
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and dataset_type == 'MERFISH'",
+        "value": "{'assaytype': 'merfish', 'vitessce_hints': [], 'dir_schema': 'merfish-v2', 'description': 'MERFISH'}",
+        "rule_description": "DCWG merfish"
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and dataset_type == 'Cell Dive'",
+        "value": "{'assaytype': 'cell-dive', 'vitessce_hints': [], 'dir_schema': 'celldive-v2', 'description': 'Cell DIVE'}",
+        "rule_description": "DCWG cell-dive"
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and dataset_type == 'MALDI'",
+        "value": "{'assaytype': 'MALDI-IMS', 'vitessce_hints': [], 'dir_schema': 'maldi-v2', 'description': 'MALDI IMS'}",
+        "rule_description": "DCWG MALDI-IMS"
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and dataset_type == 'SIMS'",
+        "value": "{'assaytype': 'SIMS-IMS', 'vitessce_hints': [], 'dir_schema': 'sims-v2', 'description': 'SIMS-IMS'}",
+        "rule_description": "DCWG SIMS-IMS"
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and dataset_type == 'DESI'",
+        "value": "{'assaytype': 'DESI', 'vitessce_hints': [], 'dir_schema': 'desi-v2', 'description': 'DESI'}",
+        "rule_description": "DCWG DESI"
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and dataset_type == 'MIBI'",
+        "value": "{'assaytype': 'MIBI', 'vitessce_hints': [], 'dir_schema': 'mibi-v2', 'description': 'Multiplex Ion Beam Imaging'}",
+        "rule_description": "DCWG MIBI"
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and dataset_type == '2D Imaging Mass Cytometry'",
+        "value": "{'assaytype': 'IMC2D', 'vitessce_hints': [], 'dir_schema': 'imc-v2', 'description': 'Imaging Mass Cytometry (2D)'}",
+        "rule_description": "DCWG IMC2D"
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and dataset_type == 'nanoSPLITS'",
+        "value": "{'assaytype': 'nano-splits', 'vitessce_hints': [], 'dir_schema': 'nano-splits-v2', 'description': ''}",
+        "rule_description": "DCWG nano-splits"
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and dataset_type == 'Auto-fluorescence'",
+        "value": "{'assaytype': 'AF', 'vitessce_hints': [], 'dir_schema': 'af-v2', 'description': 'Autofluorescence Microscopy'}",
+        "rule_description": "DCWG AF"
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and dataset_type == 'Light Sheet'",
+        "value": "{'assaytype': 'Lightsheet', 'vitessce_hints': [], 'dir_schema': 'lightsheet-v2', 'description': 'Lightsheet Microsopy'}",
+        "rule_description": "DCWG Lightsheet"
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and dataset_type == 'Confocal'",
+        "value": "{'assaytype': 'confocal', 'vitessce_hints': [], 'dir_schema': 'confocal-v2', 'description': 'Confocal Microscopy'}",
+        "rule_description": "DCWG confocal"
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and dataset_type == 'Thick section Multiphoton MxIF'",
+        "value": "{'assaytype': 'thick-section-multiphoton-mxif', 'vitessce_hints': [], 'dir_schema': 'thick-section-multiphoton-mxif-v2', 'description': 'Thick section Multiphoton MxIF'}",
+        "rule_description": "DCWG thick-section-multiphoton-mxif"
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and dataset_type == 'Second Harmonic Generation (SHG)'",
+        "value": "{'assaytype': 'second-harmonic-generation', 'vitessce_hints': [], 'dir_schema': 'second-harmonic-generation-v2', 'description': 'Second Harmonic Generatin (SHG)'}",
+        "rule_description": "DCWG second-harmonic-generation"
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and dataset_type == 'Enhanced Stimulated Raman Spectroscopy (SRS)'",
+        "value": "{'assaytype': 'enhanced-srs', 'vitessce_hints': [], 'dir_schema': 'enhanced-srs-v2', 'description': 'Enhanced Stimulated Raman Spectroscopy (SRS)'}",
+        "rule_description": "DCWG enhanced-srs"
     }
 ]
