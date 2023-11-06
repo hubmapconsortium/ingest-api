@@ -2523,15 +2523,27 @@ def update_datasets_datastatus():
     return combined_results
 
 def update_uploads_datastatus():
+    """
+    This will cache the 'all_uploads_query' results from Neo4J in the redis
+    entry 'datasets_data_status_key' after serializing it.
+    It will then return the un-serialized json.
+
+    Returns json
+    -------
+
+    """
     all_uploads_query = (
         "MATCH (up:Upload) "
         "OPTIONAL MATCH (up)<-[:IN_UPLOAD]-(ds:Dataset) "
-        "RETURN up.uuid AS uuid, up.group_name AS group_name, up.hubmap_id AS hubmap_id, up.status AS status, "
-        "up.title AS title, COLLECT(DISTINCT ds.uuid) AS datasets "
+        "RETURN "
+        "up.uuid AS uuid, up.group_name AS group_name, up.hubmap_id AS hubmap_id, "
+        "up.status AS status, up.status_history AS status_history, "
+        "up.title AS title, "
+        "COLLECT(DISTINCT ds.uuid) AS datasets"
     )
 
     displayed_fields = [
-        "uuid", "group_name", "hubmap_id", "status", "title", "datasets"
+        "uuid", "group_name", "hubmap_id", "status", "status_history", "title", "datasets"
     ]
 
     with neo4j_driver_instance.session() as session:
