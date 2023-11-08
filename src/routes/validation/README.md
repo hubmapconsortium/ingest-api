@@ -73,7 +73,10 @@ You can retrieve the key by
 [signing in](https://cedar.metadatacenter.org/) then navigating to
 [profile](https://cedar.metadatacenter.org/profile) to get the key.
 
-The token is then added to `instance/app.cfg` as follows:
+If you are a new user you will have to register via the `Register`
+link on the `signing in` page (see `API Keys` then `KEY`).
+
+The key should then be added to `instance/app.cfg` as follows:
 ```commandline
 # CEDAR API KEY, get one at: https://cedar.metadatacenter.org/
 CEDAR_API_KEY = ''

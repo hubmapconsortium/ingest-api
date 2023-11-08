@@ -128,14 +128,13 @@ def validate_tsv(schema='metadata', path=None) -> dict:
         try:
             entity_url: str = commons_file_helper.ensureTrailingSlashURL(current_app.config['ENTITY_WEBSERVICE_URL'])
             app_context: dict = {
-                'request_header': {'X-SenNet-Application': 'ingest-api'},
+                'request_header': {'X-Application': 'ingest-api'},
                 'entities_url': f"{entity_url}entities/"
             }
             report_type = ingest_validation_tools_table_validator.ReportType.JSON
             cedar_api_key: str = current_app.config['CEDAR_API_KEY']
             result = ingest_validation_tools_validation_utils\
-                .get_tsv_errors(path, schema_name=schema_name, report_type=report_type, cedar_api_key=cedar_api_key,
-                                globus_token=get_groups_token(), app_context=app_context)
+                .get_tsv_errors(path, schema_name=schema_name, report_type=report_type, cedar_api_key=cedar_api_key)
         except Exception as e:
             result = rest_server_err(e, True)
     return json.dumps(result)
@@ -240,7 +239,7 @@ def supported_metadata_sub_types(entity_type: str) -> list:
 
 def validate_records_uuids(records: list, entity_type: str, sub_type, pathname: str):
     """
-    Validates the uuids / SenNet ids of given records.
+    Validates the uuids of given records.
     This is used for bulk upload so that ancestor ids referenced by the user in TSVs
     are found to actually exist, are supported and confirm to entity constraints.
 
@@ -260,7 +259,7 @@ def validate_records_uuids(records: list, entity_type: str, sub_type, pathname: 
     ok = True
     idx = 1
     for r in records:
-        # First get the id column name, in order to get SenNet id in the record
+        # First get the id column name, in order to get the id in the record
         id_col = get_col_id_name_by_entity_type(entity_type)
         entity_id = r.get(id_col)
         entity_url: str = commons_file_helper.ensureTrailingSlashURL(current_app.config['ENTITY_WEBSERVICE_URL'])
