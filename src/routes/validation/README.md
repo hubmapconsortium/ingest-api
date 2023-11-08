@@ -66,8 +66,11 @@ name:"Unacceptable Metadata"}
 
 ## CEDAR
 
-To support CEDAR the primary thing that needs to be done is to create a API token
-by signing in via GitHub [here](https://cedar.metadatacenter.org/) then navigating to
+To support
+[CEDAR](https://metadatacenter.github.io/cedar-manual/advanced_topics/b2_cedars_api/)
+you will need to have a CEDAR API key (see the `About your API Key` section).
+You can retrieve the key by
+[signing in](https://cedar.metadatacenter.org/) then navigating to
 [profile](https://cedar.metadatacenter.org/profile) to get the key.
 
 The token is then added to `instance/app.cfg` as follows:
@@ -78,7 +81,7 @@ CEDAR_API_KEY = ''
 
 ## Submodule and Virtual Environment
 
-This section will talk about installing the Git submodule
+This section will talk about installing/updating the Git submodule
 as well as building the virtual environment for local testing.
 
 ### Adding the Git Submodule
@@ -86,6 +89,7 @@ as well as building the virtual environment for local testing.
 To install the submodule execute the following at the top level of the project
 ```commandline
 $ git submodule update --init --remote
+$ cd src/routes/validation
 $ git submodule add --name ingest_validation_tools
 ```
 
@@ -94,6 +98,22 @@ This will install a `.gitmodules` file at the project top level.
 [submodule "ingest_validation_tools"]
 	path = src/routes/validation/ingest_validation_tools
 	url = https://github.com/hubmapconsortium/ingest-validation-tools
+```
+
+### Changing the Submodule Branch
+
+First, change the branch in .gitmodules (if a brnach is specified), then execute the following:
+
+```commandline
+$ git submodule update --init --recursive --remote
+$ cd src/routes/validation/ingest_validation_tools
+$ git pull
+$ git checkout main
+$ git status
+On branch main
+Your branch is up to date with 'origin/main'.
+
+nothing to commit, working tree clean
 ```
 
 ### Building a Virtual Environment
