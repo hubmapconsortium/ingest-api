@@ -48,13 +48,11 @@ def initialize_rule_chain():
 def calculate_assay_info(metadata: dict) -> dict:
     if not rule_chain:
         initialize_rule_chain()
-    print("METADATA ", metadata)
     for k, v in metadata.items():
-        if k in ["assay_type", "data_types"]:
+        if k in ["data_types"]:
             metadata[k] = [x.lower() for x in v]
-        if k in ["dataset_type"]:
+        if k in ["dataset_type", "assay_type"]:
             metadata[k] = v.lower()
-    print("METADATA ", metadata)
     rslt = rule_chain.apply(metadata)
     # TODO: check that rslt has the expected parts
     return rslt
