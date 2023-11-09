@@ -2,16 +2,16 @@ import csv
 import os
 import logging
 from hubmap_commons import file_helper as commons_file_helper
-from flask import current_app, request
+from flask import current_app
 from atlas_consortia_commons.rest import *
 from werkzeug import utils
 from collections import OrderedDict
-from lib.file_upload_helper import UploadFileHelper
+from file_upload_helper import UploadFileHelper
 
 logger = logging.getLogger(__name__)
 
 
-def get_csv_records(path: str, records_as_arr = False, is_ordered = False):
+def get_csv_records(path: str, records_as_arr=False, is_ordered=False):
     records = []
     headers = []
     with open(path, newline='') as tsvfile:
@@ -85,17 +85,16 @@ def ln_err(error: str, row: int = None, column: str = None):
     }
 
 
-def files_exist(uuid, data_access_level, group_name):
+def files_exist(uuid: str, data_access_level: str, group_name: str) -> bool:
     if not uuid or not data_access_level:
         return False
-    if data_access_level == "public":
-        absolute_path = commons_file_helper.ensureTrailingSlashURL(current_app.config['GLOBUS_PUBLIC_ENDPOINT_FILEPATH'])
-    # consortium access
-    elif data_access_level == 'consortium':
-        absolute_path = commons_file_helper.ensureTrailingSlashURL(current_app.config['GLOBUS_CONSORTIUM_ENDPOINT_FILEPATH'] + '/' + group_name)
-    # protected access
+    if data_access_level not in ['public', 'consortium', 'protected']:
+        return False
+    absolute_path: str = commons_file_helper.ensureTrailingSlashURL(current_app.config['GLOBUS_PUBLIC_ENDPOINT_FILEPATH'])
+    if data_access_level == 'consortium':
+        absolute_path: str = commons_file_helper.ensureTrailingSlashURL(current_app.config['GLOBUS_CONSORTIUM_ENDPOINT_FILEPATH'] + '/' + group_name)
     elif data_access_level == 'protected':
-        absolute_path = commons_file_helper.ensureTrailingSlashURL(current_app.config['GLOBUS_PROTECTED_ENDPOINT_FILEPATH'] + '/' + group_name)
+        absolute_path: str = commons_file_helper.ensureTrailingSlashURL(current_app.config['GLOBUS_PROTECTED_ENDPOINT_FILEPATH'] + '/' + group_name)
     file_path = absolute_path + uuid
     if os.path.exists(file_path) and os.path.isdir(file_path) and os.listdir(file_path):
         return True

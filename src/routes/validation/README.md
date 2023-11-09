@@ -1,27 +1,33 @@
 # Validating metadata 
 
+The following describes the msAPI endpoint for validating metadata.
+
 ## Validate using form data
-`POST /metadata/validate`
 
-### Payload (Form Data):
+It is possible to upload the file to validate in the form using the appropriate content type.
+The following is an example using `curl`.
 ```
-metadata: (binary) # this is the TSV upload
-entity_type: Source
-sub_type: murine
+curl --verbose --request POST \
+ --url ${INGESTAPI_URL}/metadata/validate \
+ --header "Authorization: Bearer ${TOKEN}" \
+ --header "Content-Type: multipart/form-data" \
+ --form entity_type=Sample \
+ --form sub_type=Block \
+ --form metadata=@<pathroot>/ingest-api/src/test/data/tsv/example_sample_block_metadata.tsv
 ```
 
-### Sample response:
-The response will contain the `metadata` to be stored in db, and the `pathname` which can be used for reference and revalidation purposes
+The response will contain the `code`, `metadata`, and the `pathname` which can be used for reference and revalidation purposes.
 ```
-{ code: 200
-metadata: [{bedding: "Aspen chip", cage_enhancements: "Nestlets",…}]
-pathname: "cr46sq7pbn594v2btqst/example_source_mouse_metadata.tsv"}
+{"code":200,
+"metadata":[{"histological_report":"","notes":"","pathology_distance_unit":"cm","pathology_distance_value":"42","preparation_condition":"frozen in liquid nitrogen","preparation_media":"Methanol","processing_time_unit":"min","processing_time_value":"","quality_criteria":"","sample_id":"SNT479.CJXT.947","source_storage_time_unit":"min","source_storage_time_value":"42","storage_media":"Methanol","storage_method":"frozen in liquid nitrogen","type":"block","version":"1","volume_unit":"mm^3","volume_value":"42","weight_unit":"kg","weight_value":"42"}],
+"pathname":"k9zkvnznlbpee7mnvcg3/example_sample_block_metadata.tsv"}
 ```
 
 ## Validate using json
-It is possible validate a file by passing a `pathname`.
+It is possible validate a file by passing a `pathname` of the file on the server.
 This is useful for revalidating a tsv file and comparing its metadata response to another.
-Actually done in `entity-api` to verify that the posted `metadata` from the portal-ui is valid.
+
+This is done in `entity-api` to verify that the posted `metadata` from the portal-ui is valid.
 
 The following is an example using `curl`.
 ``` bash
@@ -31,18 +37,26 @@ curl --verbose --request POST \
  --header "Accept: application/json" \
  --header "Authorization: Bearer ${TOKEN}" \
  --data '{"pathname":"example_sample_block_metadata.tsv", "entity_type":"Sample", "sub_type": "Block"}'
-echo
+```
+
+The response returned will be similar to that using `form data`.
+```
+{"code":200,
+"metadata":[{"histological_report":"","notes":"","pathology_distance_unit":"cm","pathology_distance_value":"42","preparation_condition":"frozen in liquid nitrogen","preparation_media":"Methanol","processing_time_unit":"min","processing_time_value":"","quality_criteria":"","sample_id":"SNT479.CJXT.947","source_storage_time_unit":"min","source_storage_time_value":"42","storage_media":"Methanol","storage_method":"frozen in liquid nitrogen","type":"block","version":"1","volume_unit":"mm^3","volume_value":"42","weight_unit":"kg","weight_value":"42"}],
+"pathname":"1699555211.465837.tsv"}
 ```
 
 ### Testing locally
 
-In order to set this up to run locally you will need to change
+In order to test this locally you will need to change
 the `FILE_UPLOAD_TEMP_DIR` and `FILE_UPLOAD_DIR` lines in `instance/app.cfg`.
 ```
 FILE_UPLOAD_TEMP_DIR = '{full-path}/Git/ingest-api/src/test/file_upload/temp_dir'
 FILE_UPLOAD_DIR = '{full-path}/Git/ingest-api/src/test/file_upload/dir'
 ```
-You will need to copy a TSV file (named in the json `pathname` data above) to the `FILE_UPLOAD_TEMP_DIR` directory.
+You will need to copy a TSV file (named in the json `pathname` --data above) to the `FILE_UPLOAD_TEMP_DIR` directory.
+
+Sample TSV files can be found [here](https://github.com/hubmapconsortium/ingest-validation-tools/tree/main/examples/tsv-examples).
 
 ### Verify a certain TSV row
 
@@ -77,9 +91,9 @@ If you are a new user you will have to register via the `Register`
 link on the `signing in` page (see `API Keys` then `KEY`).
 
 The key should then be added to `instance/app.cfg` as follows:
-```commandline
+```
 # CEDAR API KEY, get one at: https://cedar.metadatacenter.org/
-CEDAR_API_KEY = ''
+CEDAR_API_KEY = 'your-key-goes-here'
 ```
 
 ## Submodule and Virtual Environment
@@ -97,7 +111,7 @@ $ git submodule add --name ingest_validation_tools
 ```
 
 This will install a `.gitmodules` file at the project top level.
-```commandline
+```
 [submodule "ingest_validation_tools"]
 	path = src/routes/validation/ingest_validation_tools
 	url = https://github.com/hubmapconsortium/ingest-validation-tools

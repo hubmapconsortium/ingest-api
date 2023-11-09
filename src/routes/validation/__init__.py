@@ -3,13 +3,14 @@ import os
 import time
 import csv
 import logging
-from flask import Blueprint, current_app
+from typing import Union
+from flask import Blueprint, current_app, Response
 import json
 import requests
 
 from importlib import import_module
 
-from lib.file import get_csv_records, get_base_path, check_upload, ln_err
+from routes.validation.lib.file import get_csv_records, get_base_path, check_upload, ln_err
 
 from hubmap_commons import file_helper as commons_file_helper
 from hubmap_commons.hm_auth import AuthHelper
@@ -106,7 +107,7 @@ def get_metadata(path: str) -> list:
     return result.get('records')
 
 
-def validate_tsv(schema='metadata', path=None) -> dict:
+def validate_tsv(schema='metadata', path=None) -> str:
     """
     Calls methods of the Ingest Validation Tools submodule
 
@@ -115,7 +116,7 @@ def validate_tsv(schema='metadata', path=None) -> dict:
     schema str name of the schema to validate against
     path str path of the tsv for Ingest Validation Tools
 
-    Returns dict containing validation results
+    Returns str json formatted dict containing validation results
     """
     try:
         schema_name = (
@@ -126,11 +127,6 @@ def validate_tsv(schema='metadata', path=None) -> dict:
         result = {'Preflight': str(e)}
     else:
         try:
-            entity_url: str = commons_file_helper.ensureTrailingSlashURL(current_app.config['ENTITY_WEBSERVICE_URL'])
-            app_context: dict = {
-                'request_header': {'X-Application': 'ingest-api'},
-                'entities_url': f"{entity_url}entities/"
-            }
             report_type = ingest_validation_tools_table_validator.ReportType.JSON
             cedar_api_key: str = current_app.config['CEDAR_API_KEY']
             result = ingest_validation_tools_validation_utils\
@@ -182,7 +178,7 @@ def check_cedar(entity_type: str, sub_type, upload) -> bool:
     return True
 
 
-def determine_schema(entity_type: str, sub_type) -> str:
+def determine_schema(entity_type: str, sub_type) -> Union[dict, Response, str]:
     if equals(entity_type, "Sample"):
         if not sub_type:
             return rest_bad_req("`sub_type` for schema name required.")
@@ -338,10 +334,13 @@ def validate_metadata_upload():
 
         if error is None:
             if check_cedar(entity_type, sub_type, upload) is False:
-                id = get_cedar_schema_ids().get(sub_type)
-                return rest_response(StatusCodes.UNACCEPTABLE, 'Unacceptable Metadata',
-                                     f"Mismatch of \"{entity_type} {sub_type}\" and \"metadata_schema_id\". Valid id for \"{sub_type}\": {id}. "
-                                     f"For more details, check out the docs: https://docs.sennetconsortium.org/libraries/ingest-validation-tools/schemas")
+                id_sub_type = get_cedar_schema_ids().get(sub_type)
+                return rest_response(StatusCodes.UNACCEPTABLE,
+                                     'Unacceptable Metadata',
+                                     f"Mismatch of \"{entity_type} {sub_type}\" and \"metadata_schema_id\". "
+                                     f"Valid id for \"{sub_type}\": {id_sub_type}. "
+                                     "For more details, check out the docs: "
+                                     "https://docs.sennetconsortium.org/libraries/ingest-validation-tools/schemas")
             path: str = upload.get('fullpath')
             schema = determine_schema(entity_type, sub_type)
             validation_results = validate_tsv(path=path, schema=schema)

@@ -1,4 +1,5 @@
 from flask import current_app
+from urllib.parse import urlparse
 import urllib.request
 from hubmap_commons import file_helper as commons_file_helper
 
