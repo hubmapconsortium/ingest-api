@@ -2,6 +2,16 @@
 
 A restful web service exposing calls needed for the [Ingest UI](https://github.com/hubmapconsortium/ingest-ui) React application. The API is documented [here](https://smart-api.info/registry?q=5a6bea1158d2652743c7a201fdb1c44d).
 
+## Working with submodule
+
+This repository relies on the [ingest-validation-tools](https://github.com/sennetconsortium/ingest-validation-tools) as a submodule for metadata validation. The
+file `.gitmodules` contains the configuration for the URL and specific branch of the submodule that is to be used. Once
+you already have cloned this repository and switched to the target branch, to load the latest `ingest-validation-tools` submodule:
+
+```
+git submodule update --init --remote
+```
+
 ## Flask app configuration
 
 This application is written in Flask and it includes an **app.cfg.example** file in the `instance` directory.  Copy the file and rename it **app.cfg** and modify  with the appropriate information.
