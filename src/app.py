@@ -38,6 +38,10 @@ from hubmap_commons import file_helper as commons_file_helper
 # Should be deprecated/refactored but still in use
 from hubmap_commons.hubmap_const import HubmapConst
 
+from atlas_consortia_commons.ubkg import initialize_ubkg
+from atlas_consortia_commons.rest import get_http_exceptions_classes, abort_err_handler
+from atlas_consortia_commons.ubkg.ubkg_sdk import init_ontology
+
 # Local modules
 from specimen import Specimen
 from ingest_file_helper import IngestFileHelper
@@ -57,6 +61,8 @@ from routes.auth import auth_blueprint
 from routes.datasets import datasets_blueprint
 from routes.file import file_blueprint
 from routes.assayclassifier import bp as assayclassifier_blueprint
+from routes.validation import validation_blueprint
+
 
 # Set logging format and level (default is warning)
 # All the API logging is forwarded to the uWSGI server and gets written into the log file `uwsgi-ingest-api.log`
@@ -77,6 +83,8 @@ app.register_blueprint(auth_blueprint)
 app.register_blueprint(datasets_blueprint)
 app.register_blueprint(file_blueprint)
 app.register_blueprint(assayclassifier_blueprint)
+app.register_blueprint(validation_blueprint)
+
 
 # Suppress InsecureRequestWarning warning when requesting status on https with ssl cert verify disabled
 requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
@@ -1269,7 +1277,7 @@ def submit_dataset(uuid):
             return Response(error_msg, response.status_code)
     except HTTPException as hte:
         logger.error(hte)
-        return Response("Unexpected error while updating dataset: " + str(e) + "  Check the logs", 500)
+        return Response("Unexpected error while updating dataset: " + str(hte) + "  Check the logs", 500)
     def call_airflow():
         try:
             r = requests.post(pipeline_url, json={"submission_id" : "{uuid}".format(uuid=uuid), "process" : app.config['INGEST_PIPELINE_DEFAULT_PROCESS'],"full_path": ingest_helper.get_dataset_directory_absolute_path(dataset_request, group_uuid, uuid),"provider": "{group_name}".format(group_name=AuthHelper.getGroupDisplayName(group_uuid))}, headers={'Content-Type':'application/json', 'Authorization': 'Bearer {token}'.format(token=AuthHelper.instance().getProcessSecret() )}, verify=False)
