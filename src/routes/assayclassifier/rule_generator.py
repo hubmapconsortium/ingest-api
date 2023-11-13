@@ -35,6 +35,11 @@ PREAMBLE = [
      "value": "{'is_derived': false, 'not_derived': true}",
      "rule_description": "Preamble rule identifying non-derived non-DCWG"
      },
+    {"type": "note",
+     "match": "not_dcwg and not_derived and version == null",
+     "value": "{'version': 0}",
+     "rule_description": "Cover default schema version = 0 for non-DCWG metadata"
+    },
 ]
 
 def get_assay_list(table_schema_path):
@@ -194,11 +199,16 @@ def main() -> None:
                 dir_schema_str = f"'dir_schema': '{dir_schema_filename}',"
             else:
                 dir_schema_str = ""
+            if schema_assay_name:
+                tbl_schema_str = f"'tbl_schema': '{schema_assay_name}-v'+version.to_str ,"
+            else:
+                tbl_schema_str = ""
             json_block.append(
                 {"type": "match",
                  "match": f"not_dcwg and not_derived and assay_type in [{', '.join(quoted_assay_types)}]",
                  "value": (f"{{'assaytype': '{canonical_name}',"
                            f" {dir_schema_str}"
+                           f" {tbl_schema_str}"
                            f" 'vitessce_hints': {vitessce_hints},"
                            f" 'description': '{description}'}}"
                            ),
