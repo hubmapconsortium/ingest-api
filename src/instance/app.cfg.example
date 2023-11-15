@@ -133,3 +133,6 @@ DATACITE_HUBMAP_PREFIX = ''
 
 # Sets cookie domain context upon login. Use None for development
 COOKIE_DOMAIN = '.hubmapconsortium.org'
+
+# CEDAR API KEY, get one at: https://cedar.metadatacenter.org/
+CEDAR_API_KEY = ''

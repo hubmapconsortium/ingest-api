@@ -13,7 +13,7 @@ from worker.utils import extract_cell_count_from_secondary_analysis_files_for_sa
     sample_ds_uuid_files, get_ds_path, ResponseException
 
 
-datasets_blueprint = Blueprint('datasets', __name__)
+datasets_blueprint: Blueprint = Blueprint('datasets', __name__)
 
 logger: logging.Logger = logging.getLogger(__name__)
 
