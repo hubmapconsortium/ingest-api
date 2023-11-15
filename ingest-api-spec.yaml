@@ -135,6 +135,30 @@ paths:
               $ref: "#/components/schemas/Dataset"
         description: Updated dataset object
         required: true
+  "/datasets/{identifier}/metadata-json":
+    put:
+      tags:
+        - dataset
+      summary: Modify a single HuBMAP dataset identifier by adding or updating the metadata.json file
+      operationId: datasetsMetadataJson
+      parameters:
+        - name: identifier
+          in: path
+          description: Dataset identifier which is a UUID without the dashes
+          required: true
+          schema:
+            type: string
+      responses:
+        "201":
+          description: metadata.json file created
+        "400":
+          description: Missing or improper dataset identifier
+        "401":
+          description: User is not authorized to access endpoint
+        "403":
+          description: User must be a member of the HuBMAP Data Admin group
+        '500':
+          description: Internal error
   /collections:
     get:
       tags:
@@ -616,6 +640,28 @@ paths:
         "500":
           description: An unexpected error occured
 
+  /metadata/validate:
+    post:
+      summary: "Validate uploaded tsv file"
+      requestBody:
+        description: Metadata information to be validated
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/metadata_validate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/metadata_validate'
+      responses:
+        '200':
+          description: The tsv file was successfully validated.
+        '400':
+          description: Missing input
+        '406':
+          description: The tsv file was not acceptable
+        '500':
+          description: Internal error
 
 servers:
   - url: "https://uuid.hubmapconsortium.org/dataingest"
@@ -728,3 +774,19 @@ components:
           example: Sample, Donor
       xml:
         name: Specimen
+    metadata_validate:
+      type: object
+      required:
+        - entity_type
+        - validate_uuids
+      properties:
+        pathname:
+          type: string
+        entity_type:
+          type: string
+        sub_type:
+          type: string
+        validate_uuids:
+          type: string
+        tsv_row:
+          type: string
