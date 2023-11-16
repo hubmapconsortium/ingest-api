@@ -2437,7 +2437,7 @@ def update_datasets_datastatus():
     displayed_fields = [
         "hubmap_id", "group_name", "status", "organ", "provider_experiment_id", "last_touch", "has_contacts",
         "has_contributors", "data_types", "donor_hubmap_id", "donor_submission_id", "donor_lab_id",
-        "has_data_metadata", "has_donor_metadata", "descendant_datasets", "upload", "has_rui_info", "globus_url", "has_data", "organ_hubmap_id"
+        "has_dataset_metadata", "has_donor_metadata", "descendant_datasets", "upload", "has_rui_info", "globus_url", "has_data", "organ_hubmap_id"
     ]
 
     queries = [all_datasets_query, organ_query, donor_query, descendant_datasets_query,
@@ -2495,9 +2495,9 @@ def update_datasets_datastatus():
         else:
             dataset['is_primary'] = "false"
         has_data = files_exist(dataset.get('uuid'), dataset.get('data_access_level'), dataset.get('group_name'))
-        has_data_metadata = files_exist(dataset.get('uuid'), dataset.get('data_access_level'), dataset.get('group_name'), metadata=True)
+        has_dataset_metadata = files_exist(dataset.get('uuid'), dataset.get('data_access_level'), dataset.get('group_name'), metadata=True)
         dataset['has_data'] = has_data
-        dataset['has_data_metadata'] = has_data_metadata
+        dataset['has_dataset_metadata'] = has_dataset_metadata
 
         for prop in dataset:
             if isinstance(dataset[prop], list):
@@ -2589,7 +2589,7 @@ def files_exist(uuid, data_access_level, group_name, metadata=False):
         if not metadata:
             return True
         else:
-            if any(glob.glob(os.path.join(file_path, '**', 'metadata.tsv'), recursive=True)):
+            if any(glob.glob(os.path.join(file_path, '**', '*metadata.tsv'), recursive=True)):
                 return True
             else:
                 return False
