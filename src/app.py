@@ -2399,47 +2399,55 @@ def update_datasets_datastatus():
     organ_types_dict = requests.get(organ_types_url).json()
     all_datasets_query = (
         "MATCH (ds:Dataset)<-[:ACTIVITY_OUTPUT]-(:Activity)<-[:ACTIVITY_INPUT]-(ancestor) "
-        "RETURN ds.uuid AS uuid, ds.group_name AS group_name, ds.data_types AS data_types, "
+        "RETURN "
+        "ds.uuid AS uuid, ds.group_name AS group_name, ds.data_types AS data_types, "
         "ds.hubmap_id AS hubmap_id, ds.lab_dataset_id AS provider_experiment_id, ds.status AS status, "
+        "ds.status_history AS status_history, "
         "ds.last_modified_timestamp AS last_touch, ds.data_access_level AS data_access_level, "
-        "COALESCE(ds.contributors IS NOT NULL) AS has_contributors, COALESCE(ds.contacts IS NOT NULL) AS has_contacts, "
+        "COALESCE(ds.contributors IS NOT NULL) AS has_contributors, "
+        "COALESCE(ds.contacts IS NOT NULL) AS has_contacts, "
         "ancestor.entity_type AS ancestor_entity_type"
     )
 
     organ_query = (
         "MATCH (ds:Dataset)<-[*]-(o:Sample {sample_category: 'organ'}) "
         "WHERE (ds)<-[:ACTIVITY_OUTPUT]-(:Activity) "
-        "RETURN DISTINCT ds.uuid AS uuid, o.organ AS organ, o.hubmap_id as organ_hubmap_id, o.uuid as organ_uuid "
+        "RETURN DISTINCT "
+        "ds.uuid AS uuid, o.organ AS organ, o.hubmap_id as organ_hubmap_id, o.uuid as organ_uuid"
     )
 
     donor_query = (
         "MATCH (ds:Dataset)<-[*]-(dn:Donor) "
         "WHERE (ds)<-[:ACTIVITY_OUTPUT]-(:Activity) "
-        "RETURN DISTINCT ds.uuid AS uuid, "
+        "RETURN DISTINCT "
+        "ds.uuid AS uuid, "
         "COLLECT(DISTINCT dn.hubmap_id) AS donor_hubmap_id, COLLECT(DISTINCT dn.submission_id) AS donor_submission_id, "
         "COLLECT(DISTINCT dn.lab_donor_id) AS donor_lab_id, COALESCE(dn.metadata IS NOT NULL) AS has_metadata"
     )
 
     descendant_datasets_query = (
         "MATCH (dds:Dataset)<-[*]-(ds:Dataset)<-[:ACTIVITY_OUTPUT]-(:Activity)<-[:ACTIVITY_INPUT]-(:Sample) "
-        "RETURN DISTINCT ds.uuid AS uuid, COLLECT(DISTINCT dds.hubmap_id) AS descendant_datasets"
+        "RETURN DISTINCT "
+        "ds.uuid AS uuid, COLLECT(DISTINCT dds.hubmap_id) AS descendant_datasets"
     )
 
     upload_query = (
         "MATCH (u:Upload)<-[:IN_UPLOAD]-(ds) "
-        "RETURN DISTINCT ds.uuid AS uuid, COLLECT(DISTINCT u.hubmap_id) AS upload"
+        "RETURN DISTINCT "
+        "ds.uuid AS uuid, COLLECT(DISTINCT u.hubmap_id) AS upload"
     )
 
     has_rui_query = (
         "MATCH (ds:Dataset) "
         "WHERE (ds)<-[:ACTIVITY_OUTPUT]-(:Activity) "
         "WITH ds, [(ds)<-[*]-(s:Sample) | s.rui_location] AS rui_locations "
-        "RETURN ds.uuid AS uuid, any(rui_location IN rui_locations WHERE rui_location IS NOT NULL) AS has_rui_info"
+        "RETURN "
+        "ds.uuid AS uuid, any(rui_location IN rui_locations WHERE rui_location IS NOT NULL) AS has_rui_info"
     )
 
     displayed_fields = [
-        "hubmap_id", "group_name", "status", "organ", "provider_experiment_id", "last_touch", "has_contacts",
-        "has_contributors", "data_types", "donor_hubmap_id", "donor_submission_id", "donor_lab_id",
+        "hubmap_id", "group_name", "status", "status_history", "organ", "provider_experiment_id", "last_touch",
+        "has_contacts", "has_contributors", "data_types", "donor_hubmap_id", "donor_submission_id", "donor_lab_id",
         "has_metadata", "descendant_datasets", "upload", "has_rui_info", "globus_url", "has_data", "organ_hubmap_id"
     ]
 
@@ -2505,10 +2513,15 @@ def update_datasets_datastatus():
                 dataset[prop] = ", ".join(dataset[prop])
             if isinstance(dataset[prop], (bool, int)):
                 dataset[prop] = str(dataset[prop])
-            if dataset[prop] and dataset[prop][0] == "[" and dataset[prop][-1] == "]":
+            if isinstance(dataset[prop], str) and \
+                    len(dataset[prop]) >= 2 and \
+                    dataset[prop][0] == "[" and dataset[prop][-1] == "]":
                 dataset[prop] = dataset[prop].replace("'", '"')
                 dataset[prop] = json.loads(dataset[prop])
-                dataset[prop] = dataset[prop][0]
+                if len(dataset[prop]) > 0:
+                    dataset[prop] = dataset[prop][0]
+                else:
+                    dataset[prop] = " "
             if dataset[prop] is None:
                 dataset[prop] = " "
         if dataset.get('data_types') and dataset.get('data_types') in assay_types_dict:
@@ -2533,15 +2546,27 @@ def update_datasets_datastatus():
     return combined_results
 
 def update_uploads_datastatus():
+    """
+    This will cache the 'all_uploads_query' results from Neo4J in the redis
+    entry 'datasets_data_status_key' after serializing it.
+    It will then return the un-serialized json.
+
+    Returns json
+    -------
+
+    """
     all_uploads_query = (
         "MATCH (up:Upload) "
         "OPTIONAL MATCH (up)<-[:IN_UPLOAD]-(ds:Dataset) "
-        "RETURN up.uuid AS uuid, up.group_name AS group_name, up.hubmap_id AS hubmap_id, up.status AS status, "
-        "up.title AS title, COLLECT(DISTINCT ds.uuid) AS datasets "
+        "RETURN "
+        "up.uuid AS uuid, up.group_name AS group_name, up.hubmap_id AS hubmap_id, "
+        "up.status AS status, up.status_history AS status_history, "
+        "up.title AS title, "
+        "COLLECT(DISTINCT ds.uuid) AS datasets"
     )
 
     displayed_fields = [
-        "uuid", "group_name", "hubmap_id", "status", "title", "datasets"
+        "uuid", "group_name", "hubmap_id", "status", "status_history", "title", "datasets"
     ]
 
     with neo4j_driver_instance.session() as session:
