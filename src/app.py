@@ -2397,9 +2397,11 @@ def update_datasets_datastatus():
         "MATCH (ds:Dataset)<-[:ACTIVITY_OUTPUT]-(:Activity)<-[:ACTIVITY_INPUT]-(ancestor) "
         "RETURN ds.uuid AS uuid, ds.group_name AS group_name, ds.data_types AS data_types, "
         "ds.hubmap_id AS hubmap_id, ds.lab_dataset_id AS provider_experiment_id, ds.status AS status, "
+        "ds.status_history AS status_history, "
         "ds.last_modified_timestamp AS last_touch, ds.published_timestamp AS published_timestamp, "
         "ds.data_access_level AS data_access_level, "
-        "COALESCE(ds.contributors IS NOT NULL) AS has_contributors, COALESCE(ds.contacts IS NOT NULL) AS has_contacts, "
+        "COALESCE(ds.contributors IS NOT NULL) AS has_contributors, "
+        "COALESCE(ds.contacts IS NOT NULL) AS has_contacts, "
         "ancestor.entity_type AS ancestor_entity_type"
     )
 
