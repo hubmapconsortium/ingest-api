@@ -1,5 +1,5 @@
 [submodule "ingest_validation_tools"]
 	path = src/routes/validation/ingest_validation_tools
 	url = https://github.com/hubmapconsortium/ingest-validation-tools
-    branch = main
+	branch = main
 	ignore = dirty
