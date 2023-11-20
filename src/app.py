@@ -2400,11 +2400,11 @@ def update_datasets_datastatus():
     organ_types_dict = requests.get(organ_types_url).json()
     all_datasets_query = (
         "MATCH (ds:Dataset)<-[:ACTIVITY_OUTPUT]-(:Activity)<-[:ACTIVITY_INPUT]-(ancestor) "
-        "RETURN "
-        "ds.uuid AS uuid, ds.group_name AS group_name, ds.data_types AS data_types, "
+        "RETURN ds.uuid AS uuid, ds.group_name AS group_name, ds.data_types AS data_types, "
         "ds.hubmap_id AS hubmap_id, ds.lab_dataset_id AS provider_experiment_id, ds.status AS status, "
         "ds.status_history AS status_history, "
-        "ds.last_modified_timestamp AS last_touch, ds.data_access_level AS data_access_level, "
+        "ds.last_modified_timestamp AS last_touch, ds.published_timestamp AS published_timestamp, "
+        "ds.data_access_level AS data_access_level, "
         "COALESCE(ds.contributors IS NOT NULL) AS has_contributors, "
         "COALESCE(ds.contacts IS NOT NULL) AS has_contacts, "
         "ancestor.entity_type AS ancestor_entity_type"
@@ -2501,7 +2501,8 @@ def update_datasets_datastatus():
     for dataset in combined_results:
         globus_url = get_globus_url(dataset.get('data_access_level'), dataset.get('group_name'), dataset.get('uuid'))
         dataset['globus_url'] = globus_url
-        dataset['last_touch'] = str(datetime.datetime.utcfromtimestamp(dataset['last_touch'] / 1000))
+        last_touch = dataset['last_touch'] if dataset['published_timestamp'] is None else dataset['published_timestamp']
+        dataset['last_touch'] = str(datetime.datetime.utcfromtimestamp(last_touch/1000))
         if dataset.get('ancestor_entity_type').lower() != "dataset":
             dataset['is_primary'] = "true"
         else:
