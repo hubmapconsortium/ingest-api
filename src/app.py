@@ -2447,7 +2447,7 @@ def update_datasets_datastatus():
     )
 
     displayed_fields = [
-        "hubmap_id", "group_name", "status", "status_history" "organ", "provider_experiment_id", "last_touch",
+        "hubmap_id", "group_name", "status", "status_history", "organ", "provider_experiment_id", "last_touch",
         "has_contacts", "has_contributors", "data_types", "donor_hubmap_id", "donor_submission_id", "donor_lab_id",
         "has_dataset_metadata", "has_donor_metadata", "descendant_datasets", "upload", "has_rui_info", "globus_url", "has_data", "organ_hubmap_id"
     ]
