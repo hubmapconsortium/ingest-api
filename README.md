@@ -4,7 +4,7 @@ A restful web service exposing calls needed for the [Ingest UI](https://github.c
 
 ## Working with submodule
 
-This repository relies on the [ingest-validation-tools](https://github.com/sennetconsortium/ingest-validation-tools) as a submodule for metadata validation. The
+This repository relies on the [ingest-validation-tools](https://github.com/hubmapconsortium/ingest-validation-tools) as a submodule for metadata validation. The
 file `.gitmodules` contains the configuration for the URL and specific branch of the submodule that is to be used. Once
 you already have cloned this repository and switched to the target branch, to load the latest `ingest-validation-tools` submodule:
 
