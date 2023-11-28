@@ -475,6 +475,12 @@
   },
   {
     "type": "match",
+    "match": "is_dcwg and dataset_type == 'snare-seq2'",
+    "value": "{'assaytype': 'snareSeq', 'vitessce_hints': [], 'description': 'SNARE-seq2 (Multiome Sequencing)', 'must_contain': ['RNAseq', 'ATACseq']}"
+    "rule_description": "DCWG snareSeq"
+  },
+  {
+    "type": "match",
     "match": "is_dcwg and dataset_type == 'rnaseq' and assay_input_entity == 'single nucleus' and barcode_read =~~ 'Read 1' and barcode_size == 16 and barcode_offset == 0 and umi_read =~~ 'Read 1' and umi_size == 12 and umi_offset == 16",
     "value": "{'assaytype': 'snRNAseq-10xGenomics-v3', 'vitessce_hints': [], 'dir_schema': 'scrnaseq-v2', 'description': 'snRNA-seq (10x Genomics v3)'}",
     "rule_description": "DCWG {assay}"
@@ -524,38 +530,38 @@
   {
     "type": "match",
     "match": "is_dcwg and dataset_type == 'phenocycler'",
-    "value": "{'assaytype': 'phenocycler', 'vitessce_hints': [], 'dir_schema': 'phenocycler-v2', 'description': 'PhenoCycler'}",
-    "rule_description": "DCWG phenocycler"
+    "value": "{'assaytype': 'PhenoCycler', 'vitessce_hints': [], 'dir_schema': 'phenocycler-v2', 'description': 'PhenoCycler'}",
+    "rule_description": "DCWG PhenoCycler"
   },
   {
     "type": "match",
     "match": "is_dcwg and dataset_type == 'cycif'",
-    "value": "{'assaytype': 'cycif', 'vitessce_hints': [], 'dir_schema': 'cycif-v2', 'description': 'CycIF'}",
-    "rule_description": "DCWG cycif"
+    "value": "{'assaytype': 'CyCIF', 'vitessce_hints': [], 'dir_schema': 'cycif-v2', 'description': 'CycIF'}",
+    "rule_description": "DCWG CyCIF"
   },
   {
     "type": "match",
     "match": "is_dcwg and dataset_type == 'merfish'",
-    "value": "{'assaytype': 'merfish', 'vitessce_hints': [], 'dir_schema': 'merfish-v2', 'description': 'MERFISH'}",
-    "rule_description": "DCWG merfish"
+    "value": "{'assaytype': 'MERFISH', 'vitessce_hints': [], 'dir_schema': 'merfish-v2', 'description': 'MERFISH'}",
+    "rule_description": "DCWG MERFISH"
   },
   {
     "type": "match",
     "match": "is_dcwg and dataset_type == 'cell dive'",
-    "value": "{'assaytype': 'cell-dive', 'vitessce_hints': [], 'dir_schema': 'celldive-v2', 'description': 'Cell DIVE'}",
-    "rule_description": "DCWG cell-dive"
+    "value": "{'assaytype': 'CellDive', 'vitessce_hints': [], 'dir_schema': 'celldive-v2', 'description': 'Cell DIVE'}",
+    "rule_description": "DCWG CellDive"
   },
   {
     "type": "match",
     "match": "is_dcwg and dataset_type == 'maldi'",
-    "value": "{'assaytype': 'MALDI-IMS', 'vitessce_hints': [], 'dir_schema': 'maldi-v2', 'description': 'MALDI IMS'}",
-    "rule_description": "DCWG MALDI-IMS"
+    "value": "{'assaytype': 'MALDI', 'vitessce_hints': [], 'dir_schema': 'maldi-v2', 'description': 'MALDI IMS'}",
+    "rule_description": "DCWG MALDI"
   },
   {
     "type": "match",
     "match": "is_dcwg and dataset_type == 'sims'",
-    "value": "{'assaytype': 'SIMS-IMS', 'vitessce_hints': [], 'dir_schema': 'sims-v2', 'description': 'SIMS-IMS'}",
-    "rule_description": "DCWG SIMS-IMS"
+    "value": "{'assaytype': 'SIMS', 'vitessce_hints': [], 'dir_schema': 'sims-v2', 'description': 'SIMS-IMS'}",
+    "rule_description": "DCWG SIMS"
   },
   {
     "type": "match",
@@ -578,43 +584,43 @@
   {
     "type": "match",
     "match": "is_dcwg and dataset_type == 'nanosplits'",
-    "value": "{'assaytype': 'nano-splits', 'vitessce_hints': [], 'dir_schema': 'nano-splits-v2', 'description': ''}",
-    "rule_description": "DCWG nano-splits"
+    "value": "{'assaytype': 'nanoSPLITS', 'vitessce_hints': [], 'dir_schema': 'nano-splits-v2', 'description': ''}",
+    "rule_description": "DCWG nanoSPLITS"
   },
   {
     "type": "match",
     "match": "is_dcwg and dataset_type == 'auto-fluorescence'",
-    "value": "{'assaytype': 'AF', 'vitessce_hints': [], 'dir_schema': 'af-v2', 'description': 'Autofluorescence Microscopy'}",
-    "rule_description": "DCWG AF"
+    "value": "{'assaytype': 'Auto-fluorescence', 'vitessce_hints': [], 'dir_schema': 'af-v2', 'description': 'Autofluorescence Microscopy'}",
+    "rule_description": "DCWG Auto-fluorescence"
   },
   {
     "type": "match",
     "match": "is_dcwg and dataset_type == 'light sheet'",
-    "value": "{'assaytype': 'Lightsheet', 'vitessce_hints': [], 'dir_schema': 'lightsheet-v2', 'description': 'Lightsheet Microsopy'}",
-    "rule_description": "DCWG Lightsheet"
+    "value": "{'assaytype': 'Light Sheet', 'vitessce_hints': [], 'dir_schema': 'lightsheet-v2', 'description': 'Lightsheet Microsopy'}",
+    "rule_description": "DCWG Light Sheet"
   },
   {
     "type": "match",
     "match": "is_dcwg and dataset_type == 'confocal'",
-    "value": "{'assaytype': 'confocal', 'vitessce_hints': [], 'dir_schema': 'confocal-v2', 'description': 'Confocal Microscopy'}",
-    "rule_description": "DCWG confocal"
+    "value": "{'assaytype': 'Confocal', 'vitessce_hints': [], 'dir_schema': 'confocal-v2', 'description': 'Confocal Microscopy'}",
+    "rule_description": "DCWG Confocal"
   },
   {
     "type": "match",
     "match": "is_dcwg and dataset_type == 'thick section multiphoton mxif'",
-    "value": "{'assaytype': 'thick-section-multiphoton-mxif', 'vitessce_hints': [], 'dir_schema': 'thick-section-multiphoton-mxif-v2', 'description': 'Thick section Multiphoton MxIF'}",
-    "rule_description": "DCWG thick-section-multiphoton-mxif"
+    "value": "{'assaytype': 'Thick section Multiphoton MxIF', 'vitessce_hints': [], 'dir_schema': 'thick-section-multiphoton-mxif-v2', 'description': 'Thick section Multiphoton MxIF'}",
+    "rule_description": "DCWG Thick section Multiphoton MxIF"
   },
   {
     "type": "match",
     "match": "is_dcwg and dataset_type == 'second harmonic generation (shg)'",
-    "value": "{'assaytype': 'second-harmonic-generation', 'vitessce_hints': [], 'dir_schema': 'second-harmonic-generation-v2', 'description': 'Second Harmonic Generatin (SHG)'}",
-    "rule_description": "DCWG second-harmonic-generation"
+    "value": "{'assaytype': 'Second Harmonic Generation (SHG)', 'vitessce_hints': [], 'dir_schema': 'second-harmonic-generation-v2', 'description': 'Second Harmonic Generatin (SHG)'}",
+    "rule_description": "DCWG Second Harmonic Generation (SHG)"
   },
   {
     "type": "match",
     "match": "is_dcwg and dataset_type == 'enhanced stimulated raman spectroscopy (srs)'",
-    "value": "{'assaytype': 'enhanced-srs', 'vitessce_hints': [], 'dir_schema': 'enhanced-srs-v2', 'description': 'Enhanced Stimulated Raman Spectroscopy (SRS)'}",
-    "rule_description": "DCWG enhanced-srs"
+    "value": "{'assaytype': 'Enhanced Stimulated Raman Spectroscopy (SRS)', 'vitessce_hints': [], 'dir_schema': 'enhanced-srs-v2', 'description': 'Enhanced Stimulated Raman Spectroscopy (SRS)'}",
+    "rule_description": "DCWG Enhanced Stimulated Raman Spectroscopy (SRS)"
   }
 ]
