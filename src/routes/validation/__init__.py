@@ -118,19 +118,19 @@ def validate_tsv(schema='metadata', path=None) -> str:
 
     Returns str json formatted dict containing validation results
     """
+    globus_token = auth_helper_instance.getAuthorizationTokens(request.headers)
     try:
         schema_name = (
             schema if schema != 'metadata'
-            else ingest_validation_tools_validation_utils.get_table_schema_version(path, 'ascii').schema_name
+            else ingest_validation_tools_validation_utils.get_schema_version(path, 'ascii', globus_token=globus_token).schema_name
         )
     except ingest_validation_tools_schema_loader.PreflightError as e:
         result = {'Preflight': str(e)}
     else:
         try:
             report_type = ingest_validation_tools_table_validator.ReportType.JSON
-            cedar_api_key: str = current_app.config['CEDAR_API_KEY']
             result = ingest_validation_tools_validation_utils\
-                .get_tsv_errors(path, schema_name=schema_name, report_type=report_type, cedar_api_key=cedar_api_key)
+                .get_tsv_errors(path, schema_name=schema_name, report_type=report_type, globus_token=globus_token)
         except Exception as e:
             result = rest_server_err(e, True)
     return json.dumps(result)
