@@ -118,6 +118,7 @@ def validate_tsv(schema='metadata', path=None) -> str:
 
     Returns str json formatted dict containing validation results
     """
+    auth_helper_instance: AuthHelper = AuthHelper.instance()
     globus_token = auth_helper_instance.getAuthorizationTokens(request.headers)
     try:
         schema_name = (
