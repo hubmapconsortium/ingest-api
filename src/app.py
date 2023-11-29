@@ -1,5 +1,6 @@
 import datetime
 import redis
+import glob
 import os
 import sys
 import logging
@@ -2397,8 +2398,11 @@ def update_datasets_datastatus():
         "MATCH (ds:Dataset)<-[:ACTIVITY_OUTPUT]-(:Activity)<-[:ACTIVITY_INPUT]-(ancestor) "
         "RETURN ds.uuid AS uuid, ds.group_name AS group_name, ds.data_types AS data_types, "
         "ds.hubmap_id AS hubmap_id, ds.lab_dataset_id AS provider_experiment_id, ds.status AS status, "
-        "ds.last_modified_timestamp AS last_touch, ds.data_access_level AS data_access_level, "
-        "COALESCE(ds.contributors IS NOT NULL) AS has_contributors, COALESCE(ds.contacts IS NOT NULL) AS has_contacts, "
+        "ds.status_history AS status_history, "
+        "ds.last_modified_timestamp AS last_touch, ds.published_timestamp AS published_timestamp, "
+        "ds.data_access_level AS data_access_level, "
+        "COALESCE(ds.contributors IS NOT NULL) AS has_contributors, "
+        "COALESCE(ds.contacts IS NOT NULL) AS has_contacts, "
         "ancestor.entity_type AS ancestor_entity_type"
     )
 
@@ -2413,7 +2417,7 @@ def update_datasets_datastatus():
         "WHERE (ds)<-[:ACTIVITY_OUTPUT]-(:Activity) "
         "RETURN DISTINCT ds.uuid AS uuid, "
         "COLLECT(DISTINCT dn.hubmap_id) AS donor_hubmap_id, COLLECT(DISTINCT dn.submission_id) AS donor_submission_id, "
-        "COLLECT(DISTINCT dn.lab_donor_id) AS donor_lab_id, COALESCE(dn.metadata IS NOT NULL) AS has_metadata"
+        "COLLECT(DISTINCT dn.lab_donor_id) AS donor_lab_id, COALESCE(dn.metadata IS NOT NULL) AS has_donor_metadata"
     )
 
     descendant_datasets_query = (
@@ -2436,7 +2440,7 @@ def update_datasets_datastatus():
     displayed_fields = [
         "hubmap_id", "group_name", "status", "organ", "provider_experiment_id", "last_touch", "has_contacts",
         "has_contributors", "data_types", "donor_hubmap_id", "donor_submission_id", "donor_lab_id",
-        "has_metadata", "descendant_datasets", "upload", "has_rui_info", "globus_url", "has_data", "organ_hubmap_id"
+        "has_dataset_metadata", "has_donor_metadata", "descendant_datasets", "upload", "has_rui_info", "globus_url", "has_data", "organ_hubmap_id"
     ]
 
     queries = [all_datasets_query, organ_query, donor_query, descendant_datasets_query,
@@ -2470,7 +2474,7 @@ def update_datasets_datastatus():
             output_dict[dataset['uuid']]['donor_hubmap_id'] = dataset['donor_hubmap_id']
             output_dict[dataset['uuid']]['donor_submission_id'] = dataset['donor_submission_id']
             output_dict[dataset['uuid']]['donor_lab_id'] = dataset['donor_lab_id']
-            output_dict[dataset['uuid']]['has_metadata'] = dataset['has_metadata']
+            output_dict[dataset['uuid']]['has_donor_metadata'] = dataset['has_donor_metadata']
     for dataset in descendant_datasets_result:
         if output_dict.get(dataset['uuid']):
             output_dict[dataset['uuid']]['descendant_datasets'] = dataset['descendant_datasets']
@@ -2488,13 +2492,16 @@ def update_datasets_datastatus():
     for dataset in combined_results:
         globus_url = get_globus_url(dataset.get('data_access_level'), dataset.get('group_name'), dataset.get('uuid'))
         dataset['globus_url'] = globus_url
-        dataset['last_touch'] = str(datetime.datetime.utcfromtimestamp(dataset['last_touch'] / 1000))
+        last_touch = dataset['last_touch'] if dataset['published_timestamp'] is None else dataset['published_timestamp']
+        dataset['last_touch'] = str(datetime.datetime.utcfromtimestamp(last_touch/1000))
         if dataset.get('ancestor_entity_type').lower() != "dataset":
             dataset['is_primary'] = "true"
         else:
             dataset['is_primary'] = "false"
         has_data = files_exist(dataset.get('uuid'), dataset.get('data_access_level'), dataset.get('group_name'))
+        has_dataset_metadata = files_exist(dataset.get('uuid'), dataset.get('data_access_level'), dataset.get('group_name'), metadata=True)
         dataset['has_data'] = has_data
+        dataset['has_dataset_metadata'] = has_dataset_metadata
 
         for prop in dataset:
             if isinstance(dataset[prop], list):
@@ -2569,7 +2576,7 @@ def update_uploads_datastatus():
     return results
 
 
-def files_exist(uuid, data_access_level, group_name):
+def files_exist(uuid, data_access_level, group_name, metadata=False):
     if not uuid or not data_access_level:
         return False
     if data_access_level == "public":
@@ -2583,7 +2590,13 @@ def files_exist(uuid, data_access_level, group_name):
 
     file_path = absolute_path + uuid
     if os.path.exists(file_path) and os.path.isdir(file_path) and os.listdir(file_path):
-        return True
+        if not metadata:
+            return True
+        else:
+            if any(glob.glob(os.path.join(file_path, '**', '*metadata.tsv'), recursive=True)):
+                return True
+            else:
+                return False
     else:
         return False
 
