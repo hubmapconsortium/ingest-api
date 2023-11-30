@@ -475,9 +475,21 @@
   },
   {
     "type": "match",
-    "match": "is_dcwg and dataset_type == 'snare-seq2'",
-    "value": "{'assaytype': 'snareSeq', 'vitessce_hints': [], 'description': 'SNARE-seq2 (Multiome Sequencing)', 'must_contain': ['RNAseq', 'ATACseq']}"
-    "rule_description": "DCWG snareSeq"
+    "match": "is_dcwg and dataset_type == 'visium (no probes)'",
+    "value": "{'assaytype': 'visium_no_probes', 'vitessce_hints': [], 'description': 'Visium (No Probes)', 'must_contain': ['histology', 'rnaseq']}",
+    "rule_description": "DCWG Visium (No Probes)"
+  },
+  {
+    "type": "match",
+    "match": "is_dcwg and dataset_type == 'visium (with probes)'",
+    "value": "{'assaytype': 'visium_with_probes', 'vitessce_hints': [], 'description': 'Visium (with Probes)', 'must_contain': ['histology', 'rnaseq (with probe)']}",
+    "rule_description": "DCWG Visium (with Probes)"
+  },
+  {
+    "type": "match",
+    "match": "is_dcwg and dataset_type == 'rnaseq' and assay_input_entity == 'single nucleus' and barcode_read =~~ 'Read 1' and barcode_size == 16 and barcode_offset == 0 and umi_read =~~ 'Read 1' and umi_size == 12 and umi_offset == 16",
+    "value": "{'assaytype': 'snRNAseq-10xGenomics-v3', 'vitessce_hints': [], 'dir_schema': 'scrnaseq-v2', 'description': 'snRNA-seq (10x Genomics v3)'}",
+    "rule_description": "DCWG {assay}"
   },
   {
     "type": "match",
@@ -560,8 +572,8 @@
   {
     "type": "match",
     "match": "is_dcwg and dataset_type == 'sims'",
-    "value": "{'assaytype': 'SIMS', 'vitessce_hints': [], 'dir_schema': 'sims-v2', 'description': 'SIMS-IMS'}",
-    "rule_description": "DCWG SIMS"
+    "value": "{'assaytype': 'SIMS-IMS', 'vitessce_hints': [], 'dir_schema': 'sims-v2', 'description': 'SIMS-IMS'}",
+    "rule_description": "DCWG SIMS-IMS"
   },
   {
     "type": "match",
