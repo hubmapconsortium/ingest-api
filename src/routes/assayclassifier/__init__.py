@@ -48,6 +48,14 @@ def initialize_rule_chain():
 def calculate_assay_info(metadata: dict) -> dict:
     if not rule_chain:
         initialize_rule_chain()
+    for key, value in metadata.items():
+        if type(value) is str:
+            # Match rules should be written in lower case
+            # TODO: possible to read in match rules in a case-insensitive way rather
+            # than having to worry about case when writing them??
+            metadata[key.lower()] = value.lower()
+            if value.isdigit():
+                metadata[key] = int(value)
     rslt = rule_chain.apply(metadata)
     # TODO: check that rslt has the expected parts
     return rslt
