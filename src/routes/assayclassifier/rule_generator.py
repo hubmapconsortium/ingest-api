@@ -200,7 +200,7 @@ def main() -> None:
             else:
                 dir_schema_str = ""
             if schema_assay_name:
-                tbl_schema_str = f"'tbl_schema': '{schema_assay_name}-v'+version.to_str ,"
+                tbl_schema_str = f"'tbl_schema': '{schema_assay_name}-v'+version.to_str,"
             else:
                 tbl_schema_str = ""
             json_block.append(
@@ -303,9 +303,29 @@ def main() -> None:
              }
         )    
 
+    # Histology assays
+    for stain_name, assay, description, schema in [
+            ('PAS', 'PAS', 'PAS Stained Microscopy', 'histology-v2'),
+            ('H&E', 'h-and-e', 'H&E Stained Microscopy', 'histology-v2'),
+    ]:
+        json_block.append(
+            {"type": "match",
+             "match": (f"is_dcwg and dataset_type == 'Histology' "
+                       f" and stain_name == '{stain_name}'"
+                       ),
+             "value": ("{"
+                       f"'assaytype': '{assay}',"
+                       " 'vitessce_hints': [],"
+                       f" 'dir_schema': '{schema}',"
+                       f" 'description': '{description}'"
+                       "}"
+                       ),
+             "rule_description": f"DCWG {assay}"
+             }
+        )
+
     # Simple assays
     for data_type, assay, description, schema in [
-            ('Histology', 'histology', 'Histology', 'histology-v2'),
             ('CODEX', 'CODEX', 'CODEX', 'codex-v2'),
             ('PhenoCycler', 'phenocycler', 'PhenoCycler', 'phenocycler-v2'),
             ('CycIF', 'cycif', 'CycIF', 'cycif-v2'),
@@ -313,18 +333,18 @@ def main() -> None:
             ('Cell Dive', 'cell-dive', 'Cell DIVE', 'celldive-v2'),
             ('MALDI', 'MALDI-IMS', 'MALDI IMS', 'maldi-v2'),
             ('SIMS', 'SIMS-IMS', 'SIMS-IMS', 'sims-v2'),
-            ('DESI', 'DESI', 'DESI', 'desi-v2'),
+            ('DESI', 'DESI-IMS', 'DESI', 'desi-v2'),
             ('MIBI', 'MIBI', 'Multiplex Ion Beam Imaging', 'mibi-v2'),
             ('2D Imaging Mass Cytometry', 'IMC2D', 'Imaging Mass Cytometry (2D)', 'imc-v2'),
-            #('LC-MS', '', '', 'lcms-v2'),
-            ('nanoSPLITS', 'nano-splits', '', 'nano-splits-v2'),
+            ('LC-MS', 'LC-MS', 'LC-MS', 'lcms-v2'),
+            ('nanoSPLITS', 'nano-splits', 'nanoSPLITS', 'nano-splits-v2'),
             ('Auto-fluorescence', 'AF', 'Autofluorescence Microscopy', 'af-v2'),
             ('Light Sheet', 'Lightsheet', 'Lightsheet Microsopy', 'lightsheet-v2'),
             ('Confocal', 'confocal', 'Confocal Microscopy', 'confocal-v2'),
             ('Thick section Multiphoton MxIF', 'thick-section-multiphoton-mxif', 'Thick section Multiphoton MxIF', 'thick-section-multiphoton-mxif-v2'),
             ('Second Harmonic Generation (SHG)', 'second-harmonic-generation', 'Second Harmonic Generatin (SHG)', 'second-harmonic-generation-v2'),
             ('Enhanced Stimulated Raman Spectroscopy (SRS)', 'enhanced-srs', 'Enhanced Stimulated Raman Spectroscopy (SRS)', 'enhanced-srs-v2'),
-            #('Molecular Cartography', '', '', ''),
+            ('Molecular Cartography', 'molecular-cartography', 'Molecular Cartography', 'mc-v2'),
     ]:
         json_block.append(
             {"type": "match",
