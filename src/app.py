@@ -1,5 +1,6 @@
 import datetime
 import redis
+import glob
 import os
 import sys
 import logging
@@ -38,6 +39,10 @@ from hubmap_commons import file_helper as commons_file_helper
 # Should be deprecated/refactored but still in use
 from hubmap_commons.hubmap_const import HubmapConst
 
+from atlas_consortia_commons.ubkg import initialize_ubkg
+from atlas_consortia_commons.rest import get_http_exceptions_classes, abort_err_handler
+from atlas_consortia_commons.ubkg.ubkg_sdk import init_ontology
+
 # Local modules
 from specimen import Specimen
 from ingest_file_helper import IngestFileHelper
@@ -57,6 +62,8 @@ from routes.auth import auth_blueprint
 from routes.datasets import datasets_blueprint
 from routes.file import file_blueprint
 from routes.assayclassifier import bp as assayclassifier_blueprint
+from routes.validation import validation_blueprint
+
 
 # Set logging format and level (default is warning)
 # All the API logging is forwarded to the uWSGI server and gets written into the log file `uwsgi-ingest-api.log`
@@ -77,6 +84,7 @@ app.register_blueprint(auth_blueprint)
 app.register_blueprint(datasets_blueprint)
 app.register_blueprint(file_blueprint)
 app.register_blueprint(assayclassifier_blueprint)
+app.register_blueprint(validation_blueprint)
 
 # Suppress InsecureRequestWarning warning when requesting status on https with ssl cert verify disabled
 requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
@@ -698,6 +706,61 @@ def create_datastage():
         logger.error(e, exc_info=True)
         return Response("Unexpected error while creating a dataset: " + str(e) + "  Check the logs", 500)
 
+@app.route('/datasets/components', methods=['POST'])
+def multiple_components():
+    if not request.is_json:
+        return Response("json request required", 400)
+    try:
+        component_request = request.json
+        auth_helper = AuthHelper.configured_instance(app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'])
+        auth_tokens = auth_helper.getAuthorizationTokens(request.headers)
+        if isinstance(auth_tokens, Response):
+            return(auth_tokens)
+        elif isinstance(auth_tokens, str):
+            token = auth_tokens
+        else:
+            return(Response("Valid globus groups token required", 401))
+
+        # Check that `dataset_link_abs_dir` exists for both datasets and that it is a valid directory
+        json_data_dict = request.get_json()
+        for dataset in json_data_dict.get('datasets'):
+            if 'dataset_link_abs_dir' in dataset:
+                if not os.path.exists(dataset['dataset_link_abs_dir']):
+                    return Response(f"The filepath specified with 'dataset_link_abs_dir' does not exist: {dataset['dataset_link_abs_dir']}", 400)
+                if not os.path.isdir(dataset.get('dataset_link_abs_dir')):
+                    return Response(f"{dataset.get('dataset_link_abs_dir')} is not a directory", 400)
+            else:
+                return Response("Required field 'dataset_link_abs_dir' is missing from dataset", 400)
+
+        requested_group_uuid = None
+        if 'group_uuid' in component_request:
+            requested_group_uuid = component_request['group_uuid']
+
+        ingest_helper = IngestFileHelper(app.config)
+        requested_group_uuid = auth_helper.get_write_group_uuid(token, requested_group_uuid)
+        component_request['group_uuid'] = requested_group_uuid
+        post_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'datasets/components'
+        response = requests.post(post_url, json = component_request, headers = {'Authorization': 'Bearer ' + token, 'X-Hubmap-Application':'ingest-api' }, verify = False)
+        if response.status_code != 200:
+            return Response(response.text, response.status_code)
+        new_datasets_list = response.json()
+        for dataset in new_datasets_list:
+            if dataset.get('dataset_link_abs_dir'):
+                new_directory_path = ingest_helper.get_dataset_directory_absolute_path(dataset, requested_group_uuid, dataset['uuid'])
+                logger.info(f"Creating a directory as: {new_directory_path} with a symbolic link to: {dataset['dataset_link_abs_dir']}")
+                os.symlink(dataset['dataset_link_abs_dir'], new_directory_path, True)
+            else:
+                return Response("Required field 'dataset_link_abs_dir' is missing from dataset", 400)
+
+        return jsonify(new_datasets_list)
+    except HTTPException as hte:
+        return Response(hte.get_description(), hte.get_status_code())
+    except Exception as e:
+        logger.error(e, exc_info=True)
+        return Response("Unexpected error while creating a dataset: " + str(e) + " Check the logs", 500)
+
+
+
 
 def get_data_type_of_external_dataset_providers(ubkg_base_url: str) -> List[str]:
     """
@@ -1214,7 +1277,7 @@ def submit_dataset(uuid):
             return Response(error_msg, response.status_code)
     except HTTPException as hte:
         logger.error(hte)
-        return Response("Unexpected error while updating dataset: " + str(e) + "  Check the logs", 500)
+        return Response("Unexpected error while updating dataset: " + str(hte) + "  Check the logs", 500)
     def call_airflow():
         try:
             r = requests.post(pipeline_url, json={"submission_id" : "{uuid}".format(uuid=uuid), "process" : app.config['INGEST_PIPELINE_DEFAULT_PROCESS'],"full_path": ingest_helper.get_dataset_directory_absolute_path(dataset_request, group_uuid, uuid),"provider": "{group_name}".format(group_name=AuthHelper.getGroupDisplayName(group_uuid))}, headers={'Content-Type':'application/json', 'Authorization': 'Bearer {token}'.format(token=AuthHelper.instance().getProcessSecret() )}, verify=False)
@@ -2258,7 +2321,7 @@ def validate_donors(headers, records):
 # Determines if a dataset is Primary. If the list returned from the neo4j query is empty, the dataset is not primary
 def dataset_is_primary(dataset_uuid):
     with neo4j_driver_instance.session() as neo_session:
-        q = (f"MATCH (ds:Dataset {{uuid: '{dataset_uuid}'}})<-[:ACTIVITY_OUTPUT]-(:Activity)<-[:ACTIVITY_INPUT]-(s:Sample) RETURN ds.uuid")
+        q = (f"MATCH (ds:Dataset {{uuid: '{dataset_uuid}'}})<-[:ACTIVITY_OUTPUT]-(a:Activity) WHERE NOT toLower(a.creation_action) ENDS WITH 'process' RETURN ds.uuid")
         result = neo_session.run(q).data()
         if len(result) == 0:
             return False
@@ -2338,8 +2401,11 @@ def update_datasets_datastatus():
         "MATCH (ds:Dataset)<-[:ACTIVITY_OUTPUT]-(:Activity)<-[:ACTIVITY_INPUT]-(ancestor) "
         "RETURN ds.uuid AS uuid, ds.group_name AS group_name, ds.data_types AS data_types, "
         "ds.hubmap_id AS hubmap_id, ds.lab_dataset_id AS provider_experiment_id, ds.status AS status, "
-        "ds.last_modified_timestamp AS last_touch, ds.data_access_level AS data_access_level, "
-        "COALESCE(ds.contributors IS NOT NULL) AS has_contributors, COALESCE(ds.contacts IS NOT NULL) AS has_contacts, "
+        "ds.status_history AS status_history, "
+        "ds.last_modified_timestamp AS last_touch, ds.published_timestamp AS published_timestamp, "
+        "ds.data_access_level AS data_access_level, "
+        "COALESCE(ds.contributors IS NOT NULL) AS has_contributors, "
+        "COALESCE(ds.contacts IS NOT NULL) AS has_contacts, "
         "ancestor.entity_type AS ancestor_entity_type"
     )
 
@@ -2354,7 +2420,7 @@ def update_datasets_datastatus():
         "WHERE (ds)<-[:ACTIVITY_OUTPUT]-(:Activity) "
         "RETURN DISTINCT ds.uuid AS uuid, "
         "COLLECT(DISTINCT dn.hubmap_id) AS donor_hubmap_id, COLLECT(DISTINCT dn.submission_id) AS donor_submission_id, "
-        "COLLECT(DISTINCT dn.lab_donor_id) AS donor_lab_id, COALESCE(dn.metadata IS NOT NULL) AS has_metadata"
+        "COLLECT(DISTINCT dn.lab_donor_id) AS donor_lab_id, COALESCE(dn.metadata IS NOT NULL) AS has_donor_metadata"
     )
 
     descendant_datasets_query = (
@@ -2377,7 +2443,7 @@ def update_datasets_datastatus():
     displayed_fields = [
         "hubmap_id", "group_name", "status", "organ", "provider_experiment_id", "last_touch", "has_contacts",
         "has_contributors", "data_types", "donor_hubmap_id", "donor_submission_id", "donor_lab_id",
-        "has_metadata", "descendant_datasets", "upload", "has_rui_info", "globus_url", "has_data", "organ_hubmap_id"
+        "has_dataset_metadata", "has_donor_metadata", "descendant_datasets", "upload", "has_rui_info", "globus_url", "has_data", "organ_hubmap_id"
     ]
 
     queries = [all_datasets_query, organ_query, donor_query, descendant_datasets_query,
@@ -2411,7 +2477,7 @@ def update_datasets_datastatus():
             output_dict[dataset['uuid']]['donor_hubmap_id'] = dataset['donor_hubmap_id']
             output_dict[dataset['uuid']]['donor_submission_id'] = dataset['donor_submission_id']
             output_dict[dataset['uuid']]['donor_lab_id'] = dataset['donor_lab_id']
-            output_dict[dataset['uuid']]['has_metadata'] = dataset['has_metadata']
+            output_dict[dataset['uuid']]['has_donor_metadata'] = dataset['has_donor_metadata']
     for dataset in descendant_datasets_result:
         if output_dict.get(dataset['uuid']):
             output_dict[dataset['uuid']]['descendant_datasets'] = dataset['descendant_datasets']
@@ -2429,13 +2495,16 @@ def update_datasets_datastatus():
     for dataset in combined_results:
         globus_url = get_globus_url(dataset.get('data_access_level'), dataset.get('group_name'), dataset.get('uuid'))
         dataset['globus_url'] = globus_url
-        dataset['last_touch'] = str(datetime.datetime.utcfromtimestamp(dataset['last_touch'] / 1000))
+        last_touch = dataset['last_touch'] if dataset['published_timestamp'] is None else dataset['published_timestamp']
+        dataset['last_touch'] = str(datetime.datetime.utcfromtimestamp(last_touch/1000))
         if dataset.get('ancestor_entity_type').lower() != "dataset":
             dataset['is_primary'] = "true"
         else:
             dataset['is_primary'] = "false"
         has_data = files_exist(dataset.get('uuid'), dataset.get('data_access_level'), dataset.get('group_name'))
+        has_dataset_metadata = files_exist(dataset.get('uuid'), dataset.get('data_access_level'), dataset.get('group_name'), metadata=True)
         dataset['has_data'] = has_data
+        dataset['has_dataset_metadata'] = has_dataset_metadata
 
         for prop in dataset:
             if isinstance(dataset[prop], list):
@@ -2510,7 +2579,7 @@ def update_uploads_datastatus():
     return results
 
 
-def files_exist(uuid, data_access_level, group_name):
+def files_exist(uuid, data_access_level, group_name, metadata=False):
     if not uuid or not data_access_level:
         return False
     if data_access_level == "public":
@@ -2524,7 +2593,13 @@ def files_exist(uuid, data_access_level, group_name):
 
     file_path = absolute_path + uuid
     if os.path.exists(file_path) and os.path.isdir(file_path) and os.listdir(file_path):
-        return True
+        if not metadata:
+            return True
+        else:
+            if any(glob.glob(os.path.join(file_path, '**', '*metadata.tsv'), recursive=True)):
+                return True
+            else:
+                return False
     else:
         return False
 

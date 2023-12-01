@@ -136,3 +136,6 @@ COOKIE_DOMAIN = '.hubmapconsortium.org'
 
 # URI from which to load the assay classifier rules.
 RULE_CHAIN_URI = ''
+
+# CEDAR API KEY, get one at: https://cedar.metadatacenter.org/
+CEDAR_API_KEY = ''
