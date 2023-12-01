@@ -2508,10 +2508,15 @@ def update_datasets_datastatus():
                 dataset[prop] = ", ".join(dataset[prop])
             if isinstance(dataset[prop], (bool, int)):
                 dataset[prop] = str(dataset[prop])
-            if dataset[prop] and dataset[prop][0] == "[" and dataset[prop][-1] == "]":
+            if isinstance(dataset[prop], str) and \
+                    len(dataset[prop]) >= 2 and \
+                    dataset[prop][0] == "[" and dataset[prop][-1] == "]":
                 dataset[prop] = dataset[prop].replace("'", '"')
                 dataset[prop] = json.loads(dataset[prop])
-                dataset[prop] = dataset[prop][0]
+                if len(dataset[prop]) > 0:
+                    dataset[prop] = dataset[prop][0]
+                else:
+                    dataset[prop] = " "
             if dataset[prop] is None:
                 dataset[prop] = " "
         if dataset.get('data_types') and dataset.get('data_types') in assay_types_dict:
@@ -2557,12 +2562,15 @@ def update_uploads_datastatus():
                     upload[prop] = ", ".join(upload[prop])
                 if isinstance(upload[prop], (bool, int)):
                     upload[prop] = str(upload[prop])
-                if upload[prop] and upload[prop][0] == "[" and upload[prop][-1] == "]":
+                if isinstance(upload[prop], str) and \
+                        len(upload[prop]) >= 2 and \
+                        upload[prop][0] == "[" and upload[prop][-1] == "]":
                     upload[prop] = upload[prop].replace("'", '"')
                     upload[prop] = json.loads(upload[prop])
-                    upload[prop] = upload[prop][0]
-                if upload[prop] is None:
-                    upload[prop] = " "
+                    if len(upload[prop]) > 0:
+                        upload[prop] = upload[prop][0]
+                    else:
+                        upload[prop] = " "
             for field in displayed_fields:
                 if upload.get(field) is None:
                     upload[field] = " "
