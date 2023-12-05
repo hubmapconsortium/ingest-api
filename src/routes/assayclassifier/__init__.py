@@ -2,7 +2,6 @@ from flask import Blueprint, request, Response, current_app, jsonify
 import logging
 from rq import Retry
 from sys import stdout
-from pprint import pprint
 import json
 import urllib.request
 
@@ -40,9 +39,9 @@ def initialize_rule_chain():
     except json.decoder.JSONDecodeError as excp:
         raise RuleSyntaxException(excp) from excp
     rule_chain = RuleLoader(json_rules).load()
-    pprint('RULE CHAIN FOLLOWS')
+    print('RULE CHAIN FOLLOWS')
     rule_chain.dump(stdout)
-    pprint('RULE CHAIN ABOVE')
+    print('RULE CHAIN ABOVE')
 
 
 def calculate_assay_info(metadata: dict) -> dict:
