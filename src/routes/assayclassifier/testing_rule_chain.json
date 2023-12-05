@@ -67,7 +67,7 @@
   },
   {
     "type": "match",
-    "match": "not_dcwg and not_derived and assay_type in ['codex']",
+    "match": "not_dcwg and not_derived and assay_type in ['CODEX']",
     "value": "{'assaytype': 'CODEX', 'dir_schema': 'codex-v1-with-dataset-json', 'tbl_schema': 'codex-v'+version.to_str , 'vitessce_hints': [], 'description': 'CODEX'}",
     "rule_description": "non-DCWG primary CODEX"
   },
@@ -175,7 +175,7 @@
   },
   {
     "type": "match",
-    "match": "not_dcwg and not_derived and assay_type in ['maldi-ims', 'maldi-ims-neg', 'maldi-ims-pos']",
+    "match": "not_dcwg and not_derived and assay_type in ['MALDI-IMS', 'MALDI-IMS-neg', 'MALDI-IMS-pos']",
     "value": "{'assaytype': 'MALDI-IMS', 'dir_schema': 'ims-v0', 'tbl_schema': 'ims-v'+version.to_str , 'vitessce_hints': ['maldi'], 'description': 'MALDI IMS'}",
     "rule_description": "non-DCWG primary MALDI-IMS"
   },
@@ -271,13 +271,13 @@
   },
   {
     "type": "match",
-    "match": "not_dcwg and not_derived and assay_type in ['snare-atacseq2', 'snareseq', 'snare-seq2', 'snare2-atacseq']",
+    "match": "not_dcwg and not_derived and assay_type in ['SNARE-ATACseq2', 'SNAREseq', 'SNARE-seq2', 'SNARE2-ATACseq']",
     "value": "{'assaytype': 'SNARE-ATACseq2', 'dir_schema': 'scatacseq-v0', 'tbl_schema': 'scatacseq-v'+version.to_str , 'vitessce_hints': [], 'description': 'snATACseq (SNARE-seq2)'}",
     "rule_description": "non-DCWG primary SNARE-ATACseq2"
   },
   {
     "type": "match",
-    "match": "not_dcwg and not_derived and assay_type in ['snare-rnaseq2', 'snare2-rnaseq']",
+    "match": "not_dcwg and not_derived and assay_type in ['SNARE-RNAseq2', 'SNARE2-RNAseq']",
     "value": "{'assaytype': 'SNARE-RNAseq2', 'dir_schema': 'scrnaseq-v0', 'tbl_schema': 'scrnaseq-v'+version.to_str , 'vitessce_hints': [], 'description': 'snRNAseq (SNARE-seq2)'}",
     "rule_description": "non-DCWG primary SNARE-RNAseq2"
   },
@@ -307,13 +307,13 @@
   },
   {
     "type": "match",
-    "match": "not_dcwg and not_derived and assay_type in ['scrnaseq-10xgenomics-v2']",
+    "match": "not_dcwg and not_derived and assay_type in ['scRNAseq-10xGenomics-v2']",
     "value": "{'assaytype': 'scRNAseq-10xGenomics-v2', 'dir_schema': 'scrnaseq-v0', 'tbl_schema': 'scrnaseq-v'+version.to_str , 'vitessce_hints': [], 'description': 'scRNA-seq (10x Genomics v2)'}",
     "rule_description": "non-DCWG primary scRNAseq-10xGenomics-v2"
   },
   {
     "type": "match",
-    "match": "not_dcwg and not_derived and assay_type in ['scrnaseq-10xgenomics-v3', 'scrna-seq(10xgenomics)', 'scrna-seq-10x', 'scrnaseq-10xgenomics']",
+    "match": "not_dcwg and not_derived and assay_type in ['scRNAseq-10xGenomics-v3', 'scRNA-seq(10xGenomics)', 'scRNA-seq-10x', 'scRNAseq-10xGenomics']",
     "value": "{'assaytype': 'scRNAseq-10xGenomics-v3', 'dir_schema': 'scrnaseq-v0', 'tbl_schema': 'scrnaseq-v'+version.to_str , 'vitessce_hints': [], 'description': 'scRNA-seq (10x Genomics v3)'}",
     "rule_description": "non-DCWG primary scRNAseq-10xGenomics-v3"
   },
@@ -475,15 +475,27 @@
   },
   {
     "type": "match",
-    "match": "is_dcwg and dataset_type == 'visium (no probes)'",
-    "value": "{'assaytype': 'visium_no_probes', 'vitessce_hints': [], 'description': 'Visium (No Probes)', 'must_contain': ['histology', 'rnaseq']}",
+    "match": "is_dcwg and dataset_type == 'Visium (no probes)'",
+    "value": "{'assaytype': 'visium_no_probes', 'vitessce_hints': [], 'dir_schema': 'visium-no-probes-v2', 'description': 'Visium (No Probes)', 'must_contain': ['histology', 'rnaseq']}",
     "rule_description": "DCWG Visium (No Probes)"
   },
   {
     "type": "match",
-    "match": "is_dcwg and dataset_type == 'visium (with probes)'",
-    "value": "{'assaytype': 'visium_with_probes', 'vitessce_hints': [], 'description': 'Visium (with Probes)', 'must_contain': ['histology', 'rnaseq (with probe)']}",
+    "match": "is_dcwg and dataset_type == 'Visium (with probes)'",
+    "value": "{'assaytype': 'visium_with_probes', 'vitessce_hints': [], 'dir_schema': 'visium-with-probes-v2', 'description': 'Visium (with Probes)', 'must_contain': ['histology', 'rnaseq (with probe)']}",
     "rule_description": "DCWG Visium (with Probes)"
+  },
+  {
+    "type": "match",
+    "match": "is_dcwg and dataset_type == 'RNAseq' and assay_input_entity == 'spot' and barcode_read == 'Read 1 (R1)' and barcode_size == 16 and barcode_offset == 0 and umi_read == 'Read 1 (R1)' and umi_size == 12 and umi_offset == 16",
+    "value": "{'assaytype': 'snRNAseq-10xGenomics-v3', 'vitessce_hints': [], 'dir_schema': 'scrnaseq-v2', 'description': 'snRNA-seq (10x Genomics v3)'}",
+    "rule_description": "DCWG snRNAseq-10xGenomics-v3"
+  },
+  {
+    "type": "match",
+    "match": "is_dcwg and dataset_type == 'RNAseq (with probes)' and oligo_probe_panel == '10x Genomics; Visium Human Transcriptome Probe Kit v2 - Small; PN 1000466' and assay_input_entity == 'spot' and barcode_read == 'Read 1 (R1)' and barcode_size == 16 and barcode_offset == 0 and umi_read == 'Read 1 (R1)' and umi_size == 12 and umi_offset == 16",
+    "value": "{'assaytype': 'Visium (with probes)', 'vitessce_hints': [], 'dir_schema': '', 'description': 'Visium (with probes)'}",
+    "rule_description": "DCWG Visium (with probes)"
   },
   {
     "type": "match",
@@ -523,19 +535,19 @@
   },
   {
     "type": "match",
-    "match": "is_dcwg and dataset_type == 'histology'",
+    "match": "is_dcwg and dataset_type == 'Histology'",
     "value": "{'assaytype': 'histology', 'vitessce_hints': [], 'dir_schema': 'histology-v2', 'description': 'Histology'}",
     "rule_description": "DCWG histology"
   },
   {
     "type": "match",
-    "match": "is_dcwg and dataset_type == 'codex'",
+    "match": "is_dcwg and dataset_type == 'CODEX'",
     "value": "{'assaytype': 'CODEX', 'vitessce_hints': [], 'dir_schema': 'codex-v2', 'description': 'CODEX'}",
     "rule_description": "DCWG CODEX"
   },
   {
     "type": "match",
-    "match": "is_dcwg and dataset_type == 'phenocycler'",
+    "match": "is_dcwg and dataset_type == 'PhenoCycler'",
     "value": "{'assaytype': 'phenocycler', 'vitessce_hints': [], 'dir_schema': 'phenocycler-v2', 'description': 'PhenoCycler'}",
     "rule_description": "DCWG phenocycler"
   },
@@ -553,13 +565,13 @@
   },
   {
     "type": "match",
-    "match": "is_dcwg and dataset_type == 'cell dive'",
+    "match": "is_dcwg and dataset_type == 'Cell Dive'",
     "value": "{'assaytype': 'cell-dive', 'vitessce_hints': [], 'dir_schema': 'celldive-v2', 'description': 'Cell DIVE'}",
     "rule_description": "DCWG cell-dive"
   },
   {
     "type": "match",
-    "match": "is_dcwg and dataset_type == 'maldi'",
+    "match": "is_dcwg and dataset_type == 'MALDI'",
     "value": "{'assaytype': 'MALDI-IMS', 'vitessce_hints': [], 'dir_schema': 'maldi-v2', 'description': 'MALDI IMS'}",
     "rule_description": "DCWG MALDI-IMS"
   },
