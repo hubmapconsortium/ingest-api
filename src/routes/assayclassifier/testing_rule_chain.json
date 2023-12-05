@@ -845,7 +845,7 @@
     {
         "type": "match",
         "match": "not_dcwg and not_derived and assay_type in ['NanoDESI']",
-        "value": "{'assaytype': 'NanoDESI', 'dir_schema': 'ims-v0', 'tbl_schema': 'ims-v'+version.to_str, 'vitessce_hints': [], 'description': 'NanoDESI'}",
+        "value": "{'assaytype': 'NanoDESI', 'dir_schema': 'nano-v0', 'tbl_schema': 'nano-v'+version.to_str, 'vitessce_hints': [], 'description': 'NanoDESI'}",
         "rule_description": "non-DCWG primary NanoDESI"
     },
     {
@@ -1117,6 +1117,18 @@
         "match": "is_dcwg and dataset_type == '10X Multiome' and barcode_size == 16 and barcode_offset == 8",
         "value": "{'assaytype': '10x_multiome', 'vitessce_hints': [], 'description': '10X Multiome', 'must_contain': ['????', '????']}",
         "rule_description": "DCWG 10X Multiome"
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and dataset_type == 'Visium (no probes)'",
+        "value": "{'assaytype': 'visium-no-probes', 'vitessce_hints': [], 'dir_schema': 'visium-no-probes-v2', 'description': 'Visium (No probes)', 'must_contain': ['Histology','RNAseq']}",
+        "rule_description": "DCWG visium-no-probes"
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and dataset_type == 'Visium (with probes)'",
+        "value": "{'assaytype': 'visium-with-probes', 'vitessce_hints': [], 'dir_schema': 'visium-with-probes-v2', 'description': 'Visium (With probes)', 'must_contain': ['Histology','RNAseq (with probes)']}",
+        "rule_description": "DCWG visium-with-probes"
     },
     {
         "type": "match",

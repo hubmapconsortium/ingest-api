@@ -245,6 +245,31 @@ def main() -> None:
          }
     )
 
+    # Visium v3 (current CEDAR template)
+    for data_type, is_probes_used, assay, description, must_contain, schema in [
+            ('Visium (no probes)', 'No', 'visium-no-probes', 'Visium (No probes)',
+             ['Histology', 'RNAseq'], 'visium-no-probes-v2'),
+            ('Visium (with probes)', 'Yes', 'visium-with-probes', 'Visium (With probes)',
+             ['Histology', 'RNAseq (with probes)'], 'visium-with-probes-v2'),
+    ]:
+        must_contain_str = ','.join(["'" + elt + "'" for elt in must_contain])
+        json_block.append(
+            {"type": "match",
+             "match": (f"is_dcwg and dataset_type == '{data_type}'"
+                       ),
+             "value": ("{"
+                       f"'assaytype': '{assay}',"
+                       " 'vitessce_hints': [],"
+                       f" 'dir_schema': '{schema}',"
+                       f" 'description': '{description}',"
+                       f" 'must_contain': [{must_contain_str}]"
+                       "}"
+                       ),
+             "rule_description": f"DCWG {assay}"
+             }
+            
+        )
+
     # RNAseq [sn/sc]RNAseq-10xGenomics-[v2/v3]
     for entity, umi_size, assay, description in [
             ('single nucleus', 12, 'snRNAseq-10xGenomics-v3', 'snRNA-seq (10x Genomics v3)'),
@@ -342,7 +367,7 @@ def main() -> None:
             ('Light Sheet', 'Lightsheet', 'Lightsheet Microsopy', 'lightsheet-v2'),
             ('Confocal', 'confocal', 'Confocal Microscopy', 'confocal-v2'),
             ('Thick section Multiphoton MxIF', 'thick-section-multiphoton-mxif', 'Thick section Multiphoton MxIF', 'thick-section-multiphoton-mxif-v2'),
-            ('Second Harmonic Generation (SHG)', 'second-harmonic-generation', 'Second Harmonic Generatin (SHG)', 'second-harmonic-generation-v2'),
+            ('Second Harmonic Generation (SHG)', 'second-harmonic-generation', 'Second Harmonic Generation (SHG)', 'second-harmonic-generation-v2'),
             ('Enhanced Stimulated Raman Spectroscopy (SRS)', 'enhanced-srs', 'Enhanced Stimulated Raman Spectroscopy (SRS)', 'enhanced-srs-v2'),
             ('Molecular Cartography', 'molecular-cartography', 'Molecular Cartography', 'mc-v2'),
     ]:
