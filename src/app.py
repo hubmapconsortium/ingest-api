@@ -2401,9 +2401,9 @@ def update_datasets_datastatus():
         "MATCH (ds:Dataset)<-[:ACTIVITY_OUTPUT]-(a:Activity)<-[:ACTIVITY_INPUT]-(ancestor) "
         "RETURN ds.uuid AS uuid, ds.group_name AS group_name, ds.data_types AS data_types, "
         "ds.hubmap_id AS hubmap_id, ds.lab_dataset_id AS provider_experiment_id, ds.status AS status, "
-        "ds.status_history AS status_history, "
+        "ds.status_history AS status_history, ds.assigned_to_group_name AS assigned_to_group_name, "
         "ds.last_modified_timestamp AS last_touch, ds.published_timestamp AS published_timestamp, "
-        "ds.data_access_level AS data_access_level, "
+        "ds.data_access_level AS data_access_level, ds.ingest_task AS ingest_task, "
         "COALESCE(ds.contributors IS NOT NULL) AS has_contributors, "
         "COALESCE(ds.contacts IS NOT NULL) AS has_contacts, "
         "a.creation_action AS activity_creation_action"
@@ -2548,7 +2548,8 @@ def update_uploads_datastatus():
         "MATCH (up:Upload) "
         "OPTIONAL MATCH (up)<-[:IN_UPLOAD]-(ds:Dataset) "
         "RETURN up.uuid AS uuid, up.group_name AS group_name, up.hubmap_id AS hubmap_id, up.status AS status, "
-        "up.title AS title, COLLECT(DISTINCT ds.uuid) AS datasets "
+        "up.title AS title, up.ingest_task AS ingest_task, up.assigned_to_group_name AS assigned_to_group_name, "
+        "COLLECT(DISTINCT ds.uuid) AS datasets "
     )
 
     displayed_fields = [
@@ -2574,6 +2575,8 @@ def update_uploads_datastatus():
                         upload[prop] = upload[prop][0]
                     else:
                         upload[prop] = " "
+                if upload[prop] is None:
+                    upload[prop] = " "
             for field in displayed_fields:
                 if upload.get(field) is None:
                     upload[field] = " "
