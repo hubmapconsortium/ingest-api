@@ -246,10 +246,10 @@ def main() -> None:
     )
 
     # Visium v3 (current CEDAR template)
-    for data_type, is_probes_used, assay, description, must_contain, schema in [
-            ('Visium (no probes)', 'No', 'visium-no-probes', 'Visium (No probes)',
+    for data_type, assay, description, must_contain, schema in [
+            ('Visium (no probes)', 'visium-no-probes', 'Visium (No probes)',
              ['Histology', 'RNAseq'], 'visium-no-probes-v2'),
-            ('Visium (with probes)', 'Yes', 'visium-with-probes', 'Visium (With probes)',
+            ('Visium (with probes)', 'visium-with-probes', 'Visium (With probes)',
              ['Histology', 'RNAseq (with probes)'], 'visium-with-probes-v2'),
     ]:
         must_contain_str = ','.join(["'" + elt + "'" for elt in must_contain])
@@ -271,22 +271,33 @@ def main() -> None:
         )
 
     # RNAseq [sn/sc]RNAseq-10xGenomics-[v2/v3]
-    for entity, umi_size, assay, description in [
-            ('single nucleus', 12, 'snRNAseq-10xGenomics-v3', 'snRNA-seq (10x Genomics v3)'),
-            ('single nucleus', 10, 'snRNAseq-10xGenomics-v2', 'snRNA-seq (10x Genomics v2)'),
-            ('single cell', 12, 'scRNAseq-10xGenomics-v3', 'scRNA-seq (10x Genomics v3)'),
-            ('single cell', 10, 'scRNAseq-10xGenomics-v2', 'scRNA-seq (10x Genomics v2)'),
+    visium_with_probes_str = "10x Genomics; Visium Human Transcriptome Probe Kit v2 - Small; PN 1000466"
+    for data_type, rna_probe_panel, entity, barcode_read, barcode_size, barcode_offset, umi_read, umi_size, umi_offset, assay, description in [
+            ('RNAseq', None, 'single cell', 'Not applicable', 40, "'Not applicable'", 'Not applicable', 8, "'Not applicable'",
+             'sciRNAseq', 'sciRNA-seq'),
+            ('RNAseq', None, 'single nucleus', 'Read 1', 24, "'10,48,86'", 'Read 1', 10, 0, 'SNARE-RNAseq2', 'snRNAseq (SNARE-seq2)'),
+            ('RNAseq', None, 'spot', 'Read 1', 16, 0, 'Read 1', 12, 16, 'scRNAseq-10Genomics-v3', 'scRNA-seq (10x Genomics v3)'),
+            ('RNAseq (with probes)', visium_with_probes_str, 'spot', 'Read 1', 16, 0, 'Read 1', 12, 16, 'scRNAseq-visium-with-probes', 'Visium RNAseq with probes'),
+            ('RNAseq', None, 'single cell', 'Read 1', 16, 0, 'Read 1', 10, 16, 'scRNAseq-10xGenomics-v2', 'scRNA-seq (10x Genomics v2)'),
+            ('RNAseq', None, 'single nucleus', 'Read 1', 16, 0, 'Read 1', 10, 16, 'snRNAseq-10xGenomics-v2', 'snRNA-seq (10x Genomics v2)'),
+            ('RNAseq', None, 'single cell', 'Read 1', 16, 0, 'Read 1', 12, 16, 'scRNAseq-10xGenomics-v3', 'scRNA-seq (10x Genomics v3)'),
+            ('RNAseq', None, 'single nucleus', 'Read 1', 16, 0, 'Read 1', 12, 16, 'snRNAseq-10xGenomics-v3', 'snRNA-seq (10x Genomics v3)'),
     ]:
+        if rna_probe_panel:
+            probe_panel_str = f"and RNA_probe_panel == '{rna_probe_panel}'"
+        else:
+            probe_panel_str = ''
         json_block.append(
             {"type": "match",
-             "match": ("is_dcwg and dataset_type == 'RNAseq'"
+             "match": (f"is_dcwg and dataset_type == '{data_type}'"
+                       f" {probe_panel_str}"
                        f" and assay_input_entity == '{entity}'"
-                       " and barcode_read =~~ 'Read 1'"
-                       " and barcode_size == 16"
-                       " and barcode_offset == 0"
-                       " and umi_read =~~ 'Read 1'"
+                       f" and barcode_read =~~ '{barcode_read}'"
+                       f" and barcode_size == {barcode_size}"
+                       f" and barcode_offset == {barcode_offset}"
+                       f" and umi_read =~~ '{umi_read}'"
                        f" and umi_size == {umi_size}"
-                       " and umi_offset == 16"
+                       f" and umi_offset == {umi_offset}"
                        ),
              "value": ("{"
                        f"'assaytype': '{assay}',"
