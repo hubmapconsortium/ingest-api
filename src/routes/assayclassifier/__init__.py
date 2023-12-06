@@ -2,7 +2,6 @@ from flask import Blueprint, request, Response, current_app, jsonify
 import logging
 from rq import Retry
 from sys import stdout
-from pprint import pprint
 import json
 import urllib.request
 
@@ -40,9 +39,9 @@ def initialize_rule_chain():
     except json.decoder.JSONDecodeError as excp:
         raise RuleSyntaxException(excp) from excp
     rule_chain = RuleLoader(json_rules).load()
-    pprint('RULE CHAIN FOLLOWS')
+    print('RULE CHAIN FOLLOWS')
     rule_chain.dump(stdout)
-    pprint('RULE CHAIN ABOVE')
+    print('RULE CHAIN ABOVE')
 
 
 def calculate_assay_info(metadata: dict) -> dict:
@@ -50,10 +49,6 @@ def calculate_assay_info(metadata: dict) -> dict:
         initialize_rule_chain()
     for key, value in metadata.items():
         if type(value) is str:
-            # Match rules should be written in lower case
-            # TODO: possible to read in match rules in a case-insensitive way rather
-            # than having to worry about case when writing them??
-            metadata[key.lower()] = value.lower()
             if value.isdigit():
                 metadata[key] = int(value)
     rslt = rule_chain.apply(metadata)

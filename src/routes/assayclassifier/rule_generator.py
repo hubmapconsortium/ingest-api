@@ -200,7 +200,7 @@ def main() -> None:
             else:
                 dir_schema_str = ""
             if schema_assay_name:
-                tbl_schema_str = f"'tbl_schema': '{schema_assay_name}-v'+version.to_str ,"
+                tbl_schema_str = f"'tbl_schema': '{schema_assay_name}-v'+version.to_str,"
             else:
                 tbl_schema_str = ""
             json_block.append(
@@ -245,23 +245,59 @@ def main() -> None:
          }
     )
 
-    # RNAseq [sn/sc]RNAseq-10xGenomics-[v2/v3]
-    for entity, umi_size, assay, description in [
-            ('single nucleus', 12, 'snRNAseq-10xGenomics-v3', 'snRNA-seq (10x Genomics v3)'),
-            ('single nucleus', 10, 'snRNAseq-10xGenomics-v2', 'snRNA-seq (10x Genomics v2)'),
-            ('single cell', 12, 'scRNAseq-10xGenomics-v3', 'scRNA-seq (10x Genomics v3)'),
-            ('single cell', 10, 'scRNAseq-10xGenomics-v2', 'scRNA-seq (10x Genomics v2)'),
+    # Visium v3 (current CEDAR template)
+    for data_type, assay, description, must_contain, schema in [
+            ('Visium (no probes)', 'visium-no-probes', 'Visium (No probes)',
+             ['Histology', 'RNAseq'], 'visium-no-probes-v2'),
+            ('Visium (with probes)', 'visium-with-probes', 'Visium (With probes)',
+             ['Histology', 'RNAseq (with probes)'], 'visium-with-probes-v2'),
     ]:
+        must_contain_str = ','.join(["'" + elt + "'" for elt in must_contain])
         json_block.append(
             {"type": "match",
-             "match": ("is_dcwg and dataset_type == 'RNAseq'"
+             "match": (f"is_dcwg and dataset_type == '{data_type}'"
+                       ),
+             "value": ("{"
+                       f"'assaytype': '{assay}',"
+                       " 'vitessce_hints': [],"
+                       f" 'dir_schema': '{schema}',"
+                       f" 'description': '{description}',"
+                       f" 'must_contain': [{must_contain_str}]"
+                       "}"
+                       ),
+             "rule_description": f"DCWG {assay}"
+             }
+            
+        )
+
+    # RNAseq [sn/sc]RNAseq-10xGenomics-[v2/v3]
+    visium_with_probes_str = "10x Genomics; Visium Human Transcriptome Probe Kit v2 - Small; PN 1000466"
+    for data_type, rna_probe_panel, entity, barcode_read, barcode_size, barcode_offset, umi_read, umi_size, umi_offset, assay, description in [
+            ('RNAseq', None, 'single cell', 'Not applicable', 40, "'Not applicable'", 'Not applicable', 8, "'Not applicable'",
+             'sciRNAseq', 'sciRNA-seq'),
+            ('RNAseq', None, 'single nucleus', 'Read 1', 24, "'10,48,86'", 'Read 1', 10, 0, 'SNARE-RNAseq2', 'snRNAseq (SNARE-seq2)'),
+            ('RNAseq', None, 'spot', 'Read 1', 16, 0, 'Read 1', 12, 16, 'scRNAseq-10Genomics-v3', 'scRNA-seq (10x Genomics v3)'),
+            ('RNAseq (with probes)', visium_with_probes_str, 'spot', 'Read 1', 16, 0, 'Read 1', 12, 16, 'scRNAseq-visium-with-probes', 'Visium RNAseq with probes'),
+            ('RNAseq', None, 'single cell', 'Read 1', 16, 0, 'Read 1', 10, 16, 'scRNAseq-10xGenomics-v2', 'scRNA-seq (10x Genomics v2)'),
+            ('RNAseq', None, 'single nucleus', 'Read 1', 16, 0, 'Read 1', 10, 16, 'snRNAseq-10xGenomics-v2', 'snRNA-seq (10x Genomics v2)'),
+            ('RNAseq', None, 'single cell', 'Read 1', 16, 0, 'Read 1', 12, 16, 'scRNAseq-10xGenomics-v3', 'scRNA-seq (10x Genomics v3)'),
+            ('RNAseq', None, 'single nucleus', 'Read 1', 16, 0, 'Read 1', 12, 16, 'snRNAseq-10xGenomics-v3', 'snRNA-seq (10x Genomics v3)'),
+    ]:
+        if rna_probe_panel:
+            probe_panel_str = f"and RNA_probe_panel == '{rna_probe_panel}'"
+        else:
+            probe_panel_str = ''
+        json_block.append(
+            {"type": "match",
+             "match": (f"is_dcwg and dataset_type == '{data_type}'"
+                       f" {probe_panel_str}"
                        f" and assay_input_entity == '{entity}'"
-                       " and barcode_read =~~ 'Read 1'"
-                       " and barcode_size == 16"
-                       " and barcode_offset == 0"
-                       " and umi_read =~~ 'Read 1'"
+                       f" and barcode_read =~~ '{barcode_read}'"
+                       f" and barcode_size == {barcode_size}"
+                       f" and barcode_offset == {barcode_offset}"
+                       f" and umi_read =~~ '{umi_read}'"
                        f" and umi_size == {umi_size}"
-                       " and umi_offset == 16"
+                       f" and umi_offset == {umi_offset}"
                        ),
              "value": ("{"
                        f"'assaytype': '{assay}',"
@@ -303,9 +339,29 @@ def main() -> None:
              }
         )    
 
+    # Histology assays
+    for stain_name, assay, description, schema in [
+            ('PAS', 'PAS', 'PAS Stained Microscopy', 'histology-v2'),
+            ('H&E', 'h-and-e', 'H&E Stained Microscopy', 'histology-v2'),
+    ]:
+        json_block.append(
+            {"type": "match",
+             "match": (f"is_dcwg and dataset_type == 'Histology' "
+                       f" and stain_name == '{stain_name}'"
+                       ),
+             "value": ("{"
+                       f"'assaytype': '{assay}',"
+                       " 'vitessce_hints': [],"
+                       f" 'dir_schema': '{schema}',"
+                       f" 'description': '{description}'"
+                       "}"
+                       ),
+             "rule_description": f"DCWG {assay}"
+             }
+        )
+
     # Simple assays
     for data_type, assay, description, schema in [
-            ('Histology', 'histology', 'Histology', 'histology-v2'),
             ('CODEX', 'CODEX', 'CODEX', 'codex-v2'),
             ('PhenoCycler', 'phenocycler', 'PhenoCycler', 'phenocycler-v2'),
             ('CycIF', 'cycif', 'CycIF', 'cycif-v2'),
@@ -313,18 +369,18 @@ def main() -> None:
             ('Cell Dive', 'cell-dive', 'Cell DIVE', 'celldive-v2'),
             ('MALDI', 'MALDI-IMS', 'MALDI IMS', 'maldi-v2'),
             ('SIMS', 'SIMS-IMS', 'SIMS-IMS', 'sims-v2'),
-            ('DESI', 'DESI', 'DESI', 'desi-v2'),
+            ('DESI', 'DESI-IMS', 'DESI', 'desi-v2'),
             ('MIBI', 'MIBI', 'Multiplex Ion Beam Imaging', 'mibi-v2'),
             ('2D Imaging Mass Cytometry', 'IMC2D', 'Imaging Mass Cytometry (2D)', 'imc-v2'),
-            #('LC-MS', '', '', 'lcms-v2'),
-            ('nanoSPLITS', 'nano-splits', '', 'nano-splits-v2'),
+            ('LC-MS', 'LC-MS', 'LC-MS', 'lcms-v2'),
+            ('nanoSPLITS', 'nano-splits', 'nanoSPLITS', 'nano-splits-v2'),
             ('Auto-fluorescence', 'AF', 'Autofluorescence Microscopy', 'af-v2'),
             ('Light Sheet', 'Lightsheet', 'Lightsheet Microsopy', 'lightsheet-v2'),
             ('Confocal', 'confocal', 'Confocal Microscopy', 'confocal-v2'),
             ('Thick section Multiphoton MxIF', 'thick-section-multiphoton-mxif', 'Thick section Multiphoton MxIF', 'thick-section-multiphoton-mxif-v2'),
-            ('Second Harmonic Generation (SHG)', 'second-harmonic-generation', 'Second Harmonic Generatin (SHG)', 'second-harmonic-generation-v2'),
+            ('Second Harmonic Generation (SHG)', 'second-harmonic-generation', 'Second Harmonic Generation (SHG)', 'second-harmonic-generation-v2'),
             ('Enhanced Stimulated Raman Spectroscopy (SRS)', 'enhanced-srs', 'Enhanced Stimulated Raman Spectroscopy (SRS)', 'enhanced-srs-v2'),
-            #('Molecular Cartography', '', '', ''),
+            ('Molecular Cartography', 'molecular-cartography', 'Molecular Cartography', 'mc-v2'),
     ]:
         json_block.append(
             {"type": "match",
