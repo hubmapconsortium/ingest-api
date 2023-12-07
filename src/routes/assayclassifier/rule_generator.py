@@ -276,19 +276,21 @@ def main() -> None:
              }
         )
 
-    # RNAseq [sn/sc]RNAseq-10xGenomics-[v2/v3]
+    # RNAseq and some ATACseq
     visium_with_probes_str = "10x Genomics; Visium Human Transcriptome Probe Kit v2 - Small; PN 1000466"
-    for data_type, oligo_probe_panel, entity, barcode_read, barcode_size, barcode_offset, umi_read, umi_size, umi_offset, assay, description in [
+    for data_type, oligo_probe_panel, entity, barcode_read, barcode_size, barcode_offset, umi_read, umi_size, umi_offset, assay, description, schema in [
             ('RNAseq', None, 'single cell', 'Not applicable', 40, "'Not applicable'", 'Not applicable', 8, "'Not applicable'",
-             'sciRNAseq', 'sciRNA-seq'),
-            ('RNAseq', None, 'single nucleus', 'Read 1', 24, "'10,48,86'", 'Read 1', 10, 0, 'SNARE-RNAseq2', 'snRNAseq (SNARE-seq2)'),
-            ("RNAseq", None, "tissue (bulk)", None, None, None, None, None, None, "bulk-RNA", "bulk RNA"),
-            ('RNAseq', None, 'spot', 'Read 1', 16, 0, 'Read 1', 12, 16, 'scRNAseq-10Genomics-v3', 'scRNA-seq (10x Genomics v3)'),
-            ('RNAseq (with probes)', visium_with_probes_str, 'spot', 'Read 1', 16, 0, 'Read 1', 12, 16, 'scRNAseq-visium-with-probes', 'Visium RNAseq with probes'),
-            ('RNAseq', None, 'single cell', 'Read 1', 16, 0, 'Read 1', 10, 16, 'scRNAseq-10xGenomics-v2', 'scRNA-seq (10x Genomics v2)'),
-            ('RNAseq', None, 'single nucleus', 'Read 1', 16, 0, 'Read 1', 10, 16, 'snRNAseq-10xGenomics-v2', 'snRNA-seq (10x Genomics v2)'),
-            ('RNAseq', None, 'single cell', 'Read 1', 16, 0, 'Read 1', 12, 16, 'scRNAseq-10xGenomics-v3', 'scRNA-seq (10x Genomics v3)'),
-            ('RNAseq', None, 'single nucleus', 'Read 1', 16, 0, 'Read 1', 12, 16, 'snRNAseq-10xGenomics-v3', 'snRNA-seq (10x Genomics v3)'),
+             'sciRNAseq', 'sciRNA-seq', 'rnaseq-v2'),
+            ('RNAseq', None, 'single nucleus', 'Read 1', 24, "'10,48,86'", 'Read 1', 10, 0, 'SNARE-RNAseq2', 'snRNAseq (SNARE-seq2)', 'rnaseq-v2'),
+            ('RNAseq', None, 'spot', 'Read 1', 16, 0, 'Read 1', 12, 16, 'scRNAseq-10Genomics-v3', 'scRNA-seq (10x Genomics v3)', 'rnaseq-v2'),
+            ('RNAseq (with probes)', visium_with_probes_str, 'spot', 'Read 1', 16, 0, 'Read 1', 12, 16, 'scRNAseq-visium-with-probes', 'Visium RNAseq with probes', 'rnaseq-with-probes-v2'),
+            ('RNAseq', None, 'single cell', 'Read 1', 16, 0, 'Read 1', 10, 16, 'scRNAseq-10xGenomics-v2', 'scRNA-seq (10x Genomics v2)', 'rnaseq-v2'),
+            ('RNAseq', None, 'single nucleus', 'Read 1', 16, 0, 'Read 1', 10, 16, 'snRNAseq-10xGenomics-v2', 'snRNA-seq (10x Genomics v2)', 'rnaseq-v2'),
+            ('RNAseq', None, 'single cell', 'Read 1', 16, 0, 'Read 1', 12, 16, 'scRNAseq-10xGenomics-v3', 'scRNA-seq (10x Genomics v3)', 'rnaseq-v2'),
+            ('RNAseq', None, 'single nucleus', 'Read 1', 16, 0, 'Read 1', 12, 16, 'snRNAseq-10xGenomics-v3', 'snRNA-seq (10x Genomics v3)', 'rnaseq-v2'),
+            ('ATACseq', None, 'single nucleus', 'Read 2', 16, 0, 'Read 2', 10, 84, 'snATACseq', 'snATAC-seq', 'atacseq-v2'),
+            ('ATACseq', None, 'single nucleus', 'Read 2', 24, "'0,38,76'", 'Read 2', 10, 84, 'SNARE-ATACseq2', 'snATACseq (SNARE-seq2)', 'atacseq-v2'),
+            ('ATACseq', None, 'single nucleus', 'Read 2', 16, 8, 'Read 2', 10, 84, 'sn_atac_seq?', 'snATACseq-multiome', 'atacseq-v2'),
     ]:
         if oligo_probe_panel:
             probe_panel_str = f"and oligo_probe_panel == '{oligo_probe_panel}'"
@@ -309,7 +311,7 @@ def main() -> None:
              "value": ("{"
                        f"'assaytype': '{assay}',"
                        " 'vitessce_hints': [],"
-                       " 'dir_schema': 'scrnaseq-v2',"
+                       " 'dir_schema': '{schema}',"
                        f" 'description': '{description}'"
                        "}"
                        ),
@@ -317,35 +319,44 @@ def main() -> None:
              }
         )
 
-    # ATACseq cases
-    for entity, barcode_read, barcode_size, barcode_offset, assay, description, schema in [
-            ("single nucleus", "Read 2", 16, 0, "snATACseq", "snATAC-seq", "scatacseq-v2"),
-            ("single cell", "Not applicable", None, None, "sciATACseq", "sciATAC-seq", "scatacseq-v2"),
-            ("tissue (bulk)", None, None, None, "ATACseq-bulk", "bulkATACseq", "scatacseq-v2"),
-            # ("single nucleus", "Read 2", 16, 8, "????", "10X Multiome ATACseq", "scatacseq-v2"),
+    # bulk ATACseq and RNAseq
+    for data_type, entity, assay, description, schema in [
+            ('RNAseq', 'tissue (bulk)', 'bulk-RNA', 'Bulk RNA-seq', 'rnaseq-v2'),
+            ('ATACseq', 'tissue (bulk)', 'ATACseq-bulk', 'Bulk ATAC-seq', 'atacseq-v2'),
     ]:
-        bc_size_line = (f" and barcode_size == {barcode_size}"
-                        if barcode_size is not None else "")
-        bc_offset_line = (f" and barcode_offset == {barcode_offset}"
-                          if barcode_offset is not None else "")
         json_block.append(
             {"type": "match",
-             "match": ("is_dcwg and dataset_type == 'ATACseq' "
+             "match": (f"is_dcwg and dataset_type == '{data_type}'"
                        f" and assay_input_entity == '{entity}'"
-                       f" and barcode_read =~~ '{barcode_read}'"
-                       f"{bc_size_line}"
-                       f"{bc_offset_line}"
                        ),
              "value": ("{"
                        f"'assaytype': '{assay}',"
                        " 'vitessce_hints': [],"
-                       f" 'dir_schema': '{schema}',"
+                       " 'dir_schema': 'schema',"
                        f" 'description': '{description}'"
                        "}"
                        ),
-             "rule_description": f"DCWG {assay}"
+             "rule_description": "DCWG bulkATACseq"
              }
         )
+    
+    # sciATAC special case
+    json_block.append(
+        {"type": "match",
+         "match": (f"is_dcwg and dataset_type == 'ATACseq'"
+                   f" and assay_input_entity == 'single cell'"
+                   f" and barcode_read =~~ 'Not applicable'"
+                   ),
+         "value": ("{"
+                   f"'assaytype': 'sciATACseq',"
+                   " 'vitessce_hints': [],"
+                   " 'dir_schema': 'atacseq-v2',"
+                   f" 'description': 'sciATAC-seq'"
+                   "}"
+                   ),
+         "rule_description": "DCWG sciATACseq"
+         }
+    )
 
     # Histology assays
     for stain_name, assay, description, schema in [
