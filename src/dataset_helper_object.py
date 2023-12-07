@@ -2,7 +2,6 @@ import os
 import sys
 from array import array
 
-import yaml
 import requests
 import logging
 from flask import Flask
@@ -54,13 +53,9 @@ class DatasetHelper:
             _search_api_url = config['SEARCH_WEBSERVICE_URL']
 
     def get_organ_types_dict(self) -> object:
-        yaml_file_url = 'https://raw.githubusercontent.com/hubmapconsortium/search-api/main/src/search-schema/data/definitions/enums/organ_types.yaml'
-        with urllib.request.urlopen(yaml_file_url) as response:
-            yaml_file = response.read()
-            try:
-                return yaml.safe_load(yaml_file)
-            except yaml.YAMLError as e:
-                raise yaml.YAMLError(e)
+        organ_types_url = load_flask_instance_config()['UBKG_WEBSERVICE_URL'] + 'organs/by-code?application_context=HUBMAP'
+        organ_resource_file = requests.get(organ_types_url).json()
+        return organ_resource_file
 
     # This is the business logic for `/datasets/<uuid>/verifytitleinfo` endpoint that is used by
     # the ingest-validation-tests package to validate the data needed to produce a title
