@@ -2511,16 +2511,21 @@ def update_datasets_datastatus():
             if isinstance(dataset[prop], str) and \
                     len(dataset[prop]) >= 2 and \
                     dataset[prop][0] == "[" and dataset[prop][-1] == "]":
-                dataset[prop] = dataset[prop].replace("'", '"')
-                dataset[prop] = json.loads(dataset[prop])
-                if len(dataset[prop]) > 0:
-                    dataset[prop] = dataset[prop][0]
+                prop_as_list = string_helper.convert_str_literal(dataset[prop])
+                if len(prop_as_list) > 0:
+                    dataset[prop] = prop_as_list
                 else:
                     dataset[prop] = " "
             if dataset[prop] is None:
                 dataset[prop] = " "
-        if dataset.get('data_types') and dataset.get('data_types') in assay_types_dict:
-            dataset['data_types'] = assay_types_dict[dataset['data_types']]['description'].strip()
+        data_types_list = []
+        if dataset.get('data_types'):
+            for data_type in dataset.get('data_types'):
+                if data_type in assay_types_dict:
+                    data_types_list.append(assay_types_dict[data_type]['description'].strip())
+                else:
+                    data_types_list.append(data_type)
+        dataset['data_types'] = data_types_list
         for field in displayed_fields:
             if dataset.get(field) is None:
                 dataset[field] = " "
@@ -2565,12 +2570,13 @@ def update_uploads_datastatus():
                 if isinstance(upload[prop], str) and \
                         len(upload[prop]) >= 2 and \
                         upload[prop][0] == "[" and upload[prop][-1] == "]":
-                    upload[prop] = upload[prop].replace("'", '"')
-                    upload[prop] = json.loads(upload[prop])
-                    if len(upload[prop]) > 0:
-                        upload[prop] = upload[prop][0]
+                    prop_as_list = string_helper.convert_str_literal(upload[prop])
+                    if len(prop_as_list) > 0:
+                        upload[prop] = prop_as_list
                     else:
                         upload[prop] = " "
+                if upload[prop] is None:
+                    upload[prop] = " "
             for field in displayed_fields:
                 if upload.get(field) is None:
                     upload[field] = " "
