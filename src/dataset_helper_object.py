@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 # A single leading underscore means you're not supposed to access it "from the outside"
 _entity_api_url = None
 _search_api_url = None
+_ontology_api_url = None
 
 
 def load_flask_instance_config():
