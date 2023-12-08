@@ -46,14 +46,16 @@ class DatasetHelper:
         # Specify as module-scope variables
         global _entity_api_url
         global _search_api_url
+        global _ontology_api_url
 
         if _entity_api_url is None:
             config = load_flask_instance_config()
             _entity_api_url = config['ENTITY_WEBSERVICE_URL']
             _search_api_url = config['SEARCH_WEBSERVICE_URL']
+            _ontology_api_url = config['UBKG_WEBSERVICE_URL']
 
     def get_organ_types_dict(self) -> object:
-        organ_types_url = load_flask_instance_config()['UBKG_WEBSERVICE_URL'] + 'organs/by-code?application_context=HUBMAP'
+        organ_types_url = load_flask_instance_config()[_ontology_api_url] + 'organs/by-code?application_context=HUBMAP'
         organ_resource_file = requests.get(organ_types_url).json()
         return organ_resource_file
 
