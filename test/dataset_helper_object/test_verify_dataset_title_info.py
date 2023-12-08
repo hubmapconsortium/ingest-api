@@ -23,11 +23,11 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
         self.dataset = {'uuid': self.dataset_uuid, 'data_types': self.data_types}
         self.user_token = "fake token"
 
-    @patch('dataset_helper_object.urllib.request.urlopen')
+    @patch('dataset_helper_object.requests.get')
     @patch('dataset_helper_object.EntitySdk.get_entity_by_id')
     @patch('dataset_helper_object.EntitySdk.get_ancestors')
     @patch('dataset_helper_object.SearchSdk.assayname')
-    def test_verify_dataset_title_info_happy_path(self, mock_assayname, mock_get_ancestors, mock_get_entity_by_id, mock_url_open):
+    def test_verify_dataset_title_info_happy_path(self, mock_assayname, mock_get_ancestors, mock_get_entity_by_id, mock_url_get):
         # https://github.com/hubmapconsortium/search-api/blob/main/src/search-schema/data/definitions/enums/assay_types.yaml
         def resp1():
             response_dict = {'description': 'Imaging Mass Cytometry', 'alt-names': [], 'primary': 'true', 'vitessce-hints': []}
@@ -65,11 +65,17 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
 
         def resp5():
             r = requests.Response()
-            r.read = lambda: b'AO:\r\n  description: Aorta\r\nBL:\r\n  \r\nBD:\r\n  description: Blood\r\nBM:\r\n  description: Bone Marrow\r\nBR:\r\n  description: Brain\r\n'
-            # The 'when' needs the close method in the response....
-            r.close = lambda: True
+            json_data = '''
+            {
+                "AO": "Aorta",
+                "BD": "Blood",
+                "BL": "Bladder",
+                "BM": "Bone Marrow"
+            }
+            '''
+            r._content = json_data.encode('utf-8')
             return r
-        mock_url_open.side_effect = [resp5()]
+        mock_url_get.side_effect = [resp5()]
 
         result = self.dataset_helper.verify_dataset_title_info(self.dataset_uuid, self.user_token)
 
@@ -77,7 +83,7 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
         mock_assayname.assert_called()
         mock_get_ancestors.assert_called()
         mock_get_entity_by_id.assert_called()
-        mock_url_open.assert_called()
+        mock_url_get.assert_called()
 
     @patch('dataset_helper_object.EntitySdk.get_entity_by_id')
     def test_verify_dataset_title_info_entities_not_found(self, mock_get_entity_by_id):
@@ -89,11 +95,11 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
         self.assertEqual(result[0], f"Unable to get the target dataset with uuid: {self.dataset_uuid}")
         mock_get_entity_by_id.assert_called()
 
-    @patch('dataset_helper_object.urllib.request.urlopen')
+    @patch('dataset_helper_object.requests.get')
     @patch('dataset_helper_object.EntitySdk.get_entity_by_id')
     @patch('dataset_helper_object.EntitySdk.get_ancestors')
     @patch('dataset_helper_object.SearchSdk.assayname')
-    def test_verify_dataset_title_info_organ_code_description_not_found(self, mock_assayname, mock_get_ancestors, mock_get_entity_by_id, mock_url_open):
+    def test_verify_dataset_title_info_organ_code_description_not_found(self, mock_assayname, mock_get_ancestors, mock_get_entity_by_id, mock_url_get):
         # https://github.com/hubmapconsortium/search-api/blob/main/src/search-schema/data/definitions/enums/assay_types.yaml
         def resp1():
             response_dict = {'description': 'Imaging Mass Cytometry', 'alt-names': [], 'primary': 'true',
@@ -132,26 +138,31 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
 
         def resp5():
             r = requests.Response()
-            r.read = lambda: b'AO:\r\n  description: Aorta\r\nBL:\r\n  \r\nBD:\r\n  description: Blood\r\nBM:\r\n  description: Bone Marrow\r\nBR:\r\n  description: Brain\r\n'
-            # The 'when' needs the close method in the response....
-            r.close = lambda: True
+            json_data = '''
+            {
+                "AO": "Aorta",
+                "BD": null,
+                "BL": "Bladder",
+                "BM": "Bone Marrow"
+            }
+            '''
+            r._content = json_data.encode('utf-8')
             return r
-        mock_url_open.side_effect = [resp5()]
+        mock_url_get.side_effect = [resp5()]
 
         result = self.dataset_helper.verify_dataset_title_info(self.dataset_uuid, self.user_token)
 
-        self.assertEqual(len(result), 1)
-        self.assertEqual(result[0], "Description for Organ code 'BL' not found in organ types file")
+        self.assertEqual(len(result), 0)
         mock_assayname.assert_called()
         mock_get_ancestors.assert_called()
         mock_get_entity_by_id.assert_called()
-        mock_url_open.assert_called()
+        mock_url_get.assert_called()
 
-    @patch('dataset_helper_object.urllib.request.urlopen')
+    @patch('dataset_helper_object.requests.get')
     @patch('dataset_helper_object.EntitySdk.get_entity_by_id')
     @patch('dataset_helper_object.EntitySdk.get_ancestors')
     @patch('dataset_helper_object.SearchSdk.assayname')
-    def test_verify_dataset_title_info_organ_code_not_found_in_types_file(self, mock_assayname, mock_get_ancestors, mock_get_entity_by_id, mock_url_open):
+    def test_verify_dataset_title_info_organ_code_not_found_in_types_file(self, mock_assayname, mock_get_ancestors, mock_get_entity_by_id, mock_url_get):
         # https://github.com/hubmapconsortium/search-api/blob/main/src/search-schema/data/definitions/enums/assay_types.yaml
         def resp1():
             response_dict = {'description': 'Imaging Mass Cytometry', 'alt-names': [], 'primary': 'true', 'vitessce-hints': []}
@@ -188,11 +199,17 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
 
         def resp5():
             r = requests.Response()
-            r.read = lambda: b'AO:\r\n  description: Aorta\r\nBL:\r\n  \r\nBD:\r\n  description: Blood\r\nBM:\r\n  description: Bone Marrow\r\nBR:\r\n  description: Brain\r\n'
-            # The 'when' needs the close method in the response....
-            r.close = lambda: True
+            json_data = '''
+            {
+                "AO": "Aorta",
+                "BD": "Blood",
+                "BL": "Bladder",
+                "BM": "Bone Marrow"
+            }
+            '''
+            r._content = json_data.encode('utf-8')
             return r
-        mock_url_open.side_effect = [resp5()]
+        mock_url_get.side_effect = [resp5()]
 
         result = self.dataset_helper.verify_dataset_title_info(self.dataset_uuid, self.user_token)
 
@@ -201,7 +218,7 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
         mock_assayname.assert_called()
         mock_get_ancestors.assert_called()
         mock_get_entity_by_id.assert_called()
-        mock_url_open.assert_called()
+        mock_url_get.assert_called()
 
     @patch('dataset_helper_object.urllib.request.urlopen')
     @patch('dataset_helper_object.EntitySdk.get_entity_by_id')
@@ -258,11 +275,11 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
         # because no 'organ:' is called by mock_get_ancestors
         mock_url_open.assert_not_called()
 
-    @patch('dataset_helper_object.urllib.request.urlopen')
+    @patch('dataset_helper_object.requests.get')
     @patch('dataset_helper_object.EntitySdk.get_entity_by_id')
     @patch('dataset_helper_object.EntitySdk.get_ancestors')
     @patch('dataset_helper_object.SearchSdk.assayname')
-    def test_verify_dataset_title_info_no_race_no_sex(self, mock_assayname, mock_get_ancestors, mock_get_entity_by_id, mock_url_open):
+    def test_verify_dataset_title_info_no_race_no_sex(self, mock_assayname, mock_get_ancestors, mock_get_entity_by_id, mock_url_get):
         # https://github.com/hubmapconsortium/search-api/blob/main/src/search-schema/data/definitions/enums/assay_types.yaml
         def resp1():
             response_dict = {'description': 'Imaging Mass Cytometry', 'alt-names': [], 'primary': 'true',
@@ -299,11 +316,17 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
 
         def resp5():
             r = requests.Response()
-            r.read = lambda: b'AO:\r\n  description: Aorta\r\nBL:\r\n  \r\nBD:\r\n  description: Blood\r\nBM:\r\n  description: Bone Marrow\r\nBR:\r\n  description: Brain\r\n'
-            # The 'when' needs the close method in the response....
-            r.close = lambda: True
+            json_data = '''
+            {
+                "AO": "Aorta",
+                "BD": "Blood",
+                "BL": "Bladder",
+                "BM": "Bone Marrow"
+            }
+            '''
+            r._content = json_data.encode('utf-8')
             return r
-        mock_url_open.side_effect = [resp5()]
+        mock_url_get.side_effect = [resp5()]
 
         result = self.dataset_helper.verify_dataset_title_info(self.dataset_uuid, self.user_token)
 
@@ -313,13 +336,13 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
         mock_assayname.assert_called()
         mock_get_ancestors.assert_called()
         mock_get_entity_by_id.assert_called()
-        mock_url_open.assert_called()
+        mock_url_get.assert_called()
 
-    @patch('dataset_helper_object.urllib.request.urlopen')
+    @patch('dataset_helper_object.requests.get')
     @patch('dataset_helper_object.EntitySdk.get_entity_by_id')
     @patch('dataset_helper_object.EntitySdk.get_ancestors')
     @patch('dataset_helper_object.SearchSdk.assayname')
-    def test_verify_dataset_title_info_assaytype_not_found(self, mock_assayname, mock_get_ancestors, mock_get_entity_by_id, mock_url_open):
+    def test_verify_dataset_title_info_assaytype_not_found(self, mock_assayname, mock_get_ancestors, mock_get_entity_by_id, mock_url_get):
         # https://github.com/hubmapconsortium/search-api/blob/main/src/search-schema/data/definitions/enums/assay_types.yaml
 
         mock_assayname.side_effect = [Exception(), Exception()]
@@ -351,12 +374,18 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
 
         def resp3():
             r = requests.Response()
-            r.read = lambda: b'AO:\r\n  description: Aorta\r\nBL:\r\n  \r\nBD:\r\n  description: Blood\r\nBM:\r\n  description: Bone Marrow\r\nBR:\r\n  description: Brain\r\n'
-            # The 'when' needs the close method in the response....
-            r.close = lambda: True
+            json_data = '''
+            {
+                "AO": "Aorta",
+                "BD": "Blood",
+                "BL": "Bladder",
+                "BM": "Bone Marrow"
+            }
+            '''
+            r._content = json_data.encode('utf-8')
             return r
 
-        mock_url_open.side_effect = [resp3()]
+        mock_url_get.side_effect = [resp3()]
 
         result = self.dataset_helper.verify_dataset_title_info(self.dataset_uuid, self.user_token)
 
@@ -366,13 +395,13 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
         mock_assayname.assert_called()
         mock_get_ancestors.assert_called()
         mock_get_entity_by_id.assert_called()
-        mock_url_open.assert_called()
+        mock_url_get.assert_called()
 
-    @patch('dataset_helper_object.urllib.request.urlopen')
+    @patch('dataset_helper_object.requests.get')
     @patch('dataset_helper_object.EntitySdk.get_entity_by_id')
     @patch('dataset_helper_object.EntitySdk.get_ancestors')
     @patch('dataset_helper_object.SearchSdk.assayname')
-    def test_verify_dataset_title_info_dataset_data_types_missing(self, mock_assayname, mock_get_ancestors, mock_get_entity_by_id, mock_url_open):
+    def test_verify_dataset_title_info_dataset_data_types_missing(self, mock_assayname, mock_get_ancestors, mock_get_entity_by_id, mock_url_get):
         # https://github.com/hubmapconsortium/search-api/blob/main/src/search-schema/data/definitions/enums/assay_types.yaml
         def resp1():
             response_dict = {'description': 'Imaging Mass Cytometry', 'alt-names': [], 'primary': 'true', 'vitessce-hints': []}
@@ -412,12 +441,18 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
 
         def resp5():
             r = requests.Response()
-            r.read = lambda: b'AO:\r\n  description: Aorta\r\nBL:\r\n  \r\nBD:\r\n  description: Blood\r\nBM:\r\n  description: Bone Marrow\r\nBR:\r\n  description: Brain\r\n'
-            # The 'when' needs the close method in the response....
-            r.close = lambda: True
+            json_data = '''
+            {
+                "AO": "Aorta",
+                "BD": "Blood",
+                "BL": "Bladder",
+                "BM": "Bone Marrow"
+            }
+            '''
+            r._content = json_data.encode('utf-8')
             return r
 
-        mock_url_open.side_effect = [resp5()]
+        mock_url_get.side_effect = [resp5()]
 
         result = self.dataset_helper.verify_dataset_title_info(self.dataset_uuid, self.user_token)
 
@@ -427,4 +462,4 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
         mock_assayname.assert_not_called()
         mock_get_ancestors.assert_called()
         mock_get_entity_by_id.assert_called()
-        mock_url_open.assert_called()
+        mock_url_get.assert_called()

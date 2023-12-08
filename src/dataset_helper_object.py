@@ -97,11 +97,7 @@ class DatasetHelper:
                         if 'organ' in ancestor_dict:
                             organ_code = ancestor_dict['organ']
                             organ_types_dict = self.get_organ_types_dict()
-                            if organ_code in organ_types_dict:
-                                organ_entry = organ_types_dict[organ_code]
-                                if organ_entry is None or 'description' not in organ_entry:
-                                    rslt.append(f"Description for Organ code '{organ_code}' not found in organ types file")
-                            else:
+                            if organ_code not in organ_types_dict:
                                 rslt.append(f"Organ code '{organ_code}' not found in organ types file")
                         else:
                             rslt.append('Organ key not found in sample_category organ')
