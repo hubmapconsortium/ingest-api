@@ -56,7 +56,7 @@ class DatasetHelper:
             _ontology_api_url = config['UBKG_WEBSERVICE_URL']
 
     def get_organ_types_dict(self) -> object:
-        organ_types_url = load_flask_instance_config()[_ontology_api_url] + 'organs/by-code?application_context=HUBMAP'
+        organ_types_url = _ontology_api_url + 'organs/by-code?application_context=HUBMAP'
         organ_resource_file = requests.get(organ_types_url).json()
         return organ_resource_file
 
