@@ -236,22 +236,6 @@ def main() -> None:
     mapping_failures = list(set(mapping_failures))
     print(f"MAPPING FAILURES: {mapping_failures}")
 
-    # 10X Multiome example
-    json_block.append(
-        {"type": "match",
-         "match": ("is_dcwg and dataset_type == '10X Multiome'"
-                   " and barcode_size == 16"
-                   " and barcode_offset == 8"
-                   ),
-         "value": ("{'assaytype': '10x_multiome',"
-                   " 'vitessce_hints': [],"
-                   " 'description': '10X Multiome',"
-                   " 'must_contain': ['????', '????']}"
-                   ),
-         "rule_description": "DCWG 10X Multiome"
-         }
-    )
-
     # Visium v3 (current CEDAR template)
     for data_type, assay, description, must_contain, schema in [
             ('Visium (no probes)', 'visium-no-probes', 'Visium (No probes)',
@@ -263,6 +247,35 @@ def main() -> None:
         json_block.append(
             {"type": "match",
              "match": (f"is_dcwg and dataset_type == '{data_type}'"
+                       ),
+             "value": ("{"
+                       f"'assaytype': '{assay}',"
+                       " 'vitessce_hints': [],"
+                       f" 'dir_schema': '{schema}',"
+                       f" 'description': '{description}',"
+                       f" 'must_contain': [{must_contain_str}]"
+                       "}"
+                       ),
+             "rule_description": f"DCWG {assay}"
+             }
+        )
+
+    # Multiome
+    for data_type, barcode_size, barcode_offset, umi_size, must_contain, assay, description, schema in [
+            ('10X Multiome', 16, 8, None, ['RNAseq', 'ATACseq'],
+             '10x-multiome', '10X Multiome', '10x-multiome-v2'),
+            ('SNARE-seq2', 24, None, 10, ['RNAseq', 'ATACseq'],
+             'multiome-snare-seq2', 'SNARE-seq2', 'snareseq2-v2'),
+    ]:
+        must_contain_str = ','.join(["'" + elt + "'" for elt in must_contain])
+        barcode_offset_str = f"and barcode_offset == {barcode_offset}" if barcode_offset else ""
+        umi_size_str = f"and umi_size == {umi_size}" if umi_size else ""
+        json_block.append(
+            {"type": "match",
+             "match": (f"is_dcwg and dataset_type == '{data_type}'"
+                       f" and barcode_size == {barcode_size}"
+                       f" {barcode_offset_str}"
+                       f" {umi_size_str}"
                        ),
              "value": ("{"
                        f"'assaytype': '{assay}',"
@@ -315,7 +328,7 @@ def main() -> None:
                        f" 'description': '{description}'"
                        "}"
                        ),
-             "rule_description": "DCWG {assay}"
+             "rule_description": f"DCWG {assay}"
              }
         )
 
@@ -336,7 +349,7 @@ def main() -> None:
                        f" 'description': '{description}'"
                        "}"
                        ),
-             "rule_description": "DCWG bulkATACseq"
+             "rule_description": f"DCWG bulkATACseq"
              }
         )
     
@@ -354,7 +367,7 @@ def main() -> None:
                    f" 'description': 'sciATAC-seq'"
                    "}"
                    ),
-         "rule_description": "DCWG sciATACseq"
+         "rule_description": f"DCWG sciATACseq"
          }
     )
 
