@@ -200,7 +200,7 @@
     {
         "type": "match",
         "match": "not_dcwg and not_derived and assay_type in ['NanoDESI']",
-        "value": "{'assaytype': 'NanoDESI', 'dir_schema': 'nano-v0', 'tbl_schema': 'nano-v'+version.to_str, 'vitessce_hints': [], 'description': 'NanoDESI'}",
+        "value": "{'assaytype': 'NanoDESI', 'dir_schema': 'ims-v0', 'tbl_schema': 'ims-v'+version.to_str, 'vitessce_hints': [], 'description': 'NanoDESI'}",
         "rule_description": "non-DCWG primary NanoDESI"
     },
     {
@@ -561,13 +561,13 @@
         "type": "match",
         "match": "is_dcwg and dataset_type == 'RNAseq' and assay_input_entity == 'tissue (bulk)'",
         "value": "{'assaytype': 'bulk-RNA', 'vitessce_hints': [], 'dir_schema': 'schema', 'description': 'Bulk RNA-seq'}",
-        "rule_description": "DCWG bulkATACseq"
+        "rule_description": "DCWG bulk-RNA"
     },
     {
         "type": "match",
         "match": "is_dcwg and dataset_type == 'ATACseq' and assay_input_entity == 'tissue (bulk)'",
         "value": "{'assaytype': 'ATACseq-bulk', 'vitessce_hints': [], 'dir_schema': 'schema', 'description': 'Bulk ATAC-seq'}",
-        "rule_description": "DCWG bulkATACseq"
+        "rule_description": "DCWG ATACseq-bulk"
     },
     {
         "type": "match",

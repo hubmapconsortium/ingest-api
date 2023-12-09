@@ -349,7 +349,7 @@ def main() -> None:
                        f" 'description': '{description}'"
                        "}"
                        ),
-             "rule_description": f"DCWG bulkATACseq"
+             "rule_description": f"DCWG {assay}"
              }
         )
     
