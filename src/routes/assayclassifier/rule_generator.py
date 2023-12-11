@@ -23,12 +23,12 @@ PREAMBLE = [
     {"type": "note",
      "match": "metadata_schema_id != null",
      "value": "{'not_dcwg': false, 'is_dcwg': true}",
-     "rule_description": "Preamble rule identifying non-DCWG"     
+     "rule_description": "Preamble rule identifying non-DCWG"
      },
     {"type": "note",
      "match": "not_dcwg and assay_type == null and data_types != null",
      "value": "{'is_derived': true, 'not_derived': false}",
-     "rule_description": "Preamble rule identifying derived non-DCWG"     
+     "rule_description": "Preamble rule identifying derived non-DCWG"
      },
     {"type": "note",
      "match": "not_dcwg and is_derived == null",
@@ -39,8 +39,9 @@ PREAMBLE = [
      "match": "not_dcwg and not_derived and version == null",
      "value": "{'version': 0}",
      "rule_description": "Cover default schema version = 0 for non-DCWG metadata"
-    },
+     },
 ]
+
 
 def get_assay_list(table_schema_path):
     with open(table_schema_path) as f:
@@ -64,8 +65,10 @@ def get_assay_list(table_schema_path):
 def test_is_hca(table_schema_path):
     with open(table_schema_path) as f:
         for line in f:
-            if (line.lower().startswith('# include:')
-                and '../includes/fields/source_project.yaml' in line):
+            if (
+                line.lower().startswith("# include:")
+                and "../includes/fields/source_project.yaml" in line
+            ):
                 return True
     return False
 
@@ -128,7 +131,7 @@ def main() -> None:
     pprint(schema_name_to_filename_dict)
     print('----- schema_name_to_name_list_dict follows -----')
     pprint(schema_name_to_name_list_dict)
-        
+
     json_block = PREAMBLE
     mapping_failures = []
     debug_me = ['lc-ms_label-free', 'lc-ms-ms_label-free', 'DART-FISH', 'LC-MS-untargeted', 'Targeted-Shotgun-LC-MS', 'lc-ms-ms_labeled', 'TMT-LC-MS', 'lc-ms_labeled']
@@ -146,20 +149,23 @@ def main() -> None:
             # Long mechanics follow to figure out what directory schema is appropriate
             schema_assay_name = None
             try:
-                if canonical_name in debug_me: print(f"Trying {canonical_name} {all_assay_types}")
+                if canonical_name in debug_me:
+                    print(f"Trying {canonical_name} {all_assay_types}")
                 candidate_schema_list = []
                 for this_name in all_assay_types:
                     for tpl, schema_list in schema_name_to_name_list_dict.items():
                         schema_name, schema_version, is_hca = tpl
                         if is_hca:
-                            continue # reject hca out of hand
+                            continue  # reject hca out of hand
                         if this_name in schema_list:
                             candidate_schema_list.append(schema_name)
                 candidate_schema_list = list(set(candidate_schema_list))
-                if canonical_name in debug_me: print(f"candidate schema list: {candidate_schema_list}")
+                if canonical_name in debug_me:
+                    print(f"candidate schema list: {candidate_schema_list}")
                 for schema_name in candidate_schema_list:
                     tbl_versions = table_schema_version_dict[schema_name.lower()]
-                    if canonical_name in debug_me: print(f"{schema_name} -> {tbl_versions}")
+                    if canonical_name in debug_me:
+                        print(f"{schema_name} -> {tbl_versions}")
                     if tbl_versions:
                         break
                 else:
@@ -172,16 +178,17 @@ def main() -> None:
                     max_tbl_version = tbl_versions[0]
                 for this_name in all_assay_types:
                     key = (this_name.lower(), max_tbl_version, False)
-                    if canonical_name in debug_me: print(f"Trying lookup {key}")
+                    if canonical_name in debug_me:
+                        print(f"Trying lookup {key}")
                     if key in name_to_schema_name_dict:
                         schema_assay_name = name_to_schema_name_dict[key]
                         break
                 else:
                     raise RuntimeError("Final lookup failed")
+                print(f"{canonical_name} -> {this_name} {max_tbl_version} -> {schema_assay_name}")
             except Exception as excp:
                 print(f"FAILED for {canonical_name}: {excp}")
                 mapping_failures.append(canonical_name)
-            print(f"{canonical_name} -> {this_name} {max_tbl_version} -> {schema_assay_name}")
             dir_schema_filename = None
             if schema_assay_name:
                 dir_schema_version_list = dir_schema_version_dict[schema_assay_name]
@@ -228,22 +235,6 @@ def main() -> None:
             )
     mapping_failures = list(set(mapping_failures))
     print(f"MAPPING FAILURES: {mapping_failures}")
-            
-    # 10X Multiome example
-    json_block.append(
-        {"type": "match",
-         "match": ("is_dcwg and dataset_type == '10X Multiome'"
-                   " and barcode_size == 16"
-                   " and barcode_offset == 8"
-                   ),
-         "value": ("{'assaytype': '10x_multiome',"
-                   " 'vitessce_hints': [],"
-                   " 'description': '10X Multiome',"
-                   " 'must_contain': ['????', '????']}"
-                   ),
-         "rule_description": "DCWG 10X Multiome"
-         }
-    )
 
     # Visium v3 (current CEDAR template)
     for data_type, assay, description, must_contain, schema in [
@@ -267,24 +258,55 @@ def main() -> None:
                        ),
              "rule_description": f"DCWG {assay}"
              }
-            
         )
 
-    # RNAseq [sn/sc]RNAseq-10xGenomics-[v2/v3]
-    visium_with_probes_str = "10x Genomics; Visium Human Transcriptome Probe Kit v2 - Small; PN 1000466"
-    for data_type, rna_probe_panel, entity, barcode_read, barcode_size, barcode_offset, umi_read, umi_size, umi_offset, assay, description in [
-            ('RNAseq', None, 'single cell', 'Not applicable', 40, "'Not applicable'", 'Not applicable', 8, "'Not applicable'",
-             'sciRNAseq', 'sciRNA-seq'),
-            ('RNAseq', None, 'single nucleus', 'Read 1', 24, "'10,48,86'", 'Read 1', 10, 0, 'SNARE-RNAseq2', 'snRNAseq (SNARE-seq2)'),
-            ('RNAseq', None, 'spot', 'Read 1', 16, 0, 'Read 1', 12, 16, 'scRNAseq-10Genomics-v3', 'scRNA-seq (10x Genomics v3)'),
-            ('RNAseq (with probes)', visium_with_probes_str, 'spot', 'Read 1', 16, 0, 'Read 1', 12, 16, 'scRNAseq-visium-with-probes', 'Visium RNAseq with probes'),
-            ('RNAseq', None, 'single cell', 'Read 1', 16, 0, 'Read 1', 10, 16, 'scRNAseq-10xGenomics-v2', 'scRNA-seq (10x Genomics v2)'),
-            ('RNAseq', None, 'single nucleus', 'Read 1', 16, 0, 'Read 1', 10, 16, 'snRNAseq-10xGenomics-v2', 'snRNA-seq (10x Genomics v2)'),
-            ('RNAseq', None, 'single cell', 'Read 1', 16, 0, 'Read 1', 12, 16, 'scRNAseq-10xGenomics-v3', 'scRNA-seq (10x Genomics v3)'),
-            ('RNAseq', None, 'single nucleus', 'Read 1', 16, 0, 'Read 1', 12, 16, 'snRNAseq-10xGenomics-v3', 'snRNA-seq (10x Genomics v3)'),
+    # Multiome
+    for data_type, barcode_size, barcode_offset, umi_size, must_contain, assay, description, schema in [
+            ('10X Multiome', 16, 8, None, ['RNAseq', 'ATACseq'],
+             '10x-multiome', '10X Multiome', '10x-multiome-v2'),
+            ('SNARE-seq2', 24, None, 10, ['RNAseq', 'ATACseq'],
+             'multiome-snare-seq2', 'SNARE-seq2', 'snareseq2-v2'),
     ]:
-        if rna_probe_panel:
-            probe_panel_str = f"and RNA_probe_panel == '{rna_probe_panel}'"
+        must_contain_str = ','.join(["'" + elt + "'" for elt in must_contain])
+        barcode_offset_str = f"and barcode_offset == {barcode_offset}" if barcode_offset else ""
+        umi_size_str = f"and umi_size == {umi_size}" if umi_size else ""
+        json_block.append(
+            {"type": "match",
+             "match": (f"is_dcwg and dataset_type == '{data_type}'"
+                       f" and barcode_size == {barcode_size}"
+                       f" {barcode_offset_str}"
+                       f" {umi_size_str}"
+                       ),
+             "value": ("{"
+                       f"'assaytype': '{assay}',"
+                       " 'vitessce_hints': [],"
+                       f" 'dir_schema': '{schema}',"
+                       f" 'description': '{description}',"
+                       f" 'must_contain': [{must_contain_str}]"
+                       "}"
+                       ),
+             "rule_description": f"DCWG {assay}"
+             }
+        )
+
+    # RNAseq and some ATACseq
+    visium_with_probes_str = "10x Genomics; Visium Human Transcriptome Probe Kit v2 - Small; PN 1000466"
+    for data_type, oligo_probe_panel, entity, barcode_read, barcode_size, barcode_offset, umi_read, umi_size, umi_offset, assay, description, schema in [
+            ('RNAseq', None, 'single cell', 'Not applicable', 40, "'Not applicable'", 'Not applicable', 8, "'Not applicable'",
+             'sciRNAseq', 'sciRNA-seq', 'rnaseq-v2'),
+            ('RNAseq', None, 'single nucleus', 'Read 1', 24, "'10,48,86'", 'Read 1', 10, 0, 'SNARE-RNAseq2', 'snRNAseq (SNARE-seq2)', 'rnaseq-v2'),
+            ('RNAseq', None, 'spot', 'Read 1', 16, 0, 'Read 1', 12, 16, 'scRNAseq-10Genomics-v3', 'scRNA-seq (10x Genomics v3)', 'rnaseq-v2'),
+            ('RNAseq (with probes)', visium_with_probes_str, 'spot', 'Read 1', 16, 0, 'Read 1', 12, 16, 'scRNAseq-visium-with-probes', 'Visium RNAseq with probes', 'rnaseq-with-probes-v2'),
+            ('RNAseq', None, 'single cell', 'Read 1', 16, 0, 'Read 1', 10, 16, 'scRNAseq-10xGenomics-v2', 'scRNA-seq (10x Genomics v2)', 'rnaseq-v2'),
+            ('RNAseq', None, 'single nucleus', 'Read 1', 16, 0, 'Read 1', 10, 16, 'snRNAseq-10xGenomics-v2', 'snRNA-seq (10x Genomics v2)', 'rnaseq-v2'),
+            ('RNAseq', None, 'single cell', 'Read 1', 16, 0, 'Read 1', 12, 16, 'scRNAseq-10xGenomics-v3', 'scRNA-seq (10x Genomics v3)', 'rnaseq-v2'),
+            ('RNAseq', None, 'single nucleus', 'Read 1', 16, 0, 'Read 1', 12, 16, 'snRNAseq-10xGenomics-v3', 'snRNA-seq (10x Genomics v3)', 'rnaseq-v2'),
+            ('ATACseq', None, 'single nucleus', 'Read 2', 16, 0, 'Read 2', 10, 84, 'snATACseq', 'snATAC-seq', 'atacseq-v2'),
+            ('ATACseq', None, 'single nucleus', 'Read 2', 24, "'0,38,76'", 'Read 2', 10, 84, 'SNARE-ATACseq2', 'snATACseq (SNARE-seq2)', 'atacseq-v2'),
+            ('ATACseq', None, 'single nucleus', 'Read 2', 16, 8, 'Read 2', 10, 84, 'sn_atac_seq?', 'snATACseq-multiome', 'atacseq-v2'),
+    ]:
+        if oligo_probe_panel:
+            probe_panel_str = f"and oligo_probe_panel == '{oligo_probe_panel}'"
         else:
             probe_panel_str = ''
         json_block.append(
@@ -302,42 +324,52 @@ def main() -> None:
              "value": ("{"
                        f"'assaytype': '{assay}',"
                        " 'vitessce_hints': [],"
-                       " 'dir_schema': 'scrnaseq-v2',"
-                       f" 'description': '{description}'"
-                       "}"
-                       ),
-             "rule_description": "DCWG {assay}"
-             }
-        )
-
-    # ATACseq cases
-    for entity, barcode_read, barcode_size, barcode_offset, assay, description, schema in [
-            ("single nucleus", "Read 2", 16, 0, "snATACseq", "snATAC-seq", "scatacseq-v2"),
-            ("single cell", "Not applicable", None, None, "sciATACseq", "sciATAC-seq", "scatacseq-v2"),
-            #("single nucleus", "Read 2", 16, 8, "????", "10X Multiome ATACseq", "scatacseq-v2"),
-    ]:
-        bc_size_line = (f" and barcode_size == {barcode_size}"
-                        if barcode_size is not None else "")
-        bc_offset_line = (f" and barcode_offset == {barcode_offset}"
-                          if barcode_offset is not None else "")
-        json_block.append(
-            {"type": "match",
-             "match": ("is_dcwg and dataset_type == 'ATACseq' "
-                       f" and assay_input_entity == '{entity}'"
-                       f" and barcode_read =~~ '{barcode_read}'"
-                       f"{bc_size_line}"
-                       f"{bc_offset_line}"
-                       ),
-             "value": ("{"
-                       f"'assaytype': '{assay}',"
-                       " 'vitessce_hints': [],"
-                       f" 'dir_schema': '{schema}',"
+                       " 'dir_schema': '{schema}',"
                        f" 'description': '{description}'"
                        "}"
                        ),
              "rule_description": f"DCWG {assay}"
              }
-        )    
+        )
+
+    # bulk ATACseq and RNAseq
+    for data_type, entity, assay, description, schema in [
+            ('RNAseq', 'tissue (bulk)', 'bulk-RNA', 'Bulk RNA-seq', 'rnaseq-v2'),
+            ('ATACseq', 'tissue (bulk)', 'ATACseq-bulk', 'Bulk ATAC-seq', 'atacseq-v2'),
+    ]:
+        json_block.append(
+            {"type": "match",
+             "match": (f"is_dcwg and dataset_type == '{data_type}'"
+                       f" and assay_input_entity == '{entity}'"
+                       ),
+             "value": ("{"
+                       f"'assaytype': '{assay}',"
+                       " 'vitessce_hints': [],"
+                       " 'dir_schema': 'schema',"
+                       f" 'description': '{description}'"
+                       "}"
+                       ),
+             "rule_description": f"DCWG {assay}"
+             }
+        )
+    
+    # sciATAC special case
+    json_block.append(
+        {"type": "match",
+         "match": (f"is_dcwg and dataset_type == 'ATACseq'"
+                   f" and assay_input_entity == 'single cell'"
+                   f" and barcode_read =~~ 'Not applicable'"
+                   ),
+         "value": ("{"
+                   f"'assaytype': 'sciATACseq',"
+                   " 'vitessce_hints': [],"
+                   " 'dir_schema': 'atacseq-v2',"
+                   f" 'description': 'sciATAC-seq'"
+                   "}"
+                   ),
+         "rule_description": f"DCWG sciATACseq"
+         }
+    )
 
     # Histology assays
     for stain_name, assay, description, schema in [
@@ -396,11 +428,12 @@ def main() -> None:
              "rule_description": f"DCWG {assay}"
              }
         )
-    
+
     with open(CHAIN_OUTPUT_PATH, 'w') as ofile:
         json.dump(json_block, ofile, indent=4)
 
     print('done')
+
 
 if __name__ == '__main__':
     main()
