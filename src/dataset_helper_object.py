@@ -2,7 +2,6 @@ import os
 import sys
 from array import array
 
-import yaml
 import requests
 import logging
 from flask import Flask
@@ -29,6 +28,7 @@ logger = logging.getLogger(__name__)
 # A single leading underscore means you're not supposed to access it "from the outside"
 _entity_api_url = None
 _search_api_url = None
+_ontology_api_url = None
 
 
 def load_flask_instance_config():
@@ -47,20 +47,18 @@ class DatasetHelper:
         # Specify as module-scope variables
         global _entity_api_url
         global _search_api_url
+        global _ontology_api_url
 
         if _entity_api_url is None:
             config = load_flask_instance_config()
             _entity_api_url = config['ENTITY_WEBSERVICE_URL']
             _search_api_url = config['SEARCH_WEBSERVICE_URL']
+            _ontology_api_url = config['UBKG_WEBSERVICE_URL']
 
     def get_organ_types_dict(self) -> object:
-        yaml_file_url = 'https://raw.githubusercontent.com/hubmapconsortium/search-api/main/src/search-schema/data/definitions/enums/organ_types.yaml'
-        with urllib.request.urlopen(yaml_file_url) as response:
-            yaml_file = response.read()
-            try:
-                return yaml.safe_load(yaml_file)
-            except yaml.YAMLError as e:
-                raise yaml.YAMLError(e)
+        organ_types_url = _ontology_api_url + 'organs/by-code?application_context=HUBMAP'
+        organ_resource_file = requests.get(organ_types_url).json()
+        return organ_resource_file
 
     # This is the business logic for `/datasets/<uuid>/verifytitleinfo` endpoint that is used by
     # the ingest-validation-tests package to validate the data needed to produce a title
@@ -102,11 +100,7 @@ class DatasetHelper:
                         if 'organ' in ancestor_dict:
                             organ_code = ancestor_dict['organ']
                             organ_types_dict = self.get_organ_types_dict()
-                            if organ_code in organ_types_dict:
-                                organ_entry = organ_types_dict[organ_code]
-                                if organ_entry is None or 'description' not in organ_entry:
-                                    rslt.append(f"Description for Organ code '{organ_code}' not found in organ types file")
-                            else:
+                            if organ_code not in organ_types_dict:
                                 rslt.append(f"Organ code '{organ_code}' not found in organ types file")
                         else:
                             rslt.append('Organ key not found in sample_category organ')
