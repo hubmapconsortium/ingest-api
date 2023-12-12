@@ -258,7 +258,7 @@ def main() -> None:
                        " 'vitessce-hints': [],"
                        f" 'dir-schema': '{schema}',"
                        f" 'description': '{description}',"
-                       f" 'contains-pii': false,"
+                       f" 'contains-pii': true,"
                        f" 'primary': true,"
                        f" 'must-contain': [{must_contain_str}]"
                        "}"
