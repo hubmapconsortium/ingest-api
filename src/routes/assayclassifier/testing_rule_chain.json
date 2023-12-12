@@ -272,7 +272,7 @@
     {
         "type": "match",
         "match": "not_dcwg and not_derived and assay_type in ['SNARE-ATACseq2', 'SNAREseq', 'SNARE-seq2', 'SNARE2-ATACseq']",
-        "value": "{'assaytype': 'SNARE-ATACseq2', 'dir-schema': 'scatacseq-v0', 'tbl-schema': 'scatacseq-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': true, 'primary': true, 'description': 'snATACseq (SNARE-seq2)'}",
+        "value": "{'assaytype': 'SNARE-ATACseq2', 'dir-schema': 'snareseq2-v2', 'tbl-schema': 'snareseq2-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': true, 'primary': true, 'description': 'snATACseq (SNARE-seq2)'}",
         "rule_description": "non-DCWG primary SNARE-ATACseq2"
     },
     {
