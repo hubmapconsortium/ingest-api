@@ -357,7 +357,6 @@ def main() -> None:
                        f"'assaytype': '{assay}',"
                        " 'vitessce-hints': [],"
                        " 'dir-schema': 'schema',"
-                       # TODO Does this contain pii?
                        f" 'contains-pii': true,"
                        f" 'primary': true,"
                        f" 'description': '{description}'"
@@ -378,7 +377,6 @@ def main() -> None:
                    f"'assaytype': 'sciATACseq',"
                    " 'vitessce-hints': [],"
                    " 'dir-schema': 'atacseq-v2',"
-                   # TODO Does this contain pii?
                    f" 'contains-pii': true,"
                    f" 'primary': true,"
                    f" 'description': 'sciATAC-seq'"
