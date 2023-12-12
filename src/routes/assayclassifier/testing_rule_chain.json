@@ -200,7 +200,7 @@
     {
         "type": "match",
         "match": "not_dcwg and not_derived and assay_type in ['NanoDESI']",
-        "value": "{'assaytype': 'NanoDESI', 'dir-schema': 'nano-v0', 'tbl-schema': 'nano-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'NanoDESI'}",
+        "value": "{'assaytype': 'NanoDESI', 'dir-schema': 'ims-v0', 'tbl-schema': 'ims-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'NanoDESI'}",
         "rule_description": "non-DCWG primary NanoDESI"
     },
     {
@@ -272,7 +272,7 @@
     {
         "type": "match",
         "match": "not_dcwg and not_derived and assay_type in ['SNARE-ATACseq2', 'SNAREseq', 'SNARE-seq2', 'SNARE2-ATACseq']",
-        "value": "{'assaytype': 'SNARE-ATACseq2', 'dir-schema': 'snareseq2-v2', 'tbl-schema': 'snareseq2-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': true, 'primary': true, 'description': 'snATACseq (SNARE-seq2)'}",
+        "value": "{'assaytype': 'SNARE-ATACseq2', 'dir-schema': 'scatacseq-v0', 'tbl-schema': 'scatacseq-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': true, 'primary': true, 'description': 'snATACseq (SNARE-seq2)'}",
         "rule_description": "non-DCWG primary SNARE-ATACseq2"
     },
     {
@@ -470,25 +470,25 @@
     {
         "type": "match",
         "match": "is_dcwg and dataset_type == 'Visium (no probes)'",
-        "value": "{'assaytype': 'visium-no-probes', 'vitessce-hints': [], 'dir-schema': 'visium-no-probes-v2', 'description': 'Visium (No probes)', 'contains-pii': false, 'primary': true, 'must_contain': ['Histology','RNAseq']}",
+        "value": "{'assaytype': 'visium-no-probes', 'vitessce-hints': [], 'dir-schema': 'visium-no-probes-v2', 'description': 'Visium (No probes)', 'contains-pii': false, 'primary': true, 'must-contain': ['Histology','RNAseq']}",
         "rule_description": "DCWG visium-no-probes"
     },
     {
         "type": "match",
         "match": "is_dcwg and dataset_type == 'Visium (with probes)'",
-        "value": "{'assaytype': 'visium-with-probes', 'vitessce-hints': [], 'dir-schema': 'visium-with-probes-v2', 'description': 'Visium (With probes)', 'contains-pii': false, 'primary': true, 'must_contain': ['Histology','RNAseq (with probes)']}",
+        "value": "{'assaytype': 'visium-with-probes', 'vitessce-hints': [], 'dir-schema': 'visium-with-probes-v2', 'description': 'Visium (With probes)', 'contains-pii': false, 'primary': true, 'must-contain': ['Histology','RNAseq (with probes)']}",
         "rule_description": "DCWG visium-with-probes"
     },
     {
         "type": "match",
         "match": "is_dcwg and dataset_type == '10X Multiome' and barcode_size == 16 and barcode_offset == 8 ",
-        "value": "{'assaytype': '10x-multiome', 'vitessce-hints': [], 'dir-schema': '10x-multiome-v2', 'description': '10X Multiome', 'contains-pii': true, 'primary': true, 'must_contain': ['RNAseq','ATACseq']}",
+        "value": "{'assaytype': '10x-multiome', 'vitessce-hints': [], 'dir-schema': '10x-multiome-v2', 'description': '10X Multiome', 'contains-pii': true, 'primary': true, 'must-contain': ['RNAseq','ATACseq']}",
         "rule_description": "DCWG 10x-multiome"
     },
     {
         "type": "match",
         "match": "is_dcwg and dataset_type == 'SNARE-seq2' and barcode_size == 24  and umi_size == 10",
-        "value": "{'assaytype': 'multiome-snare-seq2', 'vitessce-hints': [], 'dir-schema': 'snareseq2-v2', 'description': 'SNARE-seq2', 'contains-pii': true, 'primary': true, 'must_contain': ['RNAseq','ATACseq']}",
+        "value": "{'assaytype': 'multiome-snare-seq2', 'vitessce-hints': [], 'dir-schema': 'snareseq2-v2', 'description': 'SNARE-seq2', 'contains-pii': true, 'primary': true, 'must-contain': ['RNAseq','ATACseq']}",
         "rule_description": "DCWG multiome-snare-seq2"
     },
     {

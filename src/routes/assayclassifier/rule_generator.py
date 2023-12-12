@@ -260,7 +260,7 @@ def main() -> None:
                        f" 'description': '{description}',"
                        f" 'contains-pii': false,"
                        f" 'primary': true,"
-                       f" 'must_contain': [{must_contain_str}]"
+                       f" 'must-contain': [{must_contain_str}]"
                        "}"
                        ),
              "rule_description": f"DCWG {assay}"
@@ -291,7 +291,7 @@ def main() -> None:
                        f" 'description': '{description}',"
                        f" 'contains-pii': true,"
                        f" 'primary': true,"
-                       f" 'must_contain': [{must_contain_str}]"
+                       f" 'must-contain': [{must_contain_str}]"
                        "}"
                        ),
              "rule_description": f"DCWG {assay}"
