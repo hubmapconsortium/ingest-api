@@ -470,13 +470,13 @@
     {
         "type": "match",
         "match": "is_dcwg and dataset_type == 'Visium (no probes)'",
-        "value": "{'assaytype': 'visium-no-probes', 'vitessce-hints': [], 'dir-schema': 'visium-no-probes-v2', 'description': 'Visium (No probes)', 'contains-pii': false, 'primary': true, 'must-contain': ['Histology','RNAseq']}",
+        "value": "{'assaytype': 'visium-no-probes', 'vitessce-hints': [], 'dir-schema': 'visium-no-probes-v2', 'description': 'Visium (No probes)', 'contains-pii': true, 'primary': true, 'must-contain': ['Histology','RNAseq']}",
         "rule_description": "DCWG visium-no-probes"
     },
     {
         "type": "match",
         "match": "is_dcwg and dataset_type == 'Visium (with probes)'",
-        "value": "{'assaytype': 'visium-with-probes', 'vitessce-hints': [], 'dir-schema': 'visium-with-probes-v2', 'description': 'Visium (With probes)', 'contains-pii': false, 'primary': true, 'must-contain': ['Histology','RNAseq (with probes)']}",
+        "value": "{'assaytype': 'visium-with-probes', 'vitessce-hints': [], 'dir-schema': 'visium-with-probes-v2', 'description': 'Visium (With probes)', 'contains-pii': true, 'primary': true, 'must-contain': ['Histology','RNAseq (with probes)']}",
         "rule_description": "DCWG visium-with-probes"
     },
     {
@@ -494,79 +494,79 @@
     {
         "type": "match",
         "match": "is_dcwg and dataset_type == 'RNAseq'  and assay_input_entity == 'single cell' and barcode_read =~~ 'Not applicable' and barcode_size == 40 and barcode_offset == 'Not applicable' and umi_read =~~ 'Not applicable' and umi_size == 8 and umi_offset == 'Not applicable'",
-        "value": "{'assaytype': 'sciRNAseq', 'vitessce-hints': [], 'dir-schema': '{schema}', 'contains-pii': true, 'primary': true, 'description': 'sciRNA-seq'}",
+        "value": "{'assaytype': 'sciRNAseq', 'vitessce-hints': [], 'dir-schema': 'rnaseq-v2', 'contains-pii': true, 'primary': true, 'description': 'sciRNA-seq'}",
         "rule_description": "DCWG sciRNAseq"
     },
     {
         "type": "match",
         "match": "is_dcwg and dataset_type == 'RNAseq'  and assay_input_entity == 'single nucleus' and barcode_read =~~ 'Read 1' and barcode_size == 24 and barcode_offset == '10,48,86' and umi_read =~~ 'Read 1' and umi_size == 10 and umi_offset == 0",
-        "value": "{'assaytype': 'SNARE-RNAseq2', 'vitessce-hints': [], 'dir-schema': '{schema}', 'contains-pii': true, 'primary': true, 'description': 'snRNAseq (SNARE-seq2)'}",
+        "value": "{'assaytype': 'SNARE-RNAseq2', 'vitessce-hints': [], 'dir-schema': 'rnaseq-v2', 'contains-pii': true, 'primary': true, 'description': 'snRNAseq (SNARE-seq2)'}",
         "rule_description": "DCWG SNARE-RNAseq2"
     },
     {
         "type": "match",
         "match": "is_dcwg and dataset_type == 'RNAseq'  and assay_input_entity == 'spot' and barcode_read =~~ 'Read 1' and barcode_size == 16 and barcode_offset == 0 and umi_read =~~ 'Read 1' and umi_size == 12 and umi_offset == 16",
-        "value": "{'assaytype': 'scRNAseq-10Genomics-v3', 'vitessce-hints': [], 'dir-schema': '{schema}', 'contains-pii': true, 'primary': true, 'description': 'scRNA-seq (10x Genomics v3)'}",
+        "value": "{'assaytype': 'scRNAseq-10Genomics-v3', 'vitessce-hints': [], 'dir-schema': 'rnaseq-v2', 'contains-pii': true, 'primary': true, 'description': 'scRNA-seq (10x Genomics v3)'}",
         "rule_description": "DCWG scRNAseq-10Genomics-v3"
     },
     {
         "type": "match",
         "match": "is_dcwg and dataset_type == 'RNAseq (with probes)' and oligo_probe_panel == '10x Genomics; Visium Human Transcriptome Probe Kit v2 - Small; PN 1000466' and assay_input_entity == 'spot' and barcode_read =~~ 'Read 1' and barcode_size == 16 and barcode_offset == 0 and umi_read =~~ 'Read 1' and umi_size == 12 and umi_offset == 16",
-        "value": "{'assaytype': 'scRNAseq-visium-with-probes', 'vitessce-hints': [], 'dir-schema': '{schema}', 'contains-pii': true, 'primary': true, 'description': 'Visium RNAseq with probes'}",
+        "value": "{'assaytype': 'scRNAseq-visium-with-probes', 'vitessce-hints': [], 'dir-schema': 'rnaseq-with-probes-v2', 'contains-pii': true, 'primary': true, 'description': 'Visium RNAseq with probes'}",
         "rule_description": "DCWG scRNAseq-visium-with-probes"
     },
     {
         "type": "match",
         "match": "is_dcwg and dataset_type == 'RNAseq'  and assay_input_entity == 'single cell' and barcode_read =~~ 'Read 1' and barcode_size == 16 and barcode_offset == 0 and umi_read =~~ 'Read 1' and umi_size == 10 and umi_offset == 16",
-        "value": "{'assaytype': 'scRNAseq-10xGenomics-v2', 'vitessce-hints': [], 'dir-schema': '{schema}', 'contains-pii': true, 'primary': true, 'description': 'scRNA-seq (10x Genomics v2)'}",
+        "value": "{'assaytype': 'scRNAseq-10xGenomics-v2', 'vitessce-hints': [], 'dir-schema': 'rnaseq-v2', 'contains-pii': true, 'primary': true, 'description': 'scRNA-seq (10x Genomics v2)'}",
         "rule_description": "DCWG scRNAseq-10xGenomics-v2"
     },
     {
         "type": "match",
         "match": "is_dcwg and dataset_type == 'RNAseq'  and assay_input_entity == 'single nucleus' and barcode_read =~~ 'Read 1' and barcode_size == 16 and barcode_offset == 0 and umi_read =~~ 'Read 1' and umi_size == 10 and umi_offset == 16",
-        "value": "{'assaytype': 'snRNAseq-10xGenomics-v2', 'vitessce-hints': [], 'dir-schema': '{schema}', 'contains-pii': true, 'primary': true, 'description': 'snRNA-seq (10x Genomics v2)'}",
+        "value": "{'assaytype': 'snRNAseq-10xGenomics-v2', 'vitessce-hints': [], 'dir-schema': 'rnaseq-v2', 'contains-pii': true, 'primary': true, 'description': 'snRNA-seq (10x Genomics v2)'}",
         "rule_description": "DCWG snRNAseq-10xGenomics-v2"
     },
     {
         "type": "match",
         "match": "is_dcwg and dataset_type == 'RNAseq'  and assay_input_entity == 'single cell' and barcode_read =~~ 'Read 1' and barcode_size == 16 and barcode_offset == 0 and umi_read =~~ 'Read 1' and umi_size == 12 and umi_offset == 16",
-        "value": "{'assaytype': 'scRNAseq-10xGenomics-v3', 'vitessce-hints': [], 'dir-schema': '{schema}', 'contains-pii': true, 'primary': true, 'description': 'scRNA-seq (10x Genomics v3)'}",
+        "value": "{'assaytype': 'scRNAseq-10xGenomics-v3', 'vitessce-hints': [], 'dir-schema': 'rnaseq-v2', 'contains-pii': true, 'primary': true, 'description': 'scRNA-seq (10x Genomics v3)'}",
         "rule_description": "DCWG scRNAseq-10xGenomics-v3"
     },
     {
         "type": "match",
         "match": "is_dcwg and dataset_type == 'RNAseq'  and assay_input_entity == 'single nucleus' and barcode_read =~~ 'Read 1' and barcode_size == 16 and barcode_offset == 0 and umi_read =~~ 'Read 1' and umi_size == 12 and umi_offset == 16",
-        "value": "{'assaytype': 'snRNAseq-10xGenomics-v3', 'vitessce-hints': [], 'dir-schema': '{schema}', 'contains-pii': true, 'primary': true, 'description': 'snRNA-seq (10x Genomics v3)'}",
+        "value": "{'assaytype': 'snRNAseq-10xGenomics-v3', 'vitessce-hints': [], 'dir-schema': 'rnaseq-v2', 'contains-pii': true, 'primary': true, 'description': 'snRNA-seq (10x Genomics v3)'}",
         "rule_description": "DCWG snRNAseq-10xGenomics-v3"
     },
     {
         "type": "match",
         "match": "is_dcwg and dataset_type == 'ATACseq'  and assay_input_entity == 'single nucleus' and barcode_read =~~ 'Read 2' and barcode_size == 16 and barcode_offset == 0 and umi_read =~~ 'Read 2' and umi_size == 10 and umi_offset == 84",
-        "value": "{'assaytype': 'snATACseq', 'vitessce-hints': [], 'dir-schema': '{schema}', 'contains-pii': true, 'primary': true, 'description': 'snATAC-seq'}",
+        "value": "{'assaytype': 'snATACseq', 'vitessce-hints': [], 'dir-schema': 'atacseq-v2', 'contains-pii': true, 'primary': true, 'description': 'snATAC-seq'}",
         "rule_description": "DCWG snATACseq"
     },
     {
         "type": "match",
         "match": "is_dcwg and dataset_type == 'ATACseq'  and assay_input_entity == 'single nucleus' and barcode_read =~~ 'Read 2' and barcode_size == 24 and barcode_offset == '0,38,76' and umi_read =~~ 'Read 2' and umi_size == 10 and umi_offset == 84",
-        "value": "{'assaytype': 'SNARE-ATACseq2', 'vitessce-hints': [], 'dir-schema': '{schema}', 'contains-pii': true, 'primary': true, 'description': 'snATACseq (SNARE-seq2)'}",
+        "value": "{'assaytype': 'SNARE-ATACseq2', 'vitessce-hints': [], 'dir-schema': 'atacseq-v2', 'contains-pii': true, 'primary': true, 'description': 'snATACseq (SNARE-seq2)'}",
         "rule_description": "DCWG SNARE-ATACseq2"
     },
     {
         "type": "match",
         "match": "is_dcwg and dataset_type == 'ATACseq'  and assay_input_entity == 'single nucleus' and barcode_read =~~ 'Read 2' and barcode_size == 16 and barcode_offset == 8 and umi_read =~~ 'Read 2' and umi_size == 10 and umi_offset == 84",
-        "value": "{'assaytype': 'sn_atac_seq?', 'vitessce-hints': [], 'dir-schema': '{schema}', 'contains-pii': true, 'primary': true, 'description': 'snATACseq-multiome'}",
+        "value": "{'assaytype': 'sn_atac_seq?', 'vitessce-hints': [], 'dir-schema': 'atacseq-v2', 'contains-pii': true, 'primary': true, 'description': 'snATACseq-multiome'}",
         "rule_description": "DCWG sn_atac_seq?"
     },
     {
         "type": "match",
         "match": "is_dcwg and dataset_type == 'RNAseq' and assay_input_entity == 'tissue (bulk)'",
-        "value": "{'assaytype': 'bulk-RNA', 'vitessce-hints': [], 'dir-schema': 'schema', 'contains-pii': true, 'primary': true, 'description': 'Bulk RNA-seq'}",
+        "value": "{'assaytype': 'bulk-RNA', 'vitessce-hints': [], 'dir-schema': 'rnaseq-v2', 'contains-pii': true, 'primary': true, 'description': 'Bulk RNA-seq'}",
         "rule_description": "DCWG bulk-RNA"
     },
     {
         "type": "match",
         "match": "is_dcwg and dataset_type == 'ATACseq' and assay_input_entity == 'tissue (bulk)'",
-        "value": "{'assaytype': 'ATACseq-bulk', 'vitessce-hints': [], 'dir-schema': 'schema', 'contains-pii': true, 'primary': true, 'description': 'Bulk ATAC-seq'}",
+        "value": "{'assaytype': 'ATACseq-bulk', 'vitessce-hints': [], 'dir-schema': 'atacseq-v2', 'contains-pii': true, 'primary': true, 'description': 'Bulk ATAC-seq'}",
         "rule_description": "DCWG ATACseq-bulk"
     },
     {
