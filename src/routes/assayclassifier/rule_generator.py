@@ -5,14 +5,14 @@ from pathlib import Path
 from pprint import pprint
 from collections import defaultdict
 
-ASSAY_TYPES_YAML = '/tmp/assay_types.yaml'
+ASSAY_TYPES_YAML = 'assay_types.yaml'
 
-INGEST_VALIDATION_TABLE_PATH = '/home/welling/git/hubmap/ingest-validation-tools/src/ingest_validation_tools/table-schemas/assays'
-INGEST_VALIDATION_DIR_SCHEMA_PATH = '/home/welling/git/hubmap/ingest-validation-tools/src/ingest_validation_tools/directory-schemas'
+INGEST_VALIDATION_TABLE_PATH = '../validation/ingest_validation_tools/src/ingest_validation_tools/table-schemas/assays'
+INGEST_VALIDATION_DIR_SCHEMA_PATH = '../validation/ingest_validation_tools/src/ingest_validation_tools/directory-schemas'
 
 SCHEMA_SPLIT_REGEX = r'(.+)-v(\d)'
 
-CHAIN_OUTPUT_PATH = '/tmp/testing_rule_chain.json'
+CHAIN_OUTPUT_PATH = 'testing_rule_chain.json'
 
 PREAMBLE = [
     {"type": "note",
@@ -144,6 +144,7 @@ def main() -> None:
         vitessce_hints = type_dict.get('vitessce-hints', [])
         description = type_dict.get('description', '')
         is_primary = type_dict['primary']
+        contains_pii = "true" if type_dict.get('contains-pii', "") else "false"
 
         if is_primary:
             # Long mechanics follow to figure out what directory schema is appropriate
@@ -203,11 +204,11 @@ def main() -> None:
             # At last we have a directory schema
 
             if dir_schema_filename:
-                dir_schema_str = f"'dir_schema': '{dir_schema_filename}',"
+                dir_schema_str = f"'dir-schema': '{dir_schema_filename}',"
             else:
                 dir_schema_str = ""
             if schema_assay_name:
-                tbl_schema_str = f"'tbl_schema': '{schema_assay_name}-v'+version.to_str,"
+                tbl_schema_str = f"'tbl-schema': '{schema_assay_name}-v'+version.to_str,"
             else:
                 tbl_schema_str = ""
             json_block.append(
@@ -216,7 +217,9 @@ def main() -> None:
                  "value": (f"{{'assaytype': '{canonical_name}',"
                            f" {dir_schema_str}"
                            f" {tbl_schema_str}"
-                           f" 'vitessce_hints': {vitessce_hints},"
+                           f" 'vitessce-hints': {vitessce_hints},"
+                           f" 'contains-pii': {contains_pii},"
+                           f" 'primary': true,"
                            f" 'description': '{description}'}}"
                            ),
                  "rule_description": f"non-DCWG primary {canonical_name}"
@@ -227,7 +230,9 @@ def main() -> None:
                 {"type": "match",
                  "match": f"not_dcwg and is_derived and data_types[0] in [{', '.join(quoted_assay_types)}]",
                  "value": (f"{{'assaytype': '{canonical_name}',"
-                           f" 'vitessce_hints': {vitessce_hints},"
+                           f" 'vitessce-hints': {vitessce_hints},"
+                           f" 'primary': false,"
+                           f" 'contains-pii': {contains_pii},"
                            f" 'description': '{description}'}}"
                            ),
                  "rule_description": f"non-DCWG derived {canonical_name}"
@@ -250,10 +255,12 @@ def main() -> None:
                        ),
              "value": ("{"
                        f"'assaytype': '{assay}',"
-                       " 'vitessce_hints': [],"
-                       f" 'dir_schema': '{schema}',"
+                       " 'vitessce-hints': [],"
+                       f" 'dir-schema': '{schema}',"
                        f" 'description': '{description}',"
-                       f" 'must_contain': [{must_contain_str}]"
+                       f" 'contains-pii': true,"
+                       f" 'primary': true,"
+                       f" 'must-contain': [{must_contain_str}]"
                        "}"
                        ),
              "rule_description": f"DCWG {assay}"
@@ -279,10 +286,12 @@ def main() -> None:
                        ),
              "value": ("{"
                        f"'assaytype': '{assay}',"
-                       " 'vitessce_hints': [],"
-                       f" 'dir_schema': '{schema}',"
+                       " 'vitessce-hints': [],"
+                       f" 'dir-schema': '{schema}',"
                        f" 'description': '{description}',"
-                       f" 'must_contain': [{must_contain_str}]"
+                       f" 'contains-pii': true,"
+                       f" 'primary': true,"
+                       f" 'must-contain': [{must_contain_str}]"
                        "}"
                        ),
              "rule_description": f"DCWG {assay}"
@@ -323,8 +332,10 @@ def main() -> None:
                        ),
              "value": ("{"
                        f"'assaytype': '{assay}',"
-                       " 'vitessce_hints': [],"
-                       " 'dir_schema': '{schema}',"
+                       " 'vitessce-hints': [],"
+                       f" 'dir-schema': '{schema}',"
+                       f" 'contains-pii': true,"
+                       f" 'primary': true,"
                        f" 'description': '{description}'"
                        "}"
                        ),
@@ -344,8 +355,10 @@ def main() -> None:
                        ),
              "value": ("{"
                        f"'assaytype': '{assay}',"
-                       " 'vitessce_hints': [],"
-                       " 'dir_schema': 'schema',"
+                       " 'vitessce-hints': [],"
+                       f" 'dir-schema': '{schema}',"
+                       f" 'contains-pii': true,"
+                       f" 'primary': true,"
                        f" 'description': '{description}'"
                        "}"
                        ),
@@ -362,8 +375,10 @@ def main() -> None:
                    ),
          "value": ("{"
                    f"'assaytype': 'sciATACseq',"
-                   " 'vitessce_hints': [],"
-                   " 'dir_schema': 'atacseq-v2',"
+                   " 'vitessce-hints': [],"
+                   " 'dir-schema': 'atacseq-v2',"
+                   f" 'contains-pii': true,"
+                   f" 'primary': true,"
                    f" 'description': 'sciATAC-seq'"
                    "}"
                    ),
@@ -383,8 +398,10 @@ def main() -> None:
                        ),
              "value": ("{"
                        f"'assaytype': '{assay}',"
-                       " 'vitessce_hints': [],"
-                       f" 'dir_schema': '{schema}',"
+                       " 'vitessce-hints': [],"
+                       f" 'dir-schema': '{schema}',"
+                       f" 'contains-pii': false,"
+                       f" 'primary': true,"
                        f" 'description': '{description}'"
                        "}"
                        ),
@@ -420,8 +437,10 @@ def main() -> None:
                        ),
              "value": ("{"
                        f"'assaytype': '{assay}',"
-                       " 'vitessce_hints': [],"
-                       f" 'dir_schema': '{schema}',"
+                       " 'vitessce-hints': [],"
+                       f" 'dir-schema': '{schema}',"
+                       f" 'contains-pii': false,"
+                       f" 'primary': true,"
                        f" 'description': '{description}'"
                        "}"
                        ),
