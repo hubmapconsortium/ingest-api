@@ -146,6 +146,10 @@ def main() -> None:
         is_primary = type_dict['primary']
         contains_pii = "true" if type_dict.get('contains-pii', "") else "false"
 
+        # Provide a special hint for datasets to be vis-lifted
+        if 'pyramid' in vitessce_hints or 'publication_ancillary' in all_assay_types:
+            vitessce_hints.append('is_support')
+
         if is_primary:
             # Long mechanics follow to figure out what directory schema is appropriate
             schema_assay_name = None
