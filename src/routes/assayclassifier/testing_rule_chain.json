@@ -38,7 +38,7 @@
     {
         "type": "match",
         "match": "not_dcwg and is_derived and data_types[0] in ['AF_pyramid']",
-        "value": "{'assaytype': 'AF_pyramid', 'vitessce-hints': ['pyramid'], 'primary': false, 'contains-pii': false, 'description': 'Autofluorescence Microscopy [Image Pyramid]'}",
+        "value": "{'assaytype': 'AF_pyramid', 'vitessce-hints': ['pyramid', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'Autofluorescence Microscopy [Image Pyramid]'}",
         "rule_description": "non-DCWG derived AF_pyramid"
     },
     {
@@ -104,13 +104,13 @@
     {
         "type": "match",
         "match": "not_dcwg and is_derived and data_types[0] in ['DESI_pyramid']",
-        "value": "{'assaytype': 'DESI_pyramid', 'vitessce-hints': ['pyramid'], 'primary': false, 'contains-pii': false, 'description': 'DESI [Image Pyramid]'}",
+        "value": "{'assaytype': 'DESI_pyramid', 'vitessce-hints': ['pyramid', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'DESI [Image Pyramid]'}",
         "rule_description": "non-DCWG derived DESI_pyramid"
     },
     {
         "type": "match",
         "match": "not_dcwg and is_derived and data_types[0] in ['image_pyramid', 'Image Pyramid']",
-        "value": "{'assaytype': 'image_pyramid', 'vitessce-hints': ['is_image', 'pyramid'], 'primary': false, 'contains-pii': false, 'description': 'Image Pyramid'}",
+        "value": "{'assaytype': 'image_pyramid', 'vitessce-hints': ['is_image', 'pyramid', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'Image Pyramid'}",
         "rule_description": "non-DCWG derived image_pyramid"
     },
     {
@@ -128,13 +128,13 @@
     {
         "type": "match",
         "match": "not_dcwg and is_derived and data_types[0] in ['IMC2D_pyramid', 'IMC_pyramid']",
-        "value": "{'assaytype': 'IMC2D_pyramid', 'vitessce-hints': ['pyramid'], 'primary': false, 'contains-pii': false, 'description': 'Imaging Mass Cytometry (2D) [Image Pyramid]'}",
+        "value": "{'assaytype': 'IMC2D_pyramid', 'vitessce-hints': ['pyramid', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'Imaging Mass Cytometry (2D) [Image Pyramid]'}",
         "rule_description": "non-DCWG derived IMC2D_pyramid"
     },
     {
         "type": "match",
         "match": "not_dcwg and is_derived and data_types[0] in ['IMC3D_pyramid', '3D-IMC_pyramid']",
-        "value": "{'assaytype': 'IMC3D_pyramid', 'vitessce-hints': ['pyramid'], 'primary': false, 'contains-pii': false, 'description': 'Imaging Mass Cytometry (3D) [Image Pyramid]'}",
+        "value": "{'assaytype': 'IMC3D_pyramid', 'vitessce-hints': ['pyramid', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'Imaging Mass Cytometry (3D) [Image Pyramid]'}",
         "rule_description": "non-DCWG derived IMC3D_pyramid"
     },
     {
@@ -182,7 +182,7 @@
     {
         "type": "match",
         "match": "not_dcwg and is_derived and data_types[0] in ['MALDI-IMS_pyramid', 'MALDI-IMS-neg_pyramid', 'MALDI-IMS-pos_pyramid']",
-        "value": "{'assaytype': 'MALDI-IMS_pyramid', 'vitessce-hints': ['pyramid', 'maldi'], 'primary': false, 'contains-pii': false, 'description': 'MALDI IMS [Image Pyramid]'}",
+        "value": "{'assaytype': 'MALDI-IMS_pyramid', 'vitessce-hints': ['pyramid', 'maldi', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'MALDI IMS [Image Pyramid]'}",
         "rule_description": "non-DCWG derived MALDI-IMS_pyramid"
     },
     {
@@ -206,7 +206,7 @@
     {
         "type": "match",
         "match": "not_dcwg and is_derived and data_types[0] in ['NanoDESI_pyramid']",
-        "value": "{'assaytype': 'NanoDESI_pyramid', 'vitessce-hints': ['pyramid'], 'primary': false, 'contains-pii': false, 'description': 'NanoDESI [Image Pyramid]'}",
+        "value": "{'assaytype': 'NanoDESI_pyramid', 'vitessce-hints': ['pyramid', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'NanoDESI [Image Pyramid]'}",
         "rule_description": "non-DCWG derived NanoDESI_pyramid"
     },
     {
@@ -218,7 +218,7 @@
     {
         "type": "match",
         "match": "not_dcwg and is_derived and data_types[0] in ['NanoPOTS_pyramid']",
-        "value": "{'assaytype': 'NanoPOTS_pyramid', 'vitessce-hints': ['pyramid'], 'primary': false, 'contains-pii': false, 'description': 'NanoPOTS [Image Pyramid]'}",
+        "value": "{'assaytype': 'NanoPOTS_pyramid', 'vitessce-hints': ['pyramid', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'NanoPOTS [Image Pyramid]'}",
         "rule_description": "non-DCWG derived NanoPOTS_pyramid"
     },
     {
@@ -230,7 +230,7 @@
     {
         "type": "match",
         "match": "not_dcwg and is_derived and data_types[0] in ['MxIF_pyramid']",
-        "value": "{'assaytype': 'MxIF_pyramid', 'vitessce-hints': ['pyramid'], 'primary': false, 'contains-pii': false, 'description': 'Multiplexed IF Microscopy [Image Pyramid]'}",
+        "value": "{'assaytype': 'MxIF_pyramid', 'vitessce-hints': ['pyramid', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'Multiplexed IF Microscopy [Image Pyramid]'}",
         "rule_description": "non-DCWG derived MxIF_pyramid"
     },
     {
@@ -242,7 +242,7 @@
     {
         "type": "match",
         "match": "not_dcwg and is_derived and data_types[0] in ['PAS_pyramid']",
-        "value": "{'assaytype': 'PAS_pyramid', 'vitessce-hints': ['pyramid'], 'primary': false, 'contains-pii': false, 'description': 'PAS Stained Microscopy [Image Pyramid]'}",
+        "value": "{'assaytype': 'PAS_pyramid', 'vitessce-hints': ['pyramid', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'PAS Stained Microscopy [Image Pyramid]'}",
         "rule_description": "non-DCWG derived PAS_pyramid"
     },
     {
@@ -254,7 +254,7 @@
     {
         "type": "match",
         "match": "not_dcwg and is_derived and data_types[0] in ['publication_ancillary']",
-        "value": "{'assaytype': 'publication_ancillary', 'vitessce-hints': ['json'], 'primary': false, 'contains-pii': false, 'description': 'Publication Data [ancillary]'}",
+        "value": "{'assaytype': 'publication_ancillary', 'vitessce-hints': ['json', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'Publication Data [ancillary]'}",
         "rule_description": "non-DCWG derived publication_ancillary"
     },
     {
@@ -355,9 +355,9 @@
     },
     {
         "type": "match",
-        "match": "not_dcwg and not_derived and assay_type in ['seqFish_pyramid']",
-        "value": "{'assaytype': 'seqFish_pyramid',   'vitessce-hints': ['pyramid'], 'contains-pii': false, 'primary': true, 'description': 'seqFISH [Image Pyramid]'}",
-        "rule_description": "non-DCWG primary seqFish_pyramid"
+        "match": "not_dcwg and is_derived and data_types[0] in ['seqFish_pyramid']",
+        "value": "{'assaytype': 'seqFish_pyramid', 'vitessce-hints': ['pyramid', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'seqFISH [Image Pyramid]'}",
+        "rule_description": "non-DCWG derived seqFish_pyramid"
     },
     {
         "type": "match",
