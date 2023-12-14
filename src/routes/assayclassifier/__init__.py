@@ -66,7 +66,7 @@ def get_ds_assaytype(ds_uuid: str):
         if 'metadata' in entity.ingest_metadata:
             metadata = entity.ingest_metadata['metadata']
         else:
-            if hasattr(entity, data_types):
+            if hasattr(entity, 'data_types') and entity['data_types']:
                 metadata = {'entity_type': entity.entity_type,
                             'data_types': entity.data_types}
             else:
