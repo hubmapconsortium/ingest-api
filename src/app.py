@@ -729,6 +729,9 @@ def multiple_components():
             else:
                 return Response("Required field 'dataset_link_abs_dir' is missing from dataset", 400)
 
+            if not 'contains_human_genetic_sequences' in dataset:
+                return Response("Missing required keys in request json: datasets.contains_human_genetic_sequences", 400)
+
         requested_group_uuid = None
         if 'group_uuid' in component_request:
             requested_group_uuid = component_request['group_uuid']
@@ -2074,9 +2077,8 @@ def validate_samples(headers, records, header):
             error_msg.append(f"{field} is not an accepted field. Check for any typo's in header row.")
     accepted_sample_categories = ["organ", "block", "section", "suspension"]
 
-    with urllib.request.urlopen(
-            'https://raw.githubusercontent.com/hubmapconsortium/search-api/main/src/search-schema/data/definitions/enums/organ_types.yaml') as urlfile:
-        organ_resource_file = yaml.load(urlfile, Loader=yaml.FullLoader)
+    organ_types_url = app.config['UBKG_WEBSERVICE_URL'] + 'organs/by-code?application_context=HUBMAP'
+    organ_resource_file = requests.get(organ_types_url).json()
 
     rownum = 0
     valid_source_ids = []
@@ -2141,7 +2143,7 @@ def validate_samples(headers, records, header):
                 if organ_type.upper() not in organ_resource_file:
                     file_is_valid = False
                     error_msg.append(
-                        f"Row Number: {rownum}. organ_type value must be a sample code listed in tissue sample type files (https://raw.githubusercontent.com/hubmapconsortium/search-api/main/src/search-schema/data/definitions/enums/organ_types.yaml)")
+                        f"Row Number: {rownum}. organ_type value must be a sample code listed in organ type file ({app.config['UBKG_WEBSERVICE_URL']}/organs/by-code?application_context=HUBMAP)")
 
             # validate description
             description = data_row['description']
