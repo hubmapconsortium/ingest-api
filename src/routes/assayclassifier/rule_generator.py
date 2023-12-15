@@ -272,22 +272,14 @@ def main() -> None:
         )
 
     # Multiome
-    for data_type, barcode_size, barcode_offset, umi_size, must_contain, assay, description, schema in [
-            ('10X Multiome', 16, 8, None, ['RNAseq', 'ATACseq'],
-             '10x-multiome', '10X Multiome', '10x-multiome-v2'),
-            ('SNARE-seq2', 24, None, 10, ['RNAseq', 'ATACseq'],
-             'multiome-snare-seq2', 'SNARE-seq2', 'snareseq2-v2'),
+    for data_type, must_contain, assay, description, schema in [
+            ('10X Multiome', ['RNAseq', 'ATACseq'], '10x-multiome', '10X Multiome', '10x-multiome-v2'),
+            ('SNARE-seq2', ['RNAseq', 'ATACseq'], 'multiome-snare-seq2', 'SNARE-seq2', 'snareseq2-v2'),
     ]:
         must_contain_str = ','.join(["'" + elt + "'" for elt in must_contain])
-        barcode_offset_str = f"and barcode_offset == {barcode_offset}" if barcode_offset else ""
-        umi_size_str = f"and umi_size == {umi_size}" if umi_size else ""
         json_block.append(
             {"type": "match",
-             "match": (f"is_dcwg and dataset_type == '{data_type}'"
-                       f" and barcode_size == {barcode_size}"
-                       f" {barcode_offset_str}"
-                       f" {umi_size_str}"
-                       ),
+             "match": (f"is_dcwg and dataset_type == '{data_type}'"),
              "value": ("{"
                        f"'assaytype': '{assay}',"
                        " 'vitessce-hints': [],"
@@ -314,9 +306,9 @@ def main() -> None:
             ('RNAseq', None, 'single nucleus', 'Read 1', 16, 0, 'Read 1', 10, 16, 'snRNAseq-10xGenomics-v2', 'snRNA-seq (10x Genomics v2)', 'rnaseq-v2'),
             ('RNAseq', None, 'single cell', 'Read 1', 16, 0, 'Read 1', 12, 16, 'scRNAseq-10xGenomics-v3', 'scRNA-seq (10x Genomics v3)', 'rnaseq-v2'),
             ('RNAseq', None, 'single nucleus', 'Read 1', 16, 0, 'Read 1', 12, 16, 'snRNAseq-10xGenomics-v3', 'snRNA-seq (10x Genomics v3)', 'rnaseq-v2'),
-            ('ATACseq', None, 'single nucleus', 'Read 2', 16, 0, 'Read 2', 10, 84, 'snATACseq', 'snATAC-seq', 'atacseq-v2'),
+            ('ATACseq', None, 'single nucleus', 'Read 2', 16, 0, 'Not applicable', "'Not applicable'", "'Not applicable'", 'snATACseq', 'snATAC-seq', 'atacseq-v2'),
             ('ATACseq', None, 'single nucleus', 'Read 2', 24, "'0,38,76'", 'Read 2', 10, 84, 'SNARE-ATACseq2', 'snATACseq (SNARE-seq2)', 'atacseq-v2'),
-            ('ATACseq', None, 'single nucleus', 'Read 2', 16, 8, 'Read 2', 10, 84, 'sn_atac_seq?', 'snATACseq-multiome', 'atacseq-v2'),
+            ('ATACseq', None, 'single nucleus', 'Read 2', 16, 8, 'Not applicable', "'Not applicable'", "'Not applicable'", 'sn_atac_seq?', 'snATACseq-multiome', 'atacseq-v2'),
     ]:
         if oligo_probe_panel:
             probe_panel_str = f"and oligo_probe_panel == '{oligo_probe_panel}'"
@@ -369,7 +361,7 @@ def main() -> None:
              "rule_description": f"DCWG {assay}"
              }
         )
-    
+
     # sciATAC special case
     json_block.append(
         {"type": "match",

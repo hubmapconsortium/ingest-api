@@ -481,13 +481,13 @@
     },
     {
         "type": "match",
-        "match": "is_dcwg and dataset_type == '10X Multiome' and barcode_size == 16 and barcode_offset == 8 ",
+        "match": "is_dcwg and dataset_type == '10X Multiome'",
         "value": "{'assaytype': '10x-multiome', 'vitessce-hints': [], 'dir-schema': '10x-multiome-v2', 'description': '10X Multiome', 'contains-pii': true, 'primary': true, 'must-contain': ['RNAseq','ATACseq']}",
         "rule_description": "DCWG 10x-multiome"
     },
     {
         "type": "match",
-        "match": "is_dcwg and dataset_type == 'SNARE-seq2' and barcode_size == 24  and umi_size == 10",
+        "match": "is_dcwg and dataset_type == 'SNARE-seq2'",
         "value": "{'assaytype': 'multiome-snare-seq2', 'vitessce-hints': [], 'dir-schema': 'snareseq2-v2', 'description': 'SNARE-seq2', 'contains-pii': true, 'primary': true, 'must-contain': ['RNAseq','ATACseq']}",
         "rule_description": "DCWG multiome-snare-seq2"
     },
@@ -541,7 +541,7 @@
     },
     {
         "type": "match",
-        "match": "is_dcwg and dataset_type == 'ATACseq'  and assay_input_entity == 'single nucleus' and barcode_read =~~ 'Read 2' and barcode_size == 16 and barcode_offset == 0 and umi_read =~~ 'Read 2' and umi_size == 10 and umi_offset == 84",
+        "match": "is_dcwg and dataset_type == 'ATACseq'  and assay_input_entity == 'single nucleus' and barcode_read =~~ 'Read 2' and barcode_size == 16 and barcode_offset == 0 and umi_read =~~ 'Not applicable' and umi_size == 'Not applicable' and umi_offset == 'Not applicable'",
         "value": "{'assaytype': 'snATACseq', 'vitessce-hints': [], 'dir-schema': 'atacseq-v2', 'contains-pii': true, 'primary': true, 'description': 'snATAC-seq'}",
         "rule_description": "DCWG snATACseq"
     },
@@ -553,7 +553,7 @@
     },
     {
         "type": "match",
-        "match": "is_dcwg and dataset_type == 'ATACseq'  and assay_input_entity == 'single nucleus' and barcode_read =~~ 'Read 2' and barcode_size == 16 and barcode_offset == 8 and umi_read =~~ 'Read 2' and umi_size == 10 and umi_offset == 84",
+        "match": "is_dcwg and dataset_type == 'ATACseq'  and assay_input_entity == 'single nucleus' and barcode_read =~~ 'Read 2' and barcode_size == 16 and barcode_offset == 8 and umi_read =~~ 'Not applicable' and umi_size == 'Not applicable' and umi_offset == 'Not applicable'",
         "value": "{'assaytype': 'sn_atac_seq?', 'vitessce-hints': [], 'dir-schema': 'atacseq-v2', 'contains-pii': true, 'primary': true, 'description': 'snATACseq-multiome'}",
         "rule_description": "DCWG sn_atac_seq?"
     },
