@@ -732,6 +732,9 @@ def multiple_components():
             else:
                 return Response("Required field 'dataset_link_abs_dir' is missing from dataset", 400)
 
+            if not 'contains_human_genetic_sequences' in dataset:
+                return Response("Missing required keys in request json: datasets.contains_human_genetic_sequences", 400)
+
         requested_group_uuid = None
         if 'group_uuid' in component_request:
             requested_group_uuid = component_request['group_uuid']
