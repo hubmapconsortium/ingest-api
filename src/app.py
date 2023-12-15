@@ -2515,9 +2515,9 @@ def update_datasets_datastatus():
                 if len(prop_as_list) > 0:
                     dataset[prop] = prop_as_list
                 else:
-                    dataset[prop] = " "
+                    dataset[prop] = ""
             if dataset[prop] is None:
-                dataset[prop] = " "
+                dataset[prop] = ""
         data_types_list = []
         if dataset.get('data_types'):
             for data_type in dataset.get('data_types'):
@@ -2528,7 +2528,7 @@ def update_datasets_datastatus():
         dataset['data_types'] = data_types_list
         for field in displayed_fields:
             if dataset.get(field) is None:
-                dataset[field] = " "
+                dataset[field] = ""
         if dataset.get('organ') and rui_organs_list:
             rui_codes = [organ['rui_code'] for organ in rui_organs_list]
             if dataset['organ'].upper() not in rui_codes:
@@ -2575,12 +2575,12 @@ def update_uploads_datastatus():
                     if len(prop_as_list) > 0:
                         upload[prop] = prop_as_list
                     else:
-                        upload[prop] = " "
+                        upload[prop] = ""
                 if upload[prop] is None:
-                    upload[prop] = " "
+                    upload[prop] = ""
             for field in displayed_fields:
                 if upload.get(field) is None:
-                    upload[field] = " "
+                    upload[field] = ""
     try:
         results_string = json.dumps(results)
     except json.JSONDecodeError as e:
