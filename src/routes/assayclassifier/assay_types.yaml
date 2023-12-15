@@ -416,7 +416,7 @@ seqFish:
 seqFish_pyramid:
     description: seqFISH [Image Pyramid]
     alt-names: []
-    primary: true
+    primary: false
     vis-only: true
     contains-pii: false
     vitessce-hints: ['pyramid']

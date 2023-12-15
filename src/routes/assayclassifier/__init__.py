@@ -62,12 +62,20 @@ def get_ds_assaytype(ds_uuid: str):
         entity_api_url = current_app.config['ENTITY_WEBSERVICE_URL']
         groups_token = groups_token_from_request_headers(request.headers)
         entity_api = EntitySdk(token=groups_token, service_url=entity_api_url)
-        entity = entity_api.get_entity_by_id(ds_uuid)
+        try:
+            entity = entity_api.get_entity_by_id(ds_uuid)
+        except SDKException as excp:
+            entity_api = EntitySdk(service_url=entity_api_url)
+            entity = entity_api.get_entity_by_id(ds_uuid) # may again raise SDKException
         if 'metadata' in entity.ingest_metadata:
             metadata = entity.ingest_metadata['metadata']
         else:
-            metadata = {'entity_type': entity.entity_type,
-                        'data_types': entity.data_types}
+            if hasattr(entity, 'data_types') and entity.data_types:
+                metadata = {'entity_type': entity.entity_type,
+                            'data_types': entity.data_types}
+            else:
+                metadata = {'entity_type': entity.entity_type,
+                            'data_types': [entity.dataset_type]}
         return jsonify(calculate_assay_info(metadata))
     except ResponseException as re:
         logger.error(re, exc_info=True)
