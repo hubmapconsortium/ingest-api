@@ -20,10 +20,10 @@ from .rule_chain import (
     RuleChain,
     NoMatchException,
     RuleSyntaxException,
-    RuleLogicException
+    RuleLogicException,
 )
 
-bp = Blueprint('assayclassifier', __name__)
+bp = Blueprint("assayclassifier", __name__)
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -33,15 +33,15 @@ rule_chain = None
 
 def initialize_rule_chain():
     global rule_chain
-    rule_src_uri = current_app.config['RULE_CHAIN_URI']
+    rule_src_uri = current_app.config["RULE_CHAIN_URI"]
     try:
         json_rules = urllib.request.urlopen(rule_src_uri)
     except json.decoder.JSONDecodeError as excp:
         raise RuleSyntaxException(excp) from excp
     rule_chain = RuleLoader(json_rules).load()
-    print('RULE CHAIN FOLLOWS')
+    print("RULE CHAIN FOLLOWS")
     rule_chain.dump(stdout)
-    print('RULE CHAIN ABOVE')
+    print("RULE CHAIN ABOVE")
 
 
 def calculate_assay_info(metadata: dict) -> dict:
@@ -56,27 +56,36 @@ def calculate_assay_info(metadata: dict) -> dict:
     return rslt
 
 
-@bp.route('/assaytype/<ds_uuid>', methods=['GET'])
+@bp.route("/assaytype/<ds_uuid>", methods=["GET"])
 def get_ds_assaytype(ds_uuid: str):
     try:
-        entity_api_url = current_app.config['ENTITY_WEBSERVICE_URL']
-        groups_token = groups_token_from_request_headers(request.headers) \
-            if 'AUTHORIZATION' in request.headers else ''
+        entity_api_url = current_app.config["ENTITY_WEBSERVICE_URL"]
+        groups_token = (
+            groups_token_from_request_headers(request.headers)
+            if "AUTHORIZATION" in request.headers
+            else None
+        )
         entity_api = EntitySdk(token=groups_token, service_url=entity_api_url)
         try:
             entity = entity_api.get_entity_by_id(ds_uuid)
         except SDKException as excp:
             entity_api = EntitySdk(service_url=entity_api_url)
-            entity = entity_api.get_entity_by_id(ds_uuid) # may again raise SDKException
-        if 'metadata' in entity.ingest_metadata:
-            metadata = entity.ingest_metadata['metadata']
+            entity = entity_api.get_entity_by_id(
+                ds_uuid
+            )  # may again raise SDKException
+        if "metadata" in entity.ingest_metadata:
+            metadata = entity.ingest_metadata["metadata"]
         else:
-            if hasattr(entity, 'data_types') and entity.data_types:
-                metadata = {'entity_type': entity.entity_type,
-                            'data_types': entity.data_types}
+            if hasattr(entity, "data_types") and entity.data_types:
+                metadata = {
+                    "entity_type": entity.entity_type,
+                    "data_types": entity.data_types,
+                }
             else:
-                metadata = {'entity_type': entity.entity_type,
-                            'data_types': [entity.dataset_type]}
+                metadata = {
+                    "entity_type": entity.entity_type,
+                    "data_types": [entity.dataset_type],
+                }
         return jsonify(calculate_assay_info(metadata))
     except ResponseException as re:
         logger.error(re, exc_info=True)
@@ -88,14 +97,18 @@ def get_ds_assaytype(ds_uuid: str):
     except WerkzeugException as excp:
         return excp
     except (HTTPException, SDKException) as hte:
-        return Response(f"Error while getting assay type for {ds_uuid}: " +
-                        hte.get_description(), hte.get_status_code())
+        return Response(
+            f"Error while getting assay type for {ds_uuid}: " + hte.get_description(),
+            hte.get_status_code(),
+        )
     except Exception as e:
         logger.error(e, exc_info=True)
-        return Response(f"Unexpected error while retrieving entity {ds_uuid}: " + str(e), 500)
+        return Response(
+            f"Unexpected error while retrieving entity {ds_uuid}: " + str(e), 500
+        )
 
 
-@bp.route('/assaytype', methods=['POST'])
+@bp.route("/assaytype", methods=["POST"])
 def get_assaytype_from_metadata():
     try:
         require_json(request)
@@ -111,14 +124,18 @@ def get_assaytype_from_metadata():
     except WerkzeugException as excp:
         return excp
     except (HTTPException, SDKException) as hte:
-        return Response(f"Error while getting assay type from metadata: " +
-                        hte.get_description(), hte.get_status_code())
+        return Response(
+            f"Error while getting assay type from metadata: " + hte.get_description(),
+            hte.get_status_code(),
+        )
     except Exception as e:
         logger.error(e, exc_info=True)
-        return Response(f"Unexpected error while getting assay type from metadata: " + str(e), 500)
+        return Response(
+            f"Unexpected error while getting assay type from metadata: " + str(e), 500
+        )
 
 
-@bp.route('/reload-assaytypes', methods=['PUT'])
+@bp.route("/reload-assaytypes", methods=["PUT"])
 def reload_chain():
     try:
         initialize_rule_chain()
@@ -129,8 +146,10 @@ def reload_chain():
     except (RuleSyntaxException, RuleLogicException) as excp:
         return Response(f"Error applying classification rules: {excp}", 500)
     except (HTTPException, SDKException) as hte:
-        return Response(f"Error while getting assay type for {ds_uuid}: " +
-                        hte.get_description(), hte.get_status_code())
+        return Response(
+            f"Error while getting assay type for {ds_uuid}: " + hte.get_description(),
+            hte.get_status_code(),
+        )
     except Exception as e:
         logger.error(e, exc_info=True)
         return Response(f"Unexpected error while reloading rule chain: " + str(e), 500)
