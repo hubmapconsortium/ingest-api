@@ -1,0 +1,2 @@
+metadata_schema_id	parent_sample_id	lab_id	preparation_protocol_doi	dataset_type	contributors_path	data_path	mapped_area_value	mapped_area_unit	spot_size_value	spot_size_unit	number_of_spots	spot_spacing_value	spot_spacing_unit	capture_area_id	permeabilization_time_value	permeabilization_time_unit
+babf1e69-f0eb-479a-bdc5-b70199669675	HBM435.TRVQ.887	Visium_13_102_S2_b	https://dx.doi.org/10.17504/protocols.io.eq2lyno9qvx9/v1	Visium (no probes)	./contributors.tsv	./Visium_13_102_S2_b	42.25	mm^2	2375.9	um^2	4992	100	um	D1	30	minute
