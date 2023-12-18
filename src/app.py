@@ -732,6 +732,9 @@ def multiple_components():
             else:
                 return Response("Required field 'dataset_link_abs_dir' is missing from dataset", 400)
 
+            if not 'contains_human_genetic_sequences' in dataset:
+                return Response("Missing required keys in request json: datasets.contains_human_genetic_sequences", 400)
+
         requested_group_uuid = None
         if 'group_uuid' in component_request:
             requested_group_uuid = component_request['group_uuid']
@@ -2077,9 +2080,8 @@ def validate_samples(headers, records, header):
             error_msg.append(f"{field} is not an accepted field. Check for any typo's in header row.")
     accepted_sample_categories = ["organ", "block", "section", "suspension"]
 
-    with urllib.request.urlopen(
-            'https://raw.githubusercontent.com/hubmapconsortium/search-api/main/src/search-schema/data/definitions/enums/organ_types.yaml') as urlfile:
-        organ_resource_file = yaml.load(urlfile, Loader=yaml.FullLoader)
+    organ_types_url = app.config['UBKG_WEBSERVICE_URL'] + 'organs/by-code?application_context=HUBMAP'
+    organ_resource_file = requests.get(organ_types_url).json()
 
     rownum = 0
     valid_source_ids = []
@@ -2144,7 +2146,7 @@ def validate_samples(headers, records, header):
                 if organ_type.upper() not in organ_resource_file:
                     file_is_valid = False
                     error_msg.append(
-                        f"Row Number: {rownum}. organ_type value must be a sample code listed in tissue sample type files (https://raw.githubusercontent.com/hubmapconsortium/search-api/main/src/search-schema/data/definitions/enums/organ_types.yaml)")
+                        f"Row Number: {rownum}. organ_type value must be a sample code listed in organ type file ({app.config['UBKG_WEBSERVICE_URL']}/organs/by-code?application_context=HUBMAP)")
 
             # validate description
             description = data_row['description']
@@ -2398,15 +2400,15 @@ def update_datasets_datastatus():
     organ_types_url = app.config['UBKG_WEBSERVICE_URL'] + 'organs/by-code?application_context=HUBMAP'
     organ_types_dict = requests.get(organ_types_url).json()
     all_datasets_query = (
-        "MATCH (ds:Dataset)<-[:ACTIVITY_OUTPUT]-(:Activity)<-[:ACTIVITY_INPUT]-(ancestor) "
+        "MATCH (ds:Dataset)<-[:ACTIVITY_OUTPUT]-(a:Activity)<-[:ACTIVITY_INPUT]-(ancestor) "
         "RETURN ds.uuid AS uuid, ds.group_name AS group_name, ds.data_types AS data_types, "
         "ds.hubmap_id AS hubmap_id, ds.lab_dataset_id AS provider_experiment_id, ds.status AS status, "
-        "ds.status_history AS status_history, "
+        "ds.status_history AS status_history, ds.assigned_to_group_name AS assigned_to_group_name, "
         "ds.last_modified_timestamp AS last_touch, ds.published_timestamp AS published_timestamp, "
-        "ds.data_access_level AS data_access_level, "
+        "ds.data_access_level AS data_access_level, ds.ingest_task AS ingest_task, "
         "COALESCE(ds.contributors IS NOT NULL) AS has_contributors, "
         "COALESCE(ds.contacts IS NOT NULL) AS has_contacts, "
-        "ancestor.entity_type AS ancestor_entity_type"
+        "a.creation_action AS activity_creation_action"
     )
 
     organ_query = (
@@ -2497,10 +2499,10 @@ def update_datasets_datastatus():
         dataset['globus_url'] = globus_url
         last_touch = dataset['last_touch'] if dataset['published_timestamp'] is None else dataset['published_timestamp']
         dataset['last_touch'] = str(datetime.datetime.utcfromtimestamp(last_touch/1000))
-        if dataset.get('ancestor_entity_type').lower() != "dataset":
-            dataset['is_primary'] = "true"
+        if dataset.get('activity_creation_action').lower().endswith("process"):
+            dataset['is_primary'] = "False"
         else:
-            dataset['is_primary'] = "false"
+            dataset['is_primary'] = "True"
         has_data = files_exist(dataset.get('uuid'), dataset.get('data_access_level'), dataset.get('group_name'))
         has_dataset_metadata = files_exist(dataset.get('uuid'), dataset.get('data_access_level'), dataset.get('group_name'), metadata=True)
         dataset['has_data'] = has_data
@@ -2548,7 +2550,8 @@ def update_uploads_datastatus():
         "MATCH (up:Upload) "
         "OPTIONAL MATCH (up)<-[:IN_UPLOAD]-(ds:Dataset) "
         "RETURN up.uuid AS uuid, up.group_name AS group_name, up.hubmap_id AS hubmap_id, up.status AS status, "
-        "up.title AS title, COLLECT(DISTINCT ds.uuid) AS datasets "
+        "up.title AS title, up.ingest_task AS ingest_task, up.assigned_to_group_name AS assigned_to_group_name, "
+        "COLLECT(DISTINCT ds.uuid) AS datasets "
     )
 
     displayed_fields = [
@@ -2574,6 +2577,8 @@ def update_uploads_datastatus():
                         upload[prop] = upload[prop][0]
                     else:
                         upload[prop] = " "
+                if upload[prop] is None:
+                    upload[prop] = " "
             for field in displayed_fields:
                 if upload.get(field) is None:
                     upload[field] = " "
