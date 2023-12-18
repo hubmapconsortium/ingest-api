@@ -60,7 +60,8 @@ def calculate_assay_info(metadata: dict) -> dict:
 def get_ds_assaytype(ds_uuid: str):
     try:
         entity_api_url = current_app.config['ENTITY_WEBSERVICE_URL']
-        groups_token = groups_token_from_request_headers(request.headers)
+        groups_token = groups_token_from_request_headers(request.headers) \
+            if 'AUTHORIZATION' in request.headers else ''
         entity_api = EntitySdk(token=groups_token, service_url=entity_api_url)
         try:
             entity = entity_api.get_entity_by_id(ds_uuid)
