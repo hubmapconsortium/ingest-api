@@ -73,7 +73,7 @@ def get_ds_assaytype(ds_uuid: str):
             entity = entity_api.get_entity_by_id(
                 ds_uuid
             )  # may again raise SDKException
-        if "metadata" in entity.ingest_metadata:
+        if hasattr(entity, "ingest_metadata") and "metadata" in entity.ingest_metadata:
             metadata = entity.ingest_metadata["metadata"]
         else:
             if hasattr(entity, "data_types") and entity.data_types:
