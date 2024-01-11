@@ -76,16 +76,16 @@ def get_ds_assaytype(ds_uuid: str):
         if hasattr(entity, "ingest_metadata") and "metadata" in entity.ingest_metadata:
             metadata = entity.ingest_metadata["metadata"]
         else:
-            if hasattr(entity, "data_types") and entity.data_types:
-                metadata = {
-                    "entity_type": entity.entity_type,
-                    "data_types": entity.data_types,
-                }
+            metadata = {"entity_type": entity.entity_type}
+
+            if hasattr(entity, "data_types") and entity.data_types \
+                    and set(entity.data_types) != {""}:
+                metadata["data_types"] = entity.data_types
+            elif hasattr(entity, "dataset_info") and entity.dataset_info:
+                metadata["data_types"] = entity.dataset_info.split("__")[0]
             else:
-                metadata = {
-                    "entity_type": entity.entity_type,
-                    "data_types": [entity.dataset_type],
-                }
+                metadata["data_types"] = [""]
+
         return jsonify(calculate_assay_info(metadata))
     except ResponseException as re:
         logger.error(re, exc_info=True)
