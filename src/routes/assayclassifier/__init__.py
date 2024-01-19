@@ -93,7 +93,7 @@ def get_ds_assaytype(ds_uuid: str):
             # to match the rules. dataset_info is delimited by "__", so we can grab the first
             # item when splitting by that delimiter and pass that through to the rules.
             elif hasattr(entity, "dataset_info") and entity.dataset_info:
-                metadata["data_types"] = entity.dataset_info.split("__")[0]
+                metadata["data_types"] = [entity.dataset_info.split("__")[0]]
             # If neither of these are set, then we should force the rules engine to
             # not match any rules.
             else:
