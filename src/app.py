@@ -847,7 +847,7 @@ def publish_datastage(identifier):
             #look at all of the ancestors
             #gather uuids of ancestors that need to be switched to public access_level
             #grab the id of the donor ancestor to use for reindexing
-            q = f"MATCH (dataset:Dataset {{uuid: '{dataset_uuid}'}})<-[:ACTIVITY_OUTPUT]-(e1)<-[:ACTIVITY_INPUT|ACTIVITY_OUTPUT*]-(all_ancestors:Entity) RETURN distinct all_ancestors.uuid as uuid, all_ancestors.entity_type as entity_type, all_ancestors.data_types as data_types, all_ancestors.data_access_level as data_access_level, all_ancestors.status as status, all_ancestors.metadata as metadata"
+            q = f"MATCH (dataset:Dataset {{uuid: '{dataset_uuid}'}})<-[:ACTIVITY_OUTPUT]-(e1)<-[:ACTIVITY_INPUT|ACTIVITY_OUTPUT*]-(all_ancestors:Entity) RETURN distinct all_ancestors.uuid as uuid, all_ancestors.entity_type as entity_type, all_ancestors.data_access_level as data_access_level, all_ancestors.status as status, all_ancestors.metadata as metadata"
             rval = neo_session.run(q).data()
             uuids_for_public = []
             has_donor = False
@@ -916,12 +916,7 @@ def publish_datastage(identifier):
             auth_tokens = auth_helper.getAuthorizationTokens(request.headers)
             entity_instance = EntitySdk(token=auth_tokens, service_url=app.config['ENTITY_WEBSERVICE_URL'])
             entity = entity_instance.get_entity_by_id(dataset_uuid)
-            entity_dict: dict = vars(entity)
-            data_type_edp: List[str] = \
-                get_data_type_of_external_dataset_providers(app.config['UBKG_WEBSERVICE_URL'])
-            entity_lab_processed_data_types: List[str] =\
-                [i for i in entity_dict.get('data_types') if i in data_type_edp]
-            has_entity_lab_processed_data_type: bool = len(entity_lab_processed_data_types) > 0
+            has_entity_lab_processed_data_type = dataset_has_entity_lab_processed_data_type(dataset_uuid)
 
 
             #set up a status_history list to add a "Published" entry to below
@@ -2324,6 +2319,15 @@ def validate_donors(headers, records):
 def dataset_is_primary(dataset_uuid):
     with neo4j_driver_instance.session() as neo_session:
         q = (f"MATCH (ds:Dataset {{uuid: '{dataset_uuid}'}})<-[:ACTIVITY_OUTPUT]-(a:Activity) WHERE NOT toLower(a.creation_action) ENDS WITH 'process' RETURN ds.uuid")
+        result = neo_session.run(q).data()
+        if len(result) == 0:
+            return False
+        return True
+
+
+def dataset_has_entity_lab_processed_data_type(dataset_uuid):
+    with neo4j_driver_instance.session() as neo_session:
+        q = (f"MATCH (ds:Dataset {{uuid: '{dataset_uuid}'}}<-[:ACTIVITY_OUTPUT]-(a:Activity) WHERE a.creation_action = 'Lab Process'")
         result = neo_session.run(q).data()
         if len(result) == 0:
             return False
