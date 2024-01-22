@@ -175,7 +175,7 @@
     },
     {
         "type": "match",
-        "match": "not_dcwg and not_derived and assay_type in ['MALDI-IMS', 'MALDI-IMS-neg', 'MALDI-IMS-pos']",
+        "match": "not_dcwg and not_derived and assay_type in ['MALDI-IMS', 'MALDI-IMS-neg', 'MALDI-IMS-pos', 'IMS negative', 'IMS positive']",
         "value": "{'assaytype': 'MALDI-IMS', 'dir-schema': 'ims-v0', 'tbl-schema': 'ims-v'+version.to_str, 'vitessce-hints': ['maldi'], 'contains-pii': false, 'primary': true, 'description': 'MALDI IMS', 'dataset-type': 'MALDI' }",
         "rule_description": "non-DCWG primary MALDI-IMS"
     },
@@ -421,7 +421,7 @@
     },
     {
         "type": "match",
-        "match": "not_dcwg and not_derived and assay_type in ['TMT-LC-MS']",
+        "match": "not_dcwg and not_derived and assay_type in ['TMT-LC-MS', 'TMT (proteomics)']",
         "value": "{'assaytype': 'TMT-LC-MS',   'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'TMT LC-MS', 'dataset-type': 'LC-MS' }",
         "rule_description": "non-DCWG primary TMT-LC-MS"
     },
@@ -433,13 +433,13 @@
     },
     {
         "type": "match",
-        "match": "not_dcwg and not_derived and assay_type in ['LC-MS']",
+        "match": "not_dcwg and not_derived and assay_type in ['LC-MS', 'LC-MS (metabolomics)']",
         "value": "{'assaytype': 'LC-MS', 'dir-schema': 'lcms-v0', 'tbl-schema': 'lcms-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'LC-MS', 'dataset-type': 'LC-MS' }",
         "rule_description": "non-DCWG primary LC-MS"
     },
     {
         "type": "match",
-        "match": "not_dcwg and not_derived and assay_type in ['MS']",
+        "match": "not_dcwg and not_derived and assay_type in ['MS', 'MS (shotgun lipidomics)']",
         "value": "{'assaytype': 'MS', 'dir-schema': 'lcms-v0', 'tbl-schema': 'lcms-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'MS', 'dataset-type': 'LC-MS' }",
         "rule_description": "non-DCWG primary MS"
     },

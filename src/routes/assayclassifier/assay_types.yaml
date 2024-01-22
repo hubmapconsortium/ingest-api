@@ -201,7 +201,7 @@ Lightsheet:
 
 MALDI-IMS:
     description: MALDI IMS
-    alt-names: ['MALDI-IMS-neg', 'MALDI-IMS-pos']
+    alt-names: ['MALDI-IMS-neg', 'MALDI-IMS-pos', 'IMS negative', 'IMS positive']
     primary: true
     contains-pii: false
     vitessce-hints: ['maldi']
@@ -531,7 +531,7 @@ Targeted-Shotgun-LC-MS:
 
 TMT-LC-MS:
     description: TMT LC-MS
-    alt-names: []
+    alt-names: ['TMT (proteomics)']
     primary: true
     vitessce-hints: []
     contains-pii: false
@@ -547,7 +547,7 @@ WGS:
 
 LC-MS:
     description: LC-MS
-    alt-names: []
+    alt-names: ['LC-MS (metabolomics)']
     primary: true
     contains-pii: false
     vitessce-hints: []
@@ -555,7 +555,7 @@ LC-MS:
 
 MS:
     description: MS
-    alt-names: []
+    alt-names: ['MS (shotgun lipidomics)']
     primary: true
     contains-pii: false
     vitessce-hints: []
