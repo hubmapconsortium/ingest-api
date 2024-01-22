@@ -247,6 +247,12 @@
     },
     {
         "type": "match",
+        "match": "not_dcwg and is_derived and data_types[0] in ['pas_ftu_segmentation']",
+        "value": "{'assaytype': 'pas_ftu_segmentation', 'vitessce-hints': [], 'primary': false, 'contains-pii': false, 'description': 'PAS Stained Microscopy [Kaggle-1 Glomerulus Segmentation]'}",
+        "rule_description": "non-DCWG derived pas_ftu_segmentation"
+    },
+    {
+        "type": "match",
         "match": "not_dcwg and is_derived and data_types[0] in ['publication']",
         "value": "{'assaytype': 'publication', 'vitessce-hints': [], 'primary': false, 'contains-pii': false, 'description': 'Publication Data'}",
         "rule_description": "non-DCWG derived publication"
