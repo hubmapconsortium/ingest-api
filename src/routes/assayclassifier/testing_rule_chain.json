@@ -547,7 +547,7 @@
     },
     {
         "type": "match",
-        "match": "is_dcwg and dataset_type == 'ATACseq'  and assay_input_entity == 'single nucleus' and barcode_read =~~ 'Read 2' and barcode_size == 24 and barcode_offset == '0,38,76' and umi_read =~~ 'Read 2' and umi_size == 10 and umi_offset == 84",
+        "match": "is_dcwg and dataset_type == 'ATACseq'  and assay_input_entity == 'single nucleus' and barcode_read =~~ 'Read 2' and barcode_size == '8,8,8' and barcode_offset == '0,38,76' and umi_read =~~ 'Not applicable' and umi_size == 'Not applicable' and umi_offset == 'Not applicable'",
         "value": "{'assaytype': 'SNARE-ATACseq2', 'vitessce-hints': [], 'dir-schema': 'atacseq-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'ATACseq', 'description': 'snATACseq (SNARE-seq2)'}",
         "rule_description": "DCWG SNARE-ATACseq2"
     },
