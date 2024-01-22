@@ -300,6 +300,14 @@ PAS_pyramid:
     vis-only: true
     vitessce-hints: ['pyramid']
 
+pas_ftu_segmentation:
+    description: PAS Stained Microscopy [Kaggle-1 Glomerulus Segmentation]
+    alt-names: []
+    primary: false
+    contains-pii: false
+    vis-only: false
+    vitessce-hints: []
+
 publication:
     description: Publication Data
     alt-names: []
