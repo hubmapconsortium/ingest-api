@@ -13,7 +13,7 @@
     },
     {
         "type": "note",
-        "match": "not_dcwg and assay_type == null and data_types != null",
+        "match": "not_dcwg and ((assay_type == null and data_types != null) or entity_type == 'Publication')",
         "value": "{'is_derived': true, 'not_derived': false}",
         "rule_description": "Preamble rule identifying derived non-DCWG"
     },
@@ -200,7 +200,7 @@
     {
         "type": "match",
         "match": "not_dcwg and not_derived and assay_type in ['NanoDESI']",
-        "value": "{'assaytype': 'NanoDESI', 'dir-schema': 'ims-v0', 'tbl-schema': 'ims-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'NanoDESI', 'dataset-type': 'DESI' }",
+        "value": "{'assaytype': 'NanoDESI', 'dir-schema': 'nano-v0', 'tbl-schema': 'nano-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'NanoDESI', 'dataset-type': 'DESI' }",
         "rule_description": "non-DCWG primary NanoDESI"
     },
     {

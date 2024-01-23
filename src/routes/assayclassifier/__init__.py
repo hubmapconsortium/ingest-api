@@ -80,8 +80,6 @@ def get_ds_assaytype(ds_uuid: str):
             metadata = entity.ingest_metadata["metadata"]
         # If there is no metadata, then it must be a derived dataset
         else:
-            metadata = {"entity_type": entity.entity_type}
-
             # Historically, we have used the data_types field. So check to make sure that
             # the data_types field is not empty and not a list of empty strings
             # If it has a value it must be an old derived dataset so use that to match the rules
@@ -98,6 +96,8 @@ def get_ds_assaytype(ds_uuid: str):
             # not match any rules.
             else:
                 metadata["data_types"] = [""]
+
+        metadata = {"entity_type": entity.entity_type}
 
         return jsonify(calculate_assay_info(metadata))
     except ResponseException as re:
