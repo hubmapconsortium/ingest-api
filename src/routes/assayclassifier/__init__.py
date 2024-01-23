@@ -93,6 +93,7 @@ def get_ds_assaytype(ds_uuid: str):
                 ds_uuid
             )  # may again raise SDKException
 
+        metadata = {}
         # This if block should catch primary datasets because primary datasets should
         # their metadata ingested as part of the reorganization.
         if hasattr(entity, "ingest_metadata") and "metadata" in entity.ingest_metadata:
