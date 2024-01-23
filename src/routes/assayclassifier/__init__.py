@@ -118,7 +118,7 @@ def get_ds_assaytype(ds_uuid: str):
                          for elt in dag_prov_list
                          if 'origin' in elt and 'name' in elt
                          ]
-        metadata.update(['dag_provenance_list': dag_prov_list])
+        metadata.update({'dag_provenance_list': dag_prov_list})
 
         return jsonify(calculate_assay_info(metadata))
     except ResponseException as re:
