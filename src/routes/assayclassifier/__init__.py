@@ -97,7 +97,7 @@ def get_ds_assaytype(ds_uuid: str):
             else:
                 metadata["data_types"] = [""]
 
-        metadata = {"entity_type": entity.entity_type}
+        metadata["entity_type"] = entity.entity_type
 
         return jsonify(calculate_assay_info(metadata))
     except ResponseException as re:
