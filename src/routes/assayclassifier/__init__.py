@@ -72,6 +72,7 @@ def calculate_data_types(entity: dict) -> list[str]:
     elif hasattr(entity, "dataset_info") and entity.dataset_info:
         data_types = [entity.dataset_info.split("__")[0]]
 
+    # Else case is covered by the initial data_types instantiation.
     return data_types
 
 
@@ -98,6 +99,9 @@ def get_ds_assaytype(ds_uuid: str):
         # their metadata ingested as part of the reorganization.
         if hasattr(entity, "ingest_metadata") and "metadata" in entity.ingest_metadata:
             metadata = entity.ingest_metadata["metadata"]
+            # In the case of Publications, we must also set the data_types.
+            # The primary publication will always have metadata,
+            # so we have to do the association here.
             if entity.entity_type == "Publication":
                 metadata["data_types"] = calculate_data_types(entity)
         # If there is no metadata, then it must be a derived dataset
