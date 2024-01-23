@@ -26,7 +26,7 @@ PREAMBLE = [
      "rule_description": "Preamble rule identifying non-DCWG"
      },
     {"type": "note",
-     "match": "not_dcwg and assay_type == null and data_types != null",
+     "match": "not_dcwg and ((assay_type == null and data_types != null) or entity_type == 'Publication')",
      "value": "{'is_derived': true, 'not_derived': false}",
      "rule_description": "Preamble rule identifying derived non-DCWG"
      },

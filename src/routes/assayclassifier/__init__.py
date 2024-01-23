@@ -56,6 +56,26 @@ def calculate_assay_info(metadata: dict) -> dict:
     return rslt
 
 
+def calculate_data_types(entity: dict) -> list[str]:
+    data_types = [""]
+
+    # Historically, we have used the data_types field. So check to make sure that
+    # the data_types field is not empty and not a list of empty strings
+    # If it has a value it must be an old derived dataset so use that to match the rules
+    if hasattr(entity, "data_types") and entity.data_types \
+            and set(entity.data_types) != {""}:
+        data_types = entity.data_types
+    # Moving forward (2024) we are no longer using data_types for derived datasets.
+    # Rather, we are going to use the dataset_info attribute which stores similar information
+    # to match the rules. dataset_info is delimited by "__", so we can grab the first
+    # item when splitting by that delimiter and pass that through to the rules.
+    elif hasattr(entity, "dataset_info") and entity.dataset_info:
+        data_types = [entity.dataset_info.split("__")[0]]
+
+    # Else case is covered by the initial data_types instantiation.
+    return data_types
+
+
 @bp.route("/assaytype/<ds_uuid>", methods=["GET"])
 def get_ds_assaytype(ds_uuid: str):
     try:
@@ -74,30 +94,21 @@ def get_ds_assaytype(ds_uuid: str):
                 ds_uuid
             )  # may again raise SDKException
 
+        metadata = {}
         # This if block should catch primary datasets because primary datasets should
         # their metadata ingested as part of the reorganization.
         if hasattr(entity, "ingest_metadata") and "metadata" in entity.ingest_metadata:
             metadata = entity.ingest_metadata["metadata"]
+            # In the case of Publications, we must also set the data_types.
+            # The primary publication will always have metadata,
+            # so we have to do the association here.
+            if entity.entity_type == "Publication":
+                metadata["data_types"] = calculate_data_types(entity)
         # If there is no metadata, then it must be a derived dataset
         else:
-            metadata = {"entity_type": entity.entity_type}
+            metadata["data_types"] = calculate_data_types(entity)
 
-            # Historically, we have used the data_types field. So check to make sure that
-            # the data_types field is not empty and not a list of empty strings
-            # If it has a value it must be an old derived dataset so use that to match the rules
-            if hasattr(entity, "data_types") and entity.data_types \
-                    and set(entity.data_types) != {""}:
-                metadata["data_types"] = entity.data_types
-            # Moving forward (2024) we are no longer using data_types for derived datasets.
-            # Rather, we are going to use the dataset_info attribute which stores similar information
-            # to match the rules. dataset_info is delimited by "__", so we can grab the first
-            # item when splitting by that delimiter and pass that through to the rules.
-            elif hasattr(entity, "dataset_info") and entity.dataset_info:
-                metadata["data_types"] = [entity.dataset_info.split("__")[0]]
-            # If neither of these are set, then we should force the rules engine to
-            # not match any rules.
-            else:
-                metadata["data_types"] = [""]
+        metadata["entity_type"] = entity.entity_type
 
         return jsonify(calculate_assay_info(metadata))
     except ResponseException as re:
