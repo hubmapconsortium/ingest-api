@@ -763,24 +763,6 @@ def multiple_components():
         return Response("Unexpected error while creating a dataset: " + str(e) + " Check the logs", 500)
 
 
-
-
-def get_data_type_of_external_dataset_providers(ubkg_base_url: str) -> List[str]:
-    """
-    The web service call will return a list of dictionaries having the following keys:
-    'alt-names', 'contains-pii', 'data_type', 'dataset_provider', 'description',
-     'primary', 'vis-only', 'vitessce-hints'.
-
-     This will only return a list of strings that are the 'data_type's.
-    """
-
-    url = f"{ubkg_base_url.rstrip('/')}/datasets?application_context=HUBMAP&dataset_provider=external"
-    resp = requests.get(url)
-    if resp.status_code != 200:
-        return {}
-    return [x['data_type'].strip() for x in resp.json()]
-
-
 # Needs to be triggered in the workflow or manually?!
 @app.route('/datasets/<identifier>/publish', methods=['PUT'])
 @secured(groups="HuBMAP-read")
@@ -2405,7 +2387,7 @@ def update_datasets_datastatus():
     organ_types_dict = requests.get(organ_types_url).json()
     all_datasets_query = (
         "MATCH (ds:Dataset)<-[:ACTIVITY_OUTPUT]-(a:Activity)<-[:ACTIVITY_INPUT]-(ancestor) "
-        "RETURN ds.uuid AS uuid, ds.group_name AS group_name, ds.data_types AS data_types, "
+        "RETURN ds.uuid AS uuid, ds.group_name AS group_name, "
         "ds.hubmap_id AS hubmap_id, ds.lab_dataset_id AS provider_experiment_id, ds.status AS status, "
         "ds.status_history AS status_history, ds.assigned_to_group_name AS assigned_to_group_name, "
         "ds.last_modified_timestamp AS last_touch, ds.published_timestamp AS published_timestamp, "
@@ -2448,7 +2430,7 @@ def update_datasets_datastatus():
 
     displayed_fields = [
         "hubmap_id", "group_name", "status", "organ", "provider_experiment_id", "last_touch", "has_contacts",
-        "has_contributors", "data_types", "donor_hubmap_id", "donor_submission_id", "donor_lab_id",
+        "has_contributors", "donor_hubmap_id", "donor_submission_id", "donor_lab_id",
         "has_dataset_metadata", "has_donor_metadata", "descendant_datasets", "upload", "has_rui_info", "globus_url", "has_data", "organ_hubmap_id"
     ]
 
@@ -2527,14 +2509,6 @@ def update_datasets_datastatus():
                     dataset[prop] = ""
             if dataset[prop] is None:
                 dataset[prop] = ""
-        data_types_list = []
-        if dataset.get('data_types'):
-            for data_type in dataset.get('data_types'):
-                if data_type in assay_types_dict:
-                    data_types_list.append(assay_types_dict[data_type]['description'].strip())
-                else:
-                    data_types_list.append(data_type)
-        dataset['data_types'] = data_types_list
         for field in displayed_fields:
             if dataset.get(field) is None:
                 dataset[field] = ""
