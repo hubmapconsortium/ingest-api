@@ -137,10 +137,6 @@ def build_entity_metadata(entity) -> dict:
     return metadata
 
 
-
-
-
-
 @bp.route("/assaytype/<ds_uuid>", methods=["GET"])
 def get_ds_assaytype(ds_uuid: str):
     try:
