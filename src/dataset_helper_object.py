@@ -78,14 +78,8 @@ class DatasetHelper:
             return rslt
         dataset = vars(entity)
 
-        if 'data_types' in dataset:
-            for data_type in dataset['data_types']:
-                try:
-                    search = search_api.assayname(data_type)
-                except:
-                    rslt.append(f"Unable to query the assay type details of: {data_type} via search-api")
-        else:
-            rslt.append('The dataset did not contain a ''data_types'' key')
+        if not 'dataset_type' in dataset:
+            rslt.append('The dataset did not contain a ''dataset_type'' key')
 
         # TO-DO: the blow logic can be simplified by parsing the `title` field returned by entity-api - Zhou
         try:
