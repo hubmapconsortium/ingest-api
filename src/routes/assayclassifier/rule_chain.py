@@ -34,7 +34,7 @@ class RuleLoader:
         if self.format == 'yaml':
             json_recs = yaml.safe_load(self.stream)
         elif self.format == 'json':
-            if isinstance(self.stream, string):
+            if isinstance(self.stream, str):
                 json_recs = json.loads(self.stream)
             else:
                 json_recs = json.load(self.stream)

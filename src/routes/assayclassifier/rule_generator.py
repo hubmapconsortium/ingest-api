@@ -26,7 +26,7 @@ PREAMBLE = [
      "rule_description": "Preamble rule identifying non-DCWG"
      },
     {"type": "note",
-     "match": "not_dcwg and assay_type == null and data_types != null",
+     "match": "not_dcwg and ((assay_type == null and data_types != null) or entity_type == 'Publication')",
      "value": "{'is_derived': true, 'not_derived': false}",
      "rule_description": "Preamble rule identifying derived non-DCWG"
      },
@@ -140,11 +140,12 @@ def main() -> None:
         all_assay_types = ([canonical_name]
                            + [elt for elt in type_dict.get('alt-names', [])
                               if isinstance(elt, str)])
-        quoted_assay_types = ["'" + tp + "'" for tp in all_assay_types]
+        quoted_assay_types = [f"'{tp}'" for tp in all_assay_types]
         vitessce_hints = type_dict.get('vitessce-hints', [])
         description = type_dict.get('description', '')
         is_primary = type_dict['primary']
         contains_pii = "true" if type_dict.get('contains-pii', "") else "false"
+        dataset_type = type_dict.get("dataset-type", "")
 
         # Provide a special hint for datasets to be vis-lifted
         if 'pyramid' in vitessce_hints or 'publication_ancillary' in all_assay_types:
@@ -224,7 +225,8 @@ def main() -> None:
                            f" 'vitessce-hints': {vitessce_hints},"
                            f" 'contains-pii': {contains_pii},"
                            f" 'primary': true,"
-                           f" 'description': '{description}'}}"
+                           f" 'description': '{description}',"
+                           f" 'dataset-type': '{dataset_type}' }}"
                            ),
                  "rule_description": f"non-DCWG primary {canonical_name}"
                  }
@@ -264,6 +266,7 @@ def main() -> None:
                        f" 'description': '{description}',"
                        f" 'contains-pii': true,"
                        f" 'primary': true,"
+                       f" 'dataset-type': '{data_type}',"
                        f" 'must-contain': [{must_contain_str}]"
                        "}"
                        ),
@@ -287,6 +290,7 @@ def main() -> None:
                        f" 'description': '{description}',"
                        f" 'contains-pii': true,"
                        f" 'primary': true,"
+                       f" 'dataset-type': '{data_type}',"
                        f" 'must-contain': [{must_contain_str}]"
                        "}"
                        ),
@@ -307,7 +311,7 @@ def main() -> None:
             ('RNAseq', None, 'single cell', 'Read 1', 16, 0, 'Read 1', 12, 16, 'scRNAseq-10xGenomics-v3', 'scRNA-seq (10x Genomics v3)', 'rnaseq-v2'),
             ('RNAseq', None, 'single nucleus', 'Read 1', 16, 0, 'Read 1', 12, 16, 'snRNAseq-10xGenomics-v3', 'snRNA-seq (10x Genomics v3)', 'rnaseq-v2'),
             ('ATACseq', None, 'single nucleus', 'Read 2', 16, 0, 'Not applicable', "'Not applicable'", "'Not applicable'", 'snATACseq', 'snATAC-seq', 'atacseq-v2'),
-            ('ATACseq', None, 'single nucleus', 'Read 2', 24, "'0,38,76'", 'Read 2', 10, 84, 'SNARE-ATACseq2', 'snATACseq (SNARE-seq2)', 'atacseq-v2'),
+            ('ATACseq', None, 'single nucleus', 'Read 2', "'8,8,8'", "'0,38,76'", 'Not applicable', "'Not applicable'", "'Not applicable'", 'SNARE-ATACseq2', 'snATACseq (SNARE-seq2)', 'atacseq-v2'),
             ('ATACseq', None, 'single nucleus', 'Read 2', 16, 8, 'Not applicable', "'Not applicable'", "'Not applicable'", 'sn_atac_seq?', 'snATACseq-multiome', 'atacseq-v2'),
     ]:
         if oligo_probe_panel:
@@ -332,6 +336,7 @@ def main() -> None:
                        f" 'dir-schema': '{schema}',"
                        f" 'contains-pii': true,"
                        f" 'primary': true,"
+                       f" 'dataset-type': '{data_type}',"
                        f" 'description': '{description}'"
                        "}"
                        ),
@@ -355,6 +360,7 @@ def main() -> None:
                        f" 'dir-schema': '{schema}',"
                        f" 'contains-pii': true,"
                        f" 'primary': true,"
+                       f" 'dataset-type': '{data_type}',"
                        f" 'description': '{description}'"
                        "}"
                        ),
@@ -375,6 +381,7 @@ def main() -> None:
                    " 'dir-schema': 'atacseq-v2',"
                    f" 'contains-pii': true,"
                    f" 'primary': true,"
+                   f" 'dataset-type': 'ATACseq',"
                    f" 'description': 'sciATAC-seq'"
                    "}"
                    ),
@@ -398,6 +405,7 @@ def main() -> None:
                        f" 'dir-schema': '{schema}',"
                        f" 'contains-pii': false,"
                        f" 'primary': true,"
+                       f" 'dataset-type': 'Histology',"
                        f" 'description': '{description}'"
                        "}"
                        ),
@@ -437,6 +445,7 @@ def main() -> None:
                        f" 'dir-schema': '{schema}',"
                        f" 'contains-pii': false,"
                        f" 'primary': true,"
+                       f" 'dataset-type': '{data_type}',"
                        f" 'description': '{description}'"
                        "}"
                        ),
