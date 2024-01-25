@@ -106,6 +106,9 @@ def build_entity_metadata(entity) -> dict:
         # their metadata ingested as part of the reorganization.
         if "metadata" in entity.ingest_metadata:
             metadata = entity.ingest_metadata["metadata"]
+        else:
+            # If there is no ingest-metadata, then it must be a derived dataset
+            metadata["data_types"] = calculate_data_types(entity)
 
         if 'dag_provenance_list' in entity.ingest_metadata:
             dag_prov_list = entity.ingest_metadata['dag_provenance_list']
