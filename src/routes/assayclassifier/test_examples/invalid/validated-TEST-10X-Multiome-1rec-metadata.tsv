@@ -1,2 +1,0 @@
-metadata_schema_id	parent_sample_id	lab_id	preparation_protocol_doi	dataset_type	contributors_path	data_path	capture_batch_id	preparation_instrument_vendor	preparation_instrument_model	preparation_instrument_kit	number_of_pre_amplification_pcr_cycles
-63c06fb2-4638-4979-aa97-5aff2a840156	HBM574.RBCK.433	9olc-a2	https://dx.doi.org/10.17504/protocols.io.8epv59y34g1b/v1	10X Multiome	./contributors.tsv	./9olc-a2	Penn-9olc-a2	10X Genomics	Chromium Controller	10X Genomics; Chromium NextGem Single Cell Multiome ATAC + Gene Expression Reagent Bundle, 16 rxn; PN 1000283	7

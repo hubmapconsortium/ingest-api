@@ -110,6 +110,16 @@ def get_ds_assaytype(ds_uuid: str):
 
         metadata["entity_type"] = entity.entity_type
 
+        if 'dag_provenance_list' in entity.ingest_metadata:
+            dag_prov_list = entity.ingest_metadata['dag_provenance_list']
+        else:
+            dag_prov_list = []
+        dag_prov_list = [elt['origin'] + ':' + elt['name']
+                         for elt in dag_prov_list
+                         if 'origin' in elt and 'name' in elt
+                         ]
+        metadata.update({'dag_provenance_list': dag_prov_list})
+
         return jsonify(calculate_assay_info(metadata))
     except ResponseException as re:
         logger.error(re, exc_info=True)
