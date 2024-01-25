@@ -2309,7 +2309,7 @@ def dataset_is_primary(dataset_uuid):
 
 def dataset_has_entity_lab_processed_data_type(dataset_uuid):
     with neo4j_driver_instance.session() as neo_session:
-        q = (f"MATCH (ds:Dataset {{uuid: '{dataset_uuid}'}}<-[:ACTIVITY_OUTPUT]-(a:Activity) WHERE a.creation_action = 'Lab Process'")
+        q = (f"MATCH (ds:Dataset {{uuid: '{dataset_uuid}'}})<-[:ACTIVITY_OUTPUT]-(a:Activity) WHERE a.creation_action = 'Lab Process' RETURN ds.uuid")
         result = neo_session.run(q).data()
         if len(result) == 0:
             return False
