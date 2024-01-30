@@ -487,6 +487,12 @@
     },
     {
         "type": "match",
+        "match": "is_dcwg and dataset_type == 'GeoMx (NGS)'",
+        "value": "{'assaytype': 'geomx_ngs?', 'vitessce-hints': [], 'dir-schema': 'geomx-ngs-v2', 'description': 'GeoMx (NGS)', 'contains-pii': true, 'primary': true, 'dataset-type': 'GeoMx (NGS)', 'must-contain': ['RNAseq']}",
+        "rule_description": "DCWG geomx_ngs?"
+    },
+    {
+        "type": "match",
         "match": "is_dcwg and dataset_type == '10X Multiome'",
         "value": "{'assaytype': '10x-multiome', 'vitessce-hints': [], 'dir-schema': '10x-multiome-v2', 'description': '10X Multiome', 'contains-pii': true, 'primary': true, 'dataset-type': '10X Multiome', 'must-contain': ['RNAseq','ATACseq']}",
         "rule_description": "DCWG 10x-multiome"
