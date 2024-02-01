@@ -95,15 +95,29 @@ def get_ds_assaytype(ds_uuid: str):
             )  # may again raise SDKException
 
         metadata = {}
-        # This if block should catch primary datasets because primary datasets should
-        # their metadata ingested as part of the reorganization.
-        if hasattr(entity, "ingest_metadata") and "metadata" in entity.ingest_metadata:
-            metadata = entity.ingest_metadata["metadata"]
+        if hasattr(entity, "ingest_metadata"):
+            # This if block should catch primary datasets because primary datasets should
+            # their metadata ingested as part of the reorganization.
+            if "metadata" in entity.ingest_metadata:
+                metadata = entity.ingest_metadata["metadata"]
+
+            if 'dag_provenance_list' in entity.ingest_metadata:
+                dag_prov_list = entity.ingest_metadata['dag_provenance_list']
+            else:
+                dag_prov_list = []
+
+            dag_prov_list = [elt['origin'] + ':' + elt['name']
+                             for elt in dag_prov_list
+                             if 'origin' in elt and 'name' in elt
+                             ]
+            metadata.update({'dag_provenance_list': dag_prov_list})
+
             # In the case of Publications, we must also set the data_types.
             # The primary publication will always have metadata,
             # so we have to do the association here.
             if entity.entity_type == "Publication":
                 metadata["data_types"] = calculate_data_types(entity)
+
         # If there is no metadata, then it must be a derived dataset
         else:
             metadata["data_types"] = calculate_data_types(entity)
