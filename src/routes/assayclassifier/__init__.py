@@ -76,55 +76,100 @@ def calculate_data_types(entity: dict) -> list[str]:
     return data_types
 
 
+def get_entity(ds_uuid: str) -> dict:
+    """
+    Given a uuid and the (implicit) request, return the entity-sdk
+    entity.
+    """
+    entity_api_url = current_app.config["ENTITY_WEBSERVICE_URL"]
+    groups_token = (
+        groups_token_from_request_headers(request.headers)
+        if "AUTHORIZATION" in request.headers
+        else None
+    )
+    entity_api = EntitySdk(token=groups_token, service_url=entity_api_url)
+    try:
+        entity = entity_api.get_entity_by_id(ds_uuid)
+    except SDKException as excp:
+        entity_api = EntitySdk(service_url=entity_api_url)
+        entity = entity_api.get_entity_by_id(
+            ds_uuid
+        )  # may again raise SDKException
+
+    return entity
+
+
+def build_entity_metadata(entity) -> dict:
+    metadata = {}
+    if hasattr(entity, "ingest_metadata"):
+        # This if block should catch primary datasets because primary datasets should
+        # their metadata ingested as part of the reorganization.
+        if "metadata" in entity.ingest_metadata:
+            metadata = entity.ingest_metadata["metadata"]
+        else:
+            # If there is no ingest-metadata, then it must be a derived dataset
+            metadata["data_types"] = calculate_data_types(entity)
+
+        if 'dag_provenance_list' in entity.ingest_metadata:
+            dag_prov_list = entity.ingest_metadata['dag_provenance_list']
+        else:
+            dag_prov_list = []
+
+        dag_prov_list = [elt['origin'] + ':' + elt['name']
+                         for elt in dag_prov_list
+                         if 'origin' in elt and 'name' in elt
+                         ]
+
+        metadata.update({'dag_provenance_list': dag_prov_list})
+
+        # In the case of Publications, we must also set the data_types.
+        # The primary publication will always have metadata,
+        # so we have to do the association here.
+        if entity.entity_type == "Publication":
+            metadata["data_types"] = calculate_data_types(entity)
+
+    # If there is no metadata, then it must be a derived dataset
+    else:
+        metadata["data_types"] = calculate_data_types(entity)
+
+    metadata["entity_type"] = entity.entity_type
+
+    return metadata
+
+
 @bp.route("/assaytype/<ds_uuid>", methods=["GET"])
 def get_ds_assaytype(ds_uuid: str):
     try:
-        entity_api_url = current_app.config["ENTITY_WEBSERVICE_URL"]
-        groups_token = (
-            groups_token_from_request_headers(request.headers)
-            if "AUTHORIZATION" in request.headers
-            else None
-        )
-        entity_api = EntitySdk(token=groups_token, service_url=entity_api_url)
-        try:
-            entity = entity_api.get_entity_by_id(ds_uuid)
-        except SDKException as excp:
-            entity_api = EntitySdk(service_url=entity_api_url)
-            entity = entity_api.get_entity_by_id(
-                ds_uuid
-            )  # may again raise SDKException
-
-        metadata = {}
-        if hasattr(entity, "ingest_metadata"):
-            # This if block should catch primary datasets because primary datasets should
-            # their metadata ingested as part of the reorganization.
-            if "metadata" in entity.ingest_metadata:
-                metadata = entity.ingest_metadata["metadata"]
-
-            if 'dag_provenance_list' in entity.ingest_metadata:
-                dag_prov_list = entity.ingest_metadata['dag_provenance_list']
-            else:
-                dag_prov_list = []
-
-            dag_prov_list = [elt['origin'] + ':' + elt['name']
-                             for elt in dag_prov_list
-                             if 'origin' in elt and 'name' in elt
-                             ]
-            metadata.update({'dag_provenance_list': dag_prov_list})
-
-            # In the case of Publications, we must also set the data_types.
-            # The primary publication will always have metadata,
-            # so we have to do the association here.
-            if entity.entity_type == "Publication":
-                metadata["data_types"] = calculate_data_types(entity)
-
-        # If there is no metadata, then it must be a derived dataset
-        else:
-            metadata["data_types"] = calculate_data_types(entity)
-
-        metadata["entity_type"] = entity.entity_type
-
+        entity = get_entity(ds_uuid)
+        metadata = build_entity_metadata(entity)
         return jsonify(calculate_assay_info(metadata))
+    except ResponseException as re:
+        logger.error(re, exc_info=True)
+        return re.response
+    except NoMatchException as excp:
+        return {}
+    except (RuleSyntaxException, RuleLogicException) as excp:
+        return Response(f"Error applying classification rules: {excp}", 500)
+    except WerkzeugException as excp:
+        return excp
+    except (HTTPException, SDKException) as hte:
+        return Response(
+            f"Error while getting assay type for {ds_uuid}: " + hte.get_description(),
+            hte.get_status_code(),
+        )
+    except Exception as e:
+        logger.error(e, exc_info=True)
+        return Response(
+            f"Unexpected error while retrieving entity {ds_uuid}: " + str(e), 500
+        )
+
+
+@bp.route("/assaytype/metadata/<ds_uuid>", methods=["GET"])
+def get_ds_rule_metadata(ds_uuid: str):
+    try:
+        entity = get_entity(ds_uuid)
+        metadata = build_entity_metadata(entity)
+        return jsonify(metadata)
     except ResponseException as re:
         logger.error(re, exc_info=True)
         return re.response
