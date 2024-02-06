@@ -511,7 +511,7 @@
     },
     {
         "type": "match",
-        "match": "is_dcwg and dataset_type == 'RNAseq'  and assay_input_entity == 'single nucleus' and barcode_read =~~ 'Read 1' and barcode_size == 24 and barcode_offset == '10,48,86' and umi_read =~~ 'Read 1' and umi_size == 10 and umi_offset == 0",
+        "match": "is_dcwg and dataset_type == 'RNAseq'  and assay_input_entity == 'single nucleus' and barcode_read =~~ 'Read 2' and barcode_size == 24 and barcode_offset == '10,48,86' and umi_read =~~ 'Read 2' and umi_size == 10 and umi_offset == 0",
         "value": "{'assaytype': 'SNARE-RNAseq2', 'vitessce-hints': [], 'dir-schema': 'rnaseq-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'RNAseq', 'description': 'snRNAseq (SNARE-seq2)'}",
         "rule_description": "DCWG SNARE-RNAseq2"
     },
