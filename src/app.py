@@ -763,6 +763,34 @@ def multiple_components():
         return Response("Unexpected error while creating a dataset: " + str(e) + " Check the logs", 500)
 
 
+def obj_to_dict(obj) -> dict:
+    """
+    Convert the obj[ect] into a dict, but deeply.
+
+    Note: The Python builtin 'vars()' does not work here because of the way that some of the classes
+    are defined.
+    """
+    return json.loads(
+        json.dumps(obj, default=lambda o: getattr(o, '__dict__', str(o)))
+    )
+
+def entity_json_dumps(entity_instance: EntitySdk, dataset_uuid: str) -> str:
+    """
+    Because entity and the content of the arrays returned from entity_instance.get_associated_*
+    contain user defined objects we need to turn them into simple python objects (e.g., dicts, lists, str)
+    before we can convert them wth json.dumps.
+
+    Here we create an expanded version of the entity associated with the dataset_uuid and return it as a json string.
+    """
+    entity = obj_to_dict(entity_instance.get_entity_by_id(dataset_uuid))
+    entity['organs'] = obj_to_dict(entity_instance.get_associated_organs_from_dataset(dataset_uuid))
+    entity['samples'] = obj_to_dict(entity_instance.get_associated_samples_from_dataset(dataset_uuid))
+    entity['donors'] = obj_to_dict(entity_instance.get_associated_donors_from_dataset(dataset_uuid))
+
+    json_object = json.dumps(entity, indent=4)
+    json_object += '\n'
+    return json_object
+
 # Needs to be triggered in the workflow or manually?!
 @app.route('/datasets/<identifier>/publish', methods=['PUT'])
 @secured(groups="HuBMAP-read")
@@ -802,8 +830,6 @@ def publish_datastage(identifier):
             return Response("User has no valid group information to authorize publication.", 403)
         if data_admin_group_uuid not in user_info['hmgroupids']:
             return Response("User must be a member of the HuBMAP Data Admin group to publish data.", 403)
-
-
 
         if identifier is None or len(identifier) == 0:
             abort(400, jsonify( { 'error': 'identifier parameter is required to publish a dataset' } ))
@@ -864,7 +890,8 @@ def publish_datastage(identifier):
                         uuids_for_public.append(uuid)
                 elif entity_type == 'Dataset':
                     if status != 'Published':
-                        return Response(f"{dataset_uuid} has an ancestor dataset that has not been Published. Will not Publish. Ancestor dataset is: {uuid}", 400)
+                        return Response(f"{dataset_uuid} has an ancestor dataset that has not been Published. "
+                                        f"Will not Publish. Ancestor dataset is: {uuid}", 400)
 
             if has_donor is False:
                 return Response(f"{dataset_uuid}: no donor found for dataset, will not Publish")
@@ -897,9 +924,7 @@ def publish_datastage(identifier):
 
             auth_tokens = auth_helper.getAuthorizationTokens(request.headers)
             entity_instance = EntitySdk(token=auth_tokens, service_url=app.config['ENTITY_WEBSERVICE_URL'])
-            entity = entity_instance.get_entity_by_id(dataset_uuid)
             has_entity_lab_processed_data_type = dataset_has_entity_lab_processed_data_type(dataset_uuid)
-
 
             #set up a status_history list to add a "Published" entry to below
             if 'status_history' in rval[0]:
@@ -920,23 +945,19 @@ def publish_datastage(identifier):
                 dataset_contributors = dataset_contributors.replace("'", '"')
                 if len(json.loads(dataset_contacts)) < 1 or len(json.loads(dataset_contributors)) < 1:
                     return jsonify({"error": f"{dataset_uuid} missing contacts or contributors. Must have at least one of each"}), 400
-            ingest_helper = IngestFileHelper(app.config)
-
-            # Save a .json file with the metadata information at the top level directory...
-            if dataset_ingest_matadata_dict is not None:
-                json_object = json.dumps(dataset_ingest_matadata_dict['metadata'], indent=4)
-                json_object += '\n'
-                ds_path = ingest_helper.dataset_directory_absolute_path(dataset_data_access_level,
-                                                                        dataset_group_uuid, dataset_uuid, False)
-                md_file = os.path.join(ds_path, "metadata.json")
-                logger.info(f"publish_datastage; writing md_file: '{md_file}'; "
-                            f"containing ingest_matadata.metadata: '{json_object}'")
-                try:
-                    with open(md_file, "w") as outfile:
-                        outfile.write(json_object)
-                except Exception as e:
-                    logger.exception(f"Fatal error while writing md_file {md_file}; {str(e)}")
-                    return jsonify({"error": f"{dataset_uuid} problem writing json file."}), 500
+            ingest_helper: IngestFileHelper = IngestFileHelper(app.config)
+            ds_path = ingest_helper.dataset_directory_absolute_path(dataset_data_access_level,
+                                                                    dataset_group_uuid, dataset_uuid, False)
+            md_file = os.path.join(ds_path, "metadata.json")
+            json_object = entity_json_dumps(entity_instance, dataset_uuid)
+            logger.info(f"publish_datastage; writing metadata.json file: '{md_file}'; "
+                        f"containing: '{json_object}'")
+            try:
+                with open(md_file, "w") as outfile:
+                    outfile.write(json_object)
+            except Exception as e:
+                logger.exception(f"Fatal error while writing md_file {md_file}; {str(e)}")
+                return jsonify({"error": f"{dataset_uuid} problem writing metadata.json file."}), 500
 
             data_access_level = dataset_data_access_level
             #if consortium access level convert to public dataset, if protected access leave it protected
@@ -1079,8 +1100,6 @@ def datasets_metadata_json(identifier):
             return Response(f"Could not find ingest_metadata for {identifier}", 500)
 
         logger.info(f"ingest_matadata: {dataset_ingest_metadata}")
-        json_object = json.dumps(dataset_ingest_metadata['metadata'], indent=4)
-        json_object += '\n'
         ingest_helper = IngestFileHelper(app.config)
         # Save a .json file with the metadata information at the top level directory...
         ds_path = ingest_helper.dataset_directory_absolute_path(dataset_data_access_level,
@@ -1088,8 +1107,9 @@ def datasets_metadata_json(identifier):
                                                                 identifier,
                                                                 dataset_published)
         md_file = os.path.join(ds_path, "metadata.json")
+        json_object = entity_json_dumps(entity_instance, identifier)
         logger.info(f"publish_datastage; writing md_file: '{md_file}'; "
-                    f"containing ingest_matadata.metadata: '{json_object}'")
+                    f"containing: '{json_object}'")
         try:
             with open(md_file, "w") as outfile:
                 outfile.write(json_object)
