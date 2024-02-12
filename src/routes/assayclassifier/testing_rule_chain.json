@@ -712,5 +712,11 @@
         "match": "is_dcwg and dataset_type == 'Molecular Cartography'",
         "value": "{'assaytype': 'molecular-cartography', 'vitessce-hints': [], 'dir-schema': 'mc-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'Molecular Cartography', 'description': 'Molecular Cartography'}",
         "rule_description": "DCWG molecular-cartography"
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and is_derived and data_types[0] in ['visium_no_probes']",
+        "value": "{'assaytype': 'visium-no-probes', 'vitessce-hints': [], 'primary': false, 'contains-pii': false, 'description': 'Visium (no probes) [Salmon + Scanpy]'}",
+        "rule_description": "non-DCWG derived visiu-no-probes"
     }
 ]
