@@ -717,6 +717,6 @@
         "type": "match",
         "match": "is_dcwg and is_derived and data_types[0] in ['visium_no_probes']",
         "value": "{'assaytype': 'visium-no-probes', 'vitessce-hints': [], 'primary': false, 'contains-pii': false, 'description': 'Visium (no probes) [Salmon + Scanpy]'}",
-        "rule_description": "non-DCWG derived visiu-no-probes"
+        "rule_description": "non-DCWG derived visium-no-probes"
     }
 ]
