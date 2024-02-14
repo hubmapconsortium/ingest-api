@@ -2410,7 +2410,7 @@ def update_datasets_datastatus():
         "RETURN ds.uuid AS uuid, ds.group_name AS group_name, "
         "ds.hubmap_id AS hubmap_id, ds.lab_dataset_id AS provider_experiment_id, ds.status AS status, "
         "ds.status_history AS status_history, ds.assigned_to_group_name AS assigned_to_group_name, "
-        "ds.last_modified_timestamp AS last_touch, ds.published_timestamp AS published_timestamp, "
+        "ds.last_modified_timestamp AS last_touch, ds.published_timestamp AS published_timestamp, ds.created_timestamp AS created_timestamp, "
         "ds.data_access_level AS data_access_level, ds.ingest_task AS ingest_task, ds.dataset_type as dataset_type, "
         "COALESCE(ds.contributors IS NOT NULL) AS has_contributors, "
         "COALESCE(ds.contacts IS NOT NULL) AS has_contacts, "
@@ -2433,7 +2433,7 @@ def update_datasets_datastatus():
 
     descendant_datasets_query = (
         "MATCH (dds:Dataset)<-[*]-(ds:Dataset)<-[:ACTIVITY_OUTPUT]-(:Activity)<-[:ACTIVITY_INPUT]-(:Sample) "
-        "RETURN DISTINCT ds.uuid AS uuid, COLLECT(DISTINCT dds.hubmap_id) AS descendant_datasets"
+        "RETURN DISTINCT ds.uuid AS uuid, COLLECT(DISTINCT dds) AS descendant_datasets"
     )
 
     upload_query = (
@@ -2504,7 +2504,8 @@ def update_datasets_datastatus():
         globus_url = get_globus_url(dataset.get('data_access_level'), dataset.get('group_name'), dataset.get('uuid'))
         dataset['globus_url'] = globus_url
         last_touch = dataset['last_touch'] if dataset['published_timestamp'] is None else dataset['published_timestamp']
-        dataset['last_touch'] = str(datetime.datetime.utcfromtimestamp(last_touch/1000))
+        dataset['last_touch'] = str(datetime.datetime.utcfromtimestamp(last_touch/1000)) + ' UTC'
+        dataset['created_timestamp'] = str(datetime.datetime.utcfromtimestamp(dataset['created_timestamp']/1000)) + ' UTC'
         if dataset.get('activity_creation_action').lower().endswith("process"):
             dataset['is_primary'] = "False"
         else:
@@ -2515,7 +2516,7 @@ def update_datasets_datastatus():
         dataset['has_dataset_metadata'] = has_dataset_metadata
 
         for prop in dataset:
-            if isinstance(dataset[prop], list):
+            if isinstance(dataset[prop], list) and prop is not 'descendant_datasets':
                 dataset[prop] = ", ".join(dataset[prop])
             if isinstance(dataset[prop], (bool, int)):
                 dataset[prop] = str(dataset[prop])
