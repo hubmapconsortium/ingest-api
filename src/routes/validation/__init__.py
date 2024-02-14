@@ -263,8 +263,8 @@ def validate_records_uuids(records: list, entity_type: str, sub_type, pathname: 
         auth_helper_instance: AuthHelper = AuthHelper.instance()
         token = auth_helper_instance.getAuthorizationTokens(request.headers)
         resp = requests.get(f'{entity_url}entities/{entity_id}',
-                            headers={f'Authorization: Bearer {token}',
-                                     'X-Application: ingest-api'})
+                            headers={'Authorization': f'Bearer {token}',
+                                     'X-Application': 'ingest-api'})
         if resp.status_code < 300:
             entity = resp.json()
             if sub_type is not None:
