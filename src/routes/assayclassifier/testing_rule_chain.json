@@ -476,31 +476,31 @@
     {
         "type": "match",
         "match": "is_dcwg and dataset_type == 'Visium (no probes)'",
-        "value": "{'assaytype': 'visium-no-probes', 'vitessce-hints': [], 'dir-schema': 'visium-no-probes-v2', 'description': 'Visium (No probes)', 'contains-pii': true, 'primary': true, 'dataset-type': 'Visium (no probes)', 'must-contain': ['Histology','RNAseq']}",
+        "value": "{'assaytype': 'visium-no-probes', 'vitessce-hints': [], 'dir-schema': 'visium-no-probes-v2', 'description': 'Visium (No probes)', 'contains-pii': true, 'primary': true, 'dataset-type': 'Visium (no probes)', 'must-contain': ['Histology','RNAseq'], 'is-multi-assay': true}",
         "rule_description": "DCWG visium-no-probes"
     },
     {
         "type": "match",
         "match": "is_dcwg and dataset_type == 'Visium (with probes)'",
-        "value": "{'assaytype': 'visium-with-probes', 'vitessce-hints': [], 'dir-schema': 'visium-with-probes-v2', 'description': 'Visium (With probes)', 'contains-pii': true, 'primary': true, 'dataset-type': 'Visium (with probes)', 'must-contain': ['Histology','RNAseq (with probes)']}",
+        "value": "{'assaytype': 'visium-with-probes', 'vitessce-hints': [], 'dir-schema': 'visium-with-probes-v2', 'description': 'Visium (With probes)', 'contains-pii': true, 'primary': true, 'dataset-type': 'Visium (with probes)', 'must-contain': ['Histology','RNAseq (with probes)'], 'is-multi-assay': true}",
         "rule_description": "DCWG visium-with-probes"
     },
     {
         "type": "match",
         "match": "is_dcwg and dataset_type == 'GeoMx (NGS)'",
-        "value": "{'assaytype': 'geomx_ngs?', 'vitessce-hints': [], 'dir-schema': 'geomx-ngs-v2', 'description': 'GeoMx (NGS)', 'contains-pii': true, 'primary': true, 'dataset-type': 'GeoMx (NGS)', 'must-contain': ['RNAseq']}",
+        "value": "{'assaytype': 'geomx_ngs?', 'vitessce-hints': [], 'dir-schema': 'geomx-ngs-v2', 'description': 'GeoMx (NGS)', 'contains-pii': true, 'primary': true, 'dataset-type': 'GeoMx (NGS)', 'must-contain': ['RNAseq'], 'is-multi-assay': true}",
         "rule_description": "DCWG geomx_ngs?"
     },
     {
         "type": "match",
         "match": "is_dcwg and dataset_type == '10X Multiome'",
-        "value": "{'assaytype': '10x-multiome', 'vitessce-hints': [], 'dir-schema': '10x-multiome-v2', 'description': '10X Multiome', 'contains-pii': true, 'primary': true, 'dataset-type': '10X Multiome', 'must-contain': ['RNAseq','ATACseq']}",
+        "value": "{'assaytype': '10x-multiome', 'vitessce-hints': [], 'dir-schema': '10x-multiome-v2', 'description': '10X Multiome', 'contains-pii': true, 'primary': true, 'dataset-type': '10X Multiome', 'must-contain': ['RNAseq','ATACseq'], 'is-multi-assay': true}",
         "rule_description": "DCWG 10x-multiome"
     },
     {
         "type": "match",
         "match": "is_dcwg and dataset_type == 'SNARE-seq2'",
-        "value": "{'assaytype': 'multiome-snare-seq2', 'vitessce-hints': [], 'dir-schema': 'snareseq2-v2', 'description': 'SNARE-seq2', 'contains-pii': true, 'primary': true, 'dataset-type': 'SNARE-seq2', 'must-contain': ['RNAseq','ATACseq']}",
+        "value": "{'assaytype': 'multiome-snare-seq2', 'vitessce-hints': [], 'dir-schema': 'snareseq2-v2', 'description': 'SNARE-seq2', 'contains-pii': true, 'primary': true, 'dataset-type': 'SNARE-seq2', 'must-contain': ['RNAseq','ATACseq'], 'is-multi-assay': true}",
         "rule_description": "DCWG multiome-snare-seq2"
     },
     {
@@ -716,7 +716,7 @@
     {
         "type": "match",
         "match": "is_dcwg and is_derived and data_types[0] in ['visium_no_probes']",
-        "value": "{'assaytype': 'visium-no-probes', 'vitessce-hints': [], 'primary': false, 'contains-pii': false, 'description': 'Visium (no probes) [Salmon + Scanpy]'}",
+        "value": "{'assaytype': 'visium-no-probes', 'vitessce-hints': [], 'primary': false, 'contains-pii': false, 'description': 'Visium (no probes) [Salmon + Scanpy]', 'is-multi-assay': true}",
         "rule_description": "non-DCWG derived visium-no-probes"
     }
 ]
