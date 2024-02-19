@@ -79,9 +79,15 @@
     },
     {
         "type": "match",
-        "match": "not_dcwg and is_derived and data_types[0] in ['codex_cytokit_v1']",
+        "match": "not_dcwg and is_derived and data_types[0] in ['codex_cytokit_v1'] and [elt for elt in dag_provenance_list if elt =~~ 'anndata']",
         "value": "{'assaytype': 'codex_cytokit_v1', 'vitessce-hints': ['codex', 'is_image', 'is_tiled'], 'primary': false, 'contains-pii': false, 'description': 'CODEX [Cytokit + SPRM]'}",
         "rule_description": "non-DCWG derived codex_cytokit_v1"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and is_derived and data_types[0] in ['codex_cytokit_v1'] and not [elt for elt in dag_provenance_list if elt =~~ 'anndata']",
+        "value": "{'assaytype': 'codex_cytokit_v1', 'vitessce-hints': ['codex', 'is_image', 'is_tiled', 'json_based'], 'primary': false, 'contains-pii': false, 'description': 'CODEX [Cytokit + SPRM]'}",
+        "rule_description": "non-DCWG derived codex_cytokit_v1 json-based"
     },
     {
         "type": "match",
@@ -403,9 +409,15 @@
     },
     {
         "type": "match",
-        "match": "not_dcwg and is_derived and data_types[0] in ['salmon_sn_rnaseq_10x', 'salmon_rnaseq_10x_sn', 'salmon_rnaseq_10x_v2_sn']",
+        "match": "not_dcwg and is_derived and data_types[0] in ['salmon_sn_rnaseq_10x', 'salmon_rnaseq_10x_sn', 'salmon_rnaseq_10x_v2_sn'] and [elt for elt in dag_provenance_list if elt =~~ 'anndata']",
         "value": "{'assaytype': 'salmon_sn_rnaseq_10x', 'vitessce-hints': ['is_sc', 'rna'], 'primary': false, 'contains-pii': false, 'description': 'snRNA-seq [Salmon]'}",
         "rule_description": "non-DCWG derived salmon_sn_rnaseq_10x"
+    },
+    {
+        "type": "match",
+        "match": "not_dcwg and is_derived and data_types[0] in ['salmon_sn_rnaseq_10x', 'salmon_rnaseq_10x_sn', 'salmon_rnaseq_10x_v2_sn'] and not [elt for elt in dag_provenance_list if elt =~~ 'anndata']",
+        "value": "{'assaytype': 'salmon_sn_rnaseq_10x', 'vitessce-hints': ['is_sc', 'rna', 'json_based'], 'primary': false, 'contains-pii': false, 'description': 'snRNA-seq [Salmon]'}",
+        "rule_description": "non-DCWG derived salmon_sn_rnaseq_10x json-based"
     },
     {
         "type": "match",
