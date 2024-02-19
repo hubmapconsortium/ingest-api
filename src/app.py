@@ -2516,7 +2516,7 @@ def update_datasets_datastatus():
         dataset['has_dataset_metadata'] = has_dataset_metadata
 
         for prop in dataset:
-            if isinstance(dataset[prop], list) and prop is not 'descendant_datasets':
+            if isinstance(dataset[prop], list) and prop != 'descendant_datasets':
                 dataset[prop] = ", ".join(dataset[prop])
             if isinstance(dataset[prop], (bool, int)):
                 dataset[prop] = str(dataset[prop])
