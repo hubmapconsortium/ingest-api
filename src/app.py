@@ -2439,9 +2439,9 @@ def update_datasets_datastatus():
         "RETURN DISTINCT ds.uuid AS uuid, COLLECT(DISTINCT dds.hubmap_id) AS descendant_datasets"
     )
 
-    derived_datasets_query = (
+    processed_datasets_query = (
         "MATCH (s:Entity)<-[:ACTIVITY_OUTPUT]-(a:Activity)<-[:ACTIVITY_INPUT]-(ds:Dataset) WHERE "
-                             "a.creation_action in ['Central Process', 'Lab Process'] RETURN DISTINCT ds.uuid AS uuid, COLLECT(DISTINCT s) AS derived_datasets"
+                             "a.creation_action in ['Central Process', 'Lab Process'] RETURN DISTINCT ds.uuid AS uuid, COLLECT(DISTINCT s) AS processed_datasets"
     )
 
     upload_query = (
@@ -2463,7 +2463,7 @@ def update_datasets_datastatus():
     ]
 
     queries = [all_datasets_query, organ_query, donor_query, descendant_datasets_query,
-               upload_query, has_rui_query, derived_datasets_query]
+               upload_query, has_rui_query, processed_datasets_query]
     results = [None] * len(queries)
     threads = []
     for i, query in enumerate(queries):
@@ -2480,7 +2480,7 @@ def update_datasets_datastatus():
     descendant_datasets_result = results[3]
     upload_result = results[4]
     has_rui_result = results[5]
-    derived_datasets_result = results[6]
+    processed_datasets_result = results[6]
 
     for dataset in all_datasets_result:
         output_dict[dataset['uuid']] = dataset
@@ -2498,9 +2498,9 @@ def update_datasets_datastatus():
     for dataset in descendant_datasets_result:
         if output_dict.get(dataset['uuid']):
             output_dict[dataset['uuid']]['descendant_datasets'] = dataset['descendant_datasets']
-    for dataset in derived_datasets_result:
+    for dataset in processed_datasets_result:
         if output_dict.get(dataset['uuid']):
-            output_dict[dataset['uuid']]['derived_datasets'] = dataset['derived_datasets']
+            output_dict[dataset['uuid']]['processed_datasets'] = dataset['processed_datasets']
     for dataset in upload_result:
         if output_dict.get(dataset['uuid']):
             output_dict[dataset['uuid']]['upload'] = dataset['upload']
@@ -2526,7 +2526,7 @@ def update_datasets_datastatus():
         dataset['has_dataset_metadata'] = has_dataset_metadata
 
         for prop in dataset:
-            if isinstance(dataset[prop], list) and prop != 'derived_datasets':
+            if isinstance(dataset[prop], list) and prop != 'processed_datasets':
                 dataset[prop] = ", ".join(dataset[prop])
             if isinstance(dataset[prop], (bool)):
                 dataset[prop] = str(dataset[prop])
