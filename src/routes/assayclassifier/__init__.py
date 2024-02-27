@@ -110,6 +110,11 @@ def build_entity_metadata(entity) -> dict:
             # If there is no ingest-metadata, then it must be a derived dataset
             metadata["data_types"] = calculate_data_types(entity)
 
+            # If it is a derived dataset, we should determine whether its dcwg or not
+            # based on its immediate ancestors
+            metadata["metadata_schema_id"] = entity.immediate_ancestors[0] \
+                .get("ingest_metadata", {}).get("metadata", {}).get("metadata_schema_id")
+
         if 'dag_provenance_list' in entity.ingest_metadata:
             dag_prov_list = entity.ingest_metadata['dag_provenance_list']
         else:
@@ -133,6 +138,7 @@ def build_entity_metadata(entity) -> dict:
         metadata["data_types"] = calculate_data_types(entity)
 
     metadata["entity_type"] = entity.entity_type
+    metadata["creation_action"] = entity.creation_action
 
     return metadata
 
