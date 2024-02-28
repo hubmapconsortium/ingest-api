@@ -228,10 +228,17 @@ def get_sub_type_name_by_entity_type(entity_type: str) -> str:
 
 
 def supported_metadata_sub_types(entity_type: str) -> list:
+    """
+    See https://github.com/hubmapconsortium/ingest-api/issues/503 for an explanation
+    of why the formerly capitalized strings were changed to lower case in the data returned.
+
+    Bill: I’m guessing the equivalent values aren’t available in the HuBMAP ontology/ubkg,
+    so for now just lower case the hard coded values that it is comparing them too.
+    """
     if equals(entity_type, 'Source'):
-        return ['Human']
+        return ['human']
     else:
-        return ["Block", "Section", "Suspension"]
+        return ["block", "section", "suspension"]
 
 
 def validate_records_uuids(records: list, entity_type: str, sub_type, pathname: str):
