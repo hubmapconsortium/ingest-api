@@ -25,7 +25,7 @@
     },
     {
         "type": "note",
-        "match": "creation_action == 'Create Publication Activity' or dataset_type == 'Publication'",
+        "match": "creation_action == 'Create Publication Activity' or dataset_type == 'Publication' or assay_type == 'publication'",
         "value": "{'is_publication': true}",
         "rule_description": "Preamble rule identifying publications"
     },
@@ -91,9 +91,15 @@
     },
     {
         "type": "match",
-        "match": "is_central_processed and data_types[0] in ['codex_cytokit_v1']",
-        "value": "{'assaytype': 'codex_cytokit_v1', 'vitessce-hints': ['codex', 'is_image', 'is_tiled'], 'primary': false, 'contains-pii': false, 'description': 'CODEX [Cytokit + SPRM]'}",
+        "match": "is_central_processed and data_types[0] in ['codex_cytokit_v1'] and [elt for elt in dag_provenance_list if elt =~~ 'anndata']",
+        "value": "{'assaytype': 'codex_cytokit_v1', 'vitessce-hints': ['codex', 'is_image', 'is_tiled', 'anndata'], 'primary': false, 'contains-pii': false, 'description': 'CODEX [Cytokit + SPRM]'}",
         "rule_description": "non-DCWG derived codex_cytokit_v1"
+    },
+    {
+        "type": "match",
+        "match": "is_central_processed and data_types[0] in ['codex_cytokit_v1'] and not [elt for elt in dag_provenance_list if elt =~~ 'anndata']",
+        "value": "{'assaytype': 'codex_cytokit_v1', 'vitessce-hints': ['codex', 'is_image', 'is_tiled', 'json_based'], 'primary': false, 'contains-pii': false, 'description': 'CODEX [Cytokit + SPRM]'}",
+        "rule_description": "non-DCWG derived codex_cytokit_v1 json-based"
     },
     {
         "type": "match",
@@ -265,9 +271,9 @@
     },
     {
         "type": "match",
-        "match": "not_dcwg and is_publication and data_types[0] in ['publication']",
+        "match": "is_publication",
         "value": "{'assaytype': 'publication', 'vitessce-hints': [], 'primary': false, 'contains-pii': false, 'description': 'Publication Data'}",
-        "rule_description": "non-DCWG derived publication"
+        "rule_description": "derived publication"
     },
     {
         "type": "match",
@@ -415,9 +421,15 @@
     },
     {
         "type": "match",
-        "match": "is_central_processed and data_types[0] in ['salmon_sn_rnaseq_10x', 'salmon_rnaseq_10x_sn', 'salmon_rnaseq_10x_v2_sn']",
+        "match": "is_central_processed and data_types[0] in ['salmon_sn_rnaseq_10x', 'salmon_rnaseq_10x_sn', 'salmon_rnaseq_10x_v2_sn'] and [elt for elt in dag_provenance_list if elt =~~ 'anndata']",
         "value": "{'assaytype': 'salmon_sn_rnaseq_10x', 'vitessce-hints': ['is_sc', 'rna'], 'primary': false, 'contains-pii': false, 'description': 'snRNA-seq [Salmon]'}",
         "rule_description": "non-DCWG derived salmon_sn_rnaseq_10x"
+    },
+    {
+        "type": "match",
+        "match": "is_central_processed and data_types[0] in ['salmon_sn_rnaseq_10x', 'salmon_rnaseq_10x_sn', 'salmon_rnaseq_10x_v2_sn'] and not [elt for elt in dag_provenance_list if elt =~~ 'anndata']",
+        "value": "{'assaytype': 'salmon_sn_rnaseq_10x', 'vitessce-hints': ['is_sc', 'rna', 'json_based'], 'primary': false, 'contains-pii': false, 'description': 'snRNA-seq [Salmon]'}",
+        "rule_description": "non-DCWG derived salmon_sn_rnaseq_10x json-based"
     },
     {
         "type": "match",
@@ -488,31 +500,31 @@
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'Visium (no probes)'",
-        "value": "{'assaytype': 'visium-no-probes', 'vitessce-hints': [], 'dir-schema': 'visium-no-probes-v2', 'description': 'Visium (No probes)', 'contains-pii': true, 'primary': true, 'dataset-type': 'Visium (no probes)', 'must-contain': ['Histology','RNAseq']}",
+        "value": "{'assaytype': 'visium-no-probes', 'vitessce-hints': [], 'dir-schema': 'visium-no-probes-v2', 'description': 'Visium (no probes)', 'contains-pii': true, 'primary': true, 'dataset-type': 'Visium (no probes)', 'must-contain': ['Histology','RNAseq'], 'is-multi-assay': true}",
         "rule_description": "DCWG visium-no-probes"
     },
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'Visium (with probes)'",
-        "value": "{'assaytype': 'visium-with-probes', 'vitessce-hints': [], 'dir-schema': 'visium-with-probes-v2', 'description': 'Visium (With probes)', 'contains-pii': true, 'primary': true, 'dataset-type': 'Visium (with probes)', 'must-contain': ['Histology','RNAseq (with probes)']}",
+        "value": "{'assaytype': 'visium-with-probes', 'vitessce-hints': [], 'dir-schema': 'visium-with-probes-v2', 'description': 'Visium (with probes)', 'contains-pii': true, 'primary': true, 'dataset-type': 'Visium (with probes)', 'must-contain': ['Histology','RNAseq (with probes)'], 'is-multi-assay': true}",
         "rule_description": "DCWG visium-with-probes"
     },
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'GeoMx (NGS)'",
-        "value": "{'assaytype': 'geomx_ngs?', 'vitessce-hints': [], 'dir-schema': 'geomx-ngs-v2', 'description': 'GeoMx (NGS)', 'contains-pii': true, 'primary': true, 'dataset-type': 'GeoMx (NGS)', 'must-contain': ['RNAseq']}",
+        "value": "{'assaytype': 'geomx_ngs?', 'vitessce-hints': [], 'dir-schema': 'geomx-ngs-v2', 'description': 'GeoMx (NGS)', 'contains-pii': true, 'primary': true, 'dataset-type': 'GeoMx (NGS)', 'must-contain': ['RNAseq'], 'is-multi-assay': true}",
         "rule_description": "DCWG geomx_ngs?"
     },
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == '10X Multiome'",
-        "value": "{'assaytype': '10x-multiome', 'vitessce-hints': [], 'dir-schema': '10x-multiome-v2', 'description': '10X Multiome', 'contains-pii': true, 'primary': true, 'dataset-type': '10X Multiome', 'must-contain': ['RNAseq','ATACseq']}",
+        "value": "{'assaytype': '10x-multiome', 'vitessce-hints': [], 'dir-schema': '10x-multiome-v2', 'description': '10X Multiome', 'contains-pii': true, 'primary': true, 'dataset-type': '10X Multiome', 'must-contain': ['RNAseq','ATACseq'], 'is-multi-assay': true}",
         "rule_description": "DCWG 10x-multiome"
     },
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'SNARE-seq2'",
-        "value": "{'assaytype': 'multiome-snare-seq2', 'vitessce-hints': [], 'dir-schema': 'snareseq2-v2', 'description': 'SNARE-seq2', 'contains-pii': true, 'primary': true, 'dataset-type': 'SNARE-seq2', 'must-contain': ['RNAseq','ATACseq']}",
+        "value": "{'assaytype': 'multiome-snare-seq2', 'vitessce-hints': [], 'dir-schema': 'snareseq2-v2', 'description': 'SNARE-seq2', 'contains-pii': true, 'primary': true, 'dataset-type': 'SNARE-seq2', 'must-contain': ['RNAseq','ATACseq'], 'is-multi-assay': true}",
         "rule_description": "DCWG multiome-snare-seq2"
     },
     {
@@ -727,8 +739,8 @@
     },
     {
         "type": "match",
-        "match": "is_dcwg and is_central_processed and data_types[0] in ['visium_no_probes']",
-        "value": "{'assaytype': 'visium-no-probes', 'vitessce-hints': [], 'primary': false, 'contains-pii': false, 'description': 'Visium (no probes) [Salmon + Scanpy]'}",
+        "match": "is_central_processed and data_types[0] in ['visium_no_probes']",
+        "value": "{'assaytype': 'visium-no-probes', 'vitessce-hints': ['rna', 'is_image', 'anndata', 'spatial'], 'primary': false, 'contains-pii': false, 'description': 'Visium (no probes) [Salmon + Scanpy]', 'is-multi-assay': true}",
         "rule_description": "non-DCWG derived visium-no-probes"
     }
 ]
