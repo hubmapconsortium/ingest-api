@@ -2434,9 +2434,9 @@ def update_datasets_datastatus():
         "COLLECT(DISTINCT dn.lab_donor_id) AS donor_lab_id, COALESCE(dn.metadata IS NOT NULL) AS has_donor_metadata"
     )
 
-    descendant_datasets_query = (
-        "MATCH (dds:Dataset)<-[*]-(ds:Dataset)<-[:ACTIVITY_OUTPUT]-(:Activity)<-[:ACTIVITY_INPUT]-(:Sample) "
-        "RETURN DISTINCT ds.uuid AS uuid, COLLECT(DISTINCT dds) AS descendant_datasets"
+    processed_datasets_query = (
+        "MATCH (s:Dataset)<-[:ACTIVITY_OUTPUT]-(a:Activity)<-[:ACTIVITY_INPUT]-(ds:Dataset) WHERE "
+                             "a.creation_action in ['Central Process', 'Lab Process'] RETURN DISTINCT ds.uuid AS uuid, COLLECT(DISTINCT s) AS processed_datasets"
     )
 
     upload_query = (
@@ -2454,10 +2454,10 @@ def update_datasets_datastatus():
     displayed_fields = [
         "hubmap_id", "group_name", "status", "organ", "provider_experiment_id", "last_touch", "has_contacts",
         "has_contributors", "donor_hubmap_id", "donor_submission_id", "donor_lab_id",
-        "has_dataset_metadata", "has_donor_metadata", "descendant_datasets", "upload", "has_rui_info", "globus_url", "has_data", "organ_hubmap_id"
+        "has_dataset_metadata", "has_donor_metadata", "upload", "has_rui_info", "globus_url", "has_data", "organ_hubmap_id"
     ]
 
-    queries = [all_datasets_query, organ_query, donor_query, descendant_datasets_query,
+    queries = [all_datasets_query, organ_query, donor_query, processed_datasets_query,
                upload_query, has_rui_query]
     results = [None] * len(queries)
     threads = []
@@ -2472,7 +2472,7 @@ def update_datasets_datastatus():
     all_datasets_result = results[0]
     organ_result = results[1]
     donor_result = results[2]
-    descendant_datasets_result = results[3]
+    processed_datasets_result = results[3]
     upload_result = results[4]
     has_rui_result = results[5]
 
@@ -2489,9 +2489,9 @@ def update_datasets_datastatus():
             output_dict[dataset['uuid']]['donor_submission_id'] = dataset['donor_submission_id']
             output_dict[dataset['uuid']]['donor_lab_id'] = dataset['donor_lab_id']
             output_dict[dataset['uuid']]['has_donor_metadata'] = dataset['has_donor_metadata']
-    for dataset in descendant_datasets_result:
+    for dataset in processed_datasets_result:
         if output_dict.get(dataset['uuid']):
-            output_dict[dataset['uuid']]['descendant_datasets'] = dataset['descendant_datasets']
+            output_dict[dataset['uuid']]['processed_datasets'] = dataset['processed_datasets']
     for dataset in upload_result:
         if output_dict.get(dataset['uuid']):
             output_dict[dataset['uuid']]['upload'] = dataset['upload']
@@ -2506,9 +2506,7 @@ def update_datasets_datastatus():
     for dataset in combined_results:
         globus_url = get_globus_url(dataset.get('data_access_level'), dataset.get('group_name'), dataset.get('uuid'))
         dataset['globus_url'] = globus_url
-        last_touch = dataset['last_touch'] if dataset['published_timestamp'] is None else dataset['published_timestamp']
-        dataset['last_touch'] = str(datetime.datetime.utcfromtimestamp(last_touch/1000)) + ' UTC'
-        dataset['created_timestamp'] = str(datetime.datetime.utcfromtimestamp(dataset['created_timestamp']/1000)) + ' UTC'
+        dataset['last_touch'] = dataset['last_touch'] if dataset['published_timestamp'] is None else dataset['published_timestamp']
         if dataset.get('activity_creation_action').lower().endswith("process"):
             dataset['is_primary'] = "False"
         else:
@@ -2519,9 +2517,9 @@ def update_datasets_datastatus():
         dataset['has_dataset_metadata'] = has_dataset_metadata
 
         for prop in dataset:
-            if isinstance(dataset[prop], list) and prop != 'descendant_datasets':
+            if isinstance(dataset[prop], list) and prop != 'processed_datasets':
                 dataset[prop] = ", ".join(dataset[prop])
-            if isinstance(dataset[prop], (bool, int)):
+            if isinstance(dataset[prop], (bool)):
                 dataset[prop] = str(dataset[prop])
             if isinstance(dataset[prop], str) and \
                     len(dataset[prop]) >= 2 and \
