@@ -1027,19 +1027,19 @@ def publish_datastage(identifier):
                 for e_id in uuids_for_public:
                     out = entity_instance.clear_cache(e_id)
 
-            # Write out the metadata.json file after all processing has been done...
-#            ds_path = ingest_helper.dataset_directory_absolute_path(dataset_data_access_level,
-#                                                                    dataset_group_uuid, dataset_uuid, False)
-#            md_file = os.path.join(ds_path, "metadata.json")
-#            json_object = entity_json_dumps(entity_instance, dataset_uuid)
-#            logger.info(f"publish_datastage; writing metadata.json file: '{md_file}'; "
-#                        f"containing: '{json_object}'")
-#            try:
-#                with open(md_file, "w") as outfile:
-#                    outfile.write(json_object)
-#            except Exception as e:
-#                logger.exception(f"Fatal error while writing md_file {md_file}; {str(e)}")
-#                return jsonify({"error": f"{dataset_uuid} problem writing metadata.json file."}), 500
+            # Write out the metadata.json file after all processing has been done for publication...
+            ds_path = ingest_helper.dataset_directory_absolute_path_published(dataset_data_access_level,
+                                                                              dataset_group_uuid, dataset_uuid)
+            md_file = os.path.join(ds_path, "metadata.json")
+            json_object = entity_json_dumps(entity_instance, dataset_uuid)
+            logger.info(f"publish_datastage; writing metadata.json file: '{md_file}'; "
+                        f"containing: '{json_object}'")
+            try:
+                with open(md_file, "w") as outfile:
+                    outfile.write(json_object)
+            except Exception as e:
+                logger.exception(f"Fatal error while writing md_file {md_file}; {str(e)}")
+                return jsonify({"error": f"{dataset_uuid} problem writing metadata.json file."}), 500
 
         if no_indexing_and_acls:
             r_val = {'acl_cmd': acls_cmd, 'donors_for_indexing': donors_to_reindex}

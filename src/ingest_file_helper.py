@@ -177,13 +177,16 @@ class IngestFileHelper:
             print(facl_command)
         return facl_command
 
+    def dataset_directory_absolute_path_published(self, dataset_access_level, group_uuid, uuid):
+        data_access_level = 'protected'
+        if not dataset_access_level == 'protected': data_access_level = 'public'
+        return self.dataset_directory_absolute_path(data_access_level, group_uuid, uuid, True)
+
     def move_dataset_files_for_publishing(self, uuid, group_uuid, dataset_access_level, trial_run = False):
         from_path = self.dataset_directory_absolute_path(dataset_access_level, group_uuid, uuid, False)
         if not os.path.isdir(from_path):
             raise HTTPException(f"{uuid}: path not found to dataset will not publish, path is {from_path}", 500)
-        data_access_level = 'protected'
-        if not dataset_access_level == 'protected': data_access_level = 'public'
-        to_path = self.dataset_directory_absolute_path(data_access_level, group_uuid, uuid, True)
+        to_path = self.dataset_directory_absolute_path_published(dataset_access_level, group_uuid, uuid)
         if not trial_run:
             shutil.move(from_path, to_path)
         else:
