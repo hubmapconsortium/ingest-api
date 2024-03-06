@@ -56,7 +56,7 @@
     {
         "type": "match",
         "match": "not_dcwg and not_derived and assay_type in ['cell-dive', 'cell DIVE', 'Cell DIVE']",
-        "value": "{'assaytype': 'cell-dive', 'dir-schema': 'celldive-v0', 'tbl-schema': 'celldive-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'Cell DIVE', 'dataset-type': 'Cell Dive' }",
+        "value": "{'assaytype': 'cell-dive', 'dir-schema': 'celldive-v0', 'tbl-schema': 'celldive-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'Cell DIVE', 'dataset-type': 'Cell DIVE' }",
         "rule_description": "non-DCWG primary cell-dive"
     },
     {
@@ -637,8 +637,8 @@
     },
     {
         "type": "match",
-        "match": "is_dcwg and dataset_type == 'Cell Dive'",
-        "value": "{'assaytype': 'cell-dive', 'vitessce-hints': [], 'dir-schema': 'celldive-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'Cell Dive', 'description': 'Cell DIVE'}",
+        "match": "is_dcwg and dataset_type == 'Cell DIVE'",
+        "value": "{'assaytype': 'cell-dive', 'vitessce-hints': [], 'dir-schema': 'celldive-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'Cell DIVE', 'description': 'Cell DIVE'}",
         "rule_description": "DCWG cell-dive"
     },
     {
