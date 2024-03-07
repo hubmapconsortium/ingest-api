@@ -62,7 +62,7 @@
     {
         "type": "match",
         "match": "not_dcwg and is_derived and data_types[0] in ['celldive_deepcell']",
-        "value": "{'assaytype': 'celldive_deepcell', 'vitessce-hints': ['sprm', 'anndata', 'is_image', 'is_tiled'], 'primary': false, 'contains-pii': false, 'description': 'CellDIVE [DeepCell + SPRM]'}",
+        "value": "{'assaytype': 'celldive_deepcell', 'vitessce-hints': ['sprm', 'anndata', 'is_image', 'is_tiled'], 'primary': false, 'contains-pii': false, 'description': 'Cell DIVE [DeepCell + SPRM]'}",
         "rule_description": "non-DCWG derived celldive_deepcell"
     },
     {
