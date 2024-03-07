@@ -1039,7 +1039,7 @@ def publish_datastage(identifier):
                     outfile.write(json_object)
             except Exception as e:
                 logger.exception(f"Fatal error while writing md_file {md_file}; {str(e)}")
-                return jsonify({"error": f"{dataset_uuid} problem writing metadata.json file."}), 500
+                return jsonify({"error": f"Dataset UUID {dataset_uuid}; Problem writing metadata.json file to path: '{md_file}'; error text: {str(e)}."}), 500
 
         if no_indexing_and_acls:
             r_val = {'acl_cmd': acls_cmd, 'donors_for_indexing': donors_to_reindex}
