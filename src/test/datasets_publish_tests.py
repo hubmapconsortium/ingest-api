@@ -181,6 +181,8 @@ with neo4j_driver_instance.session() as neo4j_session:
         mkdir_p(full_protected_path)
         os.system(f"touch '{protected_path}/{dataset_group_name}/{dataset_uuid}/secondary_analysis.h5ad'")
         rm_f(metadata_json_path)
+    else:
+        input("Please create the above directories (770) on the server, and then press Enter to continue...")
 
     publish_and_check(dataset_uuid, metadata_json_path[1:-1])
 
@@ -209,6 +211,8 @@ with neo4j_driver_instance.session() as neo4j_session:
         copy_path: str = os.path.join(full_public_path, dataset_uuid)
         rm_f(copy_path)
         rm_f(metadata_json_path)
+    else:
+        input("Please create the above directories (770) on the server, and then press Enter to continue...")
 
     publish_and_check(dataset_uuid, metadata_json_path)
 
