@@ -188,7 +188,7 @@ with neo4j_driver_instance.session() as neo4j_session:
     query_consortium: str = query_str('consortium')
     rval = neo4j_session.run(query_consortium).data()
     if len(rval) == 0:
-        eprint(f"Neo4J query returned no records; query: {query_protected}")
+        eprint(f"Neo4J query returned no records; query: {query_consortium}")
         exit()
 
     dataset_uuid: str = rval[0]['ds_uuid']
