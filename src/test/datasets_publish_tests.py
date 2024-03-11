@@ -91,14 +91,14 @@ class RawTextArgumentDefaultsHelpFormatter(
 parser = argparse.ArgumentParser(
     description='''
     "Script to test app.py:publish_datastage()
+    
+    There should be three tests (but there are only the first two implemented) where:
+    1) Primary human genetic sequences = False (consortia) generate a metadata.json,
+    2) Primary human genetic sequences = True (protected) generate a metadata.json,
+    3) Primary a derived/processed dataset (datasets that hang off other datasets) DO NOT generate a metadata.json.
 
     http://18.205.215.12:7474/browser/ (see app.cfg for username and password)
 
-    Then use this call replacing ds.uuid with the value of ds.uuid...
-    curl -v --location --request PUT 'http://localhost:8484/datasets/ds.uuid/publish?suspend-indexing-and-acls=true' --header "Authorization: Bearer $TOKEN"
-
-    Tests using both protected and consortium identifiers.
-    
     Login through the UI to get the credentials...
     https://ingest.dev.hubmapconsortium.org/
     In Firefox (Tools > Browser Tools > Web Developer Tools). Click on "Storage" then the dropdown for "Local Storage"
@@ -160,9 +160,36 @@ public_path: str = config['GLOBUS_PUBLIC_ENDPOINT_FILEPATH']
 #     In Globus Groups (https://app.globus.org/groups) you will also need to be associated with
 #     the group for `ds.group_name`.
 #     Use 'https://ingest.dev.hubmapconsortium.org/' to get the 'Local Storage/info/groups_token' for the $TOKEN
+
+with neo4j_driver_instance.session() as neo4j_session:
+    query_protected: str = query_str('protected')
+    rval = neo4j_session.run(query_protected).data()
+    if len(rval) == 0:
+        eprint(f"Neo4J query returned no records; query: {query_protected}")
+        exit()
+
+    dataset_uuid: str = rval[0]['ds_uuid']
+    dataset_group_name: str = rval[0].get('ds_group_name')
+
+    full_protected_path: str = f"'{protected_path}/{dataset_group_name}/{dataset_uuid}'"
+    vprint(f'Full protected path: {full_protected_path}')
+    metadata_json_path: str = f"'{protected_path}/{dataset_group_name}/{dataset_uuid}/metadata.json'"
+    vprint(f'Metadata json path: {metadata_json_path}')
+
+    if not args.skip_file_work:
+        vprint('File work!!!')
+        mkdir_p(full_protected_path)
+        os.system(f"touch '{protected_path}/{dataset_group_name}/{dataset_uuid}/secondary_analysis.h5ad'")
+        rm_f(metadata_json_path)
+
+    publish_and_check(dataset_uuid, metadata_json_path[1:-1])
+
 with neo4j_driver_instance.session() as neo4j_session:
     query_consortium: str = query_str('consortium')
     rval = neo4j_session.run(query_consortium).data()
+    if len(rval) == 0:
+        eprint(f"Neo4J query returned no records; query: {query_protected}")
+        exit()
 
     dataset_uuid: str = rval[0]['ds_uuid']
     dataset_group_name: str = rval[0].get('ds_group_name')
@@ -184,27 +211,6 @@ with neo4j_driver_instance.session() as neo4j_session:
         rm_f(metadata_json_path)
 
     publish_and_check(dataset_uuid, metadata_json_path)
-
-
-with neo4j_driver_instance.session() as neo4j_session:
-    query_protected: str = query_str('protected')
-    rval = neo4j_session.run(query_protected).data()
-
-    dataset_uuid: str = rval[0]['ds_uuid']
-    dataset_group_name: str = rval[0].get('ds_group_name')
-
-    full_protected_path: str = f"'{protected_path}/{dataset_group_name}/{dataset_uuid}'"
-    vprint(f'Full protected path: {full_protected_path}')
-    metadata_json_path: str = f"'{protected_path}/{dataset_group_name}/{dataset_uuid}/metadata.json'"
-    vprint(f'Metadata json path: {metadata_json_path}')
-
-    if not args.skip_file_work:
-        vprint('File work!!!')
-        mkdir_p(full_protected_path)
-        os.system(f"touch '{protected_path}/{dataset_group_name}/{dataset_uuid}/secondary_analysis.h5ad'")
-        rm_f(metadata_json_path)
-
-    publish_and_check(dataset_uuid, metadata_json_path[1:-1])
 
 neo4j_driver_instance.close()
 print("Done!")
