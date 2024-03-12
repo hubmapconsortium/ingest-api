@@ -169,7 +169,7 @@ class IngestFileHelper:
             
         # apply the permissions
         # put quotes around the path since it often contains spaces
-        facl_command = "setfacl" + ' -R -b' +  ' --set=' + acl_text + " '" + file_path + "'"
+        facl_command = "setfacl" + ' -R -b' + ' --set=' + acl_text + " '" + file_path + "'"
         self.logger.info("Executing command: " + facl_command)
         if not trial_run:
             subprocess.Popen(['setfacl','-R', '-b', '--set=' + acl_text, file_path ])

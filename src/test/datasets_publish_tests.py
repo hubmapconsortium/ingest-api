@@ -5,9 +5,13 @@ import os
 import sys
 import requests
 import json
+from urllib.parse import urlparse
 
 from hubmap_commons import neo4j_driver
+from hubmap_commons.hubmap_const import HubmapConst
 from ingest_file_helper import IngestFileHelper
+
+local_execution: bool = False
 
 
 def eprint(*args, **kwargs) -> None:
@@ -42,17 +46,22 @@ def query_str(data_access_level: str) -> str:
 
 
 def mkdir_p(path: str) -> None:
-    os.system(f"mkdir -p {path}")
+    cmd: str = f"mkdir -p {path}"
+    vprint(f"mkdir_p: {cmd}")
+    os.system(cmd)
 
 
 def rm_f(path: str) -> None:
     if os.path.exists(path):
+        vprint(f"rm_f: {path}")
         os.remove(path)
 
 
 def rm_rf(path: str) -> None:
     if os.path.exists(path):
-        os.system(f"rm -rf {path}")
+        cmd: str = f"rm -rf {path}"
+        vprint(f"rm_rf: {cmd}")
+        os.system(cmd)
 
 
 def publish_and_check(dataset_uuid: str, metadata_json_path: str) -> None:
@@ -67,7 +76,7 @@ def publish_and_check(dataset_uuid: str, metadata_json_path: str) -> None:
     if response.status_code != 200:
         eprint(f"Unexpected status code {response.status_code} from url {route_url}; response text: {response.text}")
         exit()
-    if not args.skip_file_work:
+    if local_execution:
         if not os.path.exists(metadata_json_path):
             eprint(f"metadata.json file not found where expected {metadata_json_path}")
             exit()
@@ -113,7 +122,7 @@ parser = argparse.ArgumentParser(
     ALSO: ingest_file_helper.py(194) set_dataset_permissions(..., trial_run = True): from False.
     
     REMOTELY RUN AND GET PATHS TO MANUALLY TEST:
-    /Users/cpk36/Documents/Git/ingest-api/src/test/datasets_publish_tests.py ../instance/app_dev.cfg https://ingest-api.dev.hubmapconsortium.org BEARER_TOKEN -s -v
+    /Users/cpk36/Documents/Git/ingest-api/src/test/datasets_publish_tests.py ../instance/app_dev.cfg https://ingest-api.dev.hubmapconsortium.org BEARER_TOKEN -v
     ''',
     formatter_class=RawTextArgumentDefaultsHelpFormatter)
 parser.add_argument('cfg_file',
@@ -124,8 +133,6 @@ parser.add_argument('ingest_url',
                     help='url for ingest-api microservice (should be http://127.0.0.1:8484)')
 parser.add_argument('bearer_token',
                     help='groups_token from Local Storage when logged into ingest-dev (see above)')
-parser.add_argument("-s", "--skip_file_work", action="store_true",
-                    help='use this if the ingest_url is other than localhost because then we cannot change the file system')
 parser.add_argument("-v", "--verbose", action="store_true",
                     help='verbose output')
 
@@ -134,6 +141,9 @@ os.environ['VERBOSE'] = str(args.verbose)
 
 config = parse_cfg(args.cfg_file)
 
+if urlparse(args.ingest_url).hostname in ['127.0.0.1', 'localhost']:
+    local_execution = True
+print(f"local_execution: {local_execution}")
 
 try:
     neo4j_driver_instance = neo4j_driver.instance(config['NEO4J_SERVER'],
@@ -161,6 +171,7 @@ public_path: str = config['GLOBUS_PUBLIC_ENDPOINT_FILEPATH']
 #     the group for `ds.group_name`.
 #     Use 'https://ingest.dev.hubmapconsortium.org/' to get the 'Local Storage/info/groups_token' for the $TOKEN
 
+vprint("BEGIN Processing Protected test case...")
 with neo4j_driver_instance.session() as neo4j_session:
     query_protected: str = query_str('protected')
     rval = neo4j_session.run(query_protected).data()
@@ -173,19 +184,28 @@ with neo4j_driver_instance.session() as neo4j_session:
 
     full_protected_path: str = f"'{protected_path}/{dataset_group_name}/{dataset_uuid}'"
     vprint(f'Full protected path: {full_protected_path}')
-    metadata_json_path: str = f"'{protected_path}/{dataset_group_name}/{dataset_uuid}/metadata.json'"
+    metadata_json_path: str = f"'{full_protected_path[1:-1]}/metadata.json'"
     vprint(f'Metadata json path: {metadata_json_path}')
+    secondary_analysis_path: str = f"'{full_protected_path[1:-1]}/secondary_analysis.h5ad'"
+    vprint(f'Secondary Analysis path: {secondary_analysis_path}')
 
-    if not args.skip_file_work:
-        vprint('File work!!!')
+    if local_execution:
         mkdir_p(full_protected_path)
-        os.system(f"touch '{protected_path}/{dataset_group_name}/{dataset_uuid}/secondary_analysis.h5ad'")
+        os.system(f"touch {secondary_analysis_path}")
         rm_f(metadata_json_path)
     else:
-        input("Please create the above directories (770) on the server, and then press Enter to continue...")
+        print(f"mkdir -p {full_protected_path}")
+        setfacl_cmd: str = ingest_helper.set_dir_permissions(HubmapConst.ACCESS_LEVEL_PROTECTED, full_protected_path, False, True)
+        setfacl_cmd = setfacl_cmd.replace("''", "'")
+        print(setfacl_cmd)
+        print(f"touch {secondary_analysis_path}")
+        print(f"rm -rf {metadata_json_path}")
+        input("Please execute the above commands on the PSC server, and then press Enter to continue...")
 
     publish_and_check(dataset_uuid, metadata_json_path[1:-1])
+vprint("END Processing Protected test case...")
 
+vprint("BEGIN Processing Consortium test case...")
 with neo4j_driver_instance.session() as neo4j_session:
     query_consortium: str = query_str('consortium')
     rval = neo4j_session.run(query_consortium).data()
@@ -202,19 +222,30 @@ with neo4j_driver_instance.session() as neo4j_session:
     vprint(f'Full public path: {full_public_path}')
     metadata_json_path: str = os.path.join(full_public_path, 'metadata.json')
     vprint(f'Metadata json path: {metadata_json_path}')
+    secondary_analysis_path: str = f"'{full_consortium_path[1:-1]}/secondary_analysis.h5ad'"
+    vprint(f'Secondary Analysis path: {secondary_analysis_path}')
 
-    if not args.skip_file_work:
-        vprint('File work!!!')
+    if local_execution:
         mkdir_p(full_consortium_path)
         mkdir_p(public_path)
-        os.system(f"touch {os.path.join(full_consortium_path, 'secondary_analysis.h5ad')}")
+        os.system(f"touch {secondary_analysis_path}")
         copy_path: str = os.path.join(full_public_path, dataset_uuid)
         rm_f(copy_path)
         rm_f(metadata_json_path)
     else:
-        input("Please create the above directories (770) on the server, and then press Enter to continue...")
+        print(f"mkdir -p {full_consortium_path}")
+        setfacl_cmd: str = ingest_helper.set_dir_permissions(HubmapConst.ACCESS_LEVEL_CONSORTIUM, full_consortium_path, False, True)
+        setfacl_cmd = setfacl_cmd.replace("''", "'")
+        print(setfacl_cmd)
+        print(f"mkdir -p {public_path}")
+        setfacl_cmd = ingest_helper.set_dir_permissions(HubmapConst.ACCESS_LEVEL_PUBLIC, public_path, False, True)
+        setfacl_cmd = setfacl_cmd.replace("''", "'")
+        print(setfacl_cmd)
+        print(f"touch {secondary_analysis_path}")
+        input("Please execute the above commands on the PSC server, and then press Enter to continue...")
 
     publish_and_check(dataset_uuid, metadata_json_path)
+vprint("END Processing Consortium test case...")
 
 neo4j_driver_instance.close()
 print("Done!")
