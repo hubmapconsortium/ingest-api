@@ -38,11 +38,14 @@ def parse_cfg(cfg_file) -> dict:
 
 
 def query_str(data_access_level: str) -> str:
-    return "MATCH (dn:Donor)-[*]->(s:Sample)-[:ACTIVITY_INPUT]->(:Activity)-[:ACTIVITY_OUTPUT]->" \
-            f"(ds:Dataset {{status:'QA', data_access_level:'{data_access_level}'}}) " \
-            "WHERE not ds.ingest_metadata is null AND not ds.contacts is null AND " \
-            "not ds.contributors is null AND not dn.metadata is null " \
-            "RETURN ds.uuid as ds_uuid, ds.group_name as ds_group_name;"
+    """
+    This Cypher query should return Datasets that SHOULD have a metadata.json written at Publication time.
+    """
+    return "MATCH (dn:Donor)-[*]->(s:Sample)-[:ACTIVITY_INPUT]->(a:Activity)-[:ACTIVITY_OUTPUT]->" \
+           f"(ds:Dataset {{status:'QA', data_access_level:'{data_access_level}'}}) " \
+           "WHERE not ds.ingest_metadata is null AND not ds.contacts is null AND " \
+           "not ds.contributors is null AND not dn.metadata is null AND a.creation_action <> 'Central Process' " \
+           "RETURN ds.uuid as ds_uuid, ds.group_name as ds_group_name;"
 
 
 def query_derived_str() -> str:
@@ -51,6 +54,8 @@ def query_derived_str() -> str:
     Because of the new addition of “multi-assay component” datasets and existing Publications you may run across
     just a few stragglers returned there that aren’t valid for publication at all, so I would use this (just adding
     a constraint on the Activity.creation_action)-- this would ONLY be used separately to find datasets.
+
+    This Cypher query should return Datasets that SHOULD NOT have a metadata.json written at Publication time.
     """
     return "MATCH (:Dataset)-[:ACTIVITY_INPUT]->(Activity {creation_action:'Central Process'})-[:ACTIVITY_OUTPUT]->(ds:Dataset {status:'QA'}) " \
            "RETURN ds.uuid as ds_uuid, ds.group_name as ds_group_name, " \
@@ -99,7 +104,7 @@ def publish_and_check(dataset_uuid: str, metadata_json_path: str) -> None:
             if d.get('status') != "Published":
                 eprint(f"Dataset should have 'Published' status")
     else:
-        print(f"ls -al '{metadata_json_path}'")
+        print(f"ls -al '{metadata_json_path[1:-1]}'")
         input("Please execute the above commands on the PSC server, and then press Enter to continue...")
 
 class RawTextArgumentDefaultsHelpFormatter(
@@ -243,7 +248,7 @@ with neo4j_driver_instance.session() as neo4j_session:
             input("Please execute the above commands on the PSC server, and then press Enter to continue...")
 
     eprint(f"For this test the metadata.json file SHOULD NOT be found {metadata_json_path}")
-    publish_and_check(dataset_uuid, metadata_json_path[1:-1])
+    publish_and_check(dataset_uuid, metadata_json_path)
 vprint("END Processing Datasets with Parents test case...")
 
 vprint("BEGIN Processing Protected test case...")
