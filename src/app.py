@@ -1021,21 +1021,28 @@ def publish_datastage(identifier):
                 for e_id in uuids_for_public:
                     entity_instance.clear_cache(e_id)
 
-            # Write out the metadata.json file after all processing has been done for publication...
-            # NOTE: The metadata.json file must be written before set_dataset_permissions published=True is executed
-            # because (on examining the code) you can see that it causes the director to be not writable.
-            ds_path = ingest_helper.dataset_directory_absolute_path_published(dataset_data_access_level,
-                                                                              dataset_group_uuid, dataset_uuid)
-            md_file = os.path.join(ds_path, "metadata.json")
-            json_object = entity_json_dumps(entity_instance, dataset_uuid)
-            logger.info(f"publish_datastage; writing metadata.json file: '{md_file}'; "
-                        f"containing: '{json_object}'")
-            try:
-                with open(md_file, "w") as outfile:
-                    outfile.write(json_object)
-            except Exception as e:
-                logger.exception(f"Fatal error while writing md_file {md_file}; {str(e)}")
-                return jsonify({"error": f"Dataset UUID {dataset_uuid}; Problem writing metadata.json file to path: '{md_file}'; error text: {str(e)}."}), 500
+            # Only write the metadata.json file if the Dataset has no parents...
+            parents_query: str = \
+                "MATCH (ds:Dataset)-[:ACTIVITY_INPUT]->(:Activity {creation_action:'Central Process'})-[:ACTIVITY_OUTPUT]->" \
+                f"(:Dataset {{uuid:'{dataset_uuid}'}}) " \
+                "RETURN ds.uuid AS ds_parent_uuid"
+            parents_query_rval = neo_session.run(parents_query).data()
+            if len(parents_query_rval) == 0:
+                # Write out the metadata.json file after all processing has been done for publication...
+                # NOTE: The metadata.json file must be written before set_dataset_permissions published=True is executed
+                # because (on examining the code) you can see that it causes the director to be not writable.
+                ds_path = ingest_helper.dataset_directory_absolute_path_published(dataset_data_access_level,
+                                                                                  dataset_group_uuid, dataset_uuid)
+                md_file = os.path.join(ds_path, "metadata.json")
+                json_object = entity_json_dumps(entity_instance, dataset_uuid)
+                logger.info(f"publish_datastage; writing metadata.json file: '{md_file}'; "
+                            f"containing: '{json_object}'")
+                try:
+                    with open(md_file, "w") as outfile:
+                        outfile.write(json_object)
+                except Exception as e:
+                    logger.exception(f"Fatal error while writing md_file {md_file}; {str(e)}")
+                    return jsonify({"error": f"Dataset UUID {dataset_uuid}; Problem writing metadata.json file to path: '{md_file}'; error text: {str(e)}."}), 500
 
             # This must be done after ALL files are written because calling it with published=True causes the
             # directory to be made READ/EXECUTE only and any attempt to write a file will cause a server 500 error.
