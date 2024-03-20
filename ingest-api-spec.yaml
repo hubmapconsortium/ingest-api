@@ -663,6 +663,22 @@ paths:
         '500':
           description: Internal error
 
+  /privs/has-data-admin:
+    get:
+      summary: Determine if the user has data admin privs
+      operationId: privs_has_data_admin_privs
+      responses:
+        "200":
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                properties:
+                  has_data_admin_privs:
+                    type: boolean
+        "401":
+          description: User's token is not valid
+
 servers:
   - url: "https://uuid.hubmapconsortium.org/dataingest"
   - url: "http://uuid.hubmapconsortium.org/dataingest"
