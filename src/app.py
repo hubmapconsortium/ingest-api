@@ -1031,7 +1031,7 @@ def publish_datastage(identifier):
                 # Write out the metadata.json file after all processing has been done for publication...
                 # NOTE: The metadata.json file must be written before set_dataset_permissions published=True is executed
                 # because (on examining the code) you can see that it causes the director to be not writable.
-                ds_path = ingest_helper.dataset_directory_absolute_path_published(dataset_data_access_level,
+                ds_path = ingest_helper.dataset_directory_absolute_path_published(data_access_level,
                                                                                   dataset_group_uuid, dataset_uuid)
                 md_file = os.path.join(ds_path, "metadata.json")
                 json_object = entity_json_dumps(entity_instance, dataset_uuid)
