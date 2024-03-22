@@ -159,6 +159,29 @@ paths:
           description: User must be a member of the HuBMAP Data Admin group
         '500':
           description: Internal error
+  /datasets/bulk/submit:
+    put:
+      tags:
+        - datasets
+      summary: "Submit a list of Datasets for processing. This requires Data-Admin privileges."
+      requestBody:
+        content:
+          application/json:
+            schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/entity_uuid'
+      responses:
+        "202":
+          description: The Datasets were successfully submitted for processing
+        "401":
+          description: The user did not supply a valid token
+        "403":
+          description: The user does not have Data-Admin privileges
+        "404":
+          description: One or more supplied datasets do not exist
+        "500":
+          description: An unexpected error occurred
   /collections:
     get:
       tags:
@@ -693,6 +716,9 @@ components:
           type: string
     file_uuid:
       type: string
+    entity_uuid:
+      type: string
+      pattern: '^[a-f0-9]{32}$'
     Dataset:
       type: object
       required:
