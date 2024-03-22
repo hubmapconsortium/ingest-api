@@ -1,8 +1,33 @@
 from collections.abc import Iterable
 from typing import Optional, Union
+import logging
+from hubmap_commons.hm_auth import AuthHelper
+from hubmap_commons import neo4j_driver
+from routes.entity_CRUD.ingest_file_helper import IngestFileHelper
 
 
 class DatasetHelper:
+    confdata = {}
+
+    def __init__(self, config):
+        self.appconfig = config
+        self.logger = logging.getLogger('ingest.service')
+        self.auth_helper_instance = AuthHelper.configured_instance(config['APP_CLIENT_ID'], config['APP_CLIENT_SECRET'])
+        self.ingest_helper = IngestFileHelper(config)
+
+        # The new neo4j_driver (from commons package) is a singleton module
+        # This neo4j_driver_instance will be used for application-specifc neo4j queries
+        # as well as being passed to the schema_manager
+        try:
+            self.neo4j_driver_instance = neo4j_driver.instance(self.appconfig['NEO4J_SERVER'],
+                                                               self.appconfig['NEO4J_USERNAME'],
+                                                               self.appconfig['NEO4J_PASSWORD'])
+
+            self.logger.info("Initialized neo4j_driver module successfully :)")
+        except Exception:
+            msg = "Failed to initialize the neo4j_driver module"
+            # Log the full stack trace, prepend a line with our message
+            self.logger.exception(msg)
 
     def get_datasets_by_uuid(self, uuids: Union[str, Iterable], fields: Union[dict, Iterable, None] = None) -> Optional[list]:
         """Get the datasets from the neo4j database with the given uuids.
@@ -51,3 +76,13 @@ class DatasetHelper:
                 return None
 
             return records
+
+    def create_ingest_payload(self, dataset):
+        provider = self.auth_helper_instance.getGroupDisplayName(group_uuid=dataset['group_uuid'])
+        full_path = self.ingest_helper.get_dataset_directory_absolute_path(dataset, dataset['group_uuid'], dataset['uuid'])
+        return {
+            "submission_id": f"{dataset['uuid']}",
+            "process": "SCAN.AND.BEGIN.PROCESSING",
+            "full_path": full_path,
+            "provider": provider,
+        }
