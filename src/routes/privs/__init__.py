@@ -17,14 +17,12 @@ def privs_has_data_admin_privs():
     For a valid logged in token it will return the json {'has_data_admin_privs': true/false}
     with a status_code of 200.
     """
-    start_of_token: int = len('BEARER ')
-    authorization: str = request.headers.get('authorization')
-    if authorization is None or len(authorization) < start_of_token:
-        return Response("Non-active login", 401)
+    authorization = request.headers.get('authorization')
+    if authorization is None:
+        return Response("Please specify an Authorization Header", 401)
 
-    groups_token: str = authorization[start_of_token:]
     auth_helper_instance: AuthHelper = AuthHelper.instance()
-    data_admin_privs: List[dict] = auth_helper_instance.has_data_admin_privs(groups_token)
+    data_admin_privs = auth_helper_instance.has_data_admin_privs(authorization[7:])
     if isinstance(data_admin_privs, Response):
         return data_admin_privs
     return jsonify({"has_data_admin_privs": data_admin_privs})
