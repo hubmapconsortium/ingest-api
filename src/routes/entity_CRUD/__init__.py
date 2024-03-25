@@ -1,7 +1,7 @@
 from flask import Blueprint, current_app, jsonify
 import logging
 from threading import Thread
-#from atlas_consortia_commons.rest import abort_bad_req, abort_not_found, abort_internal_err
+from atlas_consortia_commons.rest import abort_bad_req, abort_not_found, abort_internal_err
 from lib.decorators import require_data_admin, require_json
 from routes.entity_CRUD.dataset_helper import DatasetHelper
 from routes.entity_CRUD.tasks import submit_datasets
@@ -17,7 +17,7 @@ def submit_datasets_from_bulk(uuids: list, token: str):
     if not isinstance(uuids, list) or len(uuids) == 0:
         abort_bad_req('A list of dataset uuids is required')
 
-    dataset_helper = DatasetHelper(current_app.config)
+    dataset_helper: DatasetHelper = DatasetHelper(current_app.config)
     uuids = set(uuids)
     try:
         fields = {'uuid'}

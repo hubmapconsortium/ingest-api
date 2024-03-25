@@ -61,12 +61,12 @@ def require_json(param: str = "body"):
 
 
 def require_data_admin(param: str = "token"):
-    """A decorator that checks if the user is a member of the SenNet Data Admin group.
+    """A decorator that checks if the user is a member of the Data Admin group.
 
     If the decorated function has a parameter with the same name as `param`, the
     user's token will be passed as that parameter. If the request has no token or an
     invalid token, a 401 Unauthorized response will be returned. If the user is not a
-    member of the SenNet Data Admin group, a 403 Forbidden response will be returned.
+    member of the Data Admin group, a 403 Forbidden response will be returned.
 
     Parameters
     ----------
@@ -95,11 +95,11 @@ def require_data_admin(param: str = "token"):
             )
             token = auth_helper.getUserTokenFromRequest(request, getGroups=True)
             if not isinstance(token, str):
-                abort_unauthorized("User must be a member of the SenNet Consortium")
+                abort_unauthorized("User must specify an authorization header token")
 
             is_data_admin = auth_helper.has_data_admin_privs(token)
             if is_data_admin is not True:
-                abort_forbidden("User must be a member of the SenNet Data Admin group")
+                abort_forbidden("User must be a member of the Data Admin group")
 
             if param and param in signature(f).parameters:
                 kwargs[param] = token
@@ -156,7 +156,7 @@ def require_valid_token(param: str = "token", groups_param: Optional[str] = None
 
             token = auth_helper.getUserTokenFromRequest(request, getGroups=True)
             if not isinstance(token, str):
-                abort_unauthorized("User must be a member of the SenNet Consortium")
+                abort_unauthorized("User must specify an authorization header token")
 
             if param in signature(f).parameters:
                 kwargs[param] = token

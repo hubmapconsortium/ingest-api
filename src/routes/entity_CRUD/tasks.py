@@ -12,7 +12,15 @@ def submit_datasets(dataset_uuids: list, token: str, config: dict):
     entity_api_url = config["ENTITY_WEBSERVICE_URL"]
 
     # change the status of the datasets to Processing using entity-api
-    update_payload = {uuid: {"status": "Processing"} for uuid in dataset_uuids}
+    update_payload = {
+        uuid: {
+            "status": "Processing",
+            "ingest_id": "",
+            "run_id": "",
+            "pipeline_message": "",
+        }
+        for uuid in dataset_uuids
+    }
     update_status_res = bulk_update_entities(
         update_payload, token, entity_api_url=entity_api_url
     )

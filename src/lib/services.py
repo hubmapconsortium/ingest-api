@@ -51,7 +51,7 @@ def bulk_update_entities(
 
     headers = {
         "Authorization": f"Bearer {token}",
-        "X-SenNet-Application": "ingest-api",
+        "X-Hubmap-Application": "ingest-api",
     }
     # create a session with retries
     session = requests.Session()
