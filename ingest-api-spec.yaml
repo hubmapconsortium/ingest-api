@@ -677,7 +677,7 @@ paths:
                   has_data_admin_privs:
                     type: boolean
         "401":
-          description: User's token is not valid
+          description: User's token is not valid or not specified
 
 servers:
   - url: "https://uuid.hubmapconsortium.org/dataingest"
