@@ -17,11 +17,7 @@ def privs_has_data_admin_privs():
     For a valid logged in token it will return the json {'has_data_admin_privs': true/false}
     with a status_code of 200.
     """
-    headers: dict = {
-        "Content-Type": "application/json"
-    }
     start_of_token: int = len('BEARER ')
-
     authorization: str = request.headers.get('authorization')
     if authorization is None or len(authorization) < start_of_token:
         return Response("Non-active login", 401)
@@ -31,4 +27,4 @@ def privs_has_data_admin_privs():
     data_admin_privs: List[dict] = auth_helper_instance.has_data_admin_privs(groups_token)
     if isinstance(data_admin_privs, Response):
         return data_admin_privs
-    return make_response(jsonify({"has_data_admin_privs": data_admin_privs}), 200, headers)
+    return jsonify({"has_data_admin_privs": data_admin_privs})
