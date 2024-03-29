@@ -13,7 +13,7 @@
     },
     {
         "type": "note",
-        "match": "creation_action == 'Create Dataset Activity' or creation_action == 'Multi-Assay Split' or dataset_type != null or assay_type != null",
+        "match": "creation_action == 'Create Dataset Activity' or creation_action == 'Multi-Assay Split' or (creation_action == null and (dataset_type != null or assay_type != null))",
         "value": "{'is_primary': true}",
         "rule_description": "Preamble rule identifying primary datasets"
     },
