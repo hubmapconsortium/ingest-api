@@ -51,7 +51,7 @@
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['AF_pyramid']",
         "value": "{'assaytype': 'AF_pyramid', 'vitessce-hints': ['pyramid', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'Autofluorescence Microscopy [Image Pyramid]'}",
-        "rule_description": "non-DCWG derived AF_pyramid"
+        "rule_description": "derived AF_pyramid"
     },
     {
         "type": "match",
@@ -63,7 +63,7 @@
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['bulk_atacseq']",
         "value": "{'assaytype': 'bulk_atacseq', 'vitessce-hints': [], 'primary': false, 'contains-pii': false, 'description': 'Bulk ATAC-seq [BWA + MACS2]'}",
-        "rule_description": "non-DCWG derived bulk_atacseq"
+        "rule_description": "derived bulk_atacseq"
     },
     {
         "type": "match",
@@ -75,7 +75,7 @@
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['celldive_deepcell']",
         "value": "{'assaytype': 'celldive_deepcell', 'vitessce-hints': ['sprm', 'anndata', 'is_image', 'is_tiled'], 'primary': false, 'contains-pii': false, 'description': 'Cell DIVE [DeepCell + SPRM]'}",
-        "rule_description": "non-DCWG derived celldive_deepcell"
+        "rule_description": "derived celldive_deepcell"
     },
     {
         "type": "match",
@@ -93,19 +93,19 @@
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['codex_cytokit_v1'] and [elt for elt in dag_provenance_list if elt =~~ 'anndata']",
         "value": "{'assaytype': 'codex_cytokit_v1', 'vitessce-hints': ['codex', 'is_image', 'is_tiled', 'anndata'], 'primary': false, 'contains-pii': false, 'description': 'CODEX [Cytokit + SPRM]'}",
-        "rule_description": "non-DCWG derived codex_cytokit_v1"
+        "rule_description": "derived codex_cytokit_v1"
     },
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['codex_cytokit_v1'] and not [elt for elt in dag_provenance_list if elt =~~ 'anndata']",
         "value": "{'assaytype': 'codex_cytokit_v1', 'vitessce-hints': ['codex', 'is_image', 'is_tiled', 'json_based'], 'primary': false, 'contains-pii': false, 'description': 'CODEX [Cytokit + SPRM]'}",
-        "rule_description": "non-DCWG derived codex_cytokit_v1 json-based"
+        "rule_description": "derived codex_cytokit_v1 json-based"
     },
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['codex_cytokit']",
         "value": "{'assaytype': 'codex_cytokit', 'vitessce-hints': ['sprm', 'anndata', 'is_image', 'is_tiled'], 'primary': false, 'contains-pii': false, 'description': 'CODEX [Cytokit + SPRM]'}",
-        "rule_description": "non-DCWG derived codex_cytokit"
+        "rule_description": "derived codex_cytokit"
     },
     {
         "type": "match",
@@ -123,13 +123,13 @@
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['DESI_pyramid']",
         "value": "{'assaytype': 'DESI_pyramid', 'vitessce-hints': ['pyramid', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'DESI [Image Pyramid]'}",
-        "rule_description": "non-DCWG derived DESI_pyramid"
+        "rule_description": "derived DESI_pyramid"
     },
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['image_pyramid', 'Image Pyramid', 'ometiff_pyramid_ims', 'ometiff_pyramid']",
         "value": "{'assaytype': 'image_pyramid', 'vitessce-hints': ['is_image', 'pyramid', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'Image Pyramid'}",
-        "rule_description": "non-DCWG derived image_pyramid"
+        "rule_description": "derived image_pyramid"
     },
     {
         "type": "match",
@@ -147,13 +147,13 @@
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['IMC2D_pyramid', 'IMC_pyramid']",
         "value": "{'assaytype': 'IMC2D_pyramid', 'vitessce-hints': ['pyramid', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'Imaging Mass Cytometry (2D) [Image Pyramid]'}",
-        "rule_description": "non-DCWG derived IMC2D_pyramid"
+        "rule_description": "derived IMC2D_pyramid"
     },
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['IMC3D_pyramid', '3D-IMC_pyramid']",
         "value": "{'assaytype': 'IMC3D_pyramid', 'vitessce-hints': ['pyramid', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'Imaging Mass Cytometry (3D) [Image Pyramid]'}",
-        "rule_description": "non-DCWG derived IMC3D_pyramid"
+        "rule_description": "derived IMC3D_pyramid"
     },
     {
         "type": "match",
@@ -201,7 +201,7 @@
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['MALDI-IMS_pyramid', 'MALDI-IMS-neg_pyramid', 'MALDI-IMS-pos_pyramid']",
         "value": "{'assaytype': 'MALDI-IMS_pyramid', 'vitessce-hints': ['pyramid', 'maldi', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'MALDI IMS [Image Pyramid]'}",
-        "rule_description": "non-DCWG derived MALDI-IMS_pyramid"
+        "rule_description": "derived MALDI-IMS_pyramid"
     },
     {
         "type": "match",
@@ -213,7 +213,7 @@
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['mibi_deepcell']",
         "value": "{'assaytype': 'mibi_deepcell', 'vitessce-hints': ['is_image', 'is_tiled', 'sprm', 'anndata'], 'primary': false, 'contains-pii': false, 'description': 'Multiplex Ion Beam Imaging [DeepCell + SPRM]'}",
-        "rule_description": "non-DCWG derived mibi_deepcell"
+        "rule_description": "derived mibi_deepcell"
     },
     {
         "type": "match",
@@ -225,7 +225,7 @@
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['NanoDESI_pyramid']",
         "value": "{'assaytype': 'NanoDESI_pyramid', 'vitessce-hints': ['pyramid', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'NanoDESI [Image Pyramid]'}",
-        "rule_description": "non-DCWG derived NanoDESI_pyramid"
+        "rule_description": "derived NanoDESI_pyramid"
     },
     {
         "type": "match",
@@ -237,7 +237,7 @@
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['NanoPOTS_pyramid']",
         "value": "{'assaytype': 'NanoPOTS_pyramid', 'vitessce-hints': ['pyramid', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'NanoPOTS [Image Pyramid]'}",
-        "rule_description": "non-DCWG derived NanoPOTS_pyramid"
+        "rule_description": "derived NanoPOTS_pyramid"
     },
     {
         "type": "match",
@@ -249,7 +249,7 @@
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['MxIF_pyramid']",
         "value": "{'assaytype': 'MxIF_pyramid', 'vitessce-hints': ['pyramid', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'Multiplexed IF Microscopy [Image Pyramid]'}",
-        "rule_description": "non-DCWG derived MxIF_pyramid"
+        "rule_description": "derived MxIF_pyramid"
     },
     {
         "type": "match",
@@ -261,13 +261,13 @@
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['PAS_pyramid']",
         "value": "{'assaytype': 'PAS_pyramid', 'vitessce-hints': ['pyramid', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'PAS Stained Microscopy [Image Pyramid]'}",
-        "rule_description": "non-DCWG derived PAS_pyramid"
+        "rule_description": "derived PAS_pyramid"
     },
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['pas_ftu_segmentation']",
         "value": "{'assaytype': 'pas_ftu_segmentation', 'vitessce-hints': [], 'primary': false, 'contains-pii': false, 'description': 'PAS Stained Microscopy [Kaggle-1 Glomerulus Segmentation]'}",
-        "rule_description": "non-DCWG derived pas_ftu_segmentation"
+        "rule_description": "derived pas_ftu_segmentation"
     },
     {
         "type": "match",
@@ -279,7 +279,7 @@
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['publication_ancillary', 'gen_pub_ancillary']",
         "value": "{'assaytype': 'publication_ancillary', 'vitessce-hints': ['json', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'Publication Data [ancillary]'}",
-        "rule_description": "non-DCWG derived publication_ancillary"
+        "rule_description": "derived publication_ancillary"
     },
     {
         "type": "match",
@@ -291,7 +291,7 @@
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['salmon_rnaseq_bulk']",
         "value": "{'assaytype': 'salmon_rnaseq_bulk', 'vitessce-hints': [], 'primary': false, 'contains-pii': false, 'description': 'Bulk RNA-seq [Salmon]'}",
-        "rule_description": "non-DCWG derived salmon_rnaseq_bulk"
+        "rule_description": "derived salmon_rnaseq_bulk"
     },
     {
         "type": "match",
@@ -309,25 +309,25 @@
         "type": "match",
         "match": "not_dcwg and is_lab_processed and data_types[0] in ['sc_atac_seq_snare_lab']",
         "value": "{'assaytype': 'sc_atac_seq_snare_lab', 'vitessce-hints': [], 'primary': false, 'contains-pii': false, 'description': 'snATAC-seq (SNARE-seq2) [Lab Processed]'}",
-        "rule_description": "non-DCWG derived sc_atac_seq_snare_lab"
+        "rule_description": "derived sc_atac_seq_snare_lab"
     },
     {
         "type": "match",
         "match": "not_dcwg and is_lab_processed and data_types[0] in ['sc_rna_seq_snare_lab']",
         "value": "{'assaytype': 'sc_rna_seq_snare_lab', 'vitessce-hints': [], 'primary': false, 'contains-pii': false, 'description': 'snRNA-seq (SNARE-seq2) [Lab Processed]'}",
-        "rule_description": "non-DCWG derived sc_rna_seq_snare_lab"
+        "rule_description": "derived sc_rna_seq_snare_lab"
     },
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['salmon_rnaseq_snareseq']",
         "value": "{'assaytype': 'salmon_rnaseq_snareseq', 'vitessce-hints': ['is_sc', 'rna'], 'primary': false, 'contains-pii': false, 'description': 'snRNA-seq (SNARE-seq2) [Salmon]'}",
-        "rule_description": "non-DCWG derived salmon_rnaseq_snareseq"
+        "rule_description": "derived salmon_rnaseq_snareseq"
     },
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['sc_atac_seq_snare']",
         "value": "{'assaytype': 'sc_atac_seq_snare', 'vitessce-hints': ['is_sc', 'atac'], 'primary': false, 'contains-pii': false, 'description': 'snATAC-seq (SNARE-seq2) [SnapATAC]'}",
-        "rule_description": "non-DCWG derived sc_atac_seq_snare"
+        "rule_description": "derived sc_atac_seq_snare"
     },
     {
         "type": "match",
@@ -345,7 +345,7 @@
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['salmon_rnaseq_10x', 'salmon_rnaseq_10x_v2']",
         "value": "{'assaytype': 'salmon_rnaseq_10x', 'vitessce-hints': ['is_sc', 'rna'], 'primary': false, 'contains-pii': false, 'description': 'scRNA-seq (10x Genomics) [Salmon]'}",
-        "rule_description": "non-DCWG derived salmon_rnaseq_10x"
+        "rule_description": "derived salmon_rnaseq_10x"
     },
     {
         "type": "match",
@@ -357,7 +357,7 @@
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['sc_atac_seq_sci']",
         "value": "{'assaytype': 'sc_atac_seq_sci', 'vitessce-hints': ['is_sc', 'atac'], 'primary': false, 'contains-pii': false, 'description': 'sciATAC-seq [SnapATAC]'}",
-        "rule_description": "non-DCWG derived sc_atac_seq_sci"
+        "rule_description": "derived sc_atac_seq_sci"
     },
     {
         "type": "match",
@@ -369,7 +369,7 @@
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['salmon_rnaseq_sciseq']",
         "value": "{'assaytype': 'salmon_rnaseq_sciseq', 'vitessce-hints': ['is_sc', 'rna'], 'primary': false, 'contains-pii': false, 'description': 'sciRNA-seq [Salmon]'}",
-        "rule_description": "non-DCWG derived salmon_rnaseq_sciseq"
+        "rule_description": "derived salmon_rnaseq_sciseq"
     },
     {
         "type": "match",
@@ -381,13 +381,13 @@
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['seqFish_pyramid']",
         "value": "{'assaytype': 'seqFish_pyramid', 'vitessce-hints': ['pyramid', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'seqFISH [Image Pyramid]'}",
-        "rule_description": "non-DCWG derived seqFish_pyramid"
+        "rule_description": "derived seqFish_pyramid"
     },
     {
         "type": "match",
         "match": "not_dcwg and is_lab_processed and data_types[0] in ['seqFish_lab_processed']",
         "value": "{'assaytype': 'seqFish_lab_processed', 'vitessce-hints': [], 'primary': false, 'contains-pii': false, 'description': 'seqFISH [Lab Processed]'}",
-        "rule_description": "non-DCWG derived seqFish_lab_processed"
+        "rule_description": "derived seqFish_lab_processed"
     },
     {
         "type": "match",
@@ -405,7 +405,7 @@
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['sn_atac_seq', 'sn_atac_seq_multiome_10x', 'sc_atac_seq_sn', 'sc_atac_seq_multiome_10x']",
         "value": "{'assaytype': 'sn_atac_seq', 'vitessce-hints': ['is_sc', 'atac'], 'primary': false, 'contains-pii': false, 'description': 'snATAC-seq [SnapATAC]'}",
-        "rule_description": "non-DCWG derived sn_atac_seq"
+        "rule_description": "derived sn_atac_seq"
     },
     {
         "type": "match",
@@ -423,13 +423,13 @@
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['salmon_sn_rnaseq_10x', 'salmon_rnaseq_10x_sn', 'salmon_rnaseq_10x_v2_sn'] and [elt for elt in dag_provenance_list if elt =~~ 'anndata']",
         "value": "{'assaytype': 'salmon_sn_rnaseq_10x', 'vitessce-hints': ['is_sc', 'rna'], 'primary': false, 'contains-pii': false, 'description': 'snRNA-seq [Salmon]'}",
-        "rule_description": "non-DCWG derived salmon_sn_rnaseq_10x"
+        "rule_description": "derived salmon_sn_rnaseq_10x"
     },
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['salmon_sn_rnaseq_10x', 'salmon_rnaseq_10x_sn', 'salmon_rnaseq_10x_v2_sn'] and not [elt for elt in dag_provenance_list if elt =~~ 'anndata']",
         "value": "{'assaytype': 'salmon_sn_rnaseq_10x', 'vitessce-hints': ['is_sc', 'rna', 'json_based'], 'primary': false, 'contains-pii': false, 'description': 'snRNA-seq [Salmon]'}",
-        "rule_description": "non-DCWG derived salmon_sn_rnaseq_10x json-based"
+        "rule_description": "derived salmon_sn_rnaseq_10x json-based"
     },
     {
         "type": "match",
@@ -441,7 +441,7 @@
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['salmon_rnaseq_slideseq']",
         "value": "{'assaytype': 'salmon_rnaseq_slideseq', 'vitessce-hints': ['is_sc', 'rna'], 'primary': false, 'contains-pii': false, 'description': 'Slide-seq [Salmon]'}",
-        "rule_description": "non-DCWG derived salmon_rnaseq_slideseq"
+        "rule_description": "derived salmon_rnaseq_slideseq"
     },
     {
         "type": "match",
@@ -741,12 +741,12 @@
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['visium_no_probes']",
         "value": "{'assaytype': 'visium-no-probes', 'vitessce-hints': ['rna', 'is_image', 'anndata', 'spatial'], 'primary': false, 'contains-pii': false, 'description': 'Visium (no probes) [Salmon + Scanpy]', 'is-multi-assay': true}",
-        "rule_description": "non-DCWG derived visium-no-probes"
+        "rule_description": "derived visium-no-probes"
     },
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['multiome_snareseq']",
         "value": "{'assaytype': 'multiome-snare-seq2', 'vitessce-hints': ['rna', 'is_image', 'anndata', 'spatial'], 'primary': false, 'contains-pii': false, 'description': 'SNARE-seq2 [Salmon + ArchR + Muon]', 'is-multi-assay': true}",
-        "rule_description": "non-DCWG derived visium-no-probes"
+        "rule_description": "derived multiome snare-seq2"
     }
 ]
