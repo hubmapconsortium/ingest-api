@@ -960,10 +960,6 @@ def publish_datastage(identifier):
                 if asset_dir_exists:
                     ingest_helper.relink_to_public(dataset_uuid)
 
-            acls_cmd = ingest_helper.set_dataset_permissions(dataset_uuid, dataset_group_uuid, data_access_level,
-                                                             True, no_indexing_and_acls)
-
-
             auth_tokens = auth_helper.getAuthorizationTokens(request.headers)
             entity_instance = EntitySdk(token=auth_tokens, service_url=app.config['ENTITY_WEBSERVICE_URL'])
             doi_info = None
@@ -972,7 +968,6 @@ def publish_datastage(identifier):
                 # DOI gets generated here
                 # Note: moved dataset title auto generation to entity-api - Zhou 9/29/2021
                 datacite_doi_helper = DataCiteDoiHelper()
-
 
                 entity = entity_instance.get_entity_by_id(dataset_uuid)
                 entity_dict = vars(entity)
@@ -991,8 +986,7 @@ def publish_datastage(identifier):
             doi_update_clause = ""
             if not doi_info is None:
                 doi_update_clause = f", e.registered_doi = '{doi_info['registered_doi']}', e.doi_url = '{doi_info['doi_url']}'"
-                
-                
+
             #add Published status change to status history
             status_update = {
                "status": "Published",
@@ -1016,7 +1010,7 @@ def publish_datastage(identifier):
 
             logger.info(dataset_uuid + "\t" + dataset_uuid + "\tNEO4J-update-base-dataset\t" + update_q)
             neo_session.run(update_q)
-            out = entity_instance.clear_cache(dataset_uuid)
+            entity_instance.clear_cache(dataset_uuid)
 
             # if all else worked set the list of ids to public that need to be public
             if len(uuids_for_public) > 0:
@@ -1025,21 +1019,35 @@ def publish_datastage(identifier):
                 logger.info(identifier + "\t" + dataset_uuid + "\tNEO4J-update-ancestors\t" + update_q)
                 neo_session.run(update_q)
                 for e_id in uuids_for_public:
-                    out = entity_instance.clear_cache(e_id)
+                    entity_instance.clear_cache(e_id)
 
-            # Write out the metadata.json file after all processing has been done...
-#            ds_path = ingest_helper.dataset_directory_absolute_path(dataset_data_access_level,
-#                                                                    dataset_group_uuid, dataset_uuid, False)
-#            md_file = os.path.join(ds_path, "metadata.json")
-#            json_object = entity_json_dumps(entity_instance, dataset_uuid)
-#            logger.info(f"publish_datastage; writing metadata.json file: '{md_file}'; "
-#                        f"containing: '{json_object}'")
-#            try:
-#                with open(md_file, "w") as outfile:
-#                    outfile.write(json_object)
-#            except Exception as e:
-#                logger.exception(f"Fatal error while writing md_file {md_file}; {str(e)}")
-#                return jsonify({"error": f"{dataset_uuid} problem writing metadata.json file."}), 500
+            # Only write the metadata.json file if the Dataset has no parents...
+            parents_query: str = \
+                "MATCH (ds:Dataset)-[:ACTIVITY_INPUT]->(:Activity {creation_action:'Central Process'})-[:ACTIVITY_OUTPUT]->" \
+                f"(:Dataset {{uuid:'{dataset_uuid}'}}) " \
+                "RETURN ds.uuid AS ds_parent_uuid"
+            parents_query_rval = neo_session.run(parents_query).data()
+            if len(parents_query_rval) == 0:
+                # Write out the metadata.json file after all processing has been done for publication...
+                # NOTE: The metadata.json file must be written before set_dataset_permissions published=True is executed
+                # because (on examining the code) you can see that it causes the director to be not writable.
+                ds_path = ingest_helper.dataset_directory_absolute_path_published(data_access_level,
+                                                                                  dataset_group_uuid, dataset_uuid)
+                md_file = os.path.join(ds_path, "metadata.json")
+                json_object = entity_json_dumps(entity_instance, dataset_uuid)
+                logger.info(f"publish_datastage; writing metadata.json file: '{md_file}'; "
+                            f"containing: '{json_object}'")
+                try:
+                    with open(md_file, "w") as outfile:
+                        outfile.write(json_object)
+                except Exception as e:
+                    logger.exception(f"Fatal error while writing md_file {md_file}; {str(e)}")
+                    return jsonify({"error": f"Dataset UUID {dataset_uuid}; Problem writing metadata.json file to path: '{md_file}'; error text: {str(e)}."}), 500
+
+            # This must be done after ALL files are written because calling it with published=True causes the
+            # directory to be made READ/EXECUTE only and any attempt to write a file will cause a server 500 error.
+            acls_cmd = ingest_helper.set_dataset_permissions(dataset_uuid, dataset_group_uuid, data_access_level,
+                                                             True, no_indexing_and_acls)
 
         if no_indexing_and_acls:
             r_val = {'acl_cmd': acls_cmd, 'donors_for_indexing': donors_to_reindex}
@@ -2434,9 +2442,10 @@ def update_datasets_datastatus():
         "COLLECT(DISTINCT dn.lab_donor_id) AS donor_lab_id, COALESCE(dn.metadata IS NOT NULL) AS has_donor_metadata"
     )
 
-    descendant_datasets_query = (
-        "MATCH (dds:Dataset)<-[*]-(ds:Dataset)<-[:ACTIVITY_OUTPUT]-(:Activity)<-[:ACTIVITY_INPUT]-(:Sample) "
-        "RETURN DISTINCT ds.uuid AS uuid, COLLECT(DISTINCT dds) AS descendant_datasets"
+    processed_datasets_query = (
+        "MATCH (s:Dataset)<-[:ACTIVITY_OUTPUT]-(a:Activity)<-[:ACTIVITY_INPUT]-(ds:Dataset) WHERE "
+                             "a.creation_action in ['Central Process', 'Lab Process'] RETURN DISTINCT ds.uuid AS uuid, "
+        "COLLECT(DISTINCT {uuid: s.uuid, hubmap_id: s.hubmap_id, status: s.status, created_timestamp: s.created_timestamp, data_access_level: s.data_access_level, group_name: s.group_name}) AS processed_datasets"
     )
 
     upload_query = (
@@ -2454,10 +2463,10 @@ def update_datasets_datastatus():
     displayed_fields = [
         "hubmap_id", "group_name", "status", "organ", "provider_experiment_id", "last_touch", "has_contacts",
         "has_contributors", "donor_hubmap_id", "donor_submission_id", "donor_lab_id",
-        "has_dataset_metadata", "has_donor_metadata", "descendant_datasets", "upload", "has_rui_info", "globus_url", "has_data", "organ_hubmap_id"
+        "has_dataset_metadata", "has_donor_metadata", "upload", "has_rui_info", "globus_url", "has_data", "organ_hubmap_id"
     ]
 
-    queries = [all_datasets_query, organ_query, donor_query, descendant_datasets_query,
+    queries = [all_datasets_query, organ_query, donor_query, processed_datasets_query,
                upload_query, has_rui_query]
     results = [None] * len(queries)
     threads = []
@@ -2472,7 +2481,7 @@ def update_datasets_datastatus():
     all_datasets_result = results[0]
     organ_result = results[1]
     donor_result = results[2]
-    descendant_datasets_result = results[3]
+    processed_datasets_result = results[3]
     upload_result = results[4]
     has_rui_result = results[5]
 
@@ -2489,9 +2498,9 @@ def update_datasets_datastatus():
             output_dict[dataset['uuid']]['donor_submission_id'] = dataset['donor_submission_id']
             output_dict[dataset['uuid']]['donor_lab_id'] = dataset['donor_lab_id']
             output_dict[dataset['uuid']]['has_donor_metadata'] = dataset['has_donor_metadata']
-    for dataset in descendant_datasets_result:
+    for dataset in processed_datasets_result:
         if output_dict.get(dataset['uuid']):
-            output_dict[dataset['uuid']]['descendant_datasets'] = dataset['descendant_datasets']
+            output_dict[dataset['uuid']]['processed_datasets'] = dataset['processed_datasets']
     for dataset in upload_result:
         if output_dict.get(dataset['uuid']):
             output_dict[dataset['uuid']]['upload'] = dataset['upload']
@@ -2506,9 +2515,7 @@ def update_datasets_datastatus():
     for dataset in combined_results:
         globus_url = get_globus_url(dataset.get('data_access_level'), dataset.get('group_name'), dataset.get('uuid'))
         dataset['globus_url'] = globus_url
-        last_touch = dataset['last_touch'] if dataset['published_timestamp'] is None else dataset['published_timestamp']
-        dataset['last_touch'] = str(datetime.datetime.utcfromtimestamp(last_touch/1000)) + ' UTC'
-        dataset['created_timestamp'] = str(datetime.datetime.utcfromtimestamp(dataset['created_timestamp']/1000)) + ' UTC'
+        dataset['last_touch'] = dataset['last_touch'] if dataset['published_timestamp'] is None else dataset['published_timestamp']
         if dataset.get('activity_creation_action').lower().endswith("process"):
             dataset['is_primary'] = "False"
         else:
@@ -2519,9 +2526,9 @@ def update_datasets_datastatus():
         dataset['has_dataset_metadata'] = has_dataset_metadata
 
         for prop in dataset:
-            if isinstance(dataset[prop], list) and prop != 'descendant_datasets':
+            if isinstance(dataset[prop], list) and prop != 'processed_datasets':
                 dataset[prop] = ", ".join(dataset[prop])
-            if isinstance(dataset[prop], (bool, int)):
+            if isinstance(dataset[prop], (bool)):
                 dataset[prop] = str(dataset[prop])
             if isinstance(dataset[prop], str) and \
                     len(dataset[prop]) >= 2 and \
@@ -2533,6 +2540,9 @@ def update_datasets_datastatus():
                     dataset[prop] = ""
             if dataset[prop] is None:
                 dataset[prop] = ""
+            if prop == 'processed_datasets':
+                for processed in dataset['processed_datasets']:
+                    processed['globus_url'] = get_globus_url(processed.get('data_access_level'), processed.get('group_name'), processed.get('uuid'))
         for field in displayed_fields:
             if dataset.get(field) is None:
                 dataset[field] = ""
