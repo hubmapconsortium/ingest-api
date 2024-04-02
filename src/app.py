@@ -64,6 +64,7 @@ from routes.file import file_blueprint
 from routes.assayclassifier import bp as assayclassifier_blueprint
 from routes.validation import validation_blueprint
 from routes.entity_CRUD import entity_CRUD_blueprint
+from routes.privs import privs_blueprint
 
 
 # Set logging format and level (default is warning)
@@ -87,6 +88,7 @@ app.register_blueprint(file_blueprint)
 app.register_blueprint(assayclassifier_blueprint)
 app.register_blueprint(validation_blueprint)
 app.register_blueprint(entity_CRUD_blueprint)
+app.register_blueprint(privs_blueprint)
 
 # Suppress InsecureRequestWarning warning when requesting status on https with ssl cert verify disabled
 requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
@@ -1033,7 +1035,7 @@ def publish_datastage(identifier):
                 # Write out the metadata.json file after all processing has been done for publication...
                 # NOTE: The metadata.json file must be written before set_dataset_permissions published=True is executed
                 # because (on examining the code) you can see that it causes the director to be not writable.
-                ds_path = ingest_helper.dataset_directory_absolute_path_published(dataset_data_access_level,
+                ds_path = ingest_helper.dataset_directory_absolute_path_published(data_access_level,
                                                                                   dataset_group_uuid, dataset_uuid)
                 md_file = os.path.join(ds_path, "metadata.json")
                 json_object = entity_json_dumps(entity_instance, dataset_uuid)
@@ -2333,7 +2335,7 @@ def validate_donors(headers, records):
 # Determines if a dataset is Primary. If the list returned from the neo4j query is empty, the dataset is not primary
 def dataset_is_primary(dataset_uuid):
     with neo4j_driver_instance.session() as neo_session:
-        q = (f"MATCH (ds:Dataset {{uuid: '{dataset_uuid}'}})<-[:ACTIVITY_OUTPUT]-(a:Activity) WHERE NOT toLower(a.creation_action) ENDS WITH 'process' RETURN ds.uuid")
+        q = (f"MATCH (ds:Dataset {{uuid: '{dataset_uuid}'}})<-[:ACTIVITY_OUTPUT]-(a:Activity) WHERE toLower(a.creation_action) = 'create dataset activity' RETURN ds.uuid")
         result = neo_session.run(q).data()
         if len(result) == 0:
             return False
