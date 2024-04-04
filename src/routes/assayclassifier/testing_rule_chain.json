@@ -542,8 +542,8 @@
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'RNAseq' and assay_input_entity == 'spot' and barcode_read =~~ 'Read 1' and barcode_size == 16 and umi_read =~~ 'Read 1' and umi_size == 12 and ((barcode_offset==0 and umi_offset==16) or (barcode_offset==20 and umi_offset==36))",
-        "value": "{'assaytype': 'scRNAseq-10xGenomics-v3', 'vitessce-hints': [], 'dir-schema': 'rnaseq-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'RNAseq', 'description': 'scRNA-seq (10x Genomics v3)'}",
-        "rule_description": "DCWG scRNAseq-10xGenomics-v3"
+        "value": "{'assaytype': 'rnaseq-visium-no-probes', 'vitessce-hints': [], 'dir-schema': 'rnaseq-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'RNAseq', 'description': 'Capture bead RNAseq (10x Genomics v3)'}",
+        "rule_description": "DCWG rnaseq-visium-no-probes"
     },
     {
         "type": "match",
