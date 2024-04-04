@@ -25,6 +25,7 @@ from pathlib import Path
 from flask import Flask, g, jsonify, abort, request, json, Response
 from flask_cors import CORS
 from flask_mail import Mail, Message
+from worker.utils import ResponseException
 
 # HuBMAP commons
 from hubmap_commons import neo4j_driver
@@ -557,6 +558,99 @@ def get_file_system_relative_path():
                 status_code = 500
         return jsonify(error_id_list), status_code
     return jsonify(out_list), 200
+
+
+@app.route('/uploads/<ds_uuid>/file-system-abs-path', methods=['GET'])
+@app.route('/datasets/<ds_uuid>/file-system-abs-path', methods=['GET'])
+def get_file_system_absolute_path(ds_uuid: str):
+    try:
+        ingest_helper = IngestFileHelper(app.config)
+        with neo4j_driver_instance.session() as neo_session:
+            q = (f"MATCH (entity {{uuid: '{ds_uuid}'}}) RETURN entity.entity_type AS entity_type, " 
+                f"entity.group_uuid AS group_uuid, entity.contains_human_genetic_sequences as contains_human_genetic_sequences, " 
+                f"entity.data_access_level AS data_access_level, entity.status AS status")
+            result = neo_session.run(q).data()
+            if len(result) < 1:
+                raise ResponseException(f"No result found for uuid {ds_uuid}", 400)
+            rval = result[0]
+        ent_type = rval['entity_type']
+        group_uuid = rval['group_uuid']
+        is_phi = rval['contains_human_genetic_sequences']
+        if ent_type is None or ent_type.strip() == '':
+            raise ResponseException(f"Entity with uuid:{ds_uuid} needs to be a Dataset or Upload.", 400)
+        if ent_type.lower().strip() == 'upload':
+            return jsonify({'path': ingest_helper.get_upload_directory_absolute_path(group_uuid=group_uuid, upload_uuid=ds_uuid)}), 200
+        if not get_entity_type_instanceof(ent_type, 'Dataset', auth_header=request.headers.get("AUTHORIZATION")):
+            raise ResponseException(f"Entity with uuid: {ds_uuid} is not a Dataset, Publication or upload", 400)
+        if group_uuid is None:
+            raise ResponseException(f"Unable to find group uuid on dataset {ds_uuid}", 400)
+        if is_phi is None:
+            raise ResponseException(f"Contains_human_genetic_sequences is not set on dataset {ds_uuid}", 400)
+        path = ingest_helper.get_dataset_directory_absolute_path(rval, group_uuid, ds_uuid)
+        return jsonify({'path': path}), 200
+    except ResponseException as re:
+        return re.response
+    except HTTPException as hte:
+        return Response(f"Error while getting file-system-abs-path for {ds_uuid}: " +
+                        hte.get_description(), hte.get_status_code())
+    except Exception as e:
+        logger.error(e, exc_info=True)
+        return Response(f"Unexpected error while retrieving entity {ds_uuid}: " + str(e), 500)
+
+
+@app.route('/uploads/file-system-abs-path', methods=['POST'])
+@app.route('/datasets/file-system-abs-path', methods=['POST'])
+def get_mulltiple_file_system_absolute_paths():
+    out_list = []
+    if not request.is_json:
+        return Response("json request required", 400)
+    uuids_list = request.json
+    is_valid = validate_json_list(uuids_list)
+    if not is_valid:
+        bad_request_error("json must be a list of uuids")
+    try:
+        ingest_helper = IngestFileHelper(app.config)
+        with neo4j_driver_instance.session() as neo_session:
+            q = (f"MATCH (entity) "
+                 f"WHERE entity.uuid in {uuids_list}"
+                 f"RETURN entity.entity_type AS entity_type, "
+                 f"entity.group_uuid AS group_uuid, entity.contains_human_genetic_sequences as contains_human_genetic_sequences, " 
+                 f"entity.data_access_level AS data_access_level, entity.status AS status, entity.uuid AS uuid")
+            result = neo_session.run(q).data()
+            returned_uuids = []
+            for entity in result:
+                returned_uuids.append(entity['uuid'])
+            for uuid in uuids_list:
+                if uuid not in returned_uuids:
+                    out_list.append({'uuid': uuid, 'error': 'No results for given uuid'})
+            if len(result) < 1:
+                raise ResponseException("No result found for uuids in list", 400)
+        for entity in result:
+            ent_type = entity['entity_type']
+            group_uuid = entity['group_uuid']
+            is_phi = entity['contains_human_genetic_sequences']
+            ds_uuid = entity['uuid']
+            if ent_type is None or ent_type.strip() == '':
+                raise ResponseException(f"Entity with uuid:{ds_uuid} needs to be a Dataset or Upload.", 400)
+            if ent_type.lower().strip() == 'upload':
+                out_list.append({'path': ingest_helper.get_upload_directory_absolute_path(group_uuid=group_uuid, upload_uuid=ds_uuid), 'uuid': ds_uuid})
+                continue
+            if not get_entity_type_instanceof(ent_type, 'Dataset', auth_header=request.headers.get("AUTHORIZATION")):
+                raise ResponseException(f"Entity with uuid: {ds_uuid} is not a Dataset, Publication or upload", 400)
+            if group_uuid is None:
+                raise ResponseException(f"Unable to find group uuid on dataset {ds_uuid}", 400)
+            if is_phi is None:
+                raise ResponseException(f"Contains_human_genetic_sequences is not set on dataset {ds_uuid}", 400)
+            path = ingest_helper.get_dataset_directory_absolute_path(entity, group_uuid, ds_uuid)
+            out_list.append({'uuid': ds_uuid, 'path': path})
+        return jsonify(out_list), 200
+    except ResponseException as re:
+        return re.response
+    except HTTPException as hte:
+        return Response(f"Error while getting file-system-abs-path for entities: " + hte.get_description(), hte.get_status_code())
+    except Exception as e:
+        logger.error(e, exc_info=True)
+        return Response(f"Unexpected error while retrieving entities: " + str(e), 500)
 
 #passthrough method to call mirror method on entity-api
 #this is need by ingest-pipeline that can only call
@@ -2350,6 +2444,15 @@ def dataset_has_entity_lab_processed_data_type(dataset_uuid):
             return False
         return True
 
+def validate_json_list(data):
+    if not isinstance(data, list):
+        return False
+    if len(data) < 1:
+        return False
+    for item in data:
+        if not isinstance(item, str):
+            return False
+    return True
 
 def run_query(query, results, i):
     logger.info(query)

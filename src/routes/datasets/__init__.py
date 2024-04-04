@@ -63,19 +63,3 @@ def begin_extract_cell_count_from_secondary_analysis_files_async():
     except Exception as e:
         logger.error(e, exc_info=True)
         return Response(f"Unexpected error in extract_cell_count_from_secondary_analysis_files: " + str(e), 500)
-
-
-@datasets_blueprint.route('/uploads/<ds_uuid>/file-system-abs-path', methods=['GET'])
-@datasets_blueprint.route('/datasets/<ds_uuid>/file-system-abs-path', methods=['GET'])
-def get_file_system_absolute_path(ds_uuid: str):
-    try:
-        ingest_helper = IngestFileHelper(current_app.config)
-        return jsonify({'path': get_ds_path(ds_uuid, ingest_helper)}), 200
-    except ResponseException as re:
-        return re.response
-    except HTTPException as hte:
-        return Response(f"Error while getting file-system-abs-path for {ds_uuid}: " +
-                        hte.get_description(), hte.get_status_code())
-    except Exception as e:
-        logger.error(e, exc_info=True)
-        return Response(f"Unexpected error while retrieving entity {ds_uuid}: " + str(e), 500)
