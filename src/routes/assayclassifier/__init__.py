@@ -129,6 +129,7 @@ def build_entity_metadata(entity) -> dict:
 
     metadata["entity_type"] = entity.entity_type
     metadata["dag_provenance_list"] = dag_prov_list
+    metadata["creation_action"] = entity.creation_action
 
     return metadata
 
