@@ -5,6 +5,7 @@ from hubmap_commons.hm_auth import AuthHelper
 from hubmap_commons import neo4j_driver
 from routes.entity_CRUD.ingest_file_helper import IngestFileHelper
 
+logger = logging.getLogger(__name__)
 
 class DatasetHelper:
     confdata = {}
@@ -71,11 +72,18 @@ class DatasetHelper:
                 "MATCH (d:Dataset) WHERE d.uuid IN $uuids AND d.entity_type = 'Dataset' "
                 "RETURN " + return_stmt
             )
-            records = session.run(query, uuids=uuids).fetch(length)
+            logger.info(f"get_datasets_by_uuid: query: {query}")
+            result = session.run(query, uuids=uuids)
+            records: list = [ dict(i) for i in result ]
+            logger.info(f"get_datasets_by_uuid: result.len: {len(records)}; records: {records}")
+            # I'm assuming that this works for SenNet, but I am not sure why (driver versions?!).
+            # It appears that the neo4j Result object does not have a .fetch(n) method so I returned
+            # a list of dictionaries.
+            # records = result.fetch(length)
             if records is None or len(records) == 0:
                 return None
 
-            return records
+            return records[:length]
 
     def create_ingest_payload(self, dataset):
         provider = self.auth_helper_instance.getGroupDisplayName(group_uuid=dataset['group_uuid'])
