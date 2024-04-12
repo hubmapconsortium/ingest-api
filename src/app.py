@@ -64,6 +64,7 @@ from routes.datasets import datasets_blueprint
 from routes.file import file_blueprint
 from routes.assayclassifier import bp as assayclassifier_blueprint
 from routes.validation import validation_blueprint
+from routes.entity_CRUD import entity_CRUD_blueprint
 from routes.privs import privs_blueprint
 
 
@@ -87,6 +88,7 @@ app.register_blueprint(datasets_blueprint)
 app.register_blueprint(file_blueprint)
 app.register_blueprint(assayclassifier_blueprint)
 app.register_blueprint(validation_blueprint)
+app.register_blueprint(entity_CRUD_blueprint)
 app.register_blueprint(privs_blueprint)
 
 # Suppress InsecureRequestWarning warning when requesting status on https with ssl cert verify disabled
