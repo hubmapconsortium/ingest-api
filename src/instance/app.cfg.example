@@ -139,3 +139,10 @@ RULE_CHAIN_URI = ''
 
 # CEDAR API KEY, get one at: https://cedar.metadatacenter.org/
 CEDAR_API_KEY = ''
+
+# UMLS-KEY
+UMLS_KEY = ''
+
+# UMLS URL
+UMLS_VALIDATE_URL = 'https://utslogin.nlm.nih.gov/validateUser'
+

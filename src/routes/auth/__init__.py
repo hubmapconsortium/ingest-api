@@ -1,10 +1,15 @@
-from flask import Blueprint, redirect, request, session, current_app, Response, make_response
+import requests
+from flask import Blueprint, redirect, request, session, current_app, Response, make_response, jsonify
 from globus_sdk import AccessTokenAuthorizer, AuthClient, ConfidentialAppAuthClient
 import json
 import logging
 import base64
+import sys
+import os
 
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
 from hubmap_commons.hm_auth import AuthHelper
+from src.app_utils.error import bad_request_error
 
 auth_blueprint = Blueprint('auth', __name__)
 logger: logging.Logger = logging.getLogger(__name__)
@@ -206,6 +211,22 @@ def ingest_board_logout():
 
     # Redirect the user to the Globus Auth logout page
     return redirect(globus_logout_url)
+
+
+@auth_blueprint.route('/umls-auth')
+def umls_auth():
+    if not request.args or request.args.get('umls-key') is None:
+        bad_request_error("Must include parameter 'umls-key'")
+    umls_key = request.args.get('umls-key')
+    validator_key = current_app.config['UMLS_KEY']
+    base_url = current_app.config['UMLS_VALIDATE_URL']
+    url = base_url + '?validatorApiKey=' + validator_key + '&apiKey=' + umls_key
+    result = requests.get(url=url)
+    if result.json() == True:
+        return jsonify(True)
+    else:
+        return jsonify(False)
+
 
 
 def get_user_info(token):
