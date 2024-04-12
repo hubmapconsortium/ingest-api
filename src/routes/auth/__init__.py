@@ -223,9 +223,9 @@ def umls_auth():
     url = base_url + '?validatorApiKey=' + validator_key + '&apiKey=' + umls_key
     result = requests.get(url=url)
     if result.json() == True:
-        return jsonify(True)
+        return jsonify(True), 200
     else:
-        return jsonify(False)
+        return jsonify(False), 403
 
 
 
