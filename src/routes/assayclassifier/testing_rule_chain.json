@@ -748,5 +748,11 @@
         "match": "is_central_processed and data_types[0] in ['multiome_snareseq']",
         "value": "{'assaytype': 'multiome-snare-seq2', 'vitessce-hints': ['rna', 'is_image', 'anndata', 'spatial'], 'primary': false, 'contains-pii': false, 'description': 'SNARE-seq2 [Salmon + ArchR + Muon]', 'is-multi-assay': true}",
         "rule_description": "derived multiome snare-seq2"
+    },
+    {
+        "type": "match",
+        "match": "is_central_processed and data_types[0] in ['multiome_10x']",
+        "value": "{'assaytype': 'multiome-10x', 'vitessce-hints': ['is_sc', 'rna', 'atac', 'anndata'], 'primary': false, 'contains-pii': false, 'description': '10X Multiome [Salmon + ArchR + Muon]', 'is-multi-assay': true}",
+        "rule_description": "derived multiome 10x"
     }
 ]
