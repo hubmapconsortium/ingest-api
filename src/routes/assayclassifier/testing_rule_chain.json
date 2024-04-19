@@ -754,5 +754,11 @@
         "match": "is_central_processed and data_types[0] in ['multiome_10x']",
         "value": "{'assaytype': 'multiome-10x', 'vitessce-hints': ['is_sc', 'rna', 'atac', 'anndata'], 'primary': false, 'contains-pii': false, 'description': '10X Multiome [Salmon + ArchR + Muon]', 'is-multi-assay': true}",
         "rule_description": "derived multiome 10x"
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and is_primary and dataset_type == 'MUSIC'",
+        "value": "{'assaytype': 'music', 'vitessce-hints': [], 'dir-schema': 'music-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'MUSIC', 'description': 'MUSIC'}",
+        "rule_description": "DCWG music"
     }
 ]
