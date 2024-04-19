@@ -39,6 +39,10 @@ HUBMAP_DATA_CURATOR_GROUP_UUID = '75804b96-d4a8-11e9-9da9-0ad4acb67ed4'
 # File system settings (shown for DEV)
 GLOBUS_ENDPOINT_FILEPATH = '/hive/hubmap-dev/data/protected'
 HUBMAP_WEBSERVICE_FILEPATH = '/hive/hubmap-dev/assets'
+UBKG_DIRECTORY_FILEPATH = '/hive/hubmap-dev/assets/ubkg-download'
+UBKG_FILES_LiST_JSON = 'files.json'
+
+
 WORKFLOW_SCRATCH = '/hive/hubmap-dev/scratch'
 
 # Directory where file uploads will be placed temporarily (shown for DEV)

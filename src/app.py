@@ -1,5 +1,6 @@
 import datetime
 import redis
+import copy
 import glob
 import os
 import sys
@@ -1688,6 +1689,50 @@ def get_specimen_ingest_group_ids(identifier):
     #         if conn.get_driver().closed() == False:
     #             conn.close()
 
+
+
+@app.route('/ubkg-download-file-list', methods = ['GET'])
+def ubkg_download_file_list():
+    ubkg_dir = app.config['UBKG_DIRECTORY_FILEPATH']
+    file_info_json = app.config['UBKG_FILES_LIST_JSON']
+    files_list = []
+    """We may eventually want to look through subdirectories, in which case we can use this recursive function"""
+    # def get_files_in_dir(directory):
+    #     files = os.listdir(directory)
+    #     for file in files:
+    #         full_path = os.path.join(directory, file)
+    #         if os.path.isdir(full_path):
+    #             get_files_in_dir(full_path)
+    #         else:
+    #             files_list.append(full_path)
+    # get_files_in_dir(ubkg_dir)
+    files = os.listdir(ubkg_dir)
+    for file in files:
+        full_path = os.path.join(ubkg_dir, file)
+        if not os.path.isdir(full_path):
+            files_list.append(full_path)
+    file_paths_dict = {os.path.basename(file_path): file_path for file_path in files_list}
+    if file_info_json not in file_paths_dict:
+        return bad_request_error(f"UBKG Download Directory {file_info_json} not found")
+    with open(file_paths_dict[file_info_json], 'r') as f:
+        json_data = json.load(f)
+    json_out = []
+    for file_name in json_data:
+        if file_name in file_paths_dict:
+            out_dict = {}
+            description = json_data.get(file_name)
+            path = file_paths_dict[file_name]
+            size = os.path.getsize(path)
+            size_in_mb = size/1048576
+            size_to_string = f"{size_in_mb} MB"
+            last_modified_timestamp = os.path.getmtime(path)
+            last_modified_date = datetime.datetime.fromtimestamp(last_modified_timestamp)
+            out_dict['name'] = file_name
+            out_dict['last_modified'] = last_modified_date
+            out_dict['description'] = description
+            out_dict['size'] = size_to_string
+            json_out.append(out_dict)
+    return jsonify(json_out)
 
 
 #given a hubmap uuid and a valid Globus token returns, as json the attribute has_write_priv with
