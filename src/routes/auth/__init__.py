@@ -4,12 +4,9 @@ from globus_sdk import AccessTokenAuthorizer, AuthClient, ConfidentialAppAuthCli
 import json
 import logging
 import base64
-import sys
-import os
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
 from hubmap_commons.hm_auth import AuthHelper
-from src.app_utils.error import bad_request_error
+from app_utils.error import bad_request_error
 
 auth_blueprint = Blueprint('auth', __name__)
 logger: logging.Logger = logging.getLogger(__name__)

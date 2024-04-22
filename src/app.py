@@ -1,6 +1,5 @@
 import datetime
 import redis
-import copy
 import glob
 import os
 import sys
