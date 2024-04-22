@@ -1693,46 +1693,59 @@ def get_specimen_ingest_group_ids(identifier):
 
 @app.route('/ubkg-download-file-list', methods = ['GET'])
 def ubkg_download_file_list():
-    ubkg_dir = app.config['UBKG_DIRECTORY_FILEPATH']
-    file_info_json = app.config['UBKG_FILES_LIST_JSON']
-    files_list = []
-    """We may eventually want to look through subdirectories, in which case we can use this recursive function"""
-    # def get_files_in_dir(directory):
-    #     files = os.listdir(directory)
-    #     for file in files:
-    #         full_path = os.path.join(directory, file)
-    #         if os.path.isdir(full_path):
-    #             get_files_in_dir(full_path)
-    #         else:
-    #             files_list.append(full_path)
-    # get_files_in_dir(ubkg_dir)
-    files = os.listdir(ubkg_dir)
-    for file in files:
-        full_path = os.path.join(ubkg_dir, file)
-        if not os.path.isdir(full_path):
-            files_list.append(full_path)
-    file_paths_dict = {os.path.basename(file_path): file_path for file_path in files_list}
-    if file_info_json not in file_paths_dict:
-        return bad_request_error(f"UBKG Download Directory {file_info_json} not found")
-    with open(file_paths_dict[file_info_json], 'r') as f:
-        json_data = json.load(f)
-    json_out = []
-    for file_name in json_data:
-        if file_name in file_paths_dict:
-            out_dict = {}
-            description = json_data.get(file_name)
-            path = file_paths_dict[file_name]
-            size = os.path.getsize(path)
-            size_in_mb = size/1048576
-            size_to_string = f"{size_in_mb} MB"
-            last_modified_timestamp = os.path.getmtime(path)
-            last_modified_date = datetime.datetime.fromtimestamp(last_modified_timestamp)
-            out_dict['name'] = file_name
-            out_dict['last_modified'] = last_modified_date
-            out_dict['description'] = description
-            out_dict['size'] = size_to_string
-            json_out.append(out_dict)
-    return jsonify(json_out)
+    if not request.args or request.args.get('umls-key') is None:
+        bad_request_error("Must include parameter 'umls-key'")
+    umls_key = request.args.get('umls-key')
+    validator_key = app.config['UMLS_KEY']
+    base_url = app.config['UMLS_VALIDATE_URL']
+    url = base_url + '?validatorApiKey=' + validator_key + '&apiKey=' + umls_key
+    result = requests.get(url=url)
+    if result.json() == True:
+        ubkg_dir = app.config['UBKG_DIRECTORY_FILEPATH']
+        file_info_json = app.config['UBKG_FILES_LIST_JSON']
+        files_list = []
+        """We may eventually want to look through subdirectories, in which case we can use this recursive function"""
+        # def get_files_in_dir(directory):
+        #     files = os.listdir(directory)
+        #     for file in files:
+        #         full_path = os.path.join(directory, file)
+        #         if os.path.isdir(full_path):
+        #             get_files_in_dir(full_path)
+        #         else:
+        #             files_list.append(full_path)
+        # get_files_in_dir(ubkg_dir)
+        files = os.listdir(ubkg_dir)
+        for file in files:
+            full_path = os.path.join(ubkg_dir, file)
+            if not os.path.isdir(full_path):
+                files_list.append(full_path)
+        file_paths_dict = {os.path.basename(file_path): file_path for file_path in files_list}
+        if file_info_json not in file_paths_dict:
+            return bad_request_error(f"UBKG Download Directory {file_info_json} not found")
+        with open(file_paths_dict[file_info_json], 'r') as f:
+            json_data = json.load(f)
+        json_out = []
+        for file_name in json_data:
+            if file_name in file_paths_dict:
+                out_dict = {}
+                description = json_data.get(file_name)
+                path = file_paths_dict[file_name]
+                size = os.path.getsize(path)
+                size_in_mb = size / 1048576
+                size_to_string = f"{size_in_mb} MB"
+                last_modified_timestamp = os.path.getmtime(path)
+                last_modified_date = datetime.datetime.fromtimestamp(last_modified_timestamp)
+                out_dict['name'] = file_name
+                out_dict['last_modified'] = last_modified_date
+                out_dict['description'] = description
+                out_dict['size'] = size_to_string
+                json_out.append(out_dict)
+        return jsonify(json_out)
+    else:
+        return jsonify(False), 403
+
+
+
 
 
 #given a hubmap uuid and a valid Globus token returns, as json the attribute has_write_priv with
