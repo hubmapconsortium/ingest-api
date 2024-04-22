@@ -3,7 +3,7 @@ from typing import Optional, Union
 import logging
 from hubmap_commons.hm_auth import AuthHelper
 from hubmap_commons import neo4j_driver
-from routes.entity_CRUD.ingest_file_helper import IngestFileHelper
+from ingest_file_helper import IngestFileHelper
 
 logger = logging.getLogger(__name__)
 
