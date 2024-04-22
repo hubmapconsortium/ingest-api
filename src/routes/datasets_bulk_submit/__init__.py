@@ -3,14 +3,14 @@ import logging
 from threading import Thread
 from atlas_consortia_commons.rest import abort_bad_req, abort_not_found, abort_internal_err
 from lib.decorators import require_data_admin, require_json
-from routes.entity_CRUD.dataset_helper import DatasetHelper
-from routes.entity_CRUD.tasks import submit_datasets
+from routes.datasets_bulk_submit.dataset_helper import DatasetHelper
+from routes.datasets_bulk_submit.tasks import submit_datasets
 
-entity_CRUD_blueprint = Blueprint('entity_CRUD', __name__)
+datasets_bulk_submit_blueprint = Blueprint('datasets_bulk_submit', __name__)
 logger = logging.getLogger(__name__)
 
 
-@entity_CRUD_blueprint.route('/datasets/bulk/submit', methods=['PUT'])
+@datasets_bulk_submit_blueprint.route('/datasets/bulk/submit', methods=['PUT'])
 @require_data_admin(param='token')
 @require_json(param='uuids')
 def submit_datasets_from_bulk(uuids: list, token: str):

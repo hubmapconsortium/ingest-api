@@ -3,7 +3,7 @@ import requests
 from hubmap_commons.file_helper import ensureTrailingSlashURL
 
 from lib.services import bulk_update_entities
-from routes.entity_CRUD.dataset_helper import DatasetHelper
+from routes.datasets_bulk_submit.dataset_helper import DatasetHelper
 
 logger = logging.getLogger(__name__)
 
