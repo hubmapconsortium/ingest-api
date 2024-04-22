@@ -3,7 +3,7 @@ from typing import Optional, Union
 import logging
 from hubmap_commons.hm_auth import AuthHelper
 from hubmap_commons import neo4j_driver
-from routes.entity_CRUD.ingest_file_helper import IngestFileHelper
+from ingest_file_helper import IngestFileHelper
 
 logger = logging.getLogger(__name__)
 
@@ -86,11 +86,10 @@ class DatasetHelper:
             return records[:length]
 
     def create_ingest_payload(self, dataset):
-        provider = self.auth_helper_instance.getGroupDisplayName(group_uuid=dataset['group_uuid'])
         full_path = self.ingest_helper.get_dataset_directory_absolute_path(dataset, dataset['group_uuid'], dataset['uuid'])
         return {
             "submission_id": f"{dataset['uuid']}",
             "process": "SCAN.AND.BEGIN.PROCESSING",
             "full_path": full_path,
-            "provider": provider,
+            "provider": f"{dataset['group_name']}"
         }
