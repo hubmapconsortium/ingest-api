@@ -67,12 +67,24 @@ def bulk_update_entities(
     with session as s:
         for idx, (uuid, payload) in enumerate(entity_updates.items()):
             try:
+                get_entity_data = {}
                 res = s.put(
                     f"{entity_api_url}/entities/{uuid}", json=payload, timeout=15
                 )
+
+                if res.ok:
+                    # Retrieve the entity details via a GET call - Hacked by Zhou 4/22/2024
+                    get_res = s.get(
+                        f"{entity_api_url}/entities/{uuid}", json=payload, timeout=15
+                    )
+
+                    get_entity_data = get_res.json()
+                else:
+                    get_entity_data = res.json().get("error")
+
                 results[uuid] = {
                     "success": res.ok,
-                    "data": res.json() if res.ok else res.json().get("error"),
+                    "data": get_entity_data
                 }
             except requests.exceptions.RequestException as e:
                 logger.error(f"Failed to update entity {uuid}: {e}")
