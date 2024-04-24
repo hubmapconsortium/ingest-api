@@ -1690,6 +1690,64 @@ def get_specimen_ingest_group_ids(identifier):
 
 
 
+@app.route('/ubkg-download-file-list', methods = ['GET'])
+def ubkg_download_file_list():
+    if not request.args or request.args.get('umls-key') is None:
+        bad_request_error("Must include parameter 'umls-key'")
+    umls_key = request.args.get('umls-key')
+    if umls_key is None or not umls_key.strip():
+        bad_request_error("The value of umls-key can not be empty")
+    validator_key = app.config['UMLS_KEY']
+    base_url = app.config['UMLS_VALIDATE_URL']
+    url = base_url + '?validatorApiKey=' + validator_key + '&apiKey=' + umls_key
+    result = requests.get(url=url)
+    if result.json() == True:
+        ubkg_dir = app.config['UBKG_DIRECTORY_FILEPATH']
+        file_info_json = app.config['UBKG_FILES_LIST_JSON']
+        files_list = []
+        """We may eventually want to look through subdirectories, in which case we can use this recursive function"""
+        # def get_files_in_dir(directory):
+        #     files = os.listdir(directory)
+        #     for file in files:
+        #         full_path = os.path.join(directory, file)
+        #         if os.path.isdir(full_path):
+        #             get_files_in_dir(full_path)
+        #         else:
+        #             files_list.append(full_path)
+        # get_files_in_dir(ubkg_dir)
+        files = os.listdir(ubkg_dir)
+        for file in files:
+            full_path = os.path.join(ubkg_dir, file)
+            if not os.path.isdir(full_path):
+                files_list.append(full_path)
+        file_paths_dict = {os.path.basename(file_path): file_path for file_path in files_list}
+        if file_info_json not in file_paths_dict:
+            return bad_request_error(f"UBKG Download Directory {file_info_json} not found")
+        with open(file_paths_dict[file_info_json], 'r') as f:
+            json_data = json.load(f)
+        json_out = []
+        for file_name in file_paths_dict:
+            if file_name != file_info_json:
+                out_dict = {}
+                path = file_paths_dict[file_name]
+                size = os.path.getsize(path)
+                last_modified_timestamp = os.path.getmtime(path)
+                last_modified_date = datetime.datetime.fromtimestamp(last_modified_timestamp)
+                out_dict['name'] = file_name
+                out_dict['last_modified'] = last_modified_date
+                out_dict['size'] = size
+                if file_name in json_data:
+                    description = json_data.get(file_name)
+                    out_dict['description'] = description
+                json_out.append(out_dict)
+        return jsonify(json_out)
+    else:
+        return jsonify(False), 403
+
+
+
+
+
 #given a hubmap uuid and a valid Globus token returns, as json the attribute has_write_priv with
 #value true if the user has write access to the entity.
 #   has_write_priv- denotes if user has write permission for a given entity
