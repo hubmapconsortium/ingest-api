@@ -216,7 +216,7 @@ def umls_auth():
         bad_request_error("Must include parameter 'umls-key'")
     umls_key = request.args.get('umls-key')
     if umls_key is None or not umls_key.strip():
-        bad_request_error("Must include parameter 'umls-key'")
+        bad_request_error("The value of umls-key can not be empty'")
     validator_key = current_app.config['UMLS_KEY']
     base_url = current_app.config['UMLS_VALIDATE_URL']
     url = base_url + '?validatorApiKey=' + validator_key + '&apiKey=' + umls_key
