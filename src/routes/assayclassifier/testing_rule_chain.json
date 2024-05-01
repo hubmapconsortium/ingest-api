@@ -344,7 +344,7 @@
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['salmon_rnaseq_10x', 'salmon_rnaseq_10x_v2']",
-        "value": "{'assaytype': 'salmon_rnaseq_10x', 'vitessce-hints': ['is_sc', 'rna'], 'primary': false, 'contains-pii': false, 'description': 'scRNA-seq (10x Genomics) [Salmon]'}",
+        "value": "{'assaytype': 'salmon_rnaseq_10x', 'vitessce-hints': ['is_sc', 'rna'], 'primary': false, 'contains-pii': false, 'description': 'scRNAseq (10x Genomics) [Salmon]'}",
         "rule_description": "derived salmon_rnaseq_10x"
     },
     {
@@ -422,19 +422,19 @@
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['salmon_sn_rnaseq_10x', 'salmon_rnaseq_10x_sn', 'salmon_rnaseq_10x_v2_sn'] and [elt for elt in dag_provenance_list if elt =~~ 'anndata']",
-        "value": "{'assaytype': 'salmon_sn_rnaseq_10x', 'vitessce-hints': ['is_sc', 'rna'], 'primary': false, 'contains-pii': false, 'description': 'scRNAseq (10x Genomics) [Salmon]'}",
+        "value": "{'assaytype': 'salmon_sn_rnaseq_10x', 'vitessce-hints': ['is_sc', 'rna'], 'primary': false, 'contains-pii': false, 'description': 'snRNAseq [Salmon]'}",
         "rule_description": "derived salmon_sn_rnaseq_10x"
     },
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['salmon_sn_rnaseq_10x', 'salmon_rnaseq_10x_sn', 'salmon_rnaseq_10x_v2_sn'] and not [elt for elt in dag_provenance_list if elt =~~ 'anndata']",
-        "value": "{'assaytype': 'salmon_sn_rnaseq_10x', 'vitessce-hints': ['is_sc', 'rna', 'json_based'], 'primary': false, 'contains-pii': false, 'description': 'scRNAseq (10x Genomics) [Salmon]'}",
+        "value": "{'assaytype': 'salmon_sn_rnaseq_10x', 'vitessce-hints': ['is_sc', 'rna', 'json_based'], 'primary': false, 'contains-pii': false, 'description': 'snRNAseq [Salmon]'}",
         "rule_description": "derived salmon_sn_rnaseq_10x json-based"
     },
     {
         "type": "match",
         "match": "not_dcwg and is_primary and assay_type in ['Slide-seq']",
-        "value": "{'assaytype': 'Slide-seq', 'dir-schema': 'slideseq-v0', 'tbl-schema': 'slideseq-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': true, 'primary': true, 'description': 'Slide-seq', 'dataset-type': 'Slideseq' }",
+        "value": "{'assaytype': 'Slide-seq', 'dir-schema': 'slideseq-v0', 'tbl-schema': 'slideseq-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': true, 'primary': true, 'description': 'Slideseq', 'dataset-type': 'Slideseq' }",
         "rule_description": "non-DCWG primary Slide-seq"
     },
     {
