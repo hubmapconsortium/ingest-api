@@ -704,7 +704,7 @@
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'Light Sheet'",
-        "value": "{'assaytype': 'Lightsheet', 'vitessce-hints': [], 'dir-schema': 'lightsheet-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'Light Sheet', 'description': 'Lightsheet Microsopy'}",
+        "value": "{'assaytype': 'Lightsheet', 'vitessce-hints': [], 'dir-schema': 'lightsheet-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'Light Sheet', 'description': 'Light Sheet Microscopy'}",
         "rule_description": "DCWG Lightsheet"
     },
     {
