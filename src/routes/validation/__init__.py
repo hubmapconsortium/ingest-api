@@ -370,10 +370,12 @@ def validate_metadata_upload():
                                      "https://docs.sennetconsortium.org/libraries/ingest-validation-tools/schemas")
             path: str = upload.get('fullpath')
             schema = determine_schema(entity_type, sub_type)
+
+            # On bad tsv file, validate_tsv() returns a list of errors
+            # For the good tsv, it returns an empty list
             validation_results = validate_tsv(path=path, schema=schema)
-            if len(validation_results) > 2:
-                response = rest_response(StatusCodes.UNACCEPTABLE, 'Unacceptable Metadata',
-                                         json.loads(validation_results), True)
+            if len(validation_results) > 0:
+                response = rest_response(StatusCodes.UNACCEPTABLE, 'Unacceptable Metadata', validation_results, True)
             else:
                 records = get_metadata(upload.get('fullpath'))
                 response = _get_response(records, entity_type, sub_type, validate_uuids,
