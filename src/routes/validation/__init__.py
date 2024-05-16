@@ -107,34 +107,54 @@ def get_metadata(path: str) -> list:
     return result.get('records')
 
 
-def validate_tsv(schema='metadata', path=None) -> str:
-    """
-    Calls methods of the Ingest Validation Tools submodule
+def validate_tsv(schema: str = "metadata", path: Optional[str] = None) -> dict:
+    """Calls methods of the Ingest Validation Tools submodule.
 
     Parameters
     ----------
-    schema str name of the schema to validate against
-    path str path of the tsv for Ingest Validation Tools
+    schema : str
+        Name of the schema to validate against. Defaults to "metadata".
+    path : str, optional
+        The path of the tsv for Ingest Validation Tools. Defaults to None.
 
-    Returns str json formatted dict containing validation results
+    Returns
+    -------
+    dict
+        A dictionary containing validation results.
     """
     auth_helper_instance: AuthHelper = AuthHelper.instance()
     globus_token = auth_helper_instance.getAuthorizationTokens(request.headers)
+    
     try:
         schema_name = (
-            schema if schema != 'metadata'
-            else ingest_validation_tools_validation_utils.get_schema_version(path, 'ascii', globus_token=globus_token).schema_name
+            schema if schema != "metadata"
+            else ingest_validation_tools_validation_utils.get_schema_version(
+                path=path,
+                encoding="ascii",
+                ingest_url=ensureTrailingSlashURL(current_app.config["FLASK_APP_BASE_URI"]),
+            ).schema_name
+        )
+
+        app_context = {
+            "request_header": {"X-Hubmap-Application": "ingest-api"},
+            "ingest_url": ensureTrailingSlashURL(current_app.config["FLASK_APP_BASE_URI"]),
+            "entities_url": f"{ensureTrailingSlashURL(current_app.config['ENTITY_WEBSERVICE_URL'])}entities/",
+        }
+
+        result = ingest_validation_tools_validation_utils.get_tsv_errors(
+            path,
+            schema_name=schema_name,
+            report_type=ingest_validation_tools_table_validator.ReportType.JSON,
+            globus_token=globus_token,
+            app_context=app_context,
         )
     except ingest_validation_tools_schema_loader.PreflightError as e:
-        result = {'Preflight': str(e)}
-    else:
-        try:
-            report_type = ingest_validation_tools_table_validator.ReportType.JSON
-            result = ingest_validation_tools_validation_utils\
-                .get_tsv_errors(path, schema_name=schema_name, report_type=report_type, globus_token=globus_token)
-        except Exception as e:
-            result = rest_server_err(e, True)
-    return json.dumps(result)
+        result = rest_server_err({"Preflight": str(e)}, True)
+    except Exception as e:
+        result = rest_server_err(e, True)
+
+    return result
+
 
 
 def create_tsv_from_path(path: str, row: int) -> dict:
