@@ -3,7 +3,7 @@ import os
 import time
 import csv
 import logging
-from typing import Union
+from typing import Union, Optional
 from flask import Blueprint, current_app, Response
 import json
 import requests
@@ -105,7 +105,6 @@ def get_metadata(path: str) -> list:
     """
     result = get_csv_records(path)
     return result.get('records')
-
 
 def validate_tsv(schema: str = "metadata", path: Optional[str] = None) -> dict:
     """Calls methods of the Ingest Validation Tools submodule.
