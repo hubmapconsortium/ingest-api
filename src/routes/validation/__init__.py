@@ -3,7 +3,7 @@ import os
 import time
 import csv
 import logging
-from typing import Union
+from typing import Union, Optional
 from flask import Blueprint, current_app, Response
 import json
 import requests
@@ -106,35 +106,54 @@ def get_metadata(path: str) -> list:
     result = get_csv_records(path)
     return result.get('records')
 
-
-def validate_tsv(schema='metadata', path=None) -> str:
-    """
-    Calls methods of the Ingest Validation Tools submodule
+def validate_tsv(schema: str = "metadata", path: Optional[str] = None) -> dict:
+    """Calls methods of the Ingest Validation Tools submodule.
 
     Parameters
     ----------
-    schema str name of the schema to validate against
-    path str path of the tsv for Ingest Validation Tools
+    schema : str
+        Name of the schema to validate against. Defaults to "metadata".
+    path : str, optional
+        The path of the tsv for Ingest Validation Tools. Defaults to None.
 
-    Returns str json formatted dict containing validation results
+    Returns
+    -------
+    dict
+        A dictionary containing validation results.
     """
     auth_helper_instance: AuthHelper = AuthHelper.instance()
     globus_token = auth_helper_instance.getAuthorizationTokens(request.headers)
+    
     try:
         schema_name = (
-            schema if schema != 'metadata'
-            else ingest_validation_tools_validation_utils.get_schema_version(path, 'ascii', globus_token=globus_token).schema_name
+            schema if schema != "metadata"
+            else ingest_validation_tools_validation_utils.get_schema_version(
+                path=path,
+                encoding="ascii",
+                ingest_url=commons_file_helper.ensureTrailingSlashURL(current_app.config["FLASK_APP_BASE_URI"]),
+            ).schema_name
+        )
+
+        app_context = {
+            "request_header": {"X-Hubmap-Application": "ingest-api"},
+            "ingest_url": commons_file_helper.ensureTrailingSlashURL(current_app.config["FLASK_APP_BASE_URI"]),
+            "entities_url": f"{commons_file_helper.ensureTrailingSlashURL(current_app.config['ENTITY_WEBSERVICE_URL'])}entities/",
+        }
+
+        result = ingest_validation_tools_validation_utils.get_tsv_errors(
+            path,
+            schema_name=schema_name,
+            report_type=ingest_validation_tools_table_validator.ReportType.JSON,
+            globus_token=globus_token,
+            app_context=app_context,
         )
     except ingest_validation_tools_schema_loader.PreflightError as e:
-        result = {'Preflight': str(e)}
-    else:
-        try:
-            report_type = ingest_validation_tools_table_validator.ReportType.JSON
-            result = ingest_validation_tools_validation_utils\
-                .get_tsv_errors(path, schema_name=schema_name, report_type=report_type, globus_token=globus_token)
-        except Exception as e:
-            result = rest_server_err(e, True)
-    return json.dumps(result)
+        result = rest_server_err({"Preflight": str(e)}, True)
+    except Exception as e:
+        result = rest_server_err(e, True)
+
+    return result
+
 
 
 def create_tsv_from_path(path: str, row: int) -> dict:
@@ -351,10 +370,12 @@ def validate_metadata_upload():
                                      "https://docs.sennetconsortium.org/libraries/ingest-validation-tools/schemas")
             path: str = upload.get('fullpath')
             schema = determine_schema(entity_type, sub_type)
+
+            # On bad tsv file, validate_tsv() returns a list of errors
+            # For the good tsv, it returns an empty list
             validation_results = validate_tsv(path=path, schema=schema)
-            if len(validation_results) > 2:
-                response = rest_response(StatusCodes.UNACCEPTABLE, 'Unacceptable Metadata',
-                                         json.loads(validation_results), True)
+            if len(validation_results) > 0:
+                response = rest_response(StatusCodes.UNACCEPTABLE, 'Unacceptable Metadata', validation_results, True)
             else:
                 records = get_metadata(upload.get('fullpath'))
                 response = _get_response(records, entity_type, sub_type, validate_uuids,
