@@ -15,8 +15,7 @@ from routes.validation.lib.file import get_csv_records, get_base_path, check_upl
 from hubmap_commons import file_helper as commons_file_helper
 from hubmap_commons.hm_auth import AuthHelper
 
-from atlas_consortia_commons.rest import *
-from atlas_consortia_commons.string import equals, to_title_case
+from utils.string import equals, to_title_case
 
 
 # Need to install Git submodule ingest_validation_tools

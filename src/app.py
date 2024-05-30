@@ -40,10 +40,6 @@ from hubmap_commons import file_helper as commons_file_helper
 # Should be deprecated/refactored but still in use
 from hubmap_commons.hubmap_const import HubmapConst
 
-from atlas_consortia_commons.ubkg import initialize_ubkg
-from atlas_consortia_commons.rest import get_http_exceptions_classes, abort_err_handler
-from atlas_consortia_commons.ubkg.ubkg_sdk import init_ontology
-
 # Local modules
 from specimen import Specimen
 from ingest_file_helper import IngestFileHelper
