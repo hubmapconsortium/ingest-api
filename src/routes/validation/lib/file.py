@@ -2,10 +2,11 @@ import csv
 import os
 import logging
 from hubmap_commons import file_helper as commons_file_helper
-from flask import current_app
+from flask import current_app, request
 from werkzeug import utils
 from collections import OrderedDict
 from file_upload_helper import UploadFileHelper
+from utils.rest import abort_bad_req, rest_server_err, rest_response, StatusCodes
 
 logger = logging.getLogger(__name__)
 
@@ -92,11 +93,11 @@ def files_exist(uuid: str, data_access_level: str, group_name: str) -> bool:
     absolute_path: str =\
         commons_file_helper.ensureTrailingSlashURL(current_app.config['GLOBUS_PUBLIC_ENDPOINT_FILEPATH'])
     if data_access_level == 'consortium':
-        absolute_path: str =\
+        absolute_path =\
             commons_file_helper.ensureTrailingSlashURL(
                 current_app.config['GLOBUS_CONSORTIUM_ENDPOINT_FILEPATH'] + '/' + group_name)
     elif data_access_level == 'protected':
-        absolute_path: str =\
+        absolute_path =\
             commons_file_helper.ensureTrailingSlashURL(
                 current_app.config['GLOBUS_PROTECTED_ENDPOINT_FILEPATH'] + '/' + group_name)
     file_path = absolute_path + uuid
