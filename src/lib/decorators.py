@@ -4,7 +4,7 @@ from functools import wraps
 from inspect import signature
 from typing import Optional
 
-from atlas_consortia_commons.rest import (
+from utils.rest import (
     abort_bad_req,
     abort_forbidden,
     abort_unauthorized,

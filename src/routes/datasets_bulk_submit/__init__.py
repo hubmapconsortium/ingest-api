@@ -1,7 +1,7 @@
 from flask import Blueprint, current_app, jsonify
 import logging
 from threading import Thread
-from atlas_consortia_commons.rest import abort_bad_req, abort_not_found, abort_internal_err
+from utils.rest import abort_bad_req, abort_not_found, abort_internal_err
 from lib.decorators import require_data_admin, require_json
 from routes.datasets_bulk_submit.dataset_helper import DatasetHelper
 from routes.datasets_bulk_submit.tasks import submit_datasets
