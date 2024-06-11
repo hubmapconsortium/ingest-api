@@ -66,7 +66,7 @@ Donor: image files
 Sample: image files and metadata files
 Dataset: only the one thumbnail file
 
-This call also creates the symbolic from the file uuid dir under uploads
+This call also creates the symbolic link from the file uuid dir under uploads
 to the assets dir so the uploaded files can be exposed via gateway's file assets service
 
 Returns

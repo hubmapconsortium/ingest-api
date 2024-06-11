@@ -1,6 +1,6 @@
-Flask==2.1.3
-flask_cors==3.0.10
-flask-mail==0.9.1
+Flask==3.0.3
+Flask-Cors==4.0.1
+Flask-Mail==0.9.1
 globus_sdk==2.0.1
 
 hubmap-sdk==1.0.7
@@ -8,12 +8,12 @@ hubmap-sdk==1.0.7
 # Use pinned version of jsonref same as commons
 jsonref==0.3.0
 jsonschema==3.2.0
-neo4j==4.4
+neo4j==5.20.0
 selenium==3.141.0
 PyYAML==6.0
 
 # The commons package requires requests>=2.22.0
-requests==2.25.1
+requests==2.32.0
 
 # Use the published package from PyPI as default
 # Use the branch name of commons from github for testing new changes made in commons from different branch
@@ -36,11 +36,6 @@ rule_engine==4.1.0
 nose2==0.11.0
 pyfakefs==4.5.5
 
-# Flask 2.1.3 installs the latest Werkzeug==3.0.0 (released on 9/30/2023) and causing import issues 
-# Use a pinned version 2.3.7 (the latest release before 3.0.0) to mitigate temporarily
-# Will upgrade Flask to newer version later on across all APIs. 10/3/2023 - Zhou
-Werkzeug==2.3.7
+Werkzeug==3.0.3
 
 APScheduler==3.10.4
-
-atlas-consortia-commons==1.0.5
