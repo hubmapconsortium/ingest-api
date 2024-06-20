@@ -1,9 +1,9 @@
 import contextlib
 import os
 from functools import wraps
+from dataclasses import dataclass
 from inspect import signature
 from typing import Optional
-
 from utils.rest import (
     abort_bad_req,
     abort_forbidden,
@@ -11,6 +11,14 @@ from utils.rest import (
 )
 from flask import current_app, request
 from hubmap_commons.hm_auth import AuthHelper
+
+
+@dataclass(frozen=True)
+class User:
+    uuid: str
+    email: str
+    group_uuids: list
+    is_data_admin: bool
 
 
 def require_json(param: str = "body"):

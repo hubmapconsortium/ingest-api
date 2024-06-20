@@ -62,6 +62,7 @@ from routes.assayclassifier import bp as assayclassifier_blueprint
 from routes.validation import validation_blueprint
 from routes.datasets_bulk_submit import datasets_bulk_submit_blueprint
 from routes.privs import privs_blueprint
+from routes.entity_CRUD import entity_CRUD_blueprint
 
 
 # Set logging format and level (default is warning)
@@ -86,6 +87,7 @@ app.register_blueprint(assayclassifier_blueprint)
 app.register_blueprint(validation_blueprint)
 app.register_blueprint(datasets_bulk_submit_blueprint)
 app.register_blueprint(privs_blueprint)
+app.register_blueprint(entity_CRUD_blueprint)
 
 # Suppress InsecureRequestWarning warning when requesting status on https with ssl cert verify disabled
 requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)

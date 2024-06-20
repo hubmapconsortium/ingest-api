@@ -227,7 +227,11 @@ def umls_auth():
         return jsonify(False), 403
 
 
-
 def get_user_info(token):
     auth_client = AuthClient(authorizer=AccessTokenAuthorizer(token))
     return auth_client.oauth2_userinfo()
+
+
+def get_auth_header_dict(token) -> dict:
+    return {'Authorization': 'Bearer ' + token,  'X-Application': 'ingest-api'}
+
