@@ -43,14 +43,8 @@
     },
     {
         "type": "note",
-        "match": "parent_dataset_id == null",
-        "value": "{'not_epic': true, 'is_epic': false}",
-        "rule_description": "Preamble rule identifying EPIC"
-    },
-    {
-        "type": "note",
         "match": "creation_action == 'External Process' or (parent_dataset_id != null and derived_dataset_type != null)",
-        "value": "{'not_epic': false, 'is_epic': true}",
+        "value": "{'is_epic': true}",
         "rule_description": "Preamble rule identifying EPIC"
     },
     {
