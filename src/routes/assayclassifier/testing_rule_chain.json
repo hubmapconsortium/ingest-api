@@ -778,11 +778,5 @@
         "match": "is_epic and derived_dataset_type == 'segmentation mask'",
         "value": "{'assaytype': 'test-is-segmentation-mask', 'vitessce-hints': [], 'dir-schema': '', 'contains-pii': false, 'primary': false, 'dataset-type': '', 'description': ''}",
         "rule_description": "EPIC dataset segmentation mask"
-    },
-    {
-        "type": "match",
-        "match": "is_epic",
-        "value": "{'assaytype': 'test-is-epic', 'vitessce-hints': [], 'dir-schema': '', 'contains-pii': false, 'primary': false, 'dataset-type': '', 'description': ''}",
-        "rule_description": "EPIC dataset segmentation mask"
     }
 ]
