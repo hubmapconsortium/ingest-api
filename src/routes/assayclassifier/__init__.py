@@ -1,9 +1,9 @@
 from flask import Blueprint, request, Response, current_app, jsonify
 import logging
-from rq import Retry
 from sys import stdout
 import json
 import urllib.request
+import urllib.error
 
 from hubmap_commons.exceptions import HTTPException
 from hubmap_sdk import EntitySdk
@@ -134,12 +134,29 @@ def build_entity_metadata(entity) -> dict:
     return metadata
 
 
+def get_data_from_ubkg(assay: str) -> dict:
+    ubkg_api_url = current_app.config["UBKG_WEBSERVICE_URL"] + "assayname"
+    data = {"name": assay}
+    req = urllib.request.Request(ubkg_api_url, data=json.dumps(data).encode("utf-8"))
+    req.add_header("Content-Type", "application/json")
+    try:
+        with urllib.request.urlopen(req) as response:
+            response_data = response.read().decode("utf-8")
+    except urllib.error.URLError as excp:
+        print(f"Error getting extra info from UBKG {excp}")
+        return {}
+
+    return json.loads(response_data)
+
+
 @bp.route("/assaytype/<ds_uuid>", methods=["GET"])
 def get_ds_assaytype(ds_uuid: str):
     try:
         entity = get_entity(ds_uuid)
         metadata = build_entity_metadata(entity)
-        return jsonify(calculate_assay_info(metadata))
+        rules_json = calculate_assay_info(metadata)
+        ubkg_json = get_data_from_ubkg(rules_json.get("assaytype"))
+        return jsonify({**rules_json, **ubkg_json})
     except ResponseException as re:
         logger.error(re, exc_info=True)
         return re.response
@@ -193,7 +210,9 @@ def get_assaytype_from_metadata():
     try:
         require_json(request)
         metadata = request.json
-        return jsonify(calculate_assay_info(metadata))
+        rules_json = calculate_assay_info(metadata)
+        ubkg_json = get_data_from_ubkg(rules_json.get("assaytype"))
+        return jsonify({**rules_json, **ubkg_json})
     except ResponseException as re:
         logger.error(re, exc_info=True)
         return re.response
@@ -227,7 +246,7 @@ def reload_chain():
         return Response(f"Error applying classification rules: {excp}", 500)
     except (HTTPException, SDKException) as hte:
         return Response(
-            f"Error while getting assay type for {ds_uuid}: " + hte.get_description(),
+            f"Error while getting assay type: " + hte.get_description(),
             hte.get_status_code(),
         )
     except Exception as e:
