@@ -1912,6 +1912,11 @@ def allowable_edit_states(hmuuid):
         abort(400, msg)
 
 
+DATASETS_DATA_STATUS_KEY = "datasets_data_status_key"
+DATASETS_DATA_STATUS_LAST_UPDATED_KEY = "datasets_data_status_last_updated_key"
+UPLOADS_DATA_STATUS_KEY = "uploads_data_status_key"
+UPLOADS_DATA_STATUS_LAST_UPDATED_KEY = "uploads_data_status_last_updated_key"
+
 """
 Description
 """
@@ -1919,16 +1924,19 @@ Description
 def dataset_data_status():
     redis_connection = redis.from_url(app.config['REDIS_URL'])
     try:
-        cached_data = redis_connection.get("datasets_data_status_key")
+        cached_data = redis_connection.get(DATASETS_DATA_STATUS_KEY)
         if cached_data:
             cached_data_json = json.loads(cached_data.decode('utf-8'))
-            return jsonify(cached_data_json)
+            last_updated = redis_connection.get(DATASETS_DATA_STATUS_LAST_UPDATED_KEY)
+            return jsonify({"data": cached_data_json, "last_updated": int(last_updated)})
         else:
             raise Exception
     except Exception:
         logger.error("Failed to retrieve datasets data-status from cache. Retrieving new data")
-        combined_results = update_datasets_datastatus()
-        return jsonify(combined_results)
+
+    combined_results = update_datasets_datastatus()
+    last_updated = int(time.time() * 1000)
+    return jsonify({"data": combined_results, "last_updated": last_updated})
 
 
 """
@@ -1938,16 +1946,19 @@ Description
 def upload_data_status():
     redis_connection = redis.from_url(app.config['REDIS_URL'])
     try:
-        cached_data = redis_connection.get("uploads_data_status_key")
+        cached_data = redis_connection.get(UPLOADS_DATA_STATUS_KEY)
         if cached_data:
             cached_data_json = json.loads(cached_data.decode('utf-8'))
-            return jsonify(cached_data_json)
+            last_updated = redis_connection.get(UPLOADS_DATA_STATUS_LAST_UPDATED_KEY)
+            return jsonify({"data": cached_data_json, "last_updated": int(last_updated)})
         else:
             raise Exception
     except Exception:
         logger.error("Failed to retrieve uploads data-status from cache. Retrieving new data")
-        results = update_uploads_datastatus()
-        return jsonify(results)
+
+    results = update_uploads_datastatus()
+    last_updated = int(time.time() * 1000)
+    return jsonify({"data": results, "last_updated": last_updated})
 
 
 @app.route('/donors/bulk-upload', methods=['POST'])
@@ -2719,8 +2730,8 @@ def update_datasets_datastatus():
     except json.JSONDecodeError as e:
         bad_request_error(e)
     redis_connection = redis.from_url(app.config['REDIS_URL'])
-    cache_key = "datasets_data_status_key"
-    redis_connection.set(cache_key, combined_results_string)
+    redis_connection.set(DATASETS_DATA_STATUS_KEY, combined_results_string)
+    redis_connection.set(DATASETS_DATA_STATUS_LAST_UPDATED_KEY, int(time.time() * 1000))
     return combined_results
 
 def update_uploads_datastatus():
@@ -2764,8 +2775,8 @@ def update_uploads_datastatus():
     except json.JSONDecodeError as e:
         bad_request_error(e)
     redis_connection = redis.from_url(app.config['REDIS_URL'])
-    cache_key = "uploads_data_status_key"
-    redis_connection.set(cache_key, results_string)
+    redis_connection.set(UPLOADS_DATA_STATUS_KEY, results_string)
+    redis_connection.set(UPLOADS_DATA_STATUS_LAST_UPDATED_KEY, int(time.time() * 1000))
     return results
 
 
