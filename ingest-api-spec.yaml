@@ -83,6 +83,22 @@ paths:
               $ref: "#/components/schemas/Dataset"
         description: Dataset object that needs to be created
         required: true
+  /datasets/data-status:
+    get:
+      summary: Get the datasets data status
+      responses:
+        "200":
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    type: object
+                  last_updated:
+                    type: integer
+        "400":
+          description: There was a system error
   "/datasets/{identifier}":
     get:
       tags:
@@ -616,6 +632,23 @@ paths:
           description: The user's token has expired or the user did not have authorization
         '500':
           description: Internal error
+
+  /uploads/data-status:
+    get:
+      summary: Get the uploads data status
+      responses:
+        "200":
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    type: object
+                  last_updated:
+                    type: integer
+        "400":
+          description: There was a system error
 
   /uploads/{identifier}/validate:
     put:
