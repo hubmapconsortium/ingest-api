@@ -127,13 +127,15 @@ parser = argparse.ArgumentParser(
     In Firefox (Tools > Browser Tools > Web Developer Tools). Click on "Storage" then the dropdown for "Local Storage"
     and then the url. Take the 'groups_token' as the 'bearer_token' below...
     
+    
     LOCALLY RUN AND TEST:
     /Users/cpk36/Documents/Git/ingest-api/src/test/datasets_publish_tests.py ../instance/app.cfg http://127.0.0.1:8484 BEARER_TOKEN -v
     
     OS X NOTE: For this to work (951)subprocess.py:__init__() self._execute_child() must be commented out because it calls
-    setfacl which does not exist on OS X
+    setfacl which does not exist on OS X.
     
     ALSO: ingest_file_helper.py(194) set_dataset_permissions(..., trial_run = True): from False.
+    
     
     REMOTELY RUN AND GET PATHS TO MANUALLY TEST:
     /Users/cpk36/Documents/Git/ingest-api/src/test/datasets_publish_tests.py ../instance/app_dev.cfg https://ingest-api.dev.hubmapconsortium.org BEARER_TOKEN -v
