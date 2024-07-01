@@ -14,8 +14,8 @@ from ingest_file_helper import IngestFileHelper
 local_execution: bool = False
 
 
-def eprint(*args, **kwargs) -> None:
-    print(*args, file=sys.stderr, **kwargs)
+def eprint(*eargs, **kwargs) -> None:
+    print(*eargs, file=sys.stderr, **kwargs)
 
 
 def vprint(*pargs, **pkwargs) -> None:
@@ -101,6 +101,7 @@ def publish_and_check(dataset_uuid: str, metadata_json_path: str) -> None:
     else:
         print(f"ls -al '{metadata_json_path}'")
         input("Please execute the above commands on the PSC server, and then press Enter to continue...")
+
 
 class RawTextArgumentDefaultsHelpFormatter(
     argparse.ArgumentDefaultsHelpFormatter,
