@@ -134,12 +134,24 @@ def build_entity_metadata(entity) -> dict:
     return metadata
 
 
+def apply_source_type_transformations(source_type: str, rule_value_set: dict) -> dict:
+    # If we get more complicated transformations we should consider refactoring.
+    # For now, this should suffice.
+    if source_type == "murine":
+        rule_value_set["contains-pii"] = False
+
+    return rule_value_set
+
+
 @bp.route("/assaytype/<ds_uuid>", methods=["GET"])
 def get_ds_assaytype(ds_uuid: str):
     try:
         entity = get_entity(ds_uuid)
         metadata = build_entity_metadata(entity)
-        return jsonify(calculate_assay_info(metadata))
+        rule_value_set = calculate_assay_info(metadata)
+        if source_type := entity.get("source_type"):
+            apply_source_type_transformations(source_type, rule_value_set)
+        return jsonify(rule_value_set)
     except ResponseException as re:
         logger.error(re, exc_info=True)
         return re.response
@@ -193,7 +205,12 @@ def get_assaytype_from_metadata():
     try:
         require_json(request)
         metadata = request.json
-        return jsonify(calculate_assay_info(metadata))
+        rule_value_set = calculate_assay_info(metadata)
+        if parent_sample_id := metadata.get("parent_sample_id"):
+            parent_entity = get_entity(parent_sample_id)
+            if source_type := parent_entity.get("source_type"):
+                apply_source_type_transformations(source_type, rule_value_set)
+        return jsonify(rule_value_set)
     except ResponseException as re:
         logger.error(re, exc_info=True)
         return re.response
