@@ -149,10 +149,16 @@ def get_ds_assaytype(ds_uuid: str):
         entity = get_entity(ds_uuid)
         metadata = build_entity_metadata(entity)
         rule_value_set = calculate_assay_info(metadata)
+
         if sources := entity.get("sources", []):
-            if isinstance(sources[0], dict):
-                source_type = sources[0].get("source_type")
-                apply_source_type_transformations(source_type, rule_value_set)
+            source_type = ""
+            for source in sources:
+                if source_type := source.get("source_type"):
+                    # If there is a single Human source_type, treat this as a Human case
+                    if source_type == "Human":
+                        break
+            apply_source_type_transformations(source_type, rule_value_set)
+
         return jsonify(rule_value_set)
     except ResponseException as re:
         logger.error(re, exc_info=True)
@@ -208,10 +214,18 @@ def get_assaytype_from_metadata():
         require_json(request)
         metadata = request.json
         rule_value_set = calculate_assay_info(metadata)
-        if parent_sample_id := metadata.get("parent_sample_id"):
-            parent_entity = get_entity(parent_sample_id)
-            if source_type := parent_entity.get("source_type"):
-                apply_source_type_transformations(source_type, rule_value_set)
+
+        if parent_sample_ids := metadata.get("parent_sample_id"):
+            source_type = ""
+            parent_sample_ids = parent_sample_ids.split(",")
+            for parent_sample_id in parent_sample_ids:
+                parent_entity = get_entity(parent_sample_id)
+                if source_type := parent_entity.get("source_type"):
+                    # If there is a single Human source_type, treat this as a Human case
+                    if source_type == "Human":
+                        break
+
+            apply_source_type_transformations(source_type, rule_value_set)
         return jsonify(rule_value_set)
     except ResponseException as re:
         logger.error(re, exc_info=True)
