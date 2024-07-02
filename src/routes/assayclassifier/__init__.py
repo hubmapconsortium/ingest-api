@@ -149,8 +149,10 @@ def get_ds_assaytype(ds_uuid: str):
         entity = get_entity(ds_uuid)
         metadata = build_entity_metadata(entity)
         rule_value_set = calculate_assay_info(metadata)
-        if source_type := entity.get("source_type"):
-            apply_source_type_transformations(source_type, rule_value_set)
+        if sources := entity.get("sources", []):
+            if isinstance(sources[0], dict):
+                source_type = sources[0].get("source_type")
+                apply_source_type_transformations(source_type, rule_value_set)
         return jsonify(rule_value_set)
     except ResponseException as re:
         logger.error(re, exc_info=True)
