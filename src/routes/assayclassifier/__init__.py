@@ -220,7 +220,8 @@ def get_assaytype_from_metadata():
             parent_sample_ids = parent_sample_ids.split(",")
             for parent_sample_id in parent_sample_ids:
                 parent_entity = get_entity(parent_sample_id)
-                if source_type := parent_entity.get("source_type"):
+                if source := parent_entity.get("source"):
+                    source_type = source.get("source_type")
                     # If there is a single Human source_type, treat this as a Human case
                     if source_type == "Human":
                         break
