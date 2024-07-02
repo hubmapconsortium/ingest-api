@@ -137,7 +137,7 @@ def build_entity_metadata(entity) -> dict:
 def apply_source_type_transformations(source_type: str, rule_value_set: dict) -> dict:
     # If we get more complicated transformations we should consider refactoring.
     # For now, this should suffice.
-    if source_type == "murine":
+    if source_type == "Mouse":
         rule_value_set["contains-pii"] = False
 
     return rule_value_set
