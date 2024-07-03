@@ -885,6 +885,18 @@ def entity_json_dumps(entity_instance: EntitySdk, dataset_uuid: str) -> str:
     json_object += '\n'
     return json_object
 
+def metadata_json_based_on_creation_action(creation_action: str) -> bool:
+    """
+    https://github.com/hubmapconsortium/ingest-api/issues/575
+    Currently metadata.json files are generated for primary datasets only, change this so metadata.json file
+    are additionally generated for processed datasets where creation_action == 'Central Process' or
+    'Lab Process' or 'External Process' but not for multi-assay component datasets (component datasets match
+    creation_action == 'Multi-Assay Split)
+    """
+    if creation_action is None:
+        return False
+    return creation_action.lower() in [x.lower() for x in ['Central Process', 'Lab Process', 'External Process']]
+
 # Needs to be triggered in the workflow or manually?!
 @app.route('/datasets/<identifier>/publish', methods=['PUT'])
 @secured(groups="HuBMAP-read")
@@ -1115,13 +1127,7 @@ def publish_datastage(identifier):
                 for e_id in uuids_for_public:
                     entity_instance.clear_cache(e_id)
 
-            # Only write the metadata.json file if the Dataset has no parents...
-            parents_query: str = \
-                "MATCH (ds:Dataset)-[:ACTIVITY_INPUT]->(:Activity {creation_action:'Central Process'})-[:ACTIVITY_OUTPUT]->" \
-                f"(:Dataset {{uuid:'{dataset_uuid}'}}) " \
-                "RETURN ds.uuid AS ds_parent_uuid"
-            parents_query_rval = neo_session.run(parents_query).data()
-            if len(parents_query_rval) == 0:
+            if is_primary or metadata_json_based_on_creation_action(entity_dict.get('creation_action')):
                 # Write out the metadata.json file after all processing has been done for publication...
                 # NOTE: The metadata.json file must be written before set_dataset_permissions published=True is executed
                 # because (on examining the code) you can see that it causes the director to be not writable.
