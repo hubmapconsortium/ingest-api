@@ -153,8 +153,8 @@ def get_ds_assaytype(ds_uuid: str):
         if hasattr(entity, "sources") and isinstance(entity.sources, list):
             source_type = ""
             for source in entity.sources:
-                if hasattr(entity, "source_type"):
-                    source_type = source.source_type
+                if source_type := source.get("source_type"):
+                    # If there is a single Human source_type, treat this as a Human case
                     if source_type.upper() == "HUMAN":
                         break
             apply_source_type_transformations(source_type, rule_value_set)
@@ -221,9 +221,7 @@ def get_assaytype_from_metadata():
             for parent_sample_id in parent_sample_ids:
                 parent_entity = get_entity(parent_sample_id)
                 if hasattr(parent_entity, "source"):
-                    source = parent_entity.source
-                    if hasattr(source, "source_type"):
-                        source_type = source.source_type
+                    if source_type := parent_entity.source.get("source_type"):
                         # If there is a single Human source_type, treat this as a Human case
                         if source_type.upper() == "HUMAN":
                             break
