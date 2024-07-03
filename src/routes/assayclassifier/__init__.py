@@ -150,9 +150,9 @@ def get_ds_assaytype(ds_uuid: str):
         metadata = build_entity_metadata(entity)
         rule_value_set = calculate_assay_info(metadata)
 
-        if sources := entity.get("sources", []):
+        if hasattr(entity, "sources") and isinstance(entity.sources, list):
             source_type = ""
-            for source in sources:
+            for source in entity.sources:
                 if source_type := source.get("source_type"):
                     # If there is a single Human source_type, treat this as a Human case
                     if source_type.upper() == "HUMAN":
@@ -220,13 +220,13 @@ def get_assaytype_from_metadata():
             parent_sample_ids = parent_sample_ids.split(",")
             for parent_sample_id in parent_sample_ids:
                 parent_entity = get_entity(parent_sample_id)
-                if source := parent_entity.get("source"):
-                    source_type = source.get("source_type")
-                    # If there is a single Human source_type, treat this as a Human case
-                    if source_type.upper() == "HUMAN":
-                        break
-
+                if hasattr(parent_entity, "source"):
+                    if source_type := parent_entity.source.get("source_type"):
+                        # If there is a single Human source_type, treat this as a Human case
+                        if source_type.upper() == "HUMAN":
+                            break
             apply_source_type_transformations(source_type, rule_value_set)
+
         return jsonify(rule_value_set)
     except ResponseException as re:
         logger.error(re, exc_info=True)
