@@ -137,7 +137,7 @@ def build_entity_metadata(entity) -> dict:
 def apply_source_type_transformations(source_type: str, rule_value_set: dict) -> dict:
     # If we get more complicated transformations we should consider refactoring.
     # For now, this should suffice.
-    if source_type == "Mouse":
+    if source_type.upper() == "MOUSE":
         rule_value_set["contains-pii"] = False
 
     return rule_value_set
@@ -155,7 +155,7 @@ def get_ds_assaytype(ds_uuid: str):
             for source in sources:
                 if source_type := source.get("source_type"):
                     # If there is a single Human source_type, treat this as a Human case
-                    if source_type == "Human":
+                    if source_type.upper() == "HUMAN":
                         break
             apply_source_type_transformations(source_type, rule_value_set)
 
@@ -223,7 +223,7 @@ def get_assaytype_from_metadata():
                 if source := parent_entity.get("source"):
                     source_type = source.get("source_type")
                     # If there is a single Human source_type, treat this as a Human case
-                    if source_type == "Human":
+                    if source_type.upper() == "HUMAN":
                         break
 
             apply_source_type_transformations(source_type, rule_value_set)
