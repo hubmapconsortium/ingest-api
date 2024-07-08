@@ -14,8 +14,8 @@ from ingest_file_helper import IngestFileHelper
 local_execution: bool = False
 
 
-def eprint(*args, **kwargs) -> None:
-    print(*args, file=sys.stderr, **kwargs)
+def eprint(*eargs, **kwargs) -> None:
+    print(*eargs, file=sys.stderr, **kwargs)
 
 
 def vprint(*pargs, **pkwargs) -> None:
@@ -102,12 +102,16 @@ def publish_and_check(dataset_uuid: str, metadata_json_path: str) -> None:
         print(f"ls -al '{metadata_json_path}'")
         input("Please execute the above commands on the PSC server, and then press Enter to continue...")
 
+
 class RawTextArgumentDefaultsHelpFormatter(
     argparse.ArgumentDefaultsHelpFormatter,
     argparse.RawTextHelpFormatter
 ):
     pass
 
+
+# NOTE:
+# ingest-api DEV server logs location vm001.hive.psc.edu:/opt/repositories/vm001-dev/ingest-api/log/uwsgi-ingest-api.log
 
 # https://docs.python.org/3/howto/argparse.html
 parser = argparse.ArgumentParser(
@@ -126,13 +130,15 @@ parser = argparse.ArgumentParser(
     In Firefox (Tools > Browser Tools > Web Developer Tools). Click on "Storage" then the dropdown for "Local Storage"
     and then the url. Take the 'groups_token' as the 'bearer_token' below...
     
+    
     LOCALLY RUN AND TEST:
     /Users/cpk36/Documents/Git/ingest-api/src/test/datasets_publish_tests.py ../instance/app.cfg http://127.0.0.1:8484 BEARER_TOKEN -v
     
     OS X NOTE: For this to work (951)subprocess.py:__init__() self._execute_child() must be commented out because it calls
-    setfacl which does not exist on OS X
+    setfacl which does not exist on OS X.
     
     ALSO: ingest_file_helper.py(194) set_dataset_permissions(..., trial_run = True): from False.
+    
     
     REMOTELY RUN AND GET PATHS TO MANUALLY TEST:
     /Users/cpk36/Documents/Git/ingest-api/src/test/datasets_publish_tests.py ../instance/app_dev.cfg https://ingest-api.dev.hubmapconsortium.org BEARER_TOKEN -v
