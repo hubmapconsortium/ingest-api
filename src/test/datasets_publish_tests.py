@@ -110,6 +110,9 @@ class RawTextArgumentDefaultsHelpFormatter(
     pass
 
 
+# NOTE:
+# ingest-api DEV server logs location vm001.hive.psc.edu:/opt/repositories/vm001-dev/ingest-api/log/uwsgi-ingest-api.log
+
 # https://docs.python.org/3/howto/argparse.html
 parser = argparse.ArgumentParser(
     description='''
