@@ -2,13 +2,13 @@ import argparse
 import os
 import sys
 import json
-import ast
 
-from hubmap_commons import neo4j_driver, string_helper
+from hubmap_sdk import EntitySdk
+from hubmap_commons import neo4j_driver
 from ingest_file_helper import IngestFileHelper
 
 
-def eprint(*eargs, **ekwargs):
+def eprint(*eargs, **ekwargs) -> None:
     print(*eargs, file=sys.stderr, **ekwargs)
 
 
@@ -37,6 +37,36 @@ def mkdir_p(path: str) -> None:
     os.system(cmd)
 
 
+def obj_to_dict(obj) -> dict:
+    """
+    Convert the obj[ect] into a dict, but deeply.
+
+    Note: The Python builtin 'vars()' does not work here because of the way that some of the classes
+    are defined.
+    """
+    return json.loads(
+        json.dumps(obj, default=lambda o: getattr(o, '__dict__', str(o)))
+    )
+
+
+def entity_json_dumps(entity_instance: EntitySdk, dataset_uuid: str) -> str:
+    """
+    Because entity and the content of the arrays returned from entity_instance.get_associated_*
+    contain user defined objects we need to turn them into simple python objects (e.g., dicts, lists, str)
+    before we can convert them wth json.dumps.
+
+    Here we create an expanded version of the entity associated with the dataset_uuid and return it as a json string.
+    """
+    entity = obj_to_dict(entity_instance.get_entity_by_id(dataset_uuid))
+    entity['organs'] = obj_to_dict(entity_instance.get_associated_organs_from_dataset(dataset_uuid))
+    entity['samples'] = obj_to_dict(entity_instance.get_associated_samples_from_dataset(dataset_uuid))
+    entity['donors'] = obj_to_dict(entity_instance.get_associated_donors_from_dataset(dataset_uuid))
+
+    json_object = json.dumps(entity, indent=4)
+    json_object += '\n'
+    return json_object
+
+
 class RawTextArgumentDefaultsHelpFormatter(
     argparse.ArgumentDefaultsHelpFormatter,
     argparse.RawTextHelpFormatter
@@ -59,6 +89,8 @@ parser.add_argument('cfg_file',
                     help='Configuration file with required information such as base data directory'
                          '(used to calculate absolute path to dataset), any API service urls needed,'
                          'any Neo4j connection information needed, any passwords, tokens, etc...')
+parser.add_argument('bearer_token',
+                    help='groups_token from Local Storage when logged into ingest-dev (see above)')
 parser.add_argument("-l", "--local_execution", action="store_true",
                     help='When run locally create directories if they do not exist')
 parser.add_argument("-v", "--verbose", action="store_true",
@@ -70,7 +102,7 @@ os.environ['VERBOSE'] = str(args.verbose)
 config = parse_cfg(args.cfg_file)
 
 # The new neo4j_driver (from commons package) is a singleton module
-# This neo4j_driver_instance will be used for application-specifc neo4j queries
+# This neo4j_driver_instance will be used for application-specific neo4j queries
 # as well as being passed to the schema_manager
 try:
     neo4j_driver_instance = neo4j_driver.instance(config['NEO4J_SERVER'],
@@ -82,7 +114,7 @@ except Exception:
     eprint("Failed to initialize the neo4j_driver module")
     os.exit(1)
 
-
+entity_instance = EntitySdk(token=args.bearer_token, service_url=config['ENTITY_WEBSERVICE_URL'])
 ingest_helper = IngestFileHelper(config)
 
 with neo4j_driver_instance.session() as neo_session:
@@ -92,37 +124,29 @@ with neo4j_driver_instance.session() as neo_session:
         "MATCH (ds:Dataset {status: 'Published', entity_type: 'Dataset'})<-[:ACTIVITY_OUTPUT]-(a:Activity) "
         "WHERE a.creation_action IN ['Central Process', 'Lab Process', 'External Process'] "
         "RETURN "
-        "ds.uuid as uuid, ds.group_uuid as group_uuid, ds.data_access_level as data_access_level, "
-        "ds.ingest_metadata as ingest_metadata")
+        "ds.uuid as uuid, ds.group_uuid as group_uuid, ds.data_access_level as data_access_level")
     rvals = neo_session.run(q_published_processed_datasets).data()
 
     for rval in rvals:
         dataset_uuid: str = rval.get('uuid')
         dataset_group_uuid: str = rval.get('group_uuid')
         dataset_data_access_level: str = rval.get('data_access_level')
-        dataset_ingest_metadata: str = rval.get('ingest_metadata')
 
-        if dataset_ingest_metadata is not None:
-            dataset_ingest_matadata_dict: dict = ast.literal_eval(dataset_ingest_metadata)
-
-            # Save a .json file with the metadata information at the top level directory...
-            vprint(f"ingest_matadata: {dataset_ingest_matadata_dict}")
-            json_object = json.dumps(dataset_ingest_matadata_dict, indent=4)
-            json_object += '\n'
-            ds_path = ingest_helper.dataset_directory_absolute_path(dataset_data_access_level,
-                                                                    dataset_group_uuid, dataset_uuid, False)
-            # Since these datasets have already been published, this directory should already exist on the server...
-            if args.local_execution:
-                mkdir_p(ds_path)
-            md_file = os.path.join(ds_path, "metadata.json")
-            vprint(f"publish_datastage; writing md_file: '{md_file}'; "
-                   f"containing ingest_matadata.metadata: '{json_object}'")
-            try:
-                with open(md_file, "w") as outfile:
-                    outfile.write(json_object)
-            except IOError as ioe:
-                eprint(f"Error while writing md_file {md_file}; {ioe}")
-                os.exit(1)
+        ds_path = ingest_helper.dataset_directory_absolute_path(dataset_data_access_level,
+                                                                dataset_group_uuid, dataset_uuid, False)
+        # Since these datasets have already been published, this directory should already exist on the server...
+        if args.local_execution:
+            mkdir_p(ds_path)
+        md_file = os.path.join(ds_path, "metadata.json")
+        json_object = entity_json_dumps(entity_instance, dataset_uuid)
+        vprint(f"publish_datastage; writing md_file: '{md_file}'; "
+               f"containing ingest_metadata.metadata: '{json_object}'")
+        try:
+            with open(md_file, "w") as outfile:
+                outfile.write(json_object)
+        except IOError as ioe:
+            eprint(f"Error while writing md_file {md_file}; {ioe}")
+            os.exit(1)
 
 neo4j_driver.close()
 vprint('Done!')
