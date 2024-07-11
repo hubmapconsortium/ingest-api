@@ -1069,15 +1069,15 @@ def publish_datastage(identifier):
             auth_tokens = auth_helper.getAuthorizationTokens(request.headers)
             entity_instance = EntitySdk(token=auth_tokens, service_url=app.config['ENTITY_WEBSERVICE_URL'])
             doi_info = None
+
+            entity = entity_instance.get_entity_by_id(dataset_uuid)
+            entity_dict = vars(entity)
+
             # Generating DOI's for lab processed/derived data as well as IEC/pipeline/airflow processed/derived data).
             if is_primary or has_entity_lab_processed_data_type:
                 # DOI gets generated here
                 # Note: moved dataset title auto generation to entity-api - Zhou 9/29/2021
                 datacite_doi_helper = DataCiteDoiHelper()
-
-                entity = entity_instance.get_entity_by_id(dataset_uuid)
-                entity_dict = vars(entity)
-
                 try:
                     datacite_doi_helper.create_dataset_draft_doi(entity_dict, check_publication_status=False)
                 except Exception as e:
