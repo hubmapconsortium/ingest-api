@@ -76,8 +76,10 @@ class RawTextArgumentDefaultsHelpFormatter(
     pass
 
 
-# Note:
+# Notes:
+#
 # On DEV the log file for ingest-api is at: /opt/repositories/vm001-dev/ingest-api/log/uwsgi-ingest-api.log
+#
 # Also on DEV or PROD you must create a virtual environment to run in:
 # cd /opt/repositories/vm001-dev/ingest-api/src/scripts
 # python3 -m pip install --upgrade pip
@@ -85,6 +87,7 @@ class RawTextArgumentDefaultsHelpFormatter(
 # pip3 install -r ../requirements.txt
 # cd ..
 # python3 scripts/metadata_json_for_all.py instance/app.cfg <token> -v -d
+# deactivate; rm -rf scripts/venv
 
 # https://docs.python.org/3/howto/argparse.html
 parser = argparse.ArgumentParser(
