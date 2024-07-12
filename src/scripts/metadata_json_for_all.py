@@ -5,6 +5,8 @@ import json
 
 from hubmap_sdk import EntitySdk
 from hubmap_commons import neo4j_driver
+from hubmap_commons.hubmap_const import HubmapConst
+sys.path.append(os.getcwd())
 from ingest_file_helper import IngestFileHelper
 
 
@@ -74,6 +76,19 @@ class RawTextArgumentDefaultsHelpFormatter(
     pass
 
 
+# Notes:
+#
+# On DEV the log file for ingest-api is at: /opt/repositories/vm001-dev/ingest-api/log/uwsgi-ingest-api.log
+#
+# Also on DEV or PROD you must create a virtual environment to run in:
+# cd /opt/repositories/vm001-dev/ingest-api/src/scripts
+# python3 -m pip install --upgrade pip
+# python3 -m venv venv; source venv/bin/activate
+# pip3 install -r ../requirements.txt
+# cd ..
+# python3 scripts/metadata_json_for_all.py instance/app.cfg <token> -v -d
+# deactivate; rm -rf scripts/venv
+
 # https://docs.python.org/3/howto/argparse.html
 parser = argparse.ArgumentParser(
     description='''
@@ -93,11 +108,16 @@ parser.add_argument('bearer_token',
                     help='groups_token from Local Storage when logged into ingest-dev (see above)')
 parser.add_argument("-l", "--local_execution", action="store_true",
                     help='When run locally create directories if they do not exist')
+parser.add_argument("-d", "--dev_execution", action="store_true",
+                    help='When run on DEV create directories if they do not exist')
 parser.add_argument("-v", "--verbose", action="store_true",
                     help='Verbose output')
 
 args = parser.parse_args()
 os.environ['VERBOSE'] = str(args.verbose)
+if args.local_execution and args.dev_execution:
+    eprint("Can only specify --local_execution OR --dev_execution but not both!")
+    os.exit(1)
 
 config = parse_cfg(args.cfg_file)
 
@@ -135,8 +155,11 @@ with neo4j_driver_instance.session() as neo_session:
         ds_path = ingest_helper.dataset_directory_absolute_path(dataset_data_access_level,
                                                                 dataset_group_uuid, dataset_uuid, False)
         # Since these datasets have already been published, this directory should already exist on the server...
-        if args.local_execution:
+        if args.local_execution or args.dev_execution:
             mkdir_p(ds_path)
+        if args.dev_execution:
+            facl_cmd: str = ingest_helper.set_dir_permissions(HubmapConst.ACCESS_LEVEL_PROTECTED, ds_path)
+            vprint(f"facl_cmd executed: {facl_cmd}")
         md_file = os.path.join(ds_path, "metadata.json")
         json_object = entity_json_dumps(entity_instance, dataset_uuid)
         vprint(f"publish_datastage; writing md_file: '{md_file}'; "
@@ -149,4 +172,4 @@ with neo4j_driver_instance.session() as neo_session:
             os.exit(1)
 
 neo4j_driver.close()
-vprint('Done!')
+print('Done!')
