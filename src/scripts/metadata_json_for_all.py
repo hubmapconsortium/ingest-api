@@ -61,7 +61,10 @@ def entity_json_dumps(entity_instance: EntitySdk, dataset_uuid: str) -> str:
     """
     entity = obj_to_dict(entity_instance.get_entity_by_id(dataset_uuid))
     entity['organs'] = obj_to_dict(entity_instance.get_associated_organs_from_dataset(dataset_uuid))
-    entity['samples'] = obj_to_dict(entity_instance.get_associated_samples_from_dataset(dataset_uuid))
+    try:
+        entity['samples'] = obj_to_dict(entity_instance.get_associated_samples_from_dataset(dataset_uuid))
+    except Exception:
+        eprint(f"Dataset UUID: {dataset_uuid} has no samples; Proceeding...")
     entity['donors'] = obj_to_dict(entity_instance.get_associated_donors_from_dataset(dataset_uuid))
 
     json_object = json.dumps(entity, indent=4)
@@ -77,13 +80,18 @@ class RawTextArgumentDefaultsHelpFormatter(
 
 
 # Notes:
+# token:
+# https://ingest.dev.hubmapconsortium.org/ [DEV]
 #
-# On DEV the log file for ingest-api is at: /opt/repositories/vm001-dev/ingest-api/log/uwsgi-ingest-api.log
+# The log file for ingest-api is at:
+# /opt/repositories/vm001-dev/ingest-api/log/uwsgi-ingest-api.log [DEV]
+# /opt/repositories/vm002-test/ingest-api/log/uwsgi-ingest-api.log [TEST]
 #
-# Also on DEV or PROD you must create a virtual environment to run in:
-# cd /opt/repositories/vm001-dev/ingest-api/src/scripts
-# python3 -m pip install --upgrade pip
+# Also you must create a virtual environment to run this script:
+# cd /opt/repositories/vm001-dev/ingest-api/src/scripts [DEV]
+# cd /opt/repositories/vm002-test/ingest-api/src/scripts [TEST]
 # python3 -m venv venv; source venv/bin/activate
+# python3 -m pip install --upgrade pip
 # pip3 install -r ../requirements.txt
 # cd ..
 # python3 scripts/metadata_json_for_all.py instance/app.cfg <token> -v -d
@@ -137,6 +145,7 @@ except Exception:
 entity_instance = EntitySdk(token=args.bearer_token, service_url=config['ENTITY_WEBSERVICE_URL'])
 ingest_helper = IngestFileHelper(config)
 
+files_written: int = 0
 with neo4j_driver_instance.session() as neo_session:
     # For all existing Published, processed datasets
     # including Central Processed, Lab Processed and EPIC (External) processed datasets, generate a metadata.json file.
@@ -167,9 +176,11 @@ with neo4j_driver_instance.session() as neo_session:
         try:
             with open(md_file, "w") as outfile:
                 outfile.write(json_object)
+            files_written += 1
         except IOError as ioe:
             eprint(f"Error while writing md_file {md_file}; {ioe}")
             os.exit(1)
 
 neo4j_driver.close()
+print(f"Files written: {files_written}")
 print('Done!')
