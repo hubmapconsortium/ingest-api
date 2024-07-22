@@ -2711,11 +2711,18 @@ def update_datasets_datastatus():
             if isinstance(dataset[prop], str) and \
                     len(dataset[prop]) >= 2 and \
                     dataset[prop][0] == "[" and dataset[prop][-1] == "]":
-                prop_as_list = string_helper.convert_str_literal(dataset[prop])
-                if len(prop_as_list) > 0:
-                    dataset[prop] = prop_as_list
-                else:
-                    dataset[prop] = ""
+                
+                # For cases like `"ingest_task": "[Empty directory]"` we should not
+                # convert to a list and will cause ValueError if we try to convert
+                # Leave it as the original value and move on - Zhou 7/22/2024
+                try:
+                    prop_as_list = string_helper.convert_str_literal(dataset[prop])
+                    if len(prop_as_list) > 0:
+                        dataset[prop] = prop_as_list
+                    else:
+                        dataset[prop] = ""
+                except ValueError:
+                    pass
             if dataset[prop] is None:
                 dataset[prop] = ""
             if prop == 'processed_datasets':
