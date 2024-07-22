@@ -746,7 +746,7 @@
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['multiome_snareseq']",
-        "value": "{'assaytype': 'multiome-snare-seq2', 'vitessce-hints': ['rna', 'is_image', 'anndata', 'spatial'], 'primary': false, 'contains-pii': false, 'description': 'SNAREseq2 [Salmon + ArchR + Muon]', 'is-multi-assay': true, 'pipeline-shorthand': 'Salmon + ArchR + Muon'}",
+        "value": "{'assaytype': 'multiome-snare-seq2', 'vitessce-hints': ['rna', 'atac', 'spatial', 'anndata'], 'primary': false, 'contains-pii': false, 'description': 'SNAREseq2 [Salmon + ArchR + Muon]', 'is-multi-assay': true, 'pipeline-shorthand': 'Salmon + ArchR + Muon'}",
         "rule_description": "derived multiome snare-seq2"
     },
     {
