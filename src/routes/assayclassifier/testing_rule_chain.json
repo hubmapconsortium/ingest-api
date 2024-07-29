@@ -343,9 +343,15 @@
     },
     {
         "type": "match",
-        "match": "is_central_processed and data_types[0] in ['salmon_rnaseq_10x', 'salmon_rnaseq_10x_v2']",
+        "match": "is_central_processed and data_types[0] in ['salmon_rnaseq_10x', 'salmon_rnaseq_10x_v2'] and [elt for elt in dag_provenance_list if elt =~~ 'anndata']",
         "value": "{'assaytype': 'salmon_rnaseq_10x', 'vitessce-hints': ['is_sc', 'rna'], 'primary': false, 'contains-pii': false, 'description': 'scRNAseq (10x Genomics) [Salmon]', 'pipeline-shorthand': 'Salmon'}",
         "rule_description": "derived salmon_rnaseq_10x"
+    },
+    {
+        "type": "match",
+        "match": "is_central_processed and data_types[0] in ['salmon_rnaseq_10x', 'salmon_rnaseq_10x_v2'] and not [elt for elt in dag_provenance_list if elt =~~ 'anndata']",
+        "value": "{'assaytype': 'salmon_rnaseq_10x', 'vitessce-hints': ['is_sc', 'rna', 'json_based'], 'primary': false, 'contains-pii': false, 'description': 'scRNAseq (10x Genomics) [Salmon]', 'pipeline-shorthand': 'Salmon'}",
+        "rule_description": "derived salmon_rnaseq_10x json-based"
     },
     {
         "type": "match",
