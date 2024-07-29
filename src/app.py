@@ -2585,13 +2585,8 @@ def access_level_prefix_dir(dir_name):
 
 
 def update_datasets_datastatus():
-    primary_assays_url = app.config['UBKG_WEBSERVICE_URL'] + 'assaytype?application_context=HUBMAP&primary=true'
-    alt_assays_url = app.config['UBKG_WEBSERVICE_URL'] + 'assaytype?application_context=HUBMAP&primary=false'
     rui_organs_url = app.config['UBKG_WEBSERVICE_URL'] + 'organs?application_context=HUBMAP'
-    primary_assay_types_list = requests.get(primary_assays_url).json().get("result")
-    alt_assay_types_list = requests.get(alt_assays_url).json().get("result")
     rui_organs_list = requests.get(rui_organs_url).json()
-    assay_types_dict = {item["name"].strip(): item for item in primary_assay_types_list + alt_assay_types_list}
     organ_types_url = app.config['UBKG_WEBSERVICE_URL'] + 'organs/by-code?application_context=HUBMAP'
     organ_types_dict = requests.get(organ_types_url).json()
     all_datasets_query = (
