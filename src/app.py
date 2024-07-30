@@ -1,3 +1,4 @@
+import sys
 import datetime
 import redis
 import glob
@@ -11,6 +12,7 @@ import json
 from uuid import UUID
 import yaml
 import csv
+import threading
 from typing import List
 import time
 from threading import Thread
@@ -2835,8 +2837,8 @@ scheduler.add_job(
     name="Update Upload Data Status Job"
 )
 
-update_datasets_datastatus()
-update_uploads_datastatus()
+threading.Thread(target=update_datasets_datastatus).start()
+threading.Thread(target=update_uploads_datastatus).start()
 
 # For local development/testing
 if __name__ == '__main__':
