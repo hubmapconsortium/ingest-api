@@ -766,5 +766,11 @@
         "match": "is_dcwg and is_primary and dataset_type == 'MUSIC'",
         "value": "{'assaytype': 'music', 'vitessce-hints': [], 'dir-schema': 'music-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'MUSIC', 'description': 'MUSIC'}",
         "rule_description": "DCWG music"
+    },
+    {
+        "type": "match",
+        "match": "is_central_processed and data_types[0] in ['phenocycler_deepcell']",
+        "value": "{'assaytype': 'phenocycler_deepcell', 'vitessce-hints': ['is_image', 'is_tiled', 'sprm', 'anndata'], 'primary': false, 'contains-pii': false, 'description': 'PhenoCycler [DeepCell + SPRM]', 'pipeline-shorthand': 'DeepCell + SPRM'}",
+        "rule_description": "derived phenocycler"
     }
 ]
