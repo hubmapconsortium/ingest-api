@@ -2819,7 +2819,7 @@ scheduler.start()
 
 scheduler.add_job(
     func=update_datasets_datastatus,
-    trigger=IntervalTrigger(hour=1),
+    trigger=IntervalTrigger(hours=1),
     id='update_dataset_data_status',
     name="Update Dataset Data Status Job"
 )
