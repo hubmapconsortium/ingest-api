@@ -18,6 +18,7 @@ from hubmap_sdk import EntitySdk
 from queue import Queue
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
+from apscheduler.triggers.date import DateTrigger
 # Don't confuse urllib (Python native library) with urllib3 (3rd-party library, requests also uses urllib3)
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 import argparse
@@ -2830,8 +2831,17 @@ scheduler.add_job(
     name="Update Upload Data Status Job"
 )
 
-update_datasets_datastatus()
-update_uploads_datastatus()
+scheduler.add_job(
+    func=update_datasets_datastatus,
+    trigger=DateTrigger(run_date=datetime.datetime.now() + datetime.timedelta(minutes=1)),
+    name="Initial run of Dataset Data Status Job"
+)
+
+scheduler.add_job(
+    func=update_uploads_datastatus,
+    trigger=DateTrigger(run_date=datetime.datetime.now() + datetime.timedelta(minutes=1)),
+    name="Initial run of Dataset Data Status Job"
+)
 
 # For local development/testing
 if __name__ == '__main__':
