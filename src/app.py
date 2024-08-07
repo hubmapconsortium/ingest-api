@@ -1997,6 +1997,8 @@ def bulk_donors_upload_and_validate():
             records.append(data_row)
             if first:
                 first = False
+    if len(records) > 40:
+        bad_request_error("Bulk upload TSV files must contain no more than 40 rows. If more than 40 are needed, please split TSV file for multiple submissions.")
     validfile = validate_donors(headers, records)
     if validfile == True:
         return Response(json.dumps({'temp_id': temp_id}, sort_keys=True), 201, mimetype='application/json')
@@ -2130,6 +2132,8 @@ def bulk_samples_upload_and_validate():
             records.append(data_row)
             if first:
                 first = False
+    if len(records) > 40:
+        bad_request_error("Bulk upload TSV files must contain no more than 40 rows. If more than 40 are needed, please split TSV file for multiple submissions.")
     validfile = validate_samples(headers, records, header)
     if validfile == True:
         return Response(json.dumps({'temp_id': temp_id}, sort_keys=True), 201, mimetype='application/json')
