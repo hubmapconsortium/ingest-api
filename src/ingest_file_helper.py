@@ -182,23 +182,28 @@ class IngestFileHelper:
         if not dataset_access_level == 'protected': data_access_level = 'public'
         return self.dataset_directory_absolute_path(data_access_level, group_uuid, uuid, True)
 
-    def move_dataset_files_for_publishing(self, uuid, group_uuid, dataset_access_level, trial_run = False):
+    def move_dataset_files_for_publishing(self, uuid, group_uuid, dataset_access_level, trial_run = False, is_component = False, components_primary_path = None):
+        rVal = ""
+        if is_component and (components_primary_path is None or components_primary_path == ""):
+            raise HTTPException(f"{uuid} component dataset does not have a specified primary dataset path", 500)
         from_path = self.dataset_directory_absolute_path(dataset_access_level, group_uuid, uuid, False)
         if not os.path.isdir(from_path):
             raise HTTPException(f"{uuid}: path not found to dataset will not publish, path is {from_path}", 500)
         to_path = self.dataset_directory_absolute_path_published(dataset_access_level, group_uuid, uuid)
-        if not trial_run:
+        if not trial_run and not is_component:
             shutil.move(from_path, to_path)
+        elif is_component:
+            rVal = f'unlink "{from_path}"; ln -s "{components_primary_path}" "{to_path}";'
         else:
             print(f"mv {from_path} {to_path}")
-                    
-        return None
-            
+        return rVal
+
     def set_dataset_permissions(self, dataset_uuid, group_uuid, dataset_access_level, published, trial_run = False):
         file_path = self.dataset_directory_absolute_path(dataset_access_level, group_uuid, dataset_uuid, published)
         return self.set_dir_permissions(dataset_access_level, file_path, published, trial_run = trial_run)
     
-    def relink_to_public(self, dataset_uuid):
+    def relink_to_public(self, dataset_uuid, is_component = False, components_primary_path = None):
+        rVal = None
         lnk_path = self.appconfig['HUBMAP_WEBSERVICE_FILEPATH']
         lnk_path = lnk_path.strip()
         if lnk_path[-1] == '/': lnk_path = lnk_path[:-1]
@@ -210,5 +215,9 @@ class IngestFileHelper:
             print("Error unlinking " + lnk_path)
             
         if os.path.exists(pub_path):
-            file_helper.linkDir(pub_path, lnk_path)
+            if not is_component:
+                file_helper.linkDir(pub_path, lnk_path)
+            else:
+                rVal = f'ln -s "{components_primary_path}" "{pub_path}"'
         
+        return rVal
