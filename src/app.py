@@ -63,6 +63,7 @@ from routes.assayclassifier import bp as assayclassifier_blueprint
 from routes.validation import validation_blueprint
 from routes.datasets_bulk_submit import datasets_bulk_submit_blueprint
 from routes.privs import privs_blueprint
+from _ast import Try
 
 
 # Set logging format and level (default is warning)
@@ -561,29 +562,7 @@ def get_file_system_relative_path():
 @app.route('/datasets/<ds_uuid>/file-system-abs-path', methods=['GET'])
 def get_file_system_absolute_path(ds_uuid: str):
     try:
-        ingest_helper = IngestFileHelper(app.config)
-        with neo4j_driver_instance.session() as neo_session:
-            q = (f"MATCH (entity {{uuid: '{ds_uuid}'}}) RETURN entity.entity_type AS entity_type, " 
-                f"entity.group_uuid AS group_uuid, entity.contains_human_genetic_sequences as contains_human_genetic_sequences, " 
-                f"entity.data_access_level AS data_access_level, entity.status AS status")
-            result = neo_session.run(q).data()
-            if len(result) < 1:
-                raise ResponseException(f"No result found for uuid {ds_uuid}", 400)
-            rval = result[0]
-        ent_type = rval['entity_type']
-        group_uuid = rval['group_uuid']
-        is_phi = rval['contains_human_genetic_sequences']
-        if ent_type is None or ent_type.strip() == '':
-            raise ResponseException(f"Entity with uuid:{ds_uuid} needs to be a Dataset or Upload.", 400)
-        if ent_type.lower().strip() == 'upload':
-            return jsonify({'path': ingest_helper.get_upload_directory_absolute_path(group_uuid=group_uuid, upload_uuid=ds_uuid)}), 200
-        if not get_entity_type_instanceof(ent_type, 'Dataset', auth_header=request.headers.get("AUTHORIZATION")):
-            raise ResponseException(f"Entity with uuid: {ds_uuid} is not a Dataset, Publication or upload", 400)
-        if group_uuid is None:
-            raise ResponseException(f"Unable to find group uuid on dataset {ds_uuid}", 400)
-        if is_phi is None:
-            raise ResponseException(f"Contains_human_genetic_sequences is not set on dataset {ds_uuid}", 400)
-        path = ingest_helper.get_dataset_directory_absolute_path(rval, group_uuid, ds_uuid)
+        path = get_dataset_abs_path(ds_uuid)
         return jsonify({'path': path}), 200
     except ResponseException as re:
         return re.response
@@ -945,6 +924,7 @@ def publish_datastage(identifier):
             raise ValueError("Cannot find specimen with identifier: " + identifier)
         dataset_uuid = json.loads(r.text)['hm_uuid']
         is_primary = dataset_is_primary(dataset_uuid)
+        is_component = dataset_is_multi_assay_component(dataset_uuid)
         suspend_indexing_and_acls = string_helper.isYes(request.args.get('suspend-indexing-and-acls'))
         no_indexing_and_acls = False
         if suspend_indexing_and_acls:
@@ -1045,27 +1025,37 @@ def publish_datastage(identifier):
             
             logger.info(f'is_primary: {is_primary}; has_entity_lab_processed_data_type: {has_entity_lab_processed_data_type}')
 
-            if is_primary or has_entity_lab_processed_data_type:
+            if is_primary or has_entity_lab_processed_data_type or is_component:
                 if dataset_contacts is None or dataset_contributors is None:
                     return jsonify({"error": f"{dataset_uuid} missing contacts or contributors. Must have at least one of each"}), 400
-                dataset_contacts = dataset_contacts.replace("'", '"')
-                dataset_contributors = dataset_contributors.replace("'", '"')
-                if len(json.loads(dataset_contacts)) < 1 or len(json.loads(dataset_contributors)) < 1:
+                #dataset_contacts = dataset_contacts.replace("'", '"')
+                #dataset_contributors = dataset_contributors.replace("'", '"')
+                if len(dataset_contacts) < 1 or len(dataset_contributors) < 1:
                     return jsonify({"error": f"{dataset_uuid} missing contacts or contributors. Must have at least one of each"}), 400
+                dataset_contacts = string_helper.convert_str_literal(dataset_contacts)
+                dataset_contributors = string_helper.convert_str_literal(dataset_contributors)
 
             ingest_helper: IngestFileHelper = IngestFileHelper(app.config)
 
             data_access_level = dataset_data_access_level
             #if consortium access level convert to public dataset, if protected access leave it protected
+            relink_cmd = ""
             if dataset_data_access_level == 'consortium':
                 #before moving check to see if there is currently a link for the dataset in the assets directory
                 asset_dir = ingest_helper.dataset_asset_directory_absolute_path(dataset_uuid)
                 asset_dir_exists = os.path.exists(asset_dir)
-                ingest_helper.move_dataset_files_for_publishing(dataset_uuid, dataset_group_uuid, 'consortium')
+                components_primary_path = None
+                if is_component:
+                    components_primary_path = get_components_primary_path(dataset_uuid)
+                relink_cmd = ingest_helper.move_dataset_files_for_publishing(dataset_uuid, dataset_group_uuid, 'consortium', False, is_component, components_primary_path)
+                
                 uuids_for_public.append(dataset_uuid)
                 data_access_level = 'public'
-                if asset_dir_exists:
-                    ingest_helper.relink_to_public(dataset_uuid)
+                if asset_dir_exists or is_component:
+                    asset_link_cmd = ingest_helper.relink_to_public(dataset_uuid, is_component, components_primary_path)
+                    if not asset_link_cmd is None:
+                        relink_cmd = relink_cmd + " " + asset_link_cmd
+                        
 
             auth_tokens = auth_helper.getAuthorizationTokens(request.headers)
             entity_instance = EntitySdk(token=auth_tokens, service_url=app.config['ENTITY_WEBSERVICE_URL'])
@@ -1075,7 +1065,7 @@ def publish_datastage(identifier):
             entity_dict = vars(entity)
 
             # Generating DOI's for lab processed/derived data as well as IEC/pipeline/airflow processed/derived data).
-            if is_primary or has_entity_lab_processed_data_type:
+            if is_primary or has_entity_lab_processed_data_type or is_component:
                 # DOI gets generated here
                 # Note: moved dataset title auto generation to entity-api - Zhou 9/29/2021
                 datacite_doi_helper = DataCiteDoiHelper()
@@ -1151,9 +1141,9 @@ def publish_datastage(identifier):
                                                              True, no_indexing_and_acls)
 
         if no_indexing_and_acls:
-            r_val = {'acl_cmd': acls_cmd, 'donors_for_indexing': donors_to_reindex}
+            r_val = {'acl_cmd': acls_cmd, 'donors_for_indexing': donors_to_reindex, 'relink_cmd': relink_cmd}
         else:
-            r_val = {'acl_cmd': '', 'donors_for_indexing': []}
+            r_val = {'acl_cmd': '', 'donors_for_indexing': [], 'relink_cmd': relink_cmd}
 
         if not no_indexing_and_acls:
             for donor_uuid in donors_to_reindex:
@@ -2502,6 +2492,34 @@ def validate_donors(headers, records):
 ## Internal Functions
 ####################################################################################################
 
+def get_dataset_abs_path(ds_uuid):
+        ingest_helper = IngestFileHelper(app.config)
+        with neo4j_driver_instance.session() as neo_session:
+            q = (f"MATCH (entity {{uuid: '{ds_uuid}'}}) RETURN entity.entity_type AS entity_type, " 
+                f"entity.group_uuid AS group_uuid, entity.contains_human_genetic_sequences as contains_human_genetic_sequences, " 
+                f"entity.data_access_level AS data_access_level, entity.status AS status")
+            result = neo_session.run(q).data()
+            if len(result) < 1:
+                raise ResponseException(f"No result found for uuid {ds_uuid}", 400)
+            rval = result[0]
+        ent_type = rval['entity_type']
+        group_uuid = rval['group_uuid']
+        is_phi = rval['contains_human_genetic_sequences']
+        if ent_type is None or ent_type.strip() == '':
+            raise ResponseException(f"Entity with uuid:{ds_uuid} needs to be a Dataset or Upload.", 400)
+        if ent_type.lower().strip() == 'upload':
+            return jsonify({'path': ingest_helper.get_upload_directory_absolute_path(group_uuid=group_uuid, upload_uuid=ds_uuid)}), 200
+        if not get_entity_type_instanceof(ent_type, 'Dataset', auth_header=request.headers.get("AUTHORIZATION")):
+            raise ResponseException(f"Entity with uuid: {ds_uuid} is not a Dataset, Publication or upload", 400)
+        if group_uuid is None:
+            raise ResponseException(f"Unable to find group uuid on dataset {ds_uuid}", 400)
+        if is_phi is None:
+            raise ResponseException(f"Contains_human_genetic_sequences is not set on dataset {ds_uuid}", 400)
+        
+        path = ingest_helper.get_dataset_directory_absolute_path(rval, group_uuid, ds_uuid)
+
+        return path
+
 # Determines if a dataset is Primary. If the list returned from the neo4j query is empty, the dataset is not primary
 def dataset_is_primary(dataset_uuid):
     with neo4j_driver_instance.session() as neo_session:
@@ -2520,6 +2538,31 @@ def dataset_has_entity_lab_processed_data_type(dataset_uuid):
             return False
         return True
 
+def dataset_is_multi_assay_component(dataset_uuid):
+    with neo4j_driver_instance.session() as neo_session:
+        q = (f"MATCH (ds:Dataset {{uuid: '{dataset_uuid}'}})<-[:ACTIVITY_OUTPUT]-(a:Activity) WHERE toLower(a.creation_action) = 'multi-assay split' RETURN ds.uuid")
+        result = neo_session.run(q).data()
+        if len(result) == 0:
+            return False
+        return True
+
+def get_components_primary_path(component_uuid):
+    with neo4j_driver_instance.session() as neo_session:
+        q = (f"MATCH (pri:Dataset)-[:ACTIVITY_INPUT]->(a:Activity {{creation_action:'Multi-Assay Split'}})-[:ACTIVITY_OUTPUT]->(ds:Dataset {{uuid: '{component_uuid}'}}) RETURN pri.uuid as primary_uuid")
+        result = neo_session.run(q).data()
+        if len(result) == 0:            
+            raise HTTPException(f"{component_uuid} no primary dataset found for component dataset", 500)
+        pri_uuid = result[0]['primary_uuid']
+        
+        try:
+            path = get_dataset_abs_path(pri_uuid)
+        except ResponseException as re:
+            raise HTTPException(f"{component_uuid} unable to fine path for primary parent {pri_uuid}. {re.message}", 500)
+
+        return path
+
+    
+    
 def validate_json_list(data):
     if not isinstance(data, list):
         return False
