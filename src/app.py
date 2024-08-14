@@ -71,7 +71,7 @@ from _ast import Try
 # Log rotation is handled via logrotate on the host system with a configuration file
 # Do NOT handle log file and rotation via the Python logging to avoid issues with multi-worker processes
 logging.basicConfig(format='[%(asctime)s] %(levelname)s in %(module)s: %(message)s',
-                    level=logging.DEBUG,
+                    level=logging.INFO,
                     datefmt='%Y-%m-%d %H:%M:%S')
 logger = logging.getLogger(__name__)
 
@@ -2508,7 +2508,7 @@ def get_dataset_abs_path(ds_uuid):
         if ent_type is None or ent_type.strip() == '':
             raise ResponseException(f"Entity with uuid:{ds_uuid} needs to be a Dataset or Upload.", 400)
         if ent_type.lower().strip() == 'upload':
-            return jsonify({'path': ingest_helper.get_upload_directory_absolute_path(group_uuid=group_uuid, upload_uuid=ds_uuid)}), 200
+            return ingest_helper.get_upload_directory_absolute_path(group_uuid=group_uuid, upload_uuid=ds_uuid)
         if not get_entity_type_instanceof(ent_type, 'Dataset', auth_header=request.headers.get("AUTHORIZATION")):
             raise ResponseException(f"Entity with uuid: {ds_uuid} is not a Dataset, Publication or upload", 400)
         if group_uuid is None:
