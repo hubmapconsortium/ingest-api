@@ -141,6 +141,7 @@ def validate_tsv(schema: str = "metadata", path: Optional[str] = None) -> dict:
             "request_header": {"X-Hubmap-Application": "ingest-api"},
             "ingest_url": commons_file_helper.ensureTrailingSlashURL(current_app.config["FLASK_APP_BASE_URI"]),
             "entities_url": f"{commons_file_helper.ensureTrailingSlashURL(current_app.config['ENTITY_WEBSERVICE_URL'])}entities/",
+            "constraints_url": f"{commons_file_helper.ensureTrailingSlashURL(current_app.config['ENTITY_WEBSERVICE_URL'])}constraints/"
         }
 
         result = ingest_validation_tools_validation_utils.get_tsv_errors(
