@@ -2816,11 +2816,16 @@ def update_uploads_datastatus():
                 if isinstance(upload[prop], str) and \
                         len(upload[prop]) >= 2 and \
                         upload[prop][0] == "[" and upload[prop][-1] == "]":
-                    prop_as_list = string_helper.convert_str_literal(upload[prop])
-                    if len(prop_as_list) > 0:
-                        upload[prop] = prop_as_list
-                    else:
-                        upload[prop] = ""
+                    # For cases like `"ingest_task": "[Empty directory]"` we should not
+                    # convert to a list and will cause ValueError if we try to convert
+                    try:
+                        prop_as_list = string_helper.convert_str_literal(upload[prop])
+                        if len(prop_as_list) > 0:
+                            upload[prop] = prop_as_list
+                        else:
+                            upload[prop] = ""
+                    except ValueError:
+                        pass
                 if upload[prop] is None:
                     upload[prop] = ""
             for field in displayed_fields:
