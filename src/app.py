@@ -1272,8 +1272,6 @@ def verify_dataset_title_info(uuid: str) -> object:
         logger.error(e, exc_info=True)
         return Response("Unexpected error: " + str(e), 500)
 
-# KBKBKB @TODO - comment out endpoint for @app.route('/datasets/status', methods = ['PUT']) from AWS Gateway
-
 @app.route('/datasets/<uuid>/submit', methods = ['PUT'])
 def submit_dataset(uuid):
     if not request.is_json:
