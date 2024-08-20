@@ -42,7 +42,7 @@ from hubmap_commons import file_helper as commons_file_helper
 from hubmap_commons.hubmap_const import HubmapConst
 
 # Local modules
-from specimen import Specimen
+from sample_helper import SampleHelper
 from ingest_file_helper import IngestFileHelper
 from file_upload_helper import UploadFileHelper
 import app_manager
@@ -1665,8 +1665,9 @@ def get_specimen_ingest_group_ids(identifier):
             raise ValueError("Cannot find specimen with identifier: " + identifier)
         uuid = json.loads(r.text)['hm_uuid']
 
-        siblingid_list = Specimen.get_ingest_group_list(neo4j_driver_instance, uuid)
-        return jsonify({'ingest_group_ids': siblingid_list}), 200 
+        sibling_id_list = SampleHelper.get_ingest_group_list(   driver=neo4j_driver_instance
+                                                                , uuid=uuid)
+        return jsonify({'ingest_group_ids': sibling_id_list}), 200
 
     except AuthError as e:
         print(e)
@@ -1676,12 +1677,6 @@ def get_specimen_ingest_group_ids(identifier):
         for x in sys.exc_info():
             msg += str(x)
         abort(400, msg)
-    # finally:
-    #     if conn != None:
-    #         if conn.get_driver().closed() == False:
-    #             conn.close()
-
-
 
 @app.route('/ubkg-download-file-list', methods = ['GET'])
 def ubkg_download_file_list():
