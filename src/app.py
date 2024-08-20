@@ -9,13 +9,10 @@ import requests
 import re
 import json
 from uuid import UUID
-import yaml
 import csv
-from typing import List
 import time
 from threading import Thread
 from hubmap_sdk import EntitySdk
-from queue import Queue
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from apscheduler.triggers.date import DateTrigger
@@ -63,8 +60,6 @@ from routes.assayclassifier import bp as assayclassifier_blueprint
 from routes.validation import validation_blueprint
 from routes.datasets_bulk_submit import datasets_bulk_submit_blueprint
 from routes.privs import privs_blueprint
-from _ast import Try
-
 
 # Set logging format and level (default is warning)
 # All the API logging is forwarded to the uWSGI server and gets written into the log file `uwsgi-ingest-api.log`

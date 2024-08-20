@@ -1,14 +1,9 @@
 import os
-import sys
 from array import array
 
 import requests
 import logging
 from flask import Flask
-import urllib.request
-from pathlib import Path
-from shutil import copy2
-from hubmap_commons.exceptions import HTTPException
 from hubmap_sdk import EntitySdk, SearchSdk
 
 # Suppress InsecureRequestWarning warning when requesting status on https with ssl cert verify disabled

@@ -4,8 +4,6 @@ from rq import Worker, Queue, Connection
 from hubmap_commons.hm_auth import AuthHelper
 import logging
 from flask import Flask
-from worker.utils import extract_cell_count_from_secondary_analysis_files_for_sample_uuid
-
 
 logging.basicConfig(format='[%(asctime)s] %(levelname)s in %(module)s: %(message)s',
                     level=logging.DEBUG,

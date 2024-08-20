@@ -3,7 +3,6 @@ from neo4j.exceptions import TransactionError
 import sys
 import os
 import urllib.parse
-from pprint import pprint
 import shutil
 import json
 import traceback

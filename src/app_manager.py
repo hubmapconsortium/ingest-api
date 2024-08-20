@@ -2,14 +2,9 @@ import logging
 import requests
 # Don't confuse urllib (Python native library) with urllib3 (3rd-party library, requests also uses urllib3)
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
-from flask import jsonify, json, Response
 
 # Local modules
-from dataset import Dataset
 from dataset_helper_object import DatasetHelper
-from hubmap_sdk import EntitySdk
-from file_upload_helper import UploadFileHelper
-from hubmap_commons.exceptions import HTTPException
 
 logger = logging.getLogger(__name__)
 
