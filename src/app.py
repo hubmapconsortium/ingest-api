@@ -1290,33 +1290,7 @@ def verify_dataset_title_info(uuid: str) -> object:
         logger.error(e, exc_info=True)
         return Response("Unexpected error: " + str(e), 500)
 
-
-# Called by "data ingest pipeline" to update status of dataset...
-@app.route('/datasets/status', methods = ['PUT'])
-# @secured(groups="HuBMAP-read")
-def update_ingest_status():
-    if not request.json:
-        abort(400, jsonify( { 'error': 'no data found cannot process update' } ))
-    
-    try:
-        entity_api = EntitySdk(token=app_manager.groups_token_from_request_headers(request.headers),
-                               service_url=commons_file_helper.removeTrailingSlashURL(
-                                   app.config['ENTITY_WEBSERVICE_URL']))
-
-        return app_manager.update_ingest_status_title_thumbnail(app.config, 
-                                                                request.json, 
-                                                                request.headers, 
-                                                                entity_api,
-                                                                file_upload_helper_instance)
-    except HTTPException as hte:
-        return Response(hte.get_description(), hte.get_status_code())
-    except ValueError as ve:
-        logger.error(str(ve))
-        return jsonify({'error' : str(ve)}), 400
-    except Exception as e:
-        logger.error(e, exc_info=True)
-        return Response("Unexpected error while saving dataset: " + str(e), 500)     
-
+# KBKBKB @TODO - comment out endpoint for @app.route('/datasets/status', methods = ['PUT']) from AWS Gateway
 
 @app.route('/datasets/<uuid>/submit', methods = ['PUT'])
 def submit_dataset(uuid):
