@@ -371,7 +371,7 @@ def validate_metadata_upload():
                                      f"Mismatch of \"{entity_type} {sub_type}\" and \"metadata_schema_id\". "
                                      f"Valid id for \"{sub_type}\": {id_sub_type}. "
                                      "For more details, check out the docs: "
-                                     "https://docs.sennetconsortium.org/libraries/ingest-validation-tools/schemas")
+                                     "https://docs.hubmapconsortium.org/metadata")
             path: str = upload.get('fullpath')
             schema = determine_schema(entity_type, sub_type)
 
