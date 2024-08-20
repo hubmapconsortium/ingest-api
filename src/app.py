@@ -180,19 +180,6 @@ except Exception:
     # Log the full stack trace, prepend a line with our message
     logger.exception(msg)
 
-
-"""
-Close the current neo4j connection at the end of every request
-"""
-@app.teardown_appcontext
-def close_neo4j_driver(error):
-    if hasattr(g, 'neo4j_driver_instance'):
-        # Close the driver instance
-        neo4j_driver.close()
-        # Also remove neo4j_driver_instance from Flask's application context
-        g.neo4j_driver_instance = None
-
-
 ####################################################################################################
 ## File upload initialization
 ####################################################################################################
