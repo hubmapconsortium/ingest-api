@@ -30,6 +30,32 @@ logger: logging.Logger = logging.getLogger(__name__)
 
 rule_chain = None
 
+# Have to translate UBKG keys to the rule chain keys
+ubkg_to_rule_chain_translation = {
+    'vitessce-hints': 'vitessce_hints',
+    'dir-schema': 'dir_schema',
+    'is-multi-assay': 'is_multiassay',
+    'pipeline-shorthand': 'pipeline_shorthand',
+    'tbl-schema': 'tbl_schema',
+    'must-contain': 'must_contain'
+}
+
+# These are the values returned by the rule chain before UBKG integration.
+# We will return the UBKG data in this format as well for MVP.
+# This is to avoid too much churn on end-users.
+standard_rules_value_set = [
+    'assaytype',
+    'vitessce-hints',
+    'dir-schema',
+    'tbl-schema',
+    'contains-pii',
+    'primary',
+    'dataset-type',
+    'description',
+    'is-multi-assay',
+    'pipeline-shorthand',
+    'must-contain'
+]
 
 def initialize_rule_chain():
     global rule_chain
@@ -148,14 +174,29 @@ def get_data_from_ubkg(ubkg_code: str) -> dict:
     return json.loads(response_data)
 
 
+def standardize_results(rule_chain_json: dict, ubkg_json: dict) -> dict:
+    # This translation is manual to avoid writing a deep function
+    # (also dataset_type is nested under datset_type in ubkg_json)
+    ubkg_transformed_json = {
+        "contains-pii": ubkg_json.get("measurement_assay", {}).get("contains_full_genetic_sequences", False),
+        "dataset-type": ubkg_json.get("dataset_type", {}).get("dataset_type")
+    }
+
+    for standard_rule_value in standard_rules_value_set.keys():
+        ubkg_transformed_json[standard_rule_value] = ubkg_json.get(ubkg_to_rule_chain_translation[standard_rule_value])
+
+    return rule_chain_json | ubkg_transformed_json
+
 @bp.route("/assaytype/<ds_uuid>", methods=["GET"])
 def get_ds_assaytype(ds_uuid: str):
     try:
         entity = get_entity(ds_uuid)
         metadata = build_entity_metadata(entity)
         rules_json = calculate_assay_info(metadata)
-        ubkg_json = get_data_from_ubkg(rules_json.get("ubkg_code"))
-        return jsonify({**rules_json, **ubkg_json})
+        ubkg_value_json = get_data_from_ubkg(rules_json.get("ubkg_code")).get("value", {})
+        merged_json = standardize_results(rules_json, ubkg_value_json)
+        merged_json["ubkg_json"] = ubkg_value_json
+        return jsonify(merged_json)
     except ResponseException as re:
         logger.error(re, exc_info=True)
         return re.response
@@ -210,8 +251,10 @@ def get_assaytype_from_metadata():
         require_json(request)
         metadata = request.json
         rules_json = calculate_assay_info(metadata)
-        ubkg_json = get_data_from_ubkg(rules_json.get("ubkg_code"))
-        return jsonify({**rules_json, **ubkg_json})
+        ubkg_value_json = get_data_from_ubkg(rules_json.get("ubkg_code")).get("value", {})
+        merged_json = standardize_results(rules_json, ubkg_value_json)
+        merged_json["ubkg_json"] = ubkg_value_json
+        return jsonify(merged_json)
     except ResponseException as re:
         logger.error(re, exc_info=True)
         return re.response
