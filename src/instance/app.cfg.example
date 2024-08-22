@@ -150,3 +150,5 @@ UMLS_KEY = ''
 # UMLS URL
 UMLS_VALIDATE_URL = 'https://utslogin.nlm.nih.gov/validateUser'
 
+APPLICATION_CONTEXT = 'HUBMAP'
+

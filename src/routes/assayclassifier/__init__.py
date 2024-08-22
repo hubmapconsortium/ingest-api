@@ -134,11 +134,10 @@ def build_entity_metadata(entity) -> dict:
     return metadata
 
 
-def get_data_from_ubkg(assay: str) -> dict:
-    ubkg_api_url = current_app.config["UBKG_WEBSERVICE_URL"] + "assayname"
-    data = {"name": assay}
-    req = urllib.request.Request(ubkg_api_url, data=json.dumps(data).encode("utf-8"))
-    req.add_header("Content-Type", "application/json")
+def get_data_from_ubkg(ubkg_code: str) -> dict:
+    query = urllib.parse.urlencode({"application_context": current_app.config['APPLICATION_CONTEXT']})
+    ubkg_api_url = f"{current_app.config['UBKG_WEBSERVICE_URL']}assayclasses/{ubkg_code}/?{query}"
+    req = urllib.request.Request(ubkg_api_url)
     try:
         with urllib.request.urlopen(req) as response:
             response_data = response.read().decode("utf-8")
@@ -155,7 +154,7 @@ def get_ds_assaytype(ds_uuid: str):
         entity = get_entity(ds_uuid)
         metadata = build_entity_metadata(entity)
         rules_json = calculate_assay_info(metadata)
-        ubkg_json = get_data_from_ubkg(rules_json.get("assaytype"))
+        ubkg_json = get_data_from_ubkg(rules_json.get("ubkg_code"))
         return jsonify({**rules_json, **ubkg_json})
     except ResponseException as re:
         logger.error(re, exc_info=True)
@@ -211,7 +210,7 @@ def get_assaytype_from_metadata():
         require_json(request)
         metadata = request.json
         rules_json = calculate_assay_info(metadata)
-        ubkg_json = get_data_from_ubkg(rules_json.get("assaytype"))
+        ubkg_json = get_data_from_ubkg(rules_json.get("ubkg_code"))
         return jsonify({**rules_json, **ubkg_json})
     except ResponseException as re:
         logger.error(re, exc_info=True)
