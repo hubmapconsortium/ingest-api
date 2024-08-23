@@ -1,5 +1,3 @@
-import os
-from os import listdir
 import secrets
 import shutil
 import logging
@@ -10,6 +8,7 @@ from requests.packages.urllib3.exceptions import InsecureRequestWarning
 #from requests.packages.urllib3.exceptions import InsecureRequestWarning
 import hashlib
 import os
+from os import listdir
 from werkzeug.utils import secure_filename
 
 # HuBMAP commons

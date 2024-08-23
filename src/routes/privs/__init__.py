@@ -1,9 +1,7 @@
 import logging
 
-from flask import Blueprint, request, make_response, jsonify, Response
-from typing import List
+from flask import Blueprint, request, jsonify, Response
 from hubmap_commons.hm_auth import AuthHelper
-
 
 privs_blueprint = Blueprint('privs', __name__)
 logger = logging.getLogger(__name__)

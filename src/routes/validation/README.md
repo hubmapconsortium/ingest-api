@@ -78,24 +78,6 @@ description: [0:"Unexpected fields: {'area_value', 'section_thickness_unit', 'se
 name:"Unacceptable Metadata"}
 ```
 
-## CEDAR
-
-To support
-[CEDAR](https://metadatacenter.github.io/cedar-manual/advanced_topics/b2_cedars_api/)
-you will need to have a CEDAR API key (see the `About your API Key` section).
-You can retrieve the key by
-[signing in](https://cedar.metadatacenter.org/) then navigating to
-[profile](https://cedar.metadatacenter.org/profile) to get the key.
-
-If you are a new user you will have to register via the `Register`
-link on the `signing in` page (see `API Keys` then `KEY`).
-
-The key should then be added to `instance/app.cfg` as follows:
-```
-# CEDAR API KEY, get one at: https://cedar.metadatacenter.org/
-CEDAR_API_KEY = 'your-key-goes-here'
-```
-
 ## Submodule and Virtual Environment
 
 This section will talk about installing/updating the Git submodule
