@@ -544,6 +544,19 @@ def get_file_system_relative_path():
 @app.route('/datasets/<ds_uuid>/file-system-abs-path', methods=['GET'])
 def get_file_system_absolute_path(ds_uuid: str):
     try:
+        r = requests.get(app.config['UUID_WEBSERVICE_URL'] + "/" + ds_uuid)
+        r.raise_for_status()
+    except Exception as e:
+        status_code = r.status_code
+        response_text = r.text
+        if status_code == 404:
+            not_found_error(response_text)
+        elif status_code == 500:
+            internal_server_error(response_text)
+        else:
+            return Response(response_text, status_code)
+    ds_uuid = r.json().get("uuid")
+    try:
         path = get_dataset_abs_path(ds_uuid)
         return jsonify({'path': path}), 200
     except ResponseException as re:
@@ -570,14 +583,16 @@ def get_mulltiple_file_system_absolute_paths():
         ingest_helper = IngestFileHelper(app.config)
         with neo4j_driver_instance.session() as neo_session:
             q = (f"MATCH (entity) "
-                 f"WHERE entity.uuid in {uuids_list}"
+                 f"WHERE entity.uuid in {uuids_list} OR entity.hubmap_id in {uuids_list} "
                  f"RETURN entity.entity_type AS entity_type, "
                  f"entity.group_uuid AS group_uuid, entity.contains_human_genetic_sequences as contains_human_genetic_sequences, " 
-                 f"entity.data_access_level AS data_access_level, entity.status AS status, entity.uuid AS uuid")
+                 f"entity.data_access_level AS data_access_level, entity.status AS status, entity.uuid AS uuid, entity.hubmap_id AS hubmap_id")
             result = neo_session.run(q).data()
             returned_uuids = []
             for entity in result:
                 returned_uuids.append(entity['uuid'])
+                if entity.get('hubmap_id'):
+                    returned_uuids.append(entity['hubmap_id'])
             for uuid in uuids_list:
                 if uuid not in returned_uuids:
                     out_list.append({'uuid': uuid, 'error': 'No results for given uuid'})
