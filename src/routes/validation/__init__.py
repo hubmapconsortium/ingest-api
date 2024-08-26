@@ -126,14 +126,16 @@ def validate_tsv(schema: str = "metadata", path: Optional[str] = None) -> dict:
     """
     auth_helper_instance: AuthHelper = AuthHelper.instance()
     globus_token = auth_helper_instance.getAuthorizationTokens(request.headers)
-    
+
     try:
         schema_name = (
             schema if schema != "metadata"
             else ingest_validation_tools_validation_utils.get_schema_version(
                 path=path,
                 encoding="ascii",
+                entity_url=f"{commons_file_helper.ensureTrailingSlashURL(current_app.config['ENTITY_WEBSERVICE_URL'])}entities/",
                 ingest_url=commons_file_helper.ensureTrailingSlashURL(current_app.config["FLASK_APP_BASE_URI"]),
+                globus_token=globus_token
             ).schema_name
         )
 
@@ -141,6 +143,7 @@ def validate_tsv(schema: str = "metadata", path: Optional[str] = None) -> dict:
             "request_header": {"X-Hubmap-Application": "ingest-api"},
             "ingest_url": commons_file_helper.ensureTrailingSlashURL(current_app.config["FLASK_APP_BASE_URI"]),
             "entities_url": f"{commons_file_helper.ensureTrailingSlashURL(current_app.config['ENTITY_WEBSERVICE_URL'])}entities/",
+            "constraints_url": f"{commons_file_helper.ensureTrailingSlashURL(current_app.config['ENTITY_WEBSERVICE_URL'])}constraints/"
         }
 
         result = ingest_validation_tools_validation_utils.get_tsv_errors(
@@ -370,7 +373,7 @@ def validate_metadata_upload():
                                      f"Mismatch of \"{entity_type} {sub_type}\" and \"metadata_schema_id\". "
                                      f"Valid id for \"{sub_type}\": {id_sub_type}. "
                                      "For more details, check out the docs: "
-                                     "https://docs.sennetconsortium.org/libraries/ingest-validation-tools/schemas")
+                                     "https://docs.hubmapconsortium.org/metadata")
             path: str = upload.get('fullpath')
             schema = determine_schema(entity_type, sub_type)
 
