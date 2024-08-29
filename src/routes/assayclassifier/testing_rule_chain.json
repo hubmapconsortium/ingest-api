@@ -506,13 +506,13 @@
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'Visium (no probes)'",
-        "value": "{'assaytype': 'visium-no-probes', 'vitessce-hints': [], 'dir-schema': 'visium-no-probes-v2', 'description': 'Visium (no probes)', 'contains-pii': true, 'primary': true, 'dataset-type': 'Visium (no probes)', 'must-contain': ['Histology','RNAseq'], 'is-multi-assay': true}",
+        "value": "{'assaytype': 'visium-no-probes', 'vitessce-hints': [], 'dir-schema': 'visium-no-probes-v3', 'description': 'Visium (no probes)', 'contains-pii': true, 'primary': true, 'dataset-type': 'Visium (no probes)', 'must-contain': ['Histology','RNAseq'], 'is-multi-assay': true}",
         "rule_description": "DCWG visium-no-probes"
     },
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'Visium (with probes)'",
-        "value": "{'assaytype': 'visium-with-probes', 'vitessce-hints': [], 'dir-schema': 'visium-with-probes-v2', 'description': 'Visium (with probes)', 'contains-pii': true, 'primary': true, 'dataset-type': 'Visium (with probes)', 'must-contain': ['Histology','RNAseq (with probes)'], 'is-multi-assay': true}",
+        "value": "{'assaytype': 'visium-with-probes', 'vitessce-hints': [], 'dir-schema': 'visium-with-probes-v3', 'description': 'Visium (with probes)', 'contains-pii': true, 'primary': true, 'dataset-type': 'Visium (with probes)', 'must-contain': ['Histology','RNAseq (with probes)'], 'is-multi-assay': true}",
         "rule_description": "DCWG visium-with-probes"
     },
     {
