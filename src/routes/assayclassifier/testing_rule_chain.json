@@ -302,7 +302,7 @@
     {
         "type": "match",
         "match": "not_dcwg and is_primary and assay_type in ['SNARE-RNAseq2', 'SNARE2-RNAseq']",
-        "value": "{'assaytype': 'SNARE-RNAseq2', 'dir-schema': 'scrnaseq-v0', 'tbl-schema': 'scrnaseq-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': true, 'primary': true, 'description': 'snRNAseq (10x Genomics v3)', 'dataset-type': 'RNAseq' }",
+        "value": "{'assaytype': 'SNARE-RNAseq2', 'dir-schema': 'scrnaseq-v0', 'tbl-schema': 'scrnaseq-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': true, 'primary': true, 'description': 'snRNAseq (SNAREseq2)', 'dataset-type': 'RNAseq' }",
         "rule_description": "non-DCWG primary SNARE-RNAseq2"
     },
     {
@@ -542,7 +542,7 @@
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'RNAseq'  and assay_input_entity == 'single nucleus' and barcode_read =~~ 'Read 2' and barcode_size == '8,8,8' and barcode_offset == '10,48,86' and umi_read =~~ 'Read 2' and umi_size == 10 and umi_offset == 0",
-        "value": "{'assaytype': 'SNARE-RNAseq2', 'vitessce-hints': [], 'dir-schema': 'rnaseq-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'RNAseq', 'description': 'snRNAseq (10x Genomics v3)'}",
+        "value": "{'assaytype': 'SNARE-RNAseq2', 'vitessce-hints': [], 'dir-schema': 'rnaseq-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'RNAseq', 'description': 'snRNAseq (SNAREseq2)'}",
         "rule_description": "DCWG SNARE-RNAseq2"
     },
     {
