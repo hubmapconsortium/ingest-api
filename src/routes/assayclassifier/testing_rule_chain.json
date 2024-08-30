@@ -308,7 +308,7 @@
     {
         "type": "match",
         "match": "not_dcwg and is_primary and assay_type in ['SNARE-RNAseq2', 'SNARE2-RNAseq']",
-        "value": "{'assaytype': 'SNARE-RNAseq2', 'dir-schema': 'scrnaseq-v0', 'tbl-schema': 'scrnaseq-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': true, 'primary': true, 'description': 'snRNAseq (10x Genomics v3)', 'dataset-type': 'RNAseq' }",
+        "value": "{'assaytype': 'SNARE-RNAseq2', 'dir-schema': 'scrnaseq-v0', 'tbl-schema': 'scrnaseq-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': true, 'primary': true, 'description': 'snRNAseq (SNAREseq2)', 'dataset-type': 'RNAseq' }",
         "rule_description": "non-DCWG primary SNARE-RNAseq2"
     },
     {
@@ -512,13 +512,13 @@
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'Visium (no probes)'",
-        "value": "{'assaytype': 'visium-no-probes', 'vitessce-hints': [], 'dir-schema': 'visium-no-probes-v2', 'description': 'Visium (no probes)', 'contains-pii': true, 'primary': true, 'dataset-type': 'Visium (no probes)', 'must-contain': ['Histology','RNAseq'], 'is-multi-assay': true}",
+        "value": "{'assaytype': 'visium-no-probes', 'vitessce-hints': [], 'dir-schema': 'visium-no-probes-v3', 'description': 'Visium (no probes)', 'contains-pii': true, 'primary': true, 'dataset-type': 'Visium (no probes)', 'must-contain': ['Histology','RNAseq'], 'is-multi-assay': true}",
         "rule_description": "DCWG visium-no-probes"
     },
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'Visium (with probes)'",
-        "value": "{'assaytype': 'visium-with-probes', 'vitessce-hints': [], 'dir-schema': 'visium-with-probes-v2', 'description': 'Visium (with probes)', 'contains-pii': true, 'primary': true, 'dataset-type': 'Visium (with probes)', 'must-contain': ['Histology','RNAseq (with probes)'], 'is-multi-assay': true}",
+        "value": "{'assaytype': 'visium-with-probes', 'vitessce-hints': [], 'dir-schema': 'visium-with-probes-v3', 'description': 'Visium (with probes)', 'contains-pii': true, 'primary': true, 'dataset-type': 'Visium (with probes)', 'must-contain': ['Histology','RNAseq (with probes)'], 'is-multi-assay': true}",
         "rule_description": "DCWG visium-with-probes"
     },
     {
@@ -548,7 +548,7 @@
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'RNAseq'  and assay_input_entity == 'single nucleus' and barcode_read =~~ 'Read 2' and barcode_size == '8,8,8' and barcode_offset == '10,48,86' and umi_read =~~ 'Read 2' and umi_size == 10 and umi_offset == 0",
-        "value": "{'assaytype': 'SNARE-RNAseq2', 'vitessce-hints': [], 'dir-schema': 'rnaseq-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'RNAseq', 'description': 'snRNAseq (10x Genomics v3)'}",
+        "value": "{'assaytype': 'SNARE-RNAseq2', 'vitessce-hints': [], 'dir-schema': 'rnaseq-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'RNAseq', 'description': 'snRNAseq (SNAREseq2)'}",
         "rule_description": "DCWG SNARE-RNAseq2"
     },
     {
@@ -784,5 +784,5 @@
         "match": "is_epic and derived_dataset_type == 'Segmentation Mask'",
         "value": "{'assaytype': 'segmentation-mask', 'vitessce-hints': [], 'contains-pii': false, 'primary': false, 'dataset-type': 'Segmentation Mask', 'description': 'Segmentation Mask'}",
         "rule_description": "EPIC dataset segmentation mask"
-     }
+    }
 ]
