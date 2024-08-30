@@ -559,8 +559,8 @@
     },
     {
         "type": "match",
-        "match": "is_dcwg and is_primary and dataset_type == 'RNAseq (with probes)' and oligo_probe_panel == '10x Genomics; Visium Human Transcriptome Probe Kit v2 - Small; PN 1000466' and assay_input_entity == 'spot' and barcode_read =~~ 'Read 1' and barcode_size == 16 and barcode_offset == 0 and umi_read =~~ 'Read 1' and umi_size == 12 and umi_offset == 16",
-        "value": "{'assaytype': 'scRNAseq-visium-with-probes', 'vitessce-hints': [], 'dir-schema': 'rnaseq-with-probes-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'RNAseq (with probes)', 'description': 'Visium RNAseq with probes'}",
+        "match": "is_dcwg and is_primary and dataset_type == 'RNAseq (with probes)' and oligo_probe_panel in ['10x Genomics; Visium Human Transcriptome Probe Kit v2 - Small; PN 1000466', '10x Genomics; Visium Human Transcriptome Probe Kit-Small; PN 1000363', '10x Genomics; Visium Human Transcriptome Probe Kit-Large; PN 1000364'] and assay_input_entity == 'spot' and barcode_read =~~ 'Read 1' and barcode_size == 16 and barcode_offset == 0 and umi_read =~~ 'Read 1' and umi_size == 12 and umi_offset == 16",
+        "value": "{'assaytype': 'scRNAseq-visium-with-probes', 'vitessce-hints': [], 'dir-schema': 'rnaseq-with-probes-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'RNAseq (with probes)', 'description': 'Visium RNAseq (with probes)'}",
         "rule_description": "DCWG scRNAseq-visium-with-probes"
     },
     {
@@ -784,5 +784,17 @@
         "match": "is_epic and derived_dataset_type == 'Segmentation Mask'",
         "value": "{'assaytype': 'segmentation-mask', 'vitessce-hints': [], 'contains-pii': false, 'primary': false, 'dataset-type': 'Segmentation Mask', 'description': 'Segmentation Mask'}",
         "rule_description": "EPIC dataset segmentation mask"
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and is_primary and dataset_type == 'RNAseq (with probes)' and oligo_probe_panel == 'NanoString Technologies; GeoMx Human Whole Transcriptome Atlas, 4 slides; PN GMX-RNA-NGS-HuWTA-4' and assay_input_entity = 'area of interest'",
+        "value": "{'assaytype': 'geomx-rnaseq-with-probes', 'vitessce-hints': [], 'dir-schema': 'rnaseq-with-probes-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'RNAseq (with probes)', 'description': 'GeoMx RNAseq (with probes)'}",
+        "rule_description": "DCWG RNAseq-geomx-with-probes"
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and is_primary and dataset_type == 'RNAseq (with probes)' and oligo_probe_panel in ['10X Genomics; Chromium Next GEM Single Cell Fixed RNA Human Transcriptome Probe Kit, 64 rxns; PN 1000456', '10X Genomics; Chromium Next GEM Single Cell Fixed RNA Human Transcriptome Probe Kit, 16 rxns; PN 1000420'] and assay_input_entity == 'single cell' and barcode_read =~~ 'Read 1' and barcode_size == 16 and barcode_offset == 0 and umi_read =~~ 'Read 1' and umi_size == 12 and umi_offset == 16",
+        "value": "{'assaytype': 'scRNAseq-with-probes', 'vitessce-hints': [], 'dir-schema': 'rnaseq-with-probes-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'RNAseq (with probes)', 'description': 'RNAseq (with probes)'}",
+        "rule_description": "DCWG scRNAseq-with-probes"
     }
 ]
