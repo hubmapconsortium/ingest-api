@@ -42,6 +42,12 @@
         "rule_description": "Cover default schema version = 0 for non-DCWG metadata"
     },
     {
+        "type": "note",
+        "match": "creation_action == 'External Process' or (parent_dataset_id != null and derived_dataset_type != null)",
+        "value": "{'is_epic': true}",
+        "rule_description": "Preamble rule identifying EPIC"
+    },
+    {
         "type": "match",
         "match": "not_dcwg and is_primary and assay_type in ['AF']",
         "value": "{'assaytype': 'AF', 'dir-schema': 'af-v0', 'tbl-schema': 'af-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'Auto-fluorescence Microscopy', 'dataset-type': 'Auto-fluorescence' }",
@@ -772,5 +778,11 @@
         "match": "is_central_processed and data_types[0] in ['phenocycler_deepcell']",
         "value": "{'assaytype': 'phenocycler_deepcell', 'vitessce-hints': ['is_image', 'is_tiled', 'sprm', 'anndata'], 'primary': false, 'contains-pii': false, 'description': 'PhenoCycler [DeepCell + SPRM]', 'pipeline-shorthand': 'DeepCell + SPRM'}",
         "rule_description": "derived phenocycler"
-    }
+    },
+    {
+        "type": "match",
+        "match": "is_epic and derived_dataset_type == 'Segmentation Mask'",
+        "value": "{'assaytype': 'segmentation-mask', 'vitessce-hints': [], 'contains-pii': false, 'primary': false, 'dataset-type': 'Segmentation Mask', 'description': 'Segmentation Mask'}",
+        "rule_description": "EPIC dataset segmentation mask"
+     }
 ]
