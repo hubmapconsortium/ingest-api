@@ -57,7 +57,7 @@ chown -R $BASE_USER_NAME:$BASE_USER_NAME /var/log/nginx
 # Also make the ssl certificate accessible
 chown -R $BASE_USER_NAME:$BASE_USER_NAME /etc/pki/nginx
 
-# Lastly we use gosu to execute our process "$@" as that user
+# Lastly we use su-exec to execute our process "$@" as that user
 # Remember CMD from a Dockerfile of child image gets passed to the entrypoint.sh as command line arguments
 # "$@" is a shell variable that means "all the arguments"
-exec /usr/local/bin/gosu $BASE_USER_NAME "$@"
+exec /usr/local/bin/su-exec $BASE_USER_NAME "$@"
