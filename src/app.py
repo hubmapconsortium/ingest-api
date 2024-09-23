@@ -9,13 +9,10 @@ import requests
 import re
 import json
 from uuid import UUID
-import yaml
 import csv
-from typing import List
 import time
 from threading import Thread
 from hubmap_sdk import EntitySdk
-from queue import Queue
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from apscheduler.triggers.date import DateTrigger
@@ -42,7 +39,7 @@ from hubmap_commons import file_helper as commons_file_helper
 from hubmap_commons.hubmap_const import HubmapConst
 
 # Local modules
-from specimen import Specimen
+from sample_helper import SampleHelper
 from ingest_file_helper import IngestFileHelper
 from file_upload_helper import UploadFileHelper
 import app_manager
@@ -63,8 +60,6 @@ from routes.assayclassifier import bp as assayclassifier_blueprint
 from routes.validation import validation_blueprint
 from routes.datasets_bulk_submit import datasets_bulk_submit_blueprint
 from routes.privs import privs_blueprint
-from _ast import Try
-
 
 # Set logging format and level (default is warning)
 # All the API logging is forwarded to the uWSGI server and gets written into the log file `uwsgi-ingest-api.log`
@@ -179,19 +174,6 @@ except Exception:
     msg = "Failed to initialize the neo4j_driver module"
     # Log the full stack trace, prepend a line with our message
     logger.exception(msg)
-
-
-"""
-Close the current neo4j connection at the end of every request
-"""
-@app.teardown_appcontext
-def close_neo4j_driver(error):
-    if hasattr(g, 'neo4j_driver_instance'):
-        # Close the driver instance
-        neo4j_driver.close()
-        # Also remove neo4j_driver_instance from Flask's application context
-        g.neo4j_driver_instance = None
-
 
 ####################################################################################################
 ## File upload initialization
@@ -562,6 +544,19 @@ def get_file_system_relative_path():
 @app.route('/datasets/<ds_uuid>/file-system-abs-path', methods=['GET'])
 def get_file_system_absolute_path(ds_uuid: str):
     try:
+        r = requests.get(app.config['UUID_WEBSERVICE_URL'] + "/" + ds_uuid)
+        r.raise_for_status()
+    except Exception as e:
+        status_code = r.status_code
+        response_text = r.text
+        if status_code == 404:
+            not_found_error(response_text)
+        elif status_code == 500:
+            internal_server_error(response_text)
+        else:
+            return Response(response_text, status_code)
+    ds_uuid = r.json().get("uuid")
+    try:
         path = get_dataset_abs_path(ds_uuid)
         return jsonify({'path': path}), 200
     except ResponseException as re:
@@ -588,14 +583,16 @@ def get_mulltiple_file_system_absolute_paths():
         ingest_helper = IngestFileHelper(app.config)
         with neo4j_driver_instance.session() as neo_session:
             q = (f"MATCH (entity) "
-                 f"WHERE entity.uuid in {uuids_list}"
+                 f"WHERE entity.uuid in {uuids_list} OR entity.hubmap_id in {uuids_list} "
                  f"RETURN entity.entity_type AS entity_type, "
                  f"entity.group_uuid AS group_uuid, entity.contains_human_genetic_sequences as contains_human_genetic_sequences, " 
-                 f"entity.data_access_level AS data_access_level, entity.status AS status, entity.uuid AS uuid")
+                 f"entity.data_access_level AS data_access_level, entity.status AS status, entity.uuid AS uuid, entity.hubmap_id AS hubmap_id")
             result = neo_session.run(q).data()
             returned_uuids = []
             for entity in result:
                 returned_uuids.append(entity['uuid'])
+                if entity.get('hubmap_id'):
+                    returned_uuids.append(entity['hubmap_id'])
             for uuid in uuids_list:
                 if uuid not in returned_uuids:
                     out_list.append({'uuid': uuid, 'error': 'No results for given uuid'})
@@ -1290,34 +1287,6 @@ def verify_dataset_title_info(uuid: str) -> object:
         logger.error(e, exc_info=True)
         return Response("Unexpected error: " + str(e), 500)
 
-
-# Called by "data ingest pipeline" to update status of dataset...
-@app.route('/datasets/status', methods = ['PUT'])
-# @secured(groups="HuBMAP-read")
-def update_ingest_status():
-    if not request.json:
-        abort(400, jsonify( { 'error': 'no data found cannot process update' } ))
-    
-    try:
-        entity_api = EntitySdk(token=app_manager.groups_token_from_request_headers(request.headers),
-                               service_url=commons_file_helper.removeTrailingSlashURL(
-                                   app.config['ENTITY_WEBSERVICE_URL']))
-
-        return app_manager.update_ingest_status_title_thumbnail(app.config, 
-                                                                request.json, 
-                                                                request.headers, 
-                                                                entity_api,
-                                                                file_upload_helper_instance)
-    except HTTPException as hte:
-        return Response(hte.get_description(), hte.get_status_code())
-    except ValueError as ve:
-        logger.error(str(ve))
-        return jsonify({'error' : str(ve)}), 400
-    except Exception as e:
-        logger.error(e, exc_info=True)
-        return Response("Unexpected error while saving dataset: " + str(e), 500)     
-
-
 @app.route('/datasets/<uuid>/submit', methods = ['PUT'])
 def submit_dataset(uuid):
     if not request.is_json:
@@ -1665,8 +1634,9 @@ def get_specimen_ingest_group_ids(identifier):
             raise ValueError("Cannot find specimen with identifier: " + identifier)
         uuid = json.loads(r.text)['hm_uuid']
 
-        siblingid_list = Specimen.get_ingest_group_list(neo4j_driver_instance, uuid)
-        return jsonify({'ingest_group_ids': siblingid_list}), 200 
+        sibling_id_list = SampleHelper.get_ingest_group_list(   driver=neo4j_driver_instance
+                                                                , uuid=uuid)
+        return jsonify({'ingest_group_ids': sibling_id_list}), 200
 
     except AuthError as e:
         print(e)
@@ -1676,12 +1646,6 @@ def get_specimen_ingest_group_ids(identifier):
         for x in sys.exc_info():
             msg += str(x)
         abort(400, msg)
-    # finally:
-    #     if conn != None:
-    #         if conn.get_driver().closed() == False:
-    #             conn.close()
-
-
 
 @app.route('/ubkg-download-file-list', methods = ['GET'])
 def ubkg_download_file_list():

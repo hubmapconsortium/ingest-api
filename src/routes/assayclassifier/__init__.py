@@ -1,6 +1,5 @@
 from flask import Blueprint, request, Response, current_app, jsonify
 import logging
-from rq import Retry
 from sys import stdout
 import json
 import urllib.request

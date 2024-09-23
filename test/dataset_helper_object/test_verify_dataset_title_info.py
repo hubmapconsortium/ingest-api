@@ -181,7 +181,7 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
         mock_get_entity_by_id.assert_called()
         mock_url_get.assert_called()
 
-    @patch('dataset_helper_object.urllib.request.urlopen')
+    @patch('urllib.request.urlopen')
     @patch('dataset_helper_object.EntitySdk.get_entity_by_id')
     @patch('dataset_helper_object.EntitySdk.get_ancestors')
     def test_verify_dataset_title_info_organ_key_not_found(self, mock_get_ancestors, mock_get_entity_by_id, mock_url_open):
