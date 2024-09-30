@@ -187,6 +187,29 @@ class DataCiteDoiHelper:
         else:
             raise KeyError('Either the entity_type of the given Dataset is missing or the entity is not a Dataset')
 
+
+    """
+    Register a draft DOI with DataCite for Collections
+
+    This is similar to create_dataset_draft_doi but for collections instead of datasets. As such, 
+    values like "status" are not included because collections don't have this value. Otherwise behaves
+    identically.
+
+    Draft DOIs may be updated to either Registered or Findable DOIs. 
+    Registered and Findable DOIs may not be returned to the Draft state, 
+    which means that changing the state of a Draft DOI is final. 
+    Draft DOIs remain until the DOI owner either deletes them or converts them to another state.
+
+    Parameters
+    ----------
+    dataset: dict
+        The dataset dict to be published
+
+    Returns
+    -------
+    dict
+        The registered DOI details
+    """
     def create_collection_draft_doi(self, collection: dict) -> object:
         datacite_api = DataCiteApi(self.datacite_repository_id, self.datacite_repository_password, self.datacite_hubmap_prefix, self.datacite_api_url, self.entity_api_url)
         publication_year = int(datetime.now().year)

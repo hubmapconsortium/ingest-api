@@ -1720,7 +1720,7 @@ def register_collections_doi(collection_id):
         if data_admin_group_uuid not in user_info['hmgroupids']:
             return Response("User must be a member of the HuBMAP Data Admin group to publish data.", 403)
         if collection_id is None or len(collection_id) == 0:
-            abort(400, jsonify( { 'error': 'identifier parameter is required to publish a dataset' } ))
+            abort(400, jsonify( { 'error': 'identifier parameter is required to publish a collection' } ))
         r = requests.get(app.config['UUID_WEBSERVICE_URL'] + "/" + collection_id, headers={'Authorization': request.headers["AUTHORIZATION"]})
         if r.ok is False:
             raise ValueError("Cannot find collection with id: " + collection_id)
@@ -1736,7 +1736,7 @@ def register_collections_doi(collection_id):
                 if status != 'Published':
                     return Response(f"{collection_uuid} has an associated dataset that has not been Published. "
                                     f"Will not register. Associated dataset is: {uuid}", 400)
-            #get info for the dataset to be published
+            #get info for the collection to be published
             q = f"MATCH (e:Collection {{uuid: '{collection_uuid}'}}) RETURN e.uuid as uuid, e.contacts as contacts, e.contributors as contributors "
             rval = neo_session.run(q).data()
             collection_contacts = rval[0]['contacts']
@@ -1777,7 +1777,7 @@ def register_collections_doi(collection_id):
         return Response(hte.get_description(), hte.get_status_code())
     except Exception as e:
         logger.error(e, exc_info=True)
-        return Response("Unexpected error while creating a collection: " + str(e) + "  Check the logs", 500)
+        return Response("Unexpected error while registering collection doi: " + str(e) + "  Check the logs", 500)
     
 
 #given a hubmap uuid and a valid Globus token returns, as json the attribute has_write_priv with
