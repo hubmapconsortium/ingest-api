@@ -559,7 +559,7 @@
     },
     {
         "type": "match",
-        "match": "is_dcwg and is_primary and dataset_type == 'RNAseq (with probes)' and oligo_probe_panel in ['10x Genomics; Visium Human Transcriptome Probe Kit v2 - Small; PN 1000466', '10x Genomics; Visium Human Transcriptome Probe Kit-Small; PN 1000363', '10x Genomics; Visium Human Transcriptome Probe Kit-Large; PN 1000364'] and assay_input_entity == 'spot' and barcode_read =~~ 'Read 1' and barcode_size == 16 and barcode_offset == 0 and umi_read =~~ 'Read 1' and umi_size == 12 and umi_offset == 16",
+        "match": "is_dcwg and is_primary and dataset_type == 'RNAseq (with probes)' and oligo_probe_panel in ['10x Genomics; Visium Human Transcriptome Probe Kit v2 - Small; PN 1000466', '10x Genomics; Visium Human Transcriptome Probe Kit-Small; PN 1000363', '10x Genomics; Visium Human Transcriptome Probe Kit-Large; PN 1000364', '10x Genomics; Visium Mouse Transcriptome Probe Kit - Small; PN 1000365'] and assay_input_entity == 'spot' and barcode_read =~~ 'Read 1' and barcode_size == 16 and barcode_offset == 0 and umi_read =~~ 'Read 1' and umi_size == 12 and umi_offset == 16",
         "value": "{'assaytype': 'scRNAseq-visium-with-probes', 'vitessce-hints': [], 'dir-schema': 'rnaseq-with-probes-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'RNAseq (with probes)', 'description': 'Visium RNAseq (with probes)'}",
         "rule_description": "DCWG scRNAseq-visium-with-probes"
     },
@@ -787,7 +787,7 @@
     },
     {
         "type": "match",
-        "match": "is_dcwg and is_primary and dataset_type == 'RNAseq (with probes)' and oligo_probe_panel == 'NanoString Technologies; GeoMx Human Whole Transcriptome Atlas, 4 slides; PN GMX-RNA-NGS-HuWTA-4' and assay_input_entity == 'area of interest'",
+        "match": "is_dcwg and is_primary and dataset_type == 'RNAseq (with probes)' and oligo_probe_panel in ['NanoString Technologies; GeoMx Human Whole Transcriptome Atlas, 4 slides; PN GMX-RNA-NGS-HuWTA-4', 'NanoString Technologies; GeoMx Mouse Whole Transcriptome Atlas, 4 slides; PN GMX-RNA-NGS-MsWTA-4'] and assay_input_entity == 'area of interest'",
         "value": "{'assaytype': 'geomx-rnaseq-with-probes', 'vitessce-hints': [], 'dir-schema': 'rnaseq-with-probes-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'RNAseq (with probes)', 'description': 'GeoMx RNAseq (with probes)'}",
         "rule_description": "DCWG RNAseq-geomx-with-probes"
     },
