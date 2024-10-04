@@ -3,7 +3,7 @@ Flask-Cors==4.0.1
 Flask-Mail==0.9.1
 globus_sdk==2.0.1
 
-hubmap-sdk==1.0.7
+hubmap-sdk==1.0.9
 
 # Use pinned version of jsonref same as commons
 jsonref==0.3.0
