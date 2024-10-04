@@ -1712,21 +1712,21 @@ def register_collections_doi(collection_id):
         auth_helper = AuthHelper.configured_instance(app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'])
         user_info = auth_helper.getUserInfoUsingRequest(request, getGroups=True)
         if user_info is None:
-            return Response("Unable to obtain user information for auth token", 401)
+            return jsonify({"error": "Unable to obtain user information for auth token"}), 401
         if isinstance(user_info, Response):
             return user_info
         if 'hmgroupids' not in user_info:
-            return Response("User has no valid group information to authorize publication.", 403)
+            return jsonify({"error": "User has no valid group information to authorize publication."}), 403
         if data_admin_group_uuid not in user_info['hmgroupids']:
-            return Response("User must be a member of the HuBMAP Data Admin group to publish data.", 403)
+            return jsonify({"error": "User must be a member of the HuBMAP Data Admin group to publish data."}), 403
         if collection_id is None or len(collection_id) == 0:
-            abort(400, jsonify( { 'error': 'identifier parameter is required to publish a collection' } ))
+            return jsonify({"error": "identifier parameter is required to publish a collection."}), 400
         r = requests.get(app.config['UUID_WEBSERVICE_URL'] + "/" + collection_id, headers={'Authorization': request.headers["AUTHORIZATION"]})
         if r.ok is False:
-            raise ValueError("Cannot find collection with id: " + collection_id)
+            return jsonify({"error": f"{r.text}"}), r.status_code
         collection_uuid = json.loads(r.text)['hm_uuid']
         if json.loads(r.text).get('type').lower() not in ['collection', 'epicollection']:
-            return Response(f"{collection_uuid} is not a collection", 400)
+            return jsonify({"error": f"{collection_uuid} is not a collection"}), 400
         with neo4j_driver_instance.session() as neo_session:
             q = f"MATCH (collection:Collection {{uuid: '{collection_uuid}'}})<-[:IN_COLLECTION]-(dataset:Dataset) RETURN distinct dataset.uuid AS uuid, dataset.status AS status"
             rval = neo_session.run(q).data()
@@ -1737,7 +1737,7 @@ def register_collections_doi(collection_id):
                 if status != 'Published':
                     unpublished_datasets.append(uuid)
             if len(unpublished_datasets) > 0:
-                return Response(f"Collection with uuid {collection_uuid} has associated dataset(s) that have not been Published. Will not register. Associated dataset(s): {', '.join(unpublished_datasets)}", 400)
+                return jsonify({"error": f"Collection with uuid {collection_uuid} has one more associated datasets that have not been Published.", "dataset_uuids": ', '.join(unpublished_datasets)}), 422
             #get info for the collection to be published
             q = f"MATCH (e:Collection {{uuid: '{collection_uuid}'}}) RETURN e.uuid as uuid, e.contacts as contacts, e.contributors as contributors "
             rval = neo_session.run(q).data()
@@ -1780,7 +1780,7 @@ def register_collections_doi(collection_id):
         return Response(hte.get_description(), hte.get_status_code())
     except Exception as e:
         logger.error(e, exc_info=True)
-        return Response("Unexpected error while registering collection doi: " + str(e) + "  Check the logs", 500)
+        return jsonify({"error": "Unexpected error while registering collection doi: " + str(e) + "  Check the logs"}), 500
     
 
 #given a hubmap uuid and a valid Globus token returns, as json the attribute has_write_priv with
