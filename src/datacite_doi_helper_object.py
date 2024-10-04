@@ -255,7 +255,7 @@ class DataCiteDoiHelper:
         The updated DOI properties
     """
     def move_doi_state_from_draft_to_findable(self, entity: dict, user_token: str) -> object:
-        entity_types = ['Dataset', 'Collection']
+        entity_types = ['Dataset', 'Collection', 'Epicollection']
         if ('entity_type' in entity) and (entity['entity_type'] in entity_types):
             datacite_api = DataCiteApi(self.datacite_repository_id, self.datacite_repository_password,
                                        self.datacite_hubmap_prefix, self.datacite_api_url, self.entity_api_url)

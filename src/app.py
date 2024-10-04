@@ -1725,17 +1725,19 @@ def register_collections_doi(collection_id):
         if r.ok is False:
             raise ValueError("Cannot find collection with id: " + collection_id)
         collection_uuid = json.loads(r.text)['hm_uuid']
-        if json.loads(r.text).get('type').lower() != 'collection':
+        if json.loads(r.text).get('type').lower() not in ['collection', 'epicollection']:
             return Response(f"{collection_uuid} is not a collection", 400)
         with neo4j_driver_instance.session() as neo_session:
             q = f"MATCH (collection:Collection {{uuid: '{collection_uuid}'}})<-[:IN_COLLECTION]-(dataset:Dataset) RETURN distinct dataset.uuid AS uuid, dataset.status AS status"
             rval = neo_session.run(q).data()
+            unpublished_datasets = []
             for node in rval:
                 uuid = node['uuid']
                 status = node['status']
                 if status != 'Published':
-                    return Response(f"{collection_uuid} has an associated dataset that has not been Published. "
-                                    f"Will not register. Associated dataset is: {uuid}", 400)
+                    unpublished_datasets.append(uuid)
+            if len(unpublished_datasets) > 0:
+                return Response(f"Collection with uuid {collection_uuid} has associated dataset(s) that have not been Published. Will not register. Associated dataset(s): {', '.join(unpublished_datasets)}", 400)
             #get info for the collection to be published
             q = f"MATCH (e:Collection {{uuid: '{collection_uuid}'}}) RETURN e.uuid as uuid, e.contacts as contacts, e.contributors as contributors "
             rval = neo_session.run(q).data()
@@ -1758,7 +1760,8 @@ def register_collections_doi(collection_id):
                 datacite_doi_helper.create_collection_draft_doi(entity_dict)
             except Exception as e:
                 logger.exception(f"Exception while creating a draft doi for {collection_uuid}")
-                # This will make the draft DOI created above 'findable'....
+                return jsonify({"error": f"Error occurred while trying to create a draft doi for {collection_uuid}. Check logs."}), 500
+            # This will make the draft DOI created above 'findable'....
             try:
                 doi_info = datacite_doi_helper.move_doi_state_from_draft_to_findable(entity_dict, auth_tokens)
             except Exception as e:
