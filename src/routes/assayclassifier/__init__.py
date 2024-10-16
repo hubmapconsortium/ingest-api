@@ -157,10 +157,22 @@ def build_entity_metadata(entity) -> dict:
         metadata["data_types"] = calculate_data_types(entity)
 
     metadata["entity_type"] = entity.entity_type
+    if metadata["entity_type"].upper() in ["DONOR", "SAMPLE"]:
+        raise ValueError(f"Entity is a {metadata['entity_type']}")
+    logger.info(f"Entity type is {metadata['entity_type']}")
     metadata["dag_provenance_list"] = dag_prov_list
     metadata["creation_action"] = entity.creation_action
 
     return metadata
+
+
+def apply_source_type_transformations(source_type: str, rule_value_set: dict) -> dict:
+    # If we get more complicated transformations we should consider refactoring.
+    # For now, this should suffice.
+    if source_type.upper() == "MOUSE":
+        rule_value_set["contains-pii"] = False
+
+    return rule_value_set
 
 
 def get_data_from_ubkg(ubkg_code: str) -> dict:
@@ -192,16 +204,30 @@ def standardize_results(rule_chain_json: dict, ubkg_json: dict) -> dict:
 
     return rule_chain_json | ubkg_transformed_json
 
+
 @bp.route("/assaytype/<ds_uuid>", methods=["GET"])
 def get_ds_assaytype(ds_uuid: str):
     try:
         entity = get_entity(ds_uuid)
         metadata = build_entity_metadata(entity)
         rules_json = calculate_assay_info(metadata)
+
+        if hasattr(entity, "sources") and isinstance(entity.sources, list):
+            source_type = ""
+            for source in entity.sources:
+                if source_type := source.get("source_type"):
+                    # If there is a single Human source_type, treat this as a Human case
+                    if source_type.upper() == "HUMAN":
+                        break
+            apply_source_type_transformations(source_type, rules_json)
+
         ubkg_value_json = get_data_from_ubkg(rules_json.get("ubkg_code")).get("value", {})
         merged_json = standardize_results(rules_json, ubkg_value_json)
         merged_json["ubkg_json"] = ubkg_value_json
         return jsonify(merged_json)
+    except ValueError as excp:
+        logger.error(excp, exc_info=True)
+        return Response("Bad parameter: {excp}", 400)
     except ResponseException as re:
         logger.error(re, exc_info=True)
         return re.response
@@ -229,6 +255,9 @@ def get_ds_rule_metadata(ds_uuid: str):
         entity = get_entity(ds_uuid)
         metadata = build_entity_metadata(entity)
         return jsonify(metadata)
+    except ValueError as excp:
+        logger.error(excp, exc_info=True)
+        return Response("Bad parameter: {excp}", 400)
     except ResponseException as re:
         logger.error(re, exc_info=True)
         return re.response
@@ -256,6 +285,19 @@ def get_assaytype_from_metadata():
         require_json(request)
         metadata = request.json
         rules_json = calculate_assay_info(metadata)
+
+        if parent_sample_ids := metadata.get("parent_sample_id"):
+            source_type = ""
+            parent_sample_ids = parent_sample_ids.split(",")
+            for parent_sample_id in parent_sample_ids:
+                parent_entity = get_entity(parent_sample_id)
+                if hasattr(parent_entity, "source"):
+                    if source_type := parent_entity.source.get("source_type"):
+                        # If there is a single Human source_type, treat this as a Human case
+                        if source_type.upper() == "HUMAN":
+                            break
+            apply_source_type_transformations(source_type, rules_json)
+
         ubkg_value_json = get_data_from_ubkg(rules_json.get("ubkg_code")).get("value", {})
         merged_json = standardize_results(rules_json, ubkg_value_json)
         merged_json["ubkg_json"] = ubkg_value_json
@@ -293,7 +335,7 @@ def reload_chain():
         return Response(f"Error applying classification rules: {excp}", 500)
     except (HTTPException, SDKException) as hte:
         return Response(
-            f"Error while getting assay type: " + hte.get_description(),
+            f"Error while getting assay type for {ds_uuid}: " + hte.get_description(),
             hte.get_status_code(),
         )
     except Exception as e:

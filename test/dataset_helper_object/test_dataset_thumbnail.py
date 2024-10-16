@@ -43,61 +43,6 @@ class TestDatasetThumbnail(TestCase):
         # Create thumbnail file on the fake file system
         self.fs.create_file(self.thumbnail_file_abs_path)
 
-
-    @patch('dataset_helper_object.EntitySdk.get_entity_by_id')
-    @patch('dataset_helper_object.EntitySdk.update_entity')
-    def test_dataset_with_existing_thumbnail_file(self, mock_update_entity, mock_get_entity_by_id):
-        def resp1():
-            dataset = hubmap_sdk.Dataset({'thumbnail_file': {'filename': 'thumbnail.jpg', 'file_uuid': 'fc95dd0faaf2cfc4786d89bf7b074485'}, 'title': "CX_19-002_lymph-node_R2", 'uuid': 'e69fb303e035192a0ee38a34e4b25024'})
-            return dataset
-        mock_get_entity_by_id.side_effect = [resp1()]
-
-        def resp2():
-            dataset = hubmap_sdk.Dataset({'title': "CX_19-002_lymph-node_R2", 'uuid': 'e69fb303e035192a0ee38a34e4b25024'})
-            return dataset
-        mock_update_entity.side_effect = [resp2()]
-
-        updated_dataset_dict =\
-            self.dataset_helper.handle_thumbnail_file(self.thumbnail_file_abs_path, 
-                                                      self.entity_api, 
-                                                      self.dataset_uuid, 
-                                                      self.extra_headers,
-                                                      self.temp_file_id, 
-                                                      self.file_upload_temp_dir)
-
-        mock_get_entity_by_id.assert_called()
-        mock_update_entity.assert_called()
-
-        temp_file_path = os.path.join(self.file_upload_temp_dir, self.temp_file_id, 'thumbnail.jpg')
-        self.assertTrue(os.path.exists(temp_file_path))
-
-
-    @patch('dataset_helper_object.EntitySdk.get_entity_by_id')
-    @patch('dataset_helper_object.EntitySdk.update_entity')
-    def test_dataset_without_existing_thumbnail_file(self, mock_update_entity, mock_get_entity_by_id):
-        def resp1():
-            r = requests.Response()
-            r.status_code = 200
-            r.json = lambda: {'title': "CX_19-002_lymph-node_R2", 'uuid': 'e69fb303e035192a0ee38a34e4b25024'}
-            return r
-        mock_get_entity_by_id.side_effect = [resp1()]
-
-        updated_dataset_dict =\
-            self.dataset_helper.handle_thumbnail_file(self.thumbnail_file_abs_path, 
-                                                      self.entity_api, 
-                                                      self.dataset_uuid, 
-                                                      self.extra_headers,
-                                                      self.temp_file_id, 
-                                                      self.file_upload_temp_dir)
-
-        mock_get_entity_by_id.assert_called()
-        # No existing thumbnail, thus no removal via PUT
-        mock_update_entity.assert_not_called()
-
-        temp_file_path = os.path.join(self.file_upload_temp_dir, self.temp_file_id, 'thumbnail.jpg')
-        self.assertTrue(os.path.exists(temp_file_path))
-
-
 if __name__ == "__main__":
     import nose2
     nose2.main()

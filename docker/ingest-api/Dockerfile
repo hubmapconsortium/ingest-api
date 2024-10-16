@@ -1,5 +1,5 @@
 # Parent image
-FROM hubmap/api-base-image:1.0.0
+FROM hubmap/api-base-image:1.1.0
 ENV LANG=en_US.UTF-8
 ENV LANGUAGE en_US:en
 ENV LC_ALL en_US.UTF-8
@@ -43,7 +43,7 @@ RUN yum install -y yum-utils && \
     rm /etc/nginx/conf.d/default.conf && \
     mv nginx/nginx.conf /etc/nginx/nginx.conf && \
     rm -rf nginx && \
-    pip install --upgrade pip -r src/requirements.txt && \
+    pip install -r src/requirements.txt && \
     pip install -r src/routes/validation/ingest_validation_tools/requirements.txt && \
     chmod +x start.sh && \
     dnf install langpacks-en glibc-all-langpacks -y && \

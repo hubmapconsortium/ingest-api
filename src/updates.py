@@ -1,17 +1,13 @@
 #This file will include any version related update scripts
 
-#from neo4j import TransactionError, CypherError
 import sys
-import os
 import traceback
 
 from dataset import Dataset
 
 from hubmap_commons.hubmap_const import HubmapConst
 from hubmap_commons.neo4j_connection import Neo4jConnection
-from hubmap_commons.entity import Entity
 from hubmap_commons.hm_auth import AuthHelper
-
 
 def initialize_all_entity_access_levels(confdata):
     conn = Neo4jConnection(confdata['NEO4J_SERVER'], confdata['NEO4J_USERNAME'], confdata['NEO4J_PASSWORD'])

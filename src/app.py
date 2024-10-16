@@ -9,15 +9,13 @@ import requests
 import re
 import json
 from uuid import UUID
-import yaml
 import csv
-from typing import List
 import time
 from threading import Thread
 from hubmap_sdk import EntitySdk
-from queue import Queue
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
+from apscheduler.triggers.date import DateTrigger
 # Don't confuse urllib (Python native library) with urllib3 (3rd-party library, requests also uses urllib3)
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 import argparse
@@ -41,7 +39,7 @@ from hubmap_commons import file_helper as commons_file_helper
 from hubmap_commons.hubmap_const import HubmapConst
 
 # Local modules
-from specimen import Specimen
+from sample_helper import SampleHelper
 from ingest_file_helper import IngestFileHelper
 from file_upload_helper import UploadFileHelper
 import app_manager
@@ -63,13 +61,12 @@ from routes.validation import validation_blueprint
 from routes.datasets_bulk_submit import datasets_bulk_submit_blueprint
 from routes.privs import privs_blueprint
 
-
 # Set logging format and level (default is warning)
 # All the API logging is forwarded to the uWSGI server and gets written into the log file `uwsgi-ingest-api.log`
 # Log rotation is handled via logrotate on the host system with a configuration file
 # Do NOT handle log file and rotation via the Python logging to avoid issues with multi-worker processes
 logging.basicConfig(format='[%(asctime)s] %(levelname)s in %(module)s: %(message)s',
-                    level=logging.DEBUG,
+                    level=logging.INFO,
                     datefmt='%Y-%m-%d %H:%M:%S')
 logger = logging.getLogger(__name__)
 
@@ -177,19 +174,6 @@ except Exception:
     msg = "Failed to initialize the neo4j_driver module"
     # Log the full stack trace, prepend a line with our message
     logger.exception(msg)
-
-
-"""
-Close the current neo4j connection at the end of every request
-"""
-@app.teardown_appcontext
-def close_neo4j_driver(error):
-    if hasattr(g, 'neo4j_driver_instance'):
-        # Close the driver instance
-        neo4j_driver.close()
-        # Also remove neo4j_driver_instance from Flask's application context
-        g.neo4j_driver_instance = None
-
 
 ####################################################################################################
 ## File upload initialization
@@ -560,29 +544,20 @@ def get_file_system_relative_path():
 @app.route('/datasets/<ds_uuid>/file-system-abs-path', methods=['GET'])
 def get_file_system_absolute_path(ds_uuid: str):
     try:
-        ingest_helper = IngestFileHelper(app.config)
-        with neo4j_driver_instance.session() as neo_session:
-            q = (f"MATCH (entity {{uuid: '{ds_uuid}'}}) RETURN entity.entity_type AS entity_type, " 
-                f"entity.group_uuid AS group_uuid, entity.contains_human_genetic_sequences as contains_human_genetic_sequences, " 
-                f"entity.data_access_level AS data_access_level, entity.status AS status")
-            result = neo_session.run(q).data()
-            if len(result) < 1:
-                raise ResponseException(f"No result found for uuid {ds_uuid}", 400)
-            rval = result[0]
-        ent_type = rval['entity_type']
-        group_uuid = rval['group_uuid']
-        is_phi = rval['contains_human_genetic_sequences']
-        if ent_type is None or ent_type.strip() == '':
-            raise ResponseException(f"Entity with uuid:{ds_uuid} needs to be a Dataset or Upload.", 400)
-        if ent_type.lower().strip() == 'upload':
-            return jsonify({'path': ingest_helper.get_upload_directory_absolute_path(group_uuid=group_uuid, upload_uuid=ds_uuid)}), 200
-        if not get_entity_type_instanceof(ent_type, 'Dataset', auth_header=request.headers.get("AUTHORIZATION")):
-            raise ResponseException(f"Entity with uuid: {ds_uuid} is not a Dataset, Publication or upload", 400)
-        if group_uuid is None:
-            raise ResponseException(f"Unable to find group uuid on dataset {ds_uuid}", 400)
-        if is_phi is None:
-            raise ResponseException(f"Contains_human_genetic_sequences is not set on dataset {ds_uuid}", 400)
-        path = ingest_helper.get_dataset_directory_absolute_path(rval, group_uuid, ds_uuid)
+        r = requests.get(app.config['UUID_WEBSERVICE_URL'] + "/" + ds_uuid)
+        r.raise_for_status()
+    except Exception as e:
+        status_code = r.status_code
+        response_text = r.text
+        if status_code == 404:
+            not_found_error(response_text)
+        elif status_code == 500:
+            internal_server_error(response_text)
+        else:
+            return Response(response_text, status_code)
+    ds_uuid = r.json().get("uuid")
+    try:
+        path = get_dataset_abs_path(ds_uuid)
         return jsonify({'path': path}), 200
     except ResponseException as re:
         return re.response
@@ -608,14 +583,16 @@ def get_mulltiple_file_system_absolute_paths():
         ingest_helper = IngestFileHelper(app.config)
         with neo4j_driver_instance.session() as neo_session:
             q = (f"MATCH (entity) "
-                 f"WHERE entity.uuid in {uuids_list}"
+                 f"WHERE entity.uuid in {uuids_list} OR entity.hubmap_id in {uuids_list} "
                  f"RETURN entity.entity_type AS entity_type, "
                  f"entity.group_uuid AS group_uuid, entity.contains_human_genetic_sequences as contains_human_genetic_sequences, " 
-                 f"entity.data_access_level AS data_access_level, entity.status AS status, entity.uuid AS uuid")
+                 f"entity.data_access_level AS data_access_level, entity.status AS status, entity.uuid AS uuid, entity.hubmap_id AS hubmap_id")
             result = neo_session.run(q).data()
             returned_uuids = []
             for entity in result:
                 returned_uuids.append(entity['uuid'])
+                if entity.get('hubmap_id'):
+                    returned_uuids.append(entity['hubmap_id'])
             for uuid in uuids_list:
                 if uuid not in returned_uuids:
                     out_list.append({'uuid': uuid, 'error': 'No results for given uuid'})
@@ -885,6 +862,18 @@ def entity_json_dumps(entity_instance: EntitySdk, dataset_uuid: str) -> str:
     json_object += '\n'
     return json_object
 
+def metadata_json_based_on_creation_action(creation_action: str) -> bool:
+    """
+    https://github.com/hubmapconsortium/ingest-api/issues/575
+    Currently metadata.json files are generated for primary datasets only, change this so metadata.json file
+    are additionally generated for processed datasets where creation_action == 'Central Process' or
+    'Lab Process' or 'External Process' but not for multi-assay component datasets (component datasets match
+    creation_action == 'Multi-Assay Split)
+    """
+    if creation_action is None:
+        return False
+    return creation_action.lower() in [x.lower() for x in ['Central Process', 'Lab Process', 'External Process']]
+
 # Needs to be triggered in the workflow or manually?!
 @app.route('/datasets/<identifier>/publish', methods=['PUT'])
 @secured(groups="HuBMAP-read")
@@ -932,6 +921,7 @@ def publish_datastage(identifier):
             raise ValueError("Cannot find specimen with identifier: " + identifier)
         dataset_uuid = json.loads(r.text)['hm_uuid']
         is_primary = dataset_is_primary(dataset_uuid)
+        is_component = dataset_is_multi_assay_component(dataset_uuid)
         suspend_indexing_and_acls = string_helper.isYes(request.args.get('suspend-indexing-and-acls'))
         no_indexing_and_acls = False
         if suspend_indexing_and_acls:
@@ -1032,40 +1022,50 @@ def publish_datastage(identifier):
             
             logger.info(f'is_primary: {is_primary}; has_entity_lab_processed_data_type: {has_entity_lab_processed_data_type}')
 
-            if is_primary or has_entity_lab_processed_data_type:
+            if is_primary or has_entity_lab_processed_data_type or is_component:
                 if dataset_contacts is None or dataset_contributors is None:
                     return jsonify({"error": f"{dataset_uuid} missing contacts or contributors. Must have at least one of each"}), 400
-                dataset_contacts = dataset_contacts.replace("'", '"')
-                dataset_contributors = dataset_contributors.replace("'", '"')
-                if len(json.loads(dataset_contacts)) < 1 or len(json.loads(dataset_contributors)) < 1:
+                #dataset_contacts = dataset_contacts.replace("'", '"')
+                #dataset_contributors = dataset_contributors.replace("'", '"')
+                if len(dataset_contacts) < 1 or len(dataset_contributors) < 1:
                     return jsonify({"error": f"{dataset_uuid} missing contacts or contributors. Must have at least one of each"}), 400
+                dataset_contacts = string_helper.convert_str_literal(dataset_contacts)
+                dataset_contributors = string_helper.convert_str_literal(dataset_contributors)
 
             ingest_helper: IngestFileHelper = IngestFileHelper(app.config)
 
             data_access_level = dataset_data_access_level
             #if consortium access level convert to public dataset, if protected access leave it protected
+            relink_cmd = ""
             if dataset_data_access_level == 'consortium':
                 #before moving check to see if there is currently a link for the dataset in the assets directory
                 asset_dir = ingest_helper.dataset_asset_directory_absolute_path(dataset_uuid)
                 asset_dir_exists = os.path.exists(asset_dir)
-                ingest_helper.move_dataset_files_for_publishing(dataset_uuid, dataset_group_uuid, 'consortium')
+                components_primary_path = None
+                if is_component:
+                    components_primary_path = get_components_primary_path(dataset_uuid)
+                relink_cmd = ingest_helper.move_dataset_files_for_publishing(dataset_uuid, dataset_group_uuid, 'consortium', False, is_component, components_primary_path)
+                
                 uuids_for_public.append(dataset_uuid)
                 data_access_level = 'public'
-                if asset_dir_exists:
-                    ingest_helper.relink_to_public(dataset_uuid)
+                if asset_dir_exists or is_component:
+                    asset_link_cmd = ingest_helper.relink_to_public(dataset_uuid, is_component, components_primary_path)
+                    if not asset_link_cmd is None:
+                        relink_cmd = relink_cmd + " " + asset_link_cmd
+                        
 
             auth_tokens = auth_helper.getAuthorizationTokens(request.headers)
             entity_instance = EntitySdk(token=auth_tokens, service_url=app.config['ENTITY_WEBSERVICE_URL'])
             doi_info = None
+
+            entity = entity_instance.get_entity_by_id(dataset_uuid)
+            entity_dict = vars(entity)
+
             # Generating DOI's for lab processed/derived data as well as IEC/pipeline/airflow processed/derived data).
-            if is_primary or has_entity_lab_processed_data_type:
+            if is_primary or has_entity_lab_processed_data_type or is_component:
                 # DOI gets generated here
                 # Note: moved dataset title auto generation to entity-api - Zhou 9/29/2021
                 datacite_doi_helper = DataCiteDoiHelper()
-
-                entity = entity_instance.get_entity_by_id(dataset_uuid)
-                entity_dict = vars(entity)
-
                 try:
                     datacite_doi_helper.create_dataset_draft_doi(entity_dict, check_publication_status=False)
                 except Exception as e:
@@ -1115,13 +1115,7 @@ def publish_datastage(identifier):
                 for e_id in uuids_for_public:
                     entity_instance.clear_cache(e_id)
 
-            # Only write the metadata.json file if the Dataset has no parents...
-            parents_query: str = \
-                "MATCH (ds:Dataset)-[:ACTIVITY_INPUT]->(:Activity {creation_action:'Central Process'})-[:ACTIVITY_OUTPUT]->" \
-                f"(:Dataset {{uuid:'{dataset_uuid}'}}) " \
-                "RETURN ds.uuid AS ds_parent_uuid"
-            parents_query_rval = neo_session.run(parents_query).data()
-            if len(parents_query_rval) == 0:
+            if is_primary or metadata_json_based_on_creation_action(entity_dict.get('creation_action')):
                 # Write out the metadata.json file after all processing has been done for publication...
                 # NOTE: The metadata.json file must be written before set_dataset_permissions published=True is executed
                 # because (on examining the code) you can see that it causes the director to be not writable.
@@ -1144,9 +1138,9 @@ def publish_datastage(identifier):
                                                              True, no_indexing_and_acls)
 
         if no_indexing_and_acls:
-            r_val = {'acl_cmd': acls_cmd, 'donors_for_indexing': donors_to_reindex}
+            r_val = {'acl_cmd': acls_cmd, 'donors_for_indexing': donors_to_reindex, 'relink_cmd': relink_cmd}
         else:
-            r_val = {'acl_cmd': '', 'donors_for_indexing': []}
+            r_val = {'acl_cmd': '', 'donors_for_indexing': [], 'relink_cmd': relink_cmd}
 
         if not no_indexing_and_acls:
             for donor_uuid in donors_to_reindex:
@@ -1292,34 +1286,6 @@ def verify_dataset_title_info(uuid: str) -> object:
     except Exception as e:
         logger.error(e, exc_info=True)
         return Response("Unexpected error: " + str(e), 500)
-
-
-# Called by "data ingest pipeline" to update status of dataset...
-@app.route('/datasets/status', methods = ['PUT'])
-# @secured(groups="HuBMAP-read")
-def update_ingest_status():
-    if not request.json:
-        abort(400, jsonify( { 'error': 'no data found cannot process update' } ))
-    
-    try:
-        entity_api = EntitySdk(token=app_manager.groups_token_from_request_headers(request.headers),
-                               service_url=commons_file_helper.removeTrailingSlashURL(
-                                   app.config['ENTITY_WEBSERVICE_URL']))
-
-        return app_manager.update_ingest_status_title_thumbnail(app.config, 
-                                                                request.json, 
-                                                                request.headers, 
-                                                                entity_api,
-                                                                file_upload_helper_instance)
-    except HTTPException as hte:
-        return Response(hte.get_description(), hte.get_status_code())
-    except ValueError as ve:
-        logger.error(str(ve))
-        return jsonify({'error' : str(ve)}), 400
-    except Exception as e:
-        logger.error(e, exc_info=True)
-        return Response("Unexpected error while saving dataset: " + str(e), 500)     
-
 
 @app.route('/datasets/<uuid>/submit', methods = ['PUT'])
 def submit_dataset(uuid):
@@ -1668,8 +1634,9 @@ def get_specimen_ingest_group_ids(identifier):
             raise ValueError("Cannot find specimen with identifier: " + identifier)
         uuid = json.loads(r.text)['hm_uuid']
 
-        siblingid_list = Specimen.get_ingest_group_list(neo4j_driver_instance, uuid)
-        return jsonify({'ingest_group_ids': siblingid_list}), 200 
+        sibling_id_list = SampleHelper.get_ingest_group_list(   driver=neo4j_driver_instance
+                                                                , uuid=uuid)
+        return jsonify({'ingest_group_ids': sibling_id_list}), 200
 
     except AuthError as e:
         print(e)
@@ -1679,12 +1646,6 @@ def get_specimen_ingest_group_ids(identifier):
         for x in sys.exc_info():
             msg += str(x)
         abort(400, msg)
-    # finally:
-    #     if conn != None:
-    #         if conn.get_driver().closed() == False:
-    #             conn.close()
-
-
 
 @app.route('/ubkg-download-file-list', methods = ['GET'])
 def ubkg_download_file_list():
@@ -1741,8 +1702,86 @@ def ubkg_download_file_list():
         return jsonify(False), 403
 
 
+"""
+Takes a valid id for a collection entity, validates that it contains required fields and has datasets in the published state, 
+then registers a DOI, updates the collection via entity-api, and returns the new registered_doi
+"""
+@app.route('/collections/<collection_id>/register-doi', methods = ['PUT'])
+def register_collections_doi(collection_id):
+    try:
+        auth_helper = AuthHelper.configured_instance(app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'])
+        user_info = auth_helper.getUserInfoUsingRequest(request, getGroups=True)
+        if user_info is None:
+            return jsonify({"error": "Unable to obtain user information for auth token"}), 401
+        if isinstance(user_info, Response):
+            return user_info
+        if 'hmgroupids' not in user_info:
+            return jsonify({"error": "User has no valid group information to authorize publication."}), 403
+        if data_admin_group_uuid not in user_info['hmgroupids']:
+            return jsonify({"error": "User must be a member of the HuBMAP Data Admin group to publish data."}), 403
+        if collection_id is None or len(collection_id) == 0:
+            return jsonify({"error": "identifier parameter is required to publish a collection."}), 400
+        r = requests.get(app.config['UUID_WEBSERVICE_URL'] + "/" + collection_id, headers={'Authorization': request.headers["AUTHORIZATION"]})
+        if r.ok is False:
+            return jsonify({"error": f"{r.text}"}), r.status_code
+        collection_uuid = json.loads(r.text)['hm_uuid']
+        if json.loads(r.text).get('type').lower() not in ['collection', 'epicollection']:
+            return jsonify({"error": f"{collection_uuid} is not a collection"}), 400
+        with neo4j_driver_instance.session() as neo_session:
+            q = f"MATCH (collection:Collection {{uuid: '{collection_uuid}'}})<-[:IN_COLLECTION]-(dataset:Dataset) RETURN distinct dataset.uuid AS uuid, dataset.status AS status"
+            rval = neo_session.run(q).data()
+            unpublished_datasets = []
+            for node in rval:
+                uuid = node['uuid']
+                status = node['status']
+                if status != 'Published':
+                    unpublished_datasets.append(uuid)
+            if len(unpublished_datasets) > 0:
+                return jsonify({"error": f"Collection with uuid {collection_uuid} has one more associated datasets that have not been Published.", "dataset_uuids": ', '.join(unpublished_datasets)}), 422
+            #get info for the collection to be published
+            q = f"MATCH (e:Collection {{uuid: '{collection_uuid}'}}) RETURN e.uuid as uuid, e.contacts as contacts, e.contributors as contributors "
+            rval = neo_session.run(q).data()
+            collection_contacts = rval[0]['contacts']
+            collection_contributors = rval[0]['contributors']
+            if collection_contributors is None or collection_contacts is None:
+                return jsonify({"error": "Collection missing contacts or contributors field. Must have at least one of each"}), 400
+            if len(collection_contributors) < 1 or len(collection_contacts) < 1:
+                return jsonify({"error": "Collection missing contacts or contributors. Must have at least one of each"}), 400
 
+            auth_tokens = auth_helper.getAuthorizationTokens(request.headers)
+            entity_instance = EntitySdk(token=auth_tokens, service_url=app.config['ENTITY_WEBSERVICE_URL'])
 
+            doi_info = None
+
+            entity = entity_instance.get_entity_by_id(collection_uuid)
+            entity_dict = vars(entity)
+            datacite_doi_helper = DataCiteDoiHelper()
+            try:
+                datacite_doi_helper.create_collection_draft_doi(entity_dict)
+            except Exception as e:
+                logger.exception(f"Exception while creating a draft doi for {collection_uuid}")
+                return jsonify({"error": f"Error occurred while trying to create a draft doi for {collection_uuid}. Check logs."}), 500
+            # This will make the draft DOI created above 'findable'....
+            try:
+                doi_info = datacite_doi_helper.move_doi_state_from_draft_to_findable(entity_dict, auth_tokens)
+            except Exception as e:
+                logger.exception(f"Exception while creating making doi findable and saving to entity for {collection_uuid}")
+                return jsonify({"error": f"Error occurred while making doi findable and saving to entity for {collection_uuid}. Check logs."}), 500
+            doi_update_data = ""
+            if not doi_info is None:
+                doi_update_data = {"registered_doi": doi_info["registered_doi"], "doi_url": doi_info['doi_url']}
+      
+            entity_instance.clear_cache(collection_uuid)
+            entity_instance.update_entity(collection_uuid, doi_update_data)
+
+        return jsonify({"registered_doi": f"{doi_info['registered_doi']}"})                    
+
+    except HTTPException as hte:
+        return Response(hte.get_description(), hte.get_status_code())
+    except Exception as e:
+        logger.error(e, exc_info=True)
+        return jsonify({"error": "Unexpected error while registering collection doi: " + str(e) + "  Check the logs"}), 500
+    
 
 #given a hubmap uuid and a valid Globus token returns, as json the attribute has_write_priv with
 #value true if the user has write access to the entity.
@@ -1912,6 +1951,11 @@ def allowable_edit_states(hmuuid):
         abort(400, msg)
 
 
+DATASETS_DATA_STATUS_KEY = "datasets_data_status_key"
+DATASETS_DATA_STATUS_LAST_UPDATED_KEY = "datasets_data_status_last_updated_key"
+UPLOADS_DATA_STATUS_KEY = "uploads_data_status_key"
+UPLOADS_DATA_STATUS_LAST_UPDATED_KEY = "uploads_data_status_last_updated_key"
+
 """
 Description
 """
@@ -1919,16 +1963,19 @@ Description
 def dataset_data_status():
     redis_connection = redis.from_url(app.config['REDIS_URL'])
     try:
-        cached_data = redis_connection.get("datasets_data_status_key")
+        cached_data = redis_connection.get(DATASETS_DATA_STATUS_KEY)
         if cached_data:
             cached_data_json = json.loads(cached_data.decode('utf-8'))
-            return jsonify(cached_data_json)
+            last_updated = redis_connection.get(DATASETS_DATA_STATUS_LAST_UPDATED_KEY)
+            return jsonify({"data": cached_data_json, "last_updated": int(last_updated)})
         else:
             raise Exception
     except Exception:
         logger.error("Failed to retrieve datasets data-status from cache. Retrieving new data")
-        combined_results = update_datasets_datastatus()
-        return jsonify(combined_results)
+
+    combined_results = update_datasets_datastatus()
+    last_updated = int(time.time() * 1000)
+    return jsonify({"data": combined_results, "last_updated": last_updated})
 
 
 """
@@ -1938,16 +1985,19 @@ Description
 def upload_data_status():
     redis_connection = redis.from_url(app.config['REDIS_URL'])
     try:
-        cached_data = redis_connection.get("uploads_data_status_key")
+        cached_data = redis_connection.get(UPLOADS_DATA_STATUS_KEY)
         if cached_data:
             cached_data_json = json.loads(cached_data.decode('utf-8'))
-            return jsonify(cached_data_json)
+            last_updated = redis_connection.get(UPLOADS_DATA_STATUS_LAST_UPDATED_KEY)
+            return jsonify({"data": cached_data_json, "last_updated": int(last_updated)})
         else:
             raise Exception
     except Exception:
         logger.error("Failed to retrieve uploads data-status from cache. Retrieving new data")
-        results = update_uploads_datastatus()
-        return jsonify(results)
+
+    results = update_uploads_datastatus()
+    last_updated = int(time.time() * 1000)
+    return jsonify({"data": results, "last_updated": last_updated})
 
 
 @app.route('/donors/bulk-upload', methods=['POST'])
@@ -1979,6 +2029,8 @@ def bulk_donors_upload_and_validate():
             records.append(data_row)
             if first:
                 first = False
+    if len(records) > 40:
+        bad_request_error("Bulk upload TSV files must contain no more than 40 rows. If more than 40 are needed, please split TSV file for multiple submissions.")
     validfile = validate_donors(headers, records)
     if validfile == True:
         return Response(json.dumps({'temp_id': temp_id}, sort_keys=True), 201, mimetype='application/json')
@@ -2112,6 +2164,8 @@ def bulk_samples_upload_and_validate():
             records.append(data_row)
             if first:
                 first = False
+    if len(records) > 40:
+        bad_request_error("Bulk upload TSV files must contain no more than 40 rows. If more than 40 are needed, please split TSV file for multiple submissions.")
     validfile = validate_samples(headers, records, header)
     if validfile == True:
         return Response(json.dumps({'temp_id': temp_id}, sort_keys=True), 201, mimetype='application/json')
@@ -2480,6 +2534,34 @@ def validate_donors(headers, records):
 ## Internal Functions
 ####################################################################################################
 
+def get_dataset_abs_path(ds_uuid):
+        ingest_helper = IngestFileHelper(app.config)
+        with neo4j_driver_instance.session() as neo_session:
+            q = (f"MATCH (entity {{uuid: '{ds_uuid}'}}) RETURN entity.entity_type AS entity_type, " 
+                f"entity.group_uuid AS group_uuid, entity.contains_human_genetic_sequences as contains_human_genetic_sequences, " 
+                f"entity.data_access_level AS data_access_level, entity.status AS status")
+            result = neo_session.run(q).data()
+            if len(result) < 1:
+                raise ResponseException(f"No result found for uuid {ds_uuid}", 400)
+            rval = result[0]
+        ent_type = rval['entity_type']
+        group_uuid = rval['group_uuid']
+        is_phi = rval['contains_human_genetic_sequences']
+        if ent_type is None or ent_type.strip() == '':
+            raise ResponseException(f"Entity with uuid:{ds_uuid} needs to be a Dataset or Upload.", 400)
+        if ent_type.lower().strip() == 'upload':
+            return ingest_helper.get_upload_directory_absolute_path(group_uuid=group_uuid, upload_uuid=ds_uuid)
+        if not get_entity_type_instanceof(ent_type, 'Dataset', auth_header=request.headers.get("AUTHORIZATION")):
+            raise ResponseException(f"Entity with uuid: {ds_uuid} is not a Dataset, Publication or upload", 400)
+        if group_uuid is None:
+            raise ResponseException(f"Unable to find group uuid on dataset {ds_uuid}", 400)
+        if is_phi is None:
+            raise ResponseException(f"Contains_human_genetic_sequences is not set on dataset {ds_uuid}", 400)
+        
+        path = ingest_helper.get_dataset_directory_absolute_path(rval, group_uuid, ds_uuid)
+
+        return path
+
 # Determines if a dataset is Primary. If the list returned from the neo4j query is empty, the dataset is not primary
 def dataset_is_primary(dataset_uuid):
     with neo4j_driver_instance.session() as neo_session:
@@ -2498,6 +2580,31 @@ def dataset_has_entity_lab_processed_data_type(dataset_uuid):
             return False
         return True
 
+def dataset_is_multi_assay_component(dataset_uuid):
+    with neo4j_driver_instance.session() as neo_session:
+        q = (f"MATCH (ds:Dataset {{uuid: '{dataset_uuid}'}})<-[:ACTIVITY_OUTPUT]-(a:Activity) WHERE toLower(a.creation_action) = 'multi-assay split' RETURN ds.uuid")
+        result = neo_session.run(q).data()
+        if len(result) == 0:
+            return False
+        return True
+
+def get_components_primary_path(component_uuid):
+    with neo4j_driver_instance.session() as neo_session:
+        q = (f"MATCH (pri:Dataset)-[:ACTIVITY_INPUT]->(a:Activity {{creation_action:'Multi-Assay Split'}})-[:ACTIVITY_OUTPUT]->(ds:Dataset {{uuid: '{component_uuid}'}}) RETURN pri.uuid as primary_uuid")
+        result = neo_session.run(q).data()
+        if len(result) == 0:            
+            raise HTTPException(f"{component_uuid} no primary dataset found for component dataset", 500)
+        pri_uuid = result[0]['primary_uuid']
+        
+        try:
+            path = get_dataset_abs_path(pri_uuid)
+        except ResponseException as re:
+            raise HTTPException(f"{component_uuid} unable to fine path for primary parent {pri_uuid}. {re.message}", 500)
+
+        return path
+
+    
+    
 def validate_json_list(data):
     if not isinstance(data, list):
         return False
@@ -2568,13 +2675,8 @@ def access_level_prefix_dir(dir_name):
 
 
 def update_datasets_datastatus():
-    primary_assays_url = app.config['UBKG_WEBSERVICE_URL'] + 'assaytype?application_context=HUBMAP&primary=true'
-    alt_assays_url = app.config['UBKG_WEBSERVICE_URL'] + 'assaytype?application_context=HUBMAP&primary=false'
     rui_organs_url = app.config['UBKG_WEBSERVICE_URL'] + 'organs?application_context=HUBMAP'
-    primary_assay_types_list = requests.get(primary_assays_url).json().get("result")
-    alt_assay_types_list = requests.get(alt_assays_url).json().get("result")
     rui_organs_list = requests.get(rui_organs_url).json()
-    assay_types_dict = {item["name"].strip(): item for item in primary_assay_types_list + alt_assay_types_list}
     organ_types_url = app.config['UBKG_WEBSERVICE_URL'] + 'organs/by-code?application_context=HUBMAP'
     organ_types_dict = requests.get(organ_types_url).json()
     all_datasets_query = (
@@ -2694,11 +2796,18 @@ def update_datasets_datastatus():
             if isinstance(dataset[prop], str) and \
                     len(dataset[prop]) >= 2 and \
                     dataset[prop][0] == "[" and dataset[prop][-1] == "]":
-                prop_as_list = string_helper.convert_str_literal(dataset[prop])
-                if len(prop_as_list) > 0:
-                    dataset[prop] = prop_as_list
-                else:
-                    dataset[prop] = ""
+                
+                # For cases like `"ingest_task": "[Empty directory]"` we should not
+                # convert to a list and will cause ValueError if we try to convert
+                # Leave it as the original value and move on - Zhou 7/22/2024
+                try:
+                    prop_as_list = string_helper.convert_str_literal(dataset[prop])
+                    if len(prop_as_list) > 0:
+                        dataset[prop] = prop_as_list
+                    else:
+                        dataset[prop] = ""
+                except ValueError:
+                    pass
             if dataset[prop] is None:
                 dataset[prop] = ""
             if prop == 'processed_datasets':
@@ -2719,8 +2828,8 @@ def update_datasets_datastatus():
     except json.JSONDecodeError as e:
         bad_request_error(e)
     redis_connection = redis.from_url(app.config['REDIS_URL'])
-    cache_key = "datasets_data_status_key"
-    redis_connection.set(cache_key, combined_results_string)
+    redis_connection.set(DATASETS_DATA_STATUS_KEY, combined_results_string)
+    redis_connection.set(DATASETS_DATA_STATUS_LAST_UPDATED_KEY, int(time.time() * 1000))
     return combined_results
 
 def update_uploads_datastatus():
@@ -2749,11 +2858,16 @@ def update_uploads_datastatus():
                 if isinstance(upload[prop], str) and \
                         len(upload[prop]) >= 2 and \
                         upload[prop][0] == "[" and upload[prop][-1] == "]":
-                    prop_as_list = string_helper.convert_str_literal(upload[prop])
-                    if len(prop_as_list) > 0:
-                        upload[prop] = prop_as_list
-                    else:
-                        upload[prop] = ""
+                    # For cases like `"ingest_task": "[Empty directory]"` we should not
+                    # convert to a list and will cause ValueError if we try to convert
+                    try:
+                        prop_as_list = string_helper.convert_str_literal(upload[prop])
+                        if len(prop_as_list) > 0:
+                            upload[prop] = prop_as_list
+                        else:
+                            upload[prop] = ""
+                    except ValueError:
+                        pass
                 if upload[prop] is None:
                     upload[prop] = ""
             for field in displayed_fields:
@@ -2764,8 +2878,8 @@ def update_uploads_datastatus():
     except json.JSONDecodeError as e:
         bad_request_error(e)
     redis_connection = redis.from_url(app.config['REDIS_URL'])
-    cache_key = "uploads_data_status_key"
-    redis_connection.set(cache_key, results_string)
+    redis_connection.set(UPLOADS_DATA_STATUS_KEY, results_string)
+    redis_connection.set(UPLOADS_DATA_STATUS_LAST_UPDATED_KEY, int(time.time() * 1000))
     return results
 
 
@@ -2811,8 +2925,17 @@ scheduler.add_job(
     name="Update Upload Data Status Job"
 )
 
-update_datasets_datastatus()
-update_uploads_datastatus()
+scheduler.add_job(
+    func=update_datasets_datastatus,
+    trigger=DateTrigger(run_date=datetime.datetime.now() + datetime.timedelta(minutes=1)),
+    name="Initial run of Dataset Data Status Job"
+)
+
+scheduler.add_job(
+    func=update_uploads_datastatus,
+    trigger=DateTrigger(run_date=datetime.datetime.now() + datetime.timedelta(minutes=1)),
+    name="Initial run of Dataset Data Status Job"
+)
 
 # For local development/testing
 if __name__ == '__main__':
