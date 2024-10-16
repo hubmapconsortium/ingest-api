@@ -30,8 +30,10 @@ logger: logging.Logger = logging.getLogger(__name__)
 
 rule_chain = None
 
-# Have to translate UBKG keys to the rule chain keys
-ubkg_to_rule_chain_translation = {
+# Have to translate pre-UBKG keys to UBKG keys
+# Format is:
+# "Key before UBKG integration": "UBKG Key"
+pre_integration_to_ubkg_translation = {
     'vitessce-hints': 'vitessce_hints',
     'dir-schema': 'dir_schema',
     'is-multi-assay': 'is_multiassay',
@@ -40,10 +42,10 @@ ubkg_to_rule_chain_translation = {
     'must-contain': 'must_contain'
 }
 
-# These are the values returned by the rule chain before UBKG integration.
+# These are the keys returned by the rule chain before UBKG integration.
 # We will return the UBKG data in this format as well for MVP.
 # This is to avoid too much churn on end-users.
-standard_rules_value_set = [
+pre_integration_keys = [
     'assaytype',
     'vitessce-hints',
     'dir-schema',
@@ -54,7 +56,8 @@ standard_rules_value_set = [
     'description',
     'is-multi-assay',
     'pipeline-shorthand',
-    'must-contain'
+    'must-contain',
+    "process_state"
 ]
 
 def initialize_rule_chain():
@@ -130,7 +133,7 @@ def build_entity_metadata(entity) -> dict:
     dag_prov_list = []
     if hasattr(entity, "ingest_metadata"):
         # This if block should catch primary datasets because primary datasets should
-        # their metadata ingested as part of the reorganization.
+        # have their metadata ingested as part of the reorganization.
         if "metadata" in entity.ingest_metadata:
             metadata = entity.ingest_metadata["metadata"]
         else:
@@ -176,14 +179,16 @@ def get_data_from_ubkg(ubkg_code: str) -> dict:
 
 def standardize_results(rule_chain_json: dict, ubkg_json: dict) -> dict:
     # This translation is manual to avoid writing a deep function
-    # (also dataset_type is nested under datset_type in ubkg_json)
+    # (also dataset_type is nested under dataset_type in ubkg_json)
     ubkg_transformed_json = {
         "contains-pii": ubkg_json.get("measurement_assay", {}).get("contains_full_genetic_sequences", False),
         "dataset-type": ubkg_json.get("dataset_type", {}).get("dataset_type")
     }
 
-    for standard_rule_value in standard_rules_value_set.keys():
-        ubkg_transformed_json[standard_rule_value] = ubkg_json.get(ubkg_to_rule_chain_translation[standard_rule_value])
+    for pre_integration_key in pre_integration_keys:
+        ubkg_key = pre_integration_to_ubkg_translation[pre_integration_key]
+        ubkg_value = ubkg_json.get(ubkg_key)
+        ubkg_transformed_json[pre_integration_key] = ubkg_value
 
     return rule_chain_json | ubkg_transformed_json
 
