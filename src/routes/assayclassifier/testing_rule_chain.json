@@ -50,751 +50,751 @@
     {
         "type": "match",
         "match": "not_dcwg and is_primary and assay_type in ['AF']",
-        "value": "{'assaytype': 'AF', 'dir-schema': 'af-v0', 'tbl-schema': 'af-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'Auto-fluorescence Microscopy', 'dataset-type': 'Auto-fluorescence' }",
+        "value": "{'ubkg_code': 'C200001', 'assaytype': 'AF', 'dir-schema': 'af-v0', 'tbl-schema': 'af-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'Auto-fluorescence Microscopy', 'dataset-type': 'Auto-fluorescence' }",
         "rule_description": "non-DCWG primary AF"
     },
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['AF_pyramid']",
-        "value": "{'assaytype': 'AF_pyramid', 'vitessce-hints': ['pyramid', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'Auto-fluorescence Microscopy [Image Pyramid]', 'pipeline-shorthand': 'Image Pyramid'}",
+        "value": "{'ubkg_code': 'C200010', 'assaytype': 'AF_pyramid', 'vitessce-hints': ['pyramid', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'Auto-fluorescence Microscopy [Image Pyramid]', 'pipeline-shorthand': 'Image Pyramid'}",
         "rule_description": "derived AF_pyramid"
     },
     {
         "type": "match",
         "match": "not_dcwg and is_primary and assay_type in ['ATACseq-bulk', 'bulkATACseq']",
-        "value": "{'assaytype': 'ATACseq-bulk', 'dir-schema': 'bulkatacseq-v0', 'tbl-schema': 'bulkatacseq-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': true, 'primary': true, 'description': 'Bulk ATACseq', 'dataset-type': 'ATACseq' }",
+        "value": "{'ubkg_code': 'C200020', 'assaytype': 'ATACseq-bulk', 'dir-schema': 'bulkatacseq-v0', 'tbl-schema': 'bulkatacseq-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': true, 'primary': true, 'description': 'Bulk ATACseq', 'dataset-type': 'ATACseq' }",
         "rule_description": "non-DCWG primary ATACseq-bulk"
     },
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['bulk_atacseq']",
-        "value": "{'assaytype': 'bulk_atacseq', 'vitessce-hints': [], 'primary': false, 'contains-pii': false, 'description': 'Bulk ATACseq [BWA + MACS2]', 'pipeline-shorthand': 'BWA + MACS2'}",
+        "value": "{'ubkg_code': 'C200030', 'assaytype': 'bulk_atacseq', 'vitessce-hints': [], 'primary': false, 'contains-pii': false, 'description': 'Bulk ATACseq [BWA + MACS2]', 'pipeline-shorthand': 'BWA + MACS2'}",
         "rule_description": "derived bulk_atacseq"
     },
     {
         "type": "match",
         "match": "not_dcwg and is_primary and assay_type in ['cell-dive', 'cell DIVE', 'Cell DIVE']",
-        "value": "{'assaytype': 'cell-dive', 'dir-schema': 'celldive-v0', 'tbl-schema': 'celldive-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'Cell DIVE', 'dataset-type': 'Cell DIVE' }",
+        "value": "{'ubkg_code': 'C200040', 'assaytype': 'cell-dive', 'dir-schema': 'celldive-v0', 'tbl-schema': 'celldive-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'Cell DIVE', 'dataset-type': 'Cell DIVE' }",
         "rule_description": "non-DCWG primary cell-dive"
     },
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['celldive_deepcell']",
-        "value": "{'assaytype': 'celldive_deepcell', 'vitessce-hints': ['sprm', 'anndata', 'is_image', 'is_tiled'], 'primary': false, 'contains-pii': false, 'description': 'Cell DIVE [DeepCell + SPRM]', 'pipeline-shorthand': 'DeepCell + SPRM'}",
+        "value": "{'ubkg_code': 'C200050', 'assaytype': 'celldive_deepcell', 'vitessce-hints': ['sprm', 'anndata', 'is_image', 'is_tiled'], 'primary': false, 'contains-pii': false, 'description': 'Cell DIVE [DeepCell + SPRM]', 'pipeline-shorthand': 'DeepCell + SPRM'}",
         "rule_description": "derived celldive_deepcell"
     },
     {
         "type": "match",
         "match": "not_dcwg and is_primary and assay_type in ['CODEX']",
-        "value": "{'assaytype': 'CODEX', 'dir-schema': 'codex-v1', 'tbl-schema': 'codex-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'CODEX', 'dataset-type': 'CODEX' }",
+        "value": "{'ubkg_code': 'C200060', 'assaytype': 'CODEX', 'dir-schema': 'codex-v1', 'tbl-schema': 'codex-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'CODEX', 'dataset-type': 'CODEX' }",
         "rule_description": "non-DCWG primary CODEX"
     },
     {
         "type": "match",
         "match": "not_dcwg and is_primary and assay_type in ['CODEX2']",
-        "value": "{'assaytype': 'CODEX2', 'dir-schema': 'codex-v1', 'tbl-schema': 'codex-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'CODEX (CODEX2 assay type)', 'dataset-type': 'CODEX' }",
+        "value": "{'ubkg_code': 'C200070', 'assaytype': 'CODEX2', 'dir-schema': 'codex-v1', 'tbl-schema': 'codex-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'CODEX (CODEX2 assay type)', 'dataset-type': 'CODEX' }",
         "rule_description": "non-DCWG primary CODEX2"
     },
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['codex_cytokit_v1'] and [elt for elt in dag_provenance_list if elt =~~ 'anndata']",
-        "value": "{'assaytype': 'codex_cytokit_v1', 'vitessce-hints': ['codex', 'is_image', 'is_tiled', 'anndata'], 'primary': false, 'contains-pii': false, 'description': 'CODEX [Cytokit + SPRM]', 'pipeline-shorthand': 'Cytokit + SPRM'}",
+        "value": "{'ubkg_code': 'C200080', 'assaytype': 'codex_cytokit_v1', 'vitessce-hints': ['codex', 'is_image', 'is_tiled', 'anndata'], 'primary': false, 'contains-pii': false, 'description': 'CODEX [Cytokit + SPRM]', 'pipeline-shorthand': 'Cytokit + SPRM'}",
         "rule_description": "derived codex_cytokit_v1"
     },
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['codex_cytokit_v1'] and not [elt for elt in dag_provenance_list if elt =~~ 'anndata']",
-        "value": "{'assaytype': 'codex_cytokit_v1', 'vitessce-hints': ['codex', 'is_image', 'is_tiled', 'json_based'], 'primary': false, 'contains-pii': false, 'description': 'CODEX [Cytokit + SPRM]', 'pipeline-shorthand': 'Cytokit + SPRM'}",
+        "value": "{'ubkg_code': 'C200090', 'assaytype': 'codex_cytokit_v1', 'vitessce-hints': ['codex', 'is_image', 'is_tiled', 'json_based'], 'primary': false, 'contains-pii': false, 'description': 'CODEX [Cytokit + SPRM]', 'pipeline-shorthand': 'Cytokit + SPRM'}",
         "rule_description": "derived codex_cytokit_v1 json-based"
     },
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['codex_cytokit']",
-        "value": "{'assaytype': 'codex_cytokit', 'vitessce-hints': ['sprm', 'anndata', 'is_image', 'is_tiled'], 'primary': false, 'contains-pii': false, 'description': 'CODEX [Cytokit + SPRM]', 'pipeline-shorthand': 'Cytokit + SPRM'}",
+        "value": "{'ubkg_code': 'C200100', 'assaytype': 'codex_cytokit', 'vitessce-hints': ['sprm', 'anndata', 'is_image', 'is_tiled'], 'primary': false, 'contains-pii': false, 'description': 'CODEX [Cytokit + SPRM]', 'pipeline-shorthand': 'Cytokit + SPRM'}",
         "rule_description": "derived codex_cytokit"
     },
     {
         "type": "match",
         "match": "not_dcwg and is_primary and assay_type in ['DART-FISH']",
-        "value": "{'assaytype': 'DART-FISH',   'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'DART-FISH', 'dataset-type': 'DARTFish' }",
+        "value": "{'ubkg_code': 'C200110', 'assaytype': 'DART-FISH',   'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'DART-FISH', 'dataset-type': 'DARTFish' }",
         "rule_description": "non-DCWG primary DART-FISH"
     },
     {
         "type": "match",
         "match": "not_dcwg and is_primary and assay_type in ['DESI', 'DESI-IMS', 'DESI IMS']",
-        "value": "{'assaytype': 'DESI', 'dir-schema': 'ims-v0', 'tbl-schema': 'ims-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'DESI', 'dataset-type': 'DESI' }",
+        "value": "{'ubkg_code': 'C200120', 'assaytype': 'DESI', 'dir-schema': 'ims-v0', 'tbl-schema': 'ims-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'DESI', 'dataset-type': 'DESI' }",
         "rule_description": "non-DCWG primary DESI"
     },
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['DESI_pyramid']",
-        "value": "{'assaytype': 'DESI_pyramid', 'vitessce-hints': ['pyramid', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'DESI [Image Pyramid]', 'pipeline-shorthand': 'Image Pyramid'}",
+        "value": "{'ubkg_code': 'C200130', 'assaytype': 'DESI_pyramid', 'vitessce-hints': ['pyramid', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'DESI [Image Pyramid]', 'pipeline-shorthand': 'Image Pyramid'}",
         "rule_description": "derived DESI_pyramid"
     },
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['image_pyramid', 'Image Pyramid', 'ometiff_pyramid_ims', 'ometiff_pyramid']",
-        "value": "{'assaytype': 'image_pyramid', 'vitessce-hints': ['is_image', 'pyramid', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'Image Pyramid', 'pipeline-shorthand': ''}",
+        "value": "{'ubkg_code': 'C200140', 'assaytype': 'image_pyramid', 'vitessce-hints': ['is_image', 'pyramid', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'Image Pyramid', 'pipeline-shorthand': ''}",
         "rule_description": "derived image_pyramid"
     },
     {
         "type": "match",
         "match": "not_dcwg and is_primary and assay_type in ['IMC2D', 'IMC', '2D-IMC', 'Imaging Mass Cytometry']",
-        "value": "{'assaytype': 'IMC2D', 'dir-schema': 'imc-v0', 'tbl-schema': 'imc-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': '2D Imaging Mass Cytometry', 'dataset-type': '2D Imaging Mass Cytometry' }",
+        "value": "{'ubkg_code': 'C200150', 'assaytype': 'IMC2D', 'dir-schema': 'imc-v0', 'tbl-schema': 'imc-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': '2D Imaging Mass Cytometry', 'dataset-type': '2D Imaging Mass Cytometry' }",
         "rule_description": "non-DCWG primary IMC2D"
     },
     {
         "type": "match",
         "match": "not_dcwg and is_primary and assay_type in ['IMC3D', '3D-IMC', '3D Imaging Mass Cytometry']",
-        "value": "{'assaytype': 'IMC3D', 'dir-schema': 'imc3d-v0', 'tbl-schema': 'imc3d-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': '3D Imaging Mass Cytometry', 'dataset-type': '3D Imaging Mass Cytometry' }",
+        "value": "{'ubkg_code': 'C200160', 'assaytype': 'IMC3D', 'dir-schema': 'imc3d-v0', 'tbl-schema': 'imc3d-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': '3D Imaging Mass Cytometry', 'dataset-type': '3D Imaging Mass Cytometry' }",
         "rule_description": "non-DCWG primary IMC3D"
     },
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['IMC2D_pyramid', 'IMC_pyramid']",
-        "value": "{'assaytype': 'IMC2D_pyramid', 'vitessce-hints': ['pyramid', 'is_support'], 'primary': false, 'contains-pii': false, 'description': '2D Imaging Mass Cytometry [Image Pyramid]', 'pipeline-shorthand': 'Image Pyramid'}",
+        "value": "{'ubkg_code': 'C200170', 'assaytype': 'IMC2D_pyramid', 'vitessce-hints': ['pyramid', 'is_support'], 'primary': false, 'contains-pii': false, 'description': '2D Imaging Mass Cytometry [Image Pyramid]', 'pipeline-shorthand': 'Image Pyramid'}",
         "rule_description": "derived IMC2D_pyramid"
     },
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['IMC3D_pyramid', '3D-IMC_pyramid']",
-        "value": "{'assaytype': 'IMC3D_pyramid', 'vitessce-hints': ['pyramid', 'is_support'], 'primary': false, 'contains-pii': false, 'description': '3D Imaging Mass Cytometry [Image Pyramid]', 'pipeline-shorthand': 'Image Pyramid'}",
+        "value": "{'ubkg_code': 'C200180', 'assaytype': 'IMC3D_pyramid', 'vitessce-hints': ['pyramid', 'is_support'], 'primary': false, 'contains-pii': false, 'description': '3D Imaging Mass Cytometry [Image Pyramid]', 'pipeline-shorthand': 'Image Pyramid'}",
         "rule_description": "derived IMC3D_pyramid"
     },
     {
         "type": "match",
         "match": "not_dcwg and is_primary and assay_type in ['lc-ms_label-free']",
-        "value": "{'assaytype': 'lc-ms_label-free',   'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'Label-free LC-MS', 'dataset-type': 'LC-MS' }",
+        "value": "{'ubkg_code': 'C200190', 'assaytype': 'lc-ms_label-free',   'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'Label-free LC-MS', 'dataset-type': 'LC-MS' }",
         "rule_description": "non-DCWG primary lc-ms_label-free"
     },
     {
         "type": "match",
         "match": "not_dcwg and is_primary and assay_type in ['lc-ms_labeled']",
-        "value": "{'assaytype': 'lc-ms_labeled',   'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'Labeled LC-MS', 'dataset-type': 'LC-MS' }",
+        "value": "{'ubkg_code': 'C200200', 'assaytype': 'lc-ms_labeled',   'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'Labeled LC-MS', 'dataset-type': 'LC-MS' }",
         "rule_description": "non-DCWG primary lc-ms_labeled"
     },
     {
         "type": "match",
         "match": "not_dcwg and is_primary and assay_type in ['lc-ms-ms_label-free', 'LC-MS/MS (label-free proteomics)']",
-        "value": "{'assaytype': 'lc-ms-ms_label-free',   'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'Label-free LC-MS/MS', 'dataset-type': 'LC-MS' }",
+        "value": "{'ubkg_code': 'C200210', 'assaytype': 'lc-ms-ms_label-free',   'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'Label-free LC-MS/MS', 'dataset-type': 'LC-MS' }",
         "rule_description": "non-DCWG primary lc-ms-ms_label-free"
     },
     {
         "type": "match",
         "match": "not_dcwg and is_primary and assay_type in ['lc-ms-ms_labeled']",
-        "value": "{'assaytype': 'lc-ms-ms_labeled',   'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'Labeled LC-MS/MS', 'dataset-type': 'LC-MS' }",
+        "value": "{'ubkg_code': 'C200220', 'assaytype': 'lc-ms-ms_labeled',   'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'Labeled LC-MS/MS', 'dataset-type': 'LC-MS' }",
         "rule_description": "non-DCWG primary lc-ms-ms_labeled"
     },
     {
         "type": "match",
         "match": "not_dcwg and is_primary and assay_type in ['LC-MS-untargeted']",
-        "value": "{'assaytype': 'LC-MS-untargeted',   'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'Untargeted LC-MS', 'dataset-type': 'LC-MS' }",
+        "value": "{'ubkg_code': 'C200230', 'assaytype': 'LC-MS-untargeted',   'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'Untargeted LC-MS', 'dataset-type': 'LC-MS' }",
         "rule_description": "non-DCWG primary LC-MS-untargeted"
     },
     {
         "type": "match",
         "match": "not_dcwg and is_primary and assay_type in ['Lightsheet', 'Light Sheet']",
-        "value": "{'assaytype': 'Lightsheet', 'dir-schema': 'lightsheet-v1', 'tbl-schema': 'lightsheet-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'Light Sheet Microscopy', 'dataset-type': 'Light Sheet' }",
+        "value": "{'ubkg_code': 'C200240', 'assaytype': 'Lightsheet', 'dir-schema': 'lightsheet-v1', 'tbl-schema': 'lightsheet-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'Light Sheet Microscopy', 'dataset-type': 'Light Sheet' }",
         "rule_description": "non-DCWG primary Lightsheet"
     },
     {
         "type": "match",
         "match": "not_dcwg and is_primary and assay_type in ['MALDI-IMS', 'MALDI-IMS-neg', 'MALDI-IMS-pos', 'IMS negative', 'IMS positive']",
-        "value": "{'assaytype': 'MALDI-IMS', 'dir-schema': 'ims-v0', 'tbl-schema': 'ims-v'+version.to_str, 'vitessce-hints': ['maldi'], 'contains-pii': false, 'primary': true, 'description': 'MALDI IMS', 'dataset-type': 'MALDI' }",
+        "value": "{'ubkg_code': 'C200250', 'assaytype': 'MALDI-IMS', 'dir-schema': 'ims-v0', 'tbl-schema': 'ims-v'+version.to_str, 'vitessce-hints': ['maldi'], 'contains-pii': false, 'primary': true, 'description': 'MALDI IMS', 'dataset-type': 'MALDI' }",
         "rule_description": "non-DCWG primary MALDI-IMS"
     },
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['MALDI-IMS_pyramid', 'MALDI-IMS-neg_pyramid', 'MALDI-IMS-pos_pyramid']",
-        "value": "{'assaytype': 'MALDI-IMS_pyramid', 'vitessce-hints': ['pyramid', 'maldi', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'MALDI IMS [Image Pyramid]', 'pipeline-shorthand': 'Image Pyramid'}",
+        "value": "{'ubkg_code': 'C200260', 'assaytype': 'MALDI-IMS_pyramid', 'vitessce-hints': ['pyramid', 'maldi', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'MALDI IMS [Image Pyramid]', 'pipeline-shorthand': 'Image Pyramid'}",
         "rule_description": "derived MALDI-IMS_pyramid"
     },
     {
         "type": "match",
         "match": "not_dcwg and is_primary and assay_type in ['MIBI', 'Multiplex Ion Beam Imaging', 'mibi']",
-        "value": "{'assaytype': 'MIBI', 'dir-schema': 'mibi-v0', 'tbl-schema': 'mibi-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'Multiplex Ion Beam Imaging', 'dataset-type': 'MIBI' }",
+        "value": "{'ubkg_code': 'C200270', 'assaytype': 'MIBI', 'dir-schema': 'mibi-v0', 'tbl-schema': 'mibi-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'Multiplex Ion Beam Imaging', 'dataset-type': 'MIBI' }",
         "rule_description": "non-DCWG primary MIBI"
     },
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['mibi_deepcell']",
-        "value": "{'assaytype': 'mibi_deepcell', 'vitessce-hints': ['is_image', 'is_tiled', 'sprm', 'anndata'], 'primary': false, 'contains-pii': false, 'description': 'Multiplex Ion Beam Imaging [DeepCell + SPRM]', 'pipeline-shorthand': 'DeepCell + SPRM'}",
+        "value": "{'ubkg_code': 'C200280', 'assaytype': 'mibi_deepcell', 'vitessce-hints': ['is_image', 'is_tiled', 'sprm', 'anndata'], 'primary': false, 'contains-pii': false, 'description': 'Multiplex Ion Beam Imaging [DeepCell + SPRM]', 'pipeline-shorthand': 'DeepCell + SPRM'}",
         "rule_description": "derived mibi_deepcell"
     },
     {
         "type": "match",
         "match": "not_dcwg and is_primary and assay_type in ['NanoDESI']",
-        "value": "{'assaytype': 'NanoDESI', 'dir-schema': 'nano-v0', 'tbl-schema': 'nano-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'NanoDESI', 'dataset-type': 'DESI' }",
+        "value": "{'ubkg_code': 'C200290', 'assaytype': 'NanoDESI', 'dir-schema': 'nano-v0', 'tbl-schema': 'nano-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'NanoDESI', 'dataset-type': 'DESI' }",
         "rule_description": "non-DCWG primary NanoDESI"
     },
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['NanoDESI_pyramid']",
-        "value": "{'assaytype': 'NanoDESI_pyramid', 'vitessce-hints': ['pyramid', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'NanoDESI [Image Pyramid]', 'pipeline-shorthand': 'Image Pyramid'}",
+        "value": "{'ubkg_code': 'C200300', 'assaytype': 'NanoDESI_pyramid', 'vitessce-hints': ['pyramid', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'NanoDESI [Image Pyramid]', 'pipeline-shorthand': 'Image Pyramid'}",
         "rule_description": "derived NanoDESI_pyramid"
     },
     {
         "type": "match",
         "match": "not_dcwg and is_primary and assay_type in ['NanoPOTS']",
-        "value": "{'assaytype': 'NanoPOTS', 'dir-schema': 'nano-v0', 'tbl-schema': 'nano-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'NanoPOTS', 'dataset-type': 'UNKNOWN' }",
+        "value": "{'ubkg_code': 'C200310', 'assaytype': 'NanoPOTS', 'dir-schema': 'nano-v0', 'tbl-schema': 'nano-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'NanoPOTS', 'dataset-type': 'UNKNOWN' }",
         "rule_description": "non-DCWG primary NanoPOTS"
     },
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['NanoPOTS_pyramid']",
-        "value": "{'assaytype': 'NanoPOTS_pyramid', 'vitessce-hints': ['pyramid', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'NanoPOTS [Image Pyramid]', 'pipeline-shorthand': 'Image Pyramid'}",
+        "value": "{'ubkg_code': 'C200320', 'assaytype': 'NanoPOTS_pyramid', 'vitessce-hints': ['pyramid', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'NanoPOTS [Image Pyramid]', 'pipeline-shorthand': 'Image Pyramid'}",
         "rule_description": "derived NanoPOTS_pyramid"
     },
     {
         "type": "match",
         "match": "not_dcwg and is_primary and assay_type in ['MxIF']",
-        "value": "{'assaytype': 'MxIF', 'dir-schema': 'mxif-v0', 'tbl-schema': 'mxif-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'Multiplexed IF Microscopy', 'dataset-type': 'UNKNOWN' }",
+        "value": "{'ubkg_code': 'C200330', 'assaytype': 'MxIF', 'dir-schema': 'mxif-v0', 'tbl-schema': 'mxif-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'Multiplexed IF Microscopy', 'dataset-type': 'UNKNOWN' }",
         "rule_description": "non-DCWG primary MxIF"
     },
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['MxIF_pyramid']",
-        "value": "{'assaytype': 'MxIF_pyramid', 'vitessce-hints': ['pyramid', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'Multiplexed IF Microscopy [Image Pyramid]', 'pipeline-shorthand': 'Image Pyramid'}",
+        "value": "{'ubkg_code': 'C200340', 'assaytype': 'MxIF_pyramid', 'vitessce-hints': ['pyramid', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'Multiplexed IF Microscopy [Image Pyramid]', 'pipeline-shorthand': 'Image Pyramid'}",
         "rule_description": "derived MxIF_pyramid"
     },
     {
         "type": "match",
         "match": "not_dcwg and is_primary and assay_type in ['PAS', 'PAS microscopy']",
-        "value": "{'assaytype': 'PAS', 'dir-schema': 'stained-v0', 'tbl-schema': 'stained-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'PAS Stained Microscopy', 'dataset-type': 'Histology' }",
+        "value": "{'ubkg_code': 'C200350', 'assaytype': 'PAS', 'dir-schema': 'stained-v0', 'tbl-schema': 'stained-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'PAS Stained Microscopy', 'dataset-type': 'Histology' }",
         "rule_description": "non-DCWG primary PAS"
     },
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['PAS_pyramid']",
-        "value": "{'assaytype': 'PAS_pyramid', 'vitessce-hints': ['pyramid', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'PAS Stained Microscopy [Image Pyramid]', 'pipeline-shorthand': 'Image Pyramid'}",
+        "value": "{'ubkg_code': 'C200360', 'assaytype': 'PAS_pyramid', 'vitessce-hints': ['pyramid', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'PAS Stained Microscopy [Image Pyramid]', 'pipeline-shorthand': 'Image Pyramid'}",
         "rule_description": "derived PAS_pyramid"
     },
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['pas_ftu_segmentation']",
-        "value": "{'assaytype': 'pas_ftu_segmentation', 'vitessce-hints': [], 'primary': false, 'contains-pii': false, 'description': 'PAS Stained Microscopy [Kaggle-1 Glomerulus Segmentation]', 'pipeline-shorthand': 'Kaggle-1 Glomerulus Segmentation'}",
+        "value": "{'ubkg_code': 'C200370', 'assaytype': 'pas_ftu_segmentation', 'vitessce-hints': [], 'primary': false, 'contains-pii': false, 'description': 'PAS Stained Microscopy [Kaggle-1 Glomerulus Segmentation]', 'pipeline-shorthand': 'Kaggle-1 Glomerulus Segmentation'}",
         "rule_description": "derived pas_ftu_segmentation"
     },
     {
         "type": "match",
         "match": "is_publication",
-        "value": "{'assaytype': 'publication', 'vitessce-hints': [], 'primary': false, 'contains-pii': false, 'description': 'Publication Data'}",
+        "value": "{'ubkg_code': 'C200380', 'assaytype': 'publication', 'vitessce-hints': [], 'primary': false, 'contains-pii': false, 'description': 'Publication Data'}",
         "rule_description": "derived publication"
     },
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['publication_ancillary', 'gen_pub_ancillary']",
-        "value": "{'assaytype': 'publication_ancillary', 'vitessce-hints': ['json', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'Publication Data [ancillary]', 'pipeline-shorthand': 'ancillary'}",
+        "value": "{'ubkg_code': 'C200390', 'assaytype': 'publication_ancillary', 'vitessce-hints': ['json', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'Publication Data [ancillary]', 'pipeline-shorthand': 'ancillary'}",
         "rule_description": "derived publication_ancillary"
     },
     {
         "type": "match",
         "match": "not_dcwg and is_primary and assay_type in ['bulk-RNA', 'bulk RNA']",
-        "value": "{'assaytype': 'bulk-RNA', 'dir-schema': 'bulkrnaseq-v0', 'tbl-schema': 'bulkrnaseq-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': true, 'primary': true, 'description': 'Bulk RNAseq', 'dataset-type': 'RNAseq' }",
+        "value": "{'ubkg_code': 'C200400', 'assaytype': 'bulk-RNA', 'dir-schema': 'bulkrnaseq-v0', 'tbl-schema': 'bulkrnaseq-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': true, 'primary': true, 'description': 'Bulk RNAseq', 'dataset-type': 'RNAseq' }",
         "rule_description": "non-DCWG primary bulk-RNA"
     },
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['salmon_rnaseq_bulk']",
-        "value": "{'assaytype': 'salmon_rnaseq_bulk', 'vitessce-hints': [], 'primary': false, 'contains-pii': false, 'description': 'Bulk RNAseq [Salmon]', 'pipeline-shorthand': 'Salmon'}",
+        "value": "{'ubkg_code': 'C200410', 'assaytype': 'salmon_rnaseq_bulk', 'vitessce-hints': [], 'primary': false, 'contains-pii': false, 'description': 'Bulk RNAseq [Salmon]', 'pipeline-shorthand': 'Salmon'}",
         "rule_description": "derived salmon_rnaseq_bulk"
     },
     {
         "type": "match",
         "match": "not_dcwg and is_primary and assay_type in ['SNARE-ATACseq2', 'SNAREseq', 'SNARE-seq2', 'SNARE2-ATACseq']",
-        "value": "{'assaytype': 'SNARE-ATACseq2', 'dir-schema': 'scatacseq-v0', 'tbl-schema': 'scatacseq-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': true, 'primary': true, 'description': 'snATACseq (SNAREseq2)', 'dataset-type': 'ATACseq' }",
+        "value": "{'ubkg_code': 'C200420', 'assaytype': 'SNARE-ATACseq2', 'dir-schema': 'scatacseq-v0', 'tbl-schema': 'scatacseq-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': true, 'primary': true, 'description': 'snATACseq (SNAREseq2)', 'dataset-type': 'ATACseq' }",
         "rule_description": "non-DCWG primary SNARE-ATACseq2"
     },
     {
         "type": "match",
         "match": "not_dcwg and is_primary and assay_type in ['SNARE-RNAseq2', 'SNARE2-RNAseq']",
-        "value": "{'assaytype': 'SNARE-RNAseq2', 'dir-schema': 'scrnaseq-v0', 'tbl-schema': 'scrnaseq-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': true, 'primary': true, 'description': 'snRNAseq (SNAREseq2)', 'dataset-type': 'RNAseq' }",
+        "value": "{'ubkg_code': 'C200430', 'assaytype': 'SNARE-RNAseq2', 'dir-schema': 'scrnaseq-v0', 'tbl-schema': 'scrnaseq-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': true, 'primary': true, 'description': 'snRNAseq (SNAREseq2)', 'dataset-type': 'RNAseq' }",
         "rule_description": "non-DCWG primary SNARE-RNAseq2"
     },
     {
         "type": "match",
         "match": "not_dcwg and is_lab_processed and data_types[0] in ['sc_atac_seq_snare_lab']",
-        "value": "{'assaytype': 'sc_atac_seq_snare_lab', 'vitessce-hints': [], 'primary': false, 'contains-pii': false, 'description': 'snATACseq (SNAREseq2) [Lab Processed]'}",
+        "value": "{'ubkg_code': 'C200440', 'assaytype': 'sc_atac_seq_snare_lab', 'vitessce-hints': [], 'primary': false, 'contains-pii': false, 'description': 'snATACseq (SNAREseq2) [Lab Processed]'}",
         "rule_description": "derived sc_atac_seq_snare_lab"
     },
     {
         "type": "match",
         "match": "not_dcwg and is_lab_processed and data_types[0] in ['sc_rna_seq_snare_lab']",
-        "value": "{'assaytype': 'sc_rna_seq_snare_lab', 'vitessce-hints': [], 'primary': false, 'contains-pii': false, 'description': 'snRNAseq (SNAREseq2) [Lab Processed]'}",
+        "value": "{'ubkg_code': 'C200450', 'assaytype': 'sc_rna_seq_snare_lab', 'vitessce-hints': [], 'primary': false, 'contains-pii': false, 'description': 'snRNAseq (SNAREseq2) [Lab Processed]'}",
         "rule_description": "derived sc_rna_seq_snare_lab"
     },
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['salmon_rnaseq_snareseq']",
-        "value": "{'assaytype': 'salmon_rnaseq_snareseq', 'vitessce-hints': ['is_sc', 'rna'], 'primary': false, 'contains-pii': false, 'description': 'snRNAseq (SNAREseq2) [Salmon]', 'pipeline-shorthand': 'Salmon'}",
+        "value": "{'ubkg_code': 'C200460', 'assaytype': 'salmon_rnaseq_snareseq', 'vitessce-hints': ['is_sc', 'rna'], 'primary': false, 'contains-pii': false, 'description': 'snRNAseq (SNAREseq2) [Salmon]', 'pipeline-shorthand': 'Salmon'}",
         "rule_description": "derived salmon_rnaseq_snareseq"
     },
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['sc_atac_seq_snare']",
-        "value": "{'assaytype': 'sc_atac_seq_snare', 'vitessce-hints': ['is_sc', 'atac'], 'primary': false, 'contains-pii': false, 'description': 'snATACseq (SNAREseq2) [SnapATAC]', 'pipeline-shorthand': 'SnapATAC'}",
+        "value": "{'ubkg_code': 'C200470', 'assaytype': 'sc_atac_seq_snare', 'vitessce-hints': ['is_sc', 'atac'], 'primary': false, 'contains-pii': false, 'description': 'snATACseq (SNAREseq2) [SnapATAC]', 'pipeline-shorthand': 'SnapATAC'}",
         "rule_description": "derived sc_atac_seq_snare"
     },
     {
         "type": "match",
         "match": "not_dcwg and is_primary and assay_type in ['scRNAseq-10xGenomics-v2']",
-        "value": "{'assaytype': 'scRNAseq-10xGenomics-v2', 'dir-schema': 'scrnaseq-v0', 'tbl-schema': 'scrnaseq-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': true, 'primary': true, 'description': 'scRNAseq (10x Genomics v2)', 'dataset-type': 'RNAseq' }",
+        "value": "{'ubkg_code': 'C200480', 'assaytype': 'scRNAseq-10xGenomics-v2', 'dir-schema': 'scrnaseq-v0', 'tbl-schema': 'scrnaseq-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': true, 'primary': true, 'description': 'scRNAseq (10x Genomics v2)', 'dataset-type': 'RNAseq' }",
         "rule_description": "non-DCWG primary scRNAseq-10xGenomics-v2"
     },
     {
         "type": "match",
         "match": "not_dcwg and is_primary and assay_type in ['scRNAseq-10xGenomics-v3', 'scRNA-Seq(10xGenomics)', 'scRNA-Seq-10x', 'scRNAseq-10xGenomics']",
-        "value": "{'assaytype': 'scRNAseq-10xGenomics-v3', 'dir-schema': 'scrnaseq-v0', 'tbl-schema': 'scrnaseq-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': true, 'primary': true, 'description': 'scRNAseq (10x Genomics v3)', 'dataset-type': 'RNAseq' }",
+        "value": "{'ubkg_code': 'C200490', 'assaytype': 'scRNAseq-10xGenomics-v3', 'dir-schema': 'scrnaseq-v0', 'tbl-schema': 'scrnaseq-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': true, 'primary': true, 'description': 'scRNAseq (10x Genomics v3)', 'dataset-type': 'RNAseq' }",
         "rule_description": "non-DCWG primary scRNAseq-10xGenomics-v3"
     },
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['salmon_rnaseq_10x', 'salmon_rnaseq_10x_v2'] and [elt for elt in dag_provenance_list if elt =~~ 'anndata']",
-        "value": "{'assaytype': 'salmon_rnaseq_10x', 'vitessce-hints': ['is_sc', 'rna'], 'primary': false, 'contains-pii': false, 'description': 'scRNAseq (10x Genomics) [Salmon]', 'pipeline-shorthand': 'Salmon'}",
+        "value": "{'ubkg_code': 'C200500', 'assaytype': 'salmon_rnaseq_10x', 'vitessce-hints': ['is_sc', 'rna'], 'primary': false, 'contains-pii': false, 'description': 'scRNAseq (10x Genomics) [Salmon]', 'pipeline-shorthand': 'Salmon'}",
         "rule_description": "derived salmon_rnaseq_10x"
     },
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['salmon_rnaseq_10x', 'salmon_rnaseq_10x_v2'] and not [elt for elt in dag_provenance_list if elt =~~ 'anndata']",
-        "value": "{'assaytype': 'salmon_rnaseq_10x', 'vitessce-hints': ['is_sc', 'rna', 'json_based'], 'primary': false, 'contains-pii': false, 'description': 'scRNAseq (10x Genomics) [Salmon]', 'pipeline-shorthand': 'Salmon'}",
+        "value": "{'ubkg_code': 'C202010', 'assaytype': 'salmon_rnaseq_10x', 'vitessce-hints': ['is_sc', 'rna', 'json_based'], 'primary': false, 'contains-pii': false, 'description': 'scRNAseq (10x Genomics) [Salmon]', 'pipeline-shorthand': 'Salmon'}",
         "rule_description": "derived salmon_rnaseq_10x json-based"
     },
     {
         "type": "match",
         "match": "not_dcwg and is_primary and assay_type in ['sciATACseq']",
-        "value": "{'assaytype': 'sciATACseq', 'dir-schema': 'scatacseq-v0', 'tbl-schema': 'scatacseq-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': true, 'primary': true, 'description': 'sciATACseq', 'dataset-type': 'ATACseq' }",
+        "value": "{'ubkg_code': 'C200510', 'assaytype': 'sciATACseq', 'dir-schema': 'scatacseq-v0', 'tbl-schema': 'scatacseq-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': true, 'primary': true, 'description': 'sciATACseq', 'dataset-type': 'ATACseq' }",
         "rule_description": "non-DCWG primary sciATACseq"
     },
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['sc_atac_seq_sci']",
-        "value": "{'assaytype': 'sc_atac_seq_sci', 'vitessce-hints': ['is_sc', 'atac'], 'primary': false, 'contains-pii': false, 'description': 'sciATACseq [SnapATAC]', 'pipeline-shorthand': 'SnapATAC'}",
+        "value": "{'ubkg_code': 'C200520', 'assaytype': 'sc_atac_seq_sci', 'vitessce-hints': ['is_sc', 'atac'], 'primary': false, 'contains-pii': false, 'description': 'sciATACseq [SnapATAC]', 'pipeline-shorthand': 'SnapATAC'}",
         "rule_description": "derived sc_atac_seq_sci"
     },
     {
         "type": "match",
         "match": "not_dcwg and is_primary and assay_type in ['sciRNAseq']",
-        "value": "{'assaytype': 'sciRNAseq', 'dir-schema': 'scrnaseq-v0', 'tbl-schema': 'scrnaseq-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': true, 'primary': true, 'description': 'sciRNAseq', 'dataset-type': 'RNAseq' }",
+        "value": "{'ubkg_code': 'C200530', 'assaytype': 'sciRNAseq', 'dir-schema': 'scrnaseq-v0', 'tbl-schema': 'scrnaseq-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': true, 'primary': true, 'description': 'sciRNAseq', 'dataset-type': 'RNAseq' }",
         "rule_description": "non-DCWG primary sciRNAseq"
     },
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['salmon_rnaseq_sciseq']",
-        "value": "{'assaytype': 'salmon_rnaseq_sciseq', 'vitessce-hints': ['is_sc', 'rna'], 'primary': false, 'contains-pii': false, 'description': 'sciRNAseq [Salmon]', 'pipeline-shorthand': 'Salmon'}",
+        "value": "{'ubkg_code': 'C200540', 'assaytype': 'salmon_rnaseq_sciseq', 'vitessce-hints': ['is_sc', 'rna'], 'primary': false, 'contains-pii': false, 'description': 'sciRNAseq [Salmon]', 'pipeline-shorthand': 'Salmon'}",
         "rule_description": "derived salmon_rnaseq_sciseq"
     },
     {
         "type": "match",
         "match": "not_dcwg and is_primary and assay_type in ['seqFish', 'seqFISH']",
-        "value": "{'assaytype': 'seqFish', 'dir-schema': 'seqfish-v0', 'tbl-schema': 'seqfish-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'seqFISH', 'dataset-type': 'seqFISH' }",
+        "value": "{'ubkg_code': 'C200550', 'assaytype': 'seqFish', 'dir-schema': 'seqfish-v0', 'tbl-schema': 'seqfish-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'seqFISH', 'dataset-type': 'seqFISH' }",
         "rule_description": "non-DCWG primary seqFish"
     },
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['seqFish_pyramid']",
-        "value": "{'assaytype': 'seqFish_pyramid', 'vitessce-hints': ['pyramid', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'seqFISH [Image Pyramid]', 'pipeline-shorthand': 'Image Pyramid'}",
+        "value": "{'ubkg_code': 'C200560', 'assaytype': 'seqFish_pyramid', 'vitessce-hints': ['pyramid', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'seqFISH [Image Pyramid]', 'pipeline-shorthand': 'Image Pyramid'}",
         "rule_description": "derived seqFish_pyramid"
     },
     {
         "type": "match",
         "match": "not_dcwg and is_lab_processed and data_types[0] in ['seqFish_lab_processed']",
-        "value": "{'assaytype': 'seqFish_lab_processed', 'vitessce-hints': [], 'primary': false, 'contains-pii': false, 'description': 'seqFISH [Lab Processed]'}",
+        "value": "{'ubkg_code': 'C200570', 'assaytype': 'seqFish_lab_processed', 'vitessce-hints': [], 'primary': false, 'contains-pii': false, 'description': 'seqFISH [Lab Processed]'}",
         "rule_description": "derived seqFish_lab_processed"
     },
     {
         "type": "match",
         "match": "not_dcwg and is_primary and assay_type in ['SIMS-IMS', 'SIMS']",
-        "value": "{'assaytype': 'SIMS-IMS', 'dir-schema': 'ims-v0', 'tbl-schema': 'ims-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'SIMS-IMS', 'dataset-type': 'SIMS' }",
+        "value": "{'ubkg_code': 'C200580', 'assaytype': 'SIMS-IMS', 'dir-schema': 'ims-v0', 'tbl-schema': 'ims-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'SIMS-IMS', 'dataset-type': 'SIMS' }",
         "rule_description": "non-DCWG primary SIMS-IMS"
     },
     {
         "type": "match",
         "match": "not_dcwg and is_primary and assay_type in ['snATACseq']",
-        "value": "{'assaytype': 'snATACseq', 'dir-schema': 'scatacseq-v0', 'tbl-schema': 'scatacseq-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': true, 'primary': true, 'description': 'snATACseq', 'dataset-type': 'ATACseq' }",
+        "value": "{'ubkg_code': 'C200590', 'assaytype': 'snATACseq', 'dir-schema': 'scatacseq-v0', 'tbl-schema': 'scatacseq-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': true, 'primary': true, 'description': 'snATACseq', 'dataset-type': 'ATACseq' }",
         "rule_description": "non-DCWG primary snATACseq"
     },
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['sn_atac_seq', 'sn_atac_seq_multiome_10x', 'sc_atac_seq_sn', 'sc_atac_seq_multiome_10x']",
-        "value": "{'assaytype': 'sn_atac_seq', 'vitessce-hints': ['is_sc', 'atac'], 'primary': false, 'contains-pii': false, 'description': 'snATACseq [SnapATAC]', 'pipeline-shorthand': 'SnapATAC'}",
+        "value": "{'ubkg_code': 'C200600', 'assaytype': 'sn_atac_seq', 'vitessce-hints': ['is_sc', 'atac'], 'primary': false, 'contains-pii': false, 'description': 'snATACseq [SnapATAC]', 'pipeline-shorthand': 'SnapATAC'}",
         "rule_description": "derived sn_atac_seq"
     },
     {
         "type": "match",
         "match": "not_dcwg and is_primary and assay_type in ['snRNAseq-10xGenomics-v2', 'snRNAseq-v2']",
-        "value": "{'assaytype': 'snRNAseq-10xGenomics-v2', 'dir-schema': 'scrnaseq-v0', 'tbl-schema': 'scrnaseq-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': true, 'primary': true, 'description': 'snRNAseq (10x Genomics v2)', 'dataset-type': 'RNAseq' }",
+        "value": "{'ubkg_code': 'C200610', 'assaytype': 'snRNAseq-10xGenomics-v2', 'dir-schema': 'scrnaseq-v0', 'tbl-schema': 'scrnaseq-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': true, 'primary': true, 'description': 'snRNAseq (10x Genomics v2)', 'dataset-type': 'RNAseq' }",
         "rule_description": "non-DCWG primary snRNAseq-10xGenomics-v2"
     },
     {
         "type": "match",
         "match": "not_dcwg and is_primary and assay_type in ['snRNAseq-10xGenomics-v3', 'snRNAseq', 'snRNAseq-v3']",
-        "value": "{'assaytype': 'snRNAseq-10xGenomics-v3', 'dir-schema': 'scrnaseq-v0', 'tbl-schema': 'scrnaseq-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': true, 'primary': true, 'description': 'snRNAseq (10x Genomics v3)', 'dataset-type': 'RNAseq' }",
+        "value": "{'ubkg_code': 'C200620', 'assaytype': 'snRNAseq-10xGenomics-v3', 'dir-schema': 'scrnaseq-v0', 'tbl-schema': 'scrnaseq-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': true, 'primary': true, 'description': 'snRNAseq (10x Genomics v3)', 'dataset-type': 'RNAseq' }",
         "rule_description": "non-DCWG primary snRNAseq-10xGenomics-v3"
     },
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['salmon_sn_rnaseq_10x', 'salmon_rnaseq_10x_sn', 'salmon_rnaseq_10x_v2_sn'] and [elt for elt in dag_provenance_list if elt =~~ 'anndata']",
-        "value": "{'assaytype': 'salmon_sn_rnaseq_10x', 'vitessce-hints': ['is_sc', 'rna'], 'primary': false, 'contains-pii': false, 'description': 'snRNAseq [Salmon]', 'pipeline-shorthand': 'Salmon'}",
+        "value": "{'ubkg_code': 'C200630', 'assaytype': 'salmon_sn_rnaseq_10x', 'vitessce-hints': ['is_sc', 'rna'], 'primary': false, 'contains-pii': false, 'description': 'snRNAseq [Salmon]', 'pipeline-shorthand': 'Salmon'}",
         "rule_description": "derived salmon_sn_rnaseq_10x"
     },
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['salmon_sn_rnaseq_10x', 'salmon_rnaseq_10x_sn', 'salmon_rnaseq_10x_v2_sn'] and not [elt for elt in dag_provenance_list if elt =~~ 'anndata']",
-        "value": "{'assaytype': 'salmon_sn_rnaseq_10x', 'vitessce-hints': ['is_sc', 'rna', 'json_based'], 'primary': false, 'contains-pii': false, 'description': 'snRNAseq [Salmon]', 'pipeline-shorthand': 'Salmon'}",
+        "value": "{'ubkg_code': 'C202000', 'assaytype': 'salmon_sn_rnaseq_10x', 'vitessce-hints': ['is_sc', 'rna', 'json_based'], 'primary': false, 'contains-pii': false, 'description': 'snRNAseq [Salmon]', 'pipeline-shorthand': 'Salmon'}",
         "rule_description": "derived salmon_sn_rnaseq_10x json-based"
     },
     {
         "type": "match",
         "match": "not_dcwg and is_primary and assay_type in ['Slide-seq']",
-        "value": "{'assaytype': 'Slide-seq', 'dir-schema': 'slideseq-v0', 'tbl-schema': 'slideseq-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': true, 'primary': true, 'description': 'Slideseq', 'dataset-type': 'Slideseq' }",
+        "value": "{'ubkg_code': 'C200640', 'assaytype': 'Slide-seq', 'dir-schema': 'slideseq-v0', 'tbl-schema': 'slideseq-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': true, 'primary': true, 'description': 'Slideseq', 'dataset-type': 'Slideseq' }",
         "rule_description": "non-DCWG primary Slide-seq"
     },
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['salmon_rnaseq_slideseq']",
-        "value": "{'assaytype': 'salmon_rnaseq_slideseq', 'vitessce-hints': ['is_sc', 'rna'], 'primary': false, 'contains-pii': false, 'description': 'Slideseq [Salmon]', 'pipeline-shorthand': 'Salmon'}",
+        "value": "{'ubkg_code': 'C200650', 'assaytype': 'salmon_rnaseq_slideseq', 'vitessce-hints': ['is_sc', 'rna'], 'primary': false, 'contains-pii': false, 'description': 'Slideseq [Salmon]', 'pipeline-shorthand': 'Salmon'}",
         "rule_description": "derived salmon_rnaseq_slideseq"
     },
     {
         "type": "match",
         "match": "not_dcwg and is_primary and assay_type in ['Targeted-Shotgun-LC-MS']",
-        "value": "{'assaytype': 'Targeted-Shotgun-LC-MS',   'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'Targeted Shotgun / Flow-injection LC-MS', 'dataset-type': 'LC-MS' }",
+        "value": "{'ubkg_code': 'C200660', 'assaytype': 'Targeted-Shotgun-LC-MS',   'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'Targeted Shotgun / Flow-injection LC-MS', 'dataset-type': 'LC-MS' }",
         "rule_description": "non-DCWG primary Targeted-Shotgun-LC-MS"
     },
     {
         "type": "match",
         "match": "not_dcwg and is_primary and assay_type in ['TMT-LC-MS', 'TMT (proteomics)']",
-        "value": "{'assaytype': 'TMT-LC-MS',   'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'TMT LC-MS', 'dataset-type': 'LC-MS' }",
+        "value": "{'ubkg_code': 'C200670', 'assaytype': 'TMT-LC-MS',   'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'TMT LC-MS', 'dataset-type': 'LC-MS' }",
         "rule_description": "non-DCWG primary TMT-LC-MS"
     },
     {
         "type": "match",
         "match": "not_dcwg and is_primary and assay_type in ['WGS', 'Whole Transcriptome Sequencing', 'Whole Genome Sequencing']",
-        "value": "{'assaytype': 'WGS', 'dir-schema': 'wgs-v0', 'tbl-schema': 'wgs-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': true, 'primary': true, 'description': 'Whole Genome Sequencing', 'dataset-type': 'WGS' }",
+        "value": "{'ubkg_code': 'C200680', 'assaytype': 'WGS', 'dir-schema': 'wgs-v0', 'tbl-schema': 'wgs-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': true, 'primary': true, 'description': 'Whole Genome Sequencing', 'dataset-type': 'WGS' }",
         "rule_description": "non-DCWG primary WGS"
     },
     {
         "type": "match",
         "match": "not_dcwg and is_primary and assay_type in ['LC-MS', 'LC-MS (metabolomics)']",
-        "value": "{'assaytype': 'LC-MS', 'dir-schema': 'lcms-v0', 'tbl-schema': 'lcms-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'LC-MS', 'dataset-type': 'LC-MS' }",
+        "value": "{'ubkg_code': 'C200690', 'assaytype': 'LC-MS', 'dir-schema': 'lcms-v0', 'tbl-schema': 'lcms-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'LC-MS', 'dataset-type': 'LC-MS' }",
         "rule_description": "non-DCWG primary LC-MS"
     },
     {
         "type": "match",
         "match": "not_dcwg and is_primary and assay_type in ['MS', 'MS (shotgun lipidomics)']",
-        "value": "{'assaytype': 'MS', 'dir-schema': 'lcms-v0', 'tbl-schema': 'lcms-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'MS', 'dataset-type': 'LC-MS' }",
+        "value": "{'ubkg_code': 'C201190', 'assaytype': 'MS', 'dir-schema': 'lcms-v0', 'tbl-schema': 'lcms-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'MS', 'dataset-type': 'LC-MS' }",
         "rule_description": "non-DCWG primary MS"
     },
     {
         "type": "match",
         "match": "not_dcwg and is_primary and assay_type in ['LC-MS_bottom_up', 'LC-MS Bottom-Up']",
-        "value": "{'assaytype': 'LC-MS_bottom_up', 'dir-schema': 'lcms-v0', 'tbl-schema': 'lcms-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'LC-MS Bottom Up', 'dataset-type': 'LC-MS' }",
+        "value": "{'ubkg_code': 'C200700', 'assaytype': 'LC-MS_bottom_up', 'dir-schema': 'lcms-v0', 'tbl-schema': 'lcms-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'LC-MS Bottom Up', 'dataset-type': 'LC-MS' }",
         "rule_description": "non-DCWG primary LC-MS_bottom_up"
     },
     {
         "type": "match",
         "match": "not_dcwg and is_primary and assay_type in ['MS_bottom_up', 'MS Bottom-Up']",
-        "value": "{'assaytype': 'MS_bottom_up', 'dir-schema': 'lcms-v0', 'tbl-schema': 'lcms-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'MS Bottom Up', 'dataset-type': 'LC-MS' }",
+        "value": "{'ubkg_code': 'C200710', 'assaytype': 'MS_bottom_up', 'dir-schema': 'lcms-v0', 'tbl-schema': 'lcms-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'MS Bottom Up', 'dataset-type': 'LC-MS' }",
         "rule_description": "non-DCWG primary MS_bottom_up"
     },
     {
         "type": "match",
         "match": "not_dcwg and is_primary and assay_type in ['LC-MS_top_down', 'LC-MS Top-Down']",
-        "value": "{'assaytype': 'LC-MS_top_down', 'dir-schema': 'lcms-v0', 'tbl-schema': 'lcms-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'LC-MS Top Down', 'dataset-type': 'LC-MS' }",
+        "value": "{'ubkg_code': 'C200720', 'assaytype': 'LC-MS_top_down', 'dir-schema': 'lcms-v0', 'tbl-schema': 'lcms-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'LC-MS Top Down', 'dataset-type': 'LC-MS' }",
         "rule_description": "non-DCWG primary LC-MS_top_down"
     },
     {
         "type": "match",
         "match": "not_dcwg and is_primary and assay_type in ['MS_top_down', 'MS Top-Down']",
-        "value": "{'assaytype': 'MS_top_down', 'dir-schema': 'lcms-v0', 'tbl-schema': 'lcms-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'MS Top Down', 'dataset-type': 'LC-MS' }",
+        "value": "{'ubkg_code': 'C200730', 'assaytype': 'MS_top_down', 'dir-schema': 'lcms-v0', 'tbl-schema': 'lcms-v'+version.to_str, 'vitessce-hints': [], 'contains-pii': false, 'primary': true, 'description': 'MS Top Down', 'dataset-type': 'LC-MS' }",
         "rule_description": "non-DCWG primary MS_top_down"
     },
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'Visium (no probes)'",
-        "value": "{'assaytype': 'visium-no-probes', 'vitessce-hints': [], 'dir-schema': 'visium-no-probes-v3', 'description': 'Visium (no probes)', 'contains-pii': true, 'primary': true, 'dataset-type': 'Visium (no probes)', 'must-contain': ['Histology','RNAseq'], 'is-multi-assay': true}",
+        "value": "{'ubkg_code': 'C200740', 'assaytype': 'visium-no-probes', 'vitessce-hints': [], 'dir-schema': 'visium-no-probes-v3', 'description': 'Visium (no probes)', 'contains-pii': true, 'primary': true, 'dataset-type': 'Visium (no probes)', 'must-contain': ['Histology','RNAseq'], 'is-multi-assay': true}",
         "rule_description": "DCWG visium-no-probes"
     },
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'Visium (with probes)'",
-        "value": "{'assaytype': 'visium-with-probes', 'vitessce-hints': [], 'dir-schema': 'visium-with-probes-v3', 'description': 'Visium (with probes)', 'contains-pii': true, 'primary': true, 'dataset-type': 'Visium (with probes)', 'must-contain': ['Histology','RNAseq (with probes)'], 'is-multi-assay': true}",
+        "value": "{'ubkg_code': 'C200750', 'assaytype': 'visium-with-probes', 'vitessce-hints': [], 'dir-schema': 'visium-with-probes-v3', 'description': 'Visium (with probes)', 'contains-pii': true, 'primary': true, 'dataset-type': 'Visium (with probes)', 'must-contain': ['Histology','RNAseq (with probes)'], 'is-multi-assay': true}",
         "rule_description": "DCWG visium-with-probes"
     },
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'GeoMx (NGS)'",
-        "value": "{'assaytype': 'geomx_ngs?', 'vitessce-hints': [], 'dir-schema': 'geomx-ngs-v2', 'description': 'GeoMx (NGS)', 'contains-pii': true, 'primary': true, 'dataset-type': 'GeoMx (NGS)', 'must-contain': ['RNAseq'], 'is-multi-assay': true}",
+        "value": "{'ubkg_code': 'C200760', 'assaytype': 'geomx_ngs?', 'vitessce-hints': [], 'dir-schema': 'geomx-ngs-v2', 'description': 'GeoMx (NGS)', 'contains-pii': true, 'primary': true, 'dataset-type': 'GeoMx (NGS)', 'must-contain': ['RNAseq'], 'is-multi-assay': true}",
         "rule_description": "DCWG geomx_ngs?"
     },
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == '10X Multiome'",
-        "value": "{'assaytype': '10x-multiome', 'vitessce-hints': [], 'dir-schema': '10x-multiome-v2', 'description': '10x Multiome', 'contains-pii': true, 'primary': true, 'dataset-type': '10X Multiome', 'must-contain': ['RNAseq','ATACseq'], 'is-multi-assay': true}",
+        "value": "{'ubkg_code': 'C200770', 'assaytype': '10x-multiome', 'vitessce-hints': [], 'dir-schema': '10x-multiome-v2', 'description': '10x Multiome', 'contains-pii': true, 'primary': true, 'dataset-type': '10X Multiome', 'must-contain': ['RNAseq','ATACseq'], 'is-multi-assay': true}",
         "rule_description": "DCWG 10x-multiome"
     },
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'SNARE-seq2'",
-        "value": "{'assaytype': 'multiome-snare-seq2', 'vitessce-hints': [], 'dir-schema': 'snareseq2-v2', 'description': 'SNAREseq2', 'contains-pii': true, 'primary': true, 'dataset-type': 'SNARE-seq2', 'must-contain': ['RNAseq','ATACseq'], 'is-multi-assay': true}",
+        "value": "{'ubkg_code': 'C200780', 'assaytype': 'multiome-snare-seq2', 'vitessce-hints': [], 'dir-schema': 'snareseq2-v2', 'description': 'SNAREseq2', 'contains-pii': true, 'primary': true, 'dataset-type': 'SNARE-seq2', 'must-contain': ['RNAseq','ATACseq'], 'is-multi-assay': true}",
         "rule_description": "DCWG multiome-snare-seq2"
     },
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'RNAseq'  and assay_input_entity == 'single cell' and barcode_read =~~ 'Not applicable' and barcode_size == 40 and barcode_offset == 'Not applicable' and umi_read =~~ 'Not applicable' and umi_size == 8 and umi_offset == 'Not applicable'",
-        "value": "{'assaytype': 'sciRNAseq', 'vitessce-hints': [], 'dir-schema': 'rnaseq-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'RNAseq', 'description': 'sciRNAseq'}",
+        "value": "{'ubkg_code': 'C200790', 'assaytype': 'sciRNAseq', 'vitessce-hints': [], 'dir-schema': 'rnaseq-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'RNAseq', 'description': 'sciRNAseq'}",
         "rule_description": "DCWG sciRNAseq"
     },
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'RNAseq'  and assay_input_entity == 'single nucleus' and barcode_read =~~ 'Read 2' and barcode_size == '8,8,8' and barcode_offset == '10,48,86' and umi_read =~~ 'Read 2' and umi_size == 10 and umi_offset == 0",
-        "value": "{'assaytype': 'SNARE-RNAseq2', 'vitessce-hints': [], 'dir-schema': 'rnaseq-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'RNAseq', 'description': 'snRNAseq (SNAREseq2)'}",
+        "value": "{'ubkg_code': 'C200800', 'assaytype': 'SNARE-RNAseq2', 'vitessce-hints': [], 'dir-schema': 'rnaseq-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'RNAseq', 'description': 'snRNAseq (SNAREseq2)'}",
         "rule_description": "DCWG SNARE-RNAseq2"
     },
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'RNAseq' and assay_input_entity == 'spot' and barcode_read =~~ 'Read 1' and barcode_size == 16 and umi_read =~~ 'Read 1' and umi_size == 12 and ((barcode_offset==0 and umi_offset==16) or (barcode_offset==20 and umi_offset==36))",
-        "value": "{'assaytype': 'rnaseq-visium-no-probes', 'vitessce-hints': [], 'dir-schema': 'rnaseq-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'RNAseq', 'description': 'Capture bead RNAseq (10x Genomics v3)'}",
+        "value": "{'ubkg_code': 'C200810', 'assaytype': 'rnaseq-visium-no-probes', 'vitessce-hints': [], 'dir-schema': 'rnaseq-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'RNAseq', 'description': 'Capture bead RNAseq (10x Genomics v3)'}",
         "rule_description": "DCWG rnaseq-visium-no-probes"
     },
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'RNAseq (with probes)' and oligo_probe_panel in ['10x Genomics; Visium Human Transcriptome Probe Kit v2 - Small; PN 1000466', '10x Genomics; Visium Human Transcriptome Probe Kit-Small; PN 1000363', '10x Genomics; Visium Human Transcriptome Probe Kit-Large; PN 1000364', '10x Genomics; Visium Mouse Transcriptome Probe Kit - Small; PN 1000365'] and assay_input_entity == 'spot' and barcode_read =~~ 'Read 1' and barcode_size == 16 and barcode_offset == 0 and umi_read =~~ 'Read 1' and umi_size == 12 and umi_offset == 16",
-        "value": "{'assaytype': 'scRNAseq-visium-with-probes', 'vitessce-hints': [], 'dir-schema': 'rnaseq-with-probes-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'RNAseq (with probes)', 'description': 'Visium RNAseq (with probes)'}",
+        "value": "{'ubkg_code': 'C200820', 'assaytype': 'scRNAseq-visium-with-probes', 'vitessce-hints': [], 'dir-schema': 'rnaseq-with-probes-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'RNAseq (with probes)', 'description': 'Visium RNAseq (with probes)'}",
         "rule_description": "DCWG scRNAseq-visium-with-probes"
     },
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'RNAseq'  and assay_input_entity == 'single cell' and barcode_read =~~ 'Read 1' and barcode_size == 16 and barcode_offset == 0 and umi_read =~~ 'Read 1' and umi_size == 10 and umi_offset == 16",
-        "value": "{'assaytype': 'scRNAseq-10xGenomics-v2', 'vitessce-hints': [], 'dir-schema': 'rnaseq-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'RNAseq', 'description': 'scRNAseq (10x Genomics v2)'}",
+        "value": "{'ubkg_code': 'C200830', 'assaytype': 'scRNAseq-10xGenomics-v2', 'vitessce-hints': [], 'dir-schema': 'rnaseq-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'RNAseq', 'description': 'scRNAseq (10x Genomics v2)'}",
         "rule_description": "DCWG scRNAseq-10xGenomics-v2"
     },
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'RNAseq'  and assay_input_entity == 'single nucleus' and barcode_read =~~ 'Read 1' and barcode_size == 16 and barcode_offset == 0 and umi_read =~~ 'Read 1' and umi_size == 10 and umi_offset == 16",
-        "value": "{'assaytype': 'snRNAseq-10xGenomics-v2', 'vitessce-hints': [], 'dir-schema': 'rnaseq-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'RNAseq', 'description': 'snRNAseq (10x Genomics v2)'}",
+        "value": "{'ubkg_code': 'C200840', 'assaytype': 'snRNAseq-10xGenomics-v2', 'vitessce-hints': [], 'dir-schema': 'rnaseq-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'RNAseq', 'description': 'snRNAseq (10x Genomics v2)'}",
         "rule_description": "DCWG snRNAseq-10xGenomics-v2"
     },
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'RNAseq'  and assay_input_entity == 'single cell' and barcode_read =~~ 'Read 1' and barcode_size == 16 and barcode_offset == 0 and umi_read =~~ 'Read 1' and umi_size == 12 and umi_offset == 16",
-        "value": "{'assaytype': 'scRNAseq-10xGenomics-v3', 'vitessce-hints': [], 'dir-schema': 'rnaseq-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'RNAseq', 'description': 'scRNAseq (10x Genomics v3)'}",
+        "value": "{'ubkg_code': 'C200850', 'assaytype': 'scRNAseq-10xGenomics-v3', 'vitessce-hints': [], 'dir-schema': 'rnaseq-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'RNAseq', 'description': 'scRNAseq (10x Genomics v3)'}",
         "rule_description": "DCWG scRNAseq-10xGenomics-v3"
     },
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'RNAseq'  and assay_input_entity == 'single nucleus' and barcode_read =~~ 'Read 1' and barcode_size == 16 and barcode_offset == 0 and umi_read =~~ 'Read 1' and umi_size == 12 and umi_offset == 16",
-        "value": "{'assaytype': 'snRNAseq-10xGenomics-v3', 'vitessce-hints': [], 'dir-schema': 'rnaseq-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'RNAseq', 'description': 'snRNAseq (10x Genomics v3)'}",
+        "value": "{'ubkg_code': 'C200860', 'assaytype': 'snRNAseq-10xGenomics-v3', 'vitessce-hints': [], 'dir-schema': 'rnaseq-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'RNAseq', 'description': 'snRNAseq (10x Genomics v3)'}",
         "rule_description": "DCWG snRNAseq-10xGenomics-v3"
     },
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'ATACseq'  and assay_input_entity == 'single nucleus' and barcode_read =~~ 'Read 2' and barcode_size == 16 and barcode_offset == 0 and umi_read =~~ 'Not applicable' and umi_size == 'Not applicable' and umi_offset == 'Not applicable'",
-        "value": "{'assaytype': 'snATACseq', 'vitessce-hints': [], 'dir-schema': 'atacseq-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'ATACseq', 'description': 'snATACseq'}",
+        "value": "{'ubkg_code': 'C200870', 'assaytype': 'snATACseq', 'vitessce-hints': [], 'dir-schema': 'atacseq-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'ATACseq', 'description': 'snATACseq'}",
         "rule_description": "DCWG snATACseq"
     },
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'ATACseq'  and assay_input_entity == 'single nucleus' and barcode_read =~~ 'Read 2' and barcode_size == '8,8,8' and barcode_offset == '0,38,76' and umi_read =~~ 'Not applicable' and umi_size == 'Not applicable' and umi_offset == 'Not applicable'",
-        "value": "{'assaytype': 'SNARE-ATACseq2', 'vitessce-hints': [], 'dir-schema': 'atacseq-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'ATACseq', 'description': 'snATACseq (SNAREseq2)'}",
+        "value": "{'ubkg_code': 'C200880', 'assaytype': 'SNARE-ATACseq2', 'vitessce-hints': [], 'dir-schema': 'atacseq-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'ATACseq', 'description': 'snATACseq (SNAREseq2)'}",
         "rule_description": "DCWG SNARE-ATACseq2"
     },
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'ATACseq'  and assay_input_entity == 'single nucleus' and barcode_read =~~ 'Read 2' and barcode_size == 16 and barcode_offset == 8 and umi_read =~~ 'Not applicable' and umi_size == 'Not applicable' and umi_offset == 'Not applicable'",
-        "value": "{'assaytype': 'sn_atac_seq?', 'vitessce-hints': [], 'dir-schema': 'atacseq-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'ATACseq', 'description': 'snATACseq-multiome'}",
+        "value": "{'ubkg_code': 'C200890', 'assaytype': 'sn_atac_seq?', 'vitessce-hints': [], 'dir-schema': 'atacseq-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'ATACseq', 'description': 'snATACseq-multiome'}",
         "rule_description": "DCWG sn_atac_seq?"
     },
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'RNAseq' and assay_input_entity == 'tissue (bulk)'",
-        "value": "{'assaytype': 'bulk-RNA', 'vitessce-hints': [], 'dir-schema': 'rnaseq-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'RNAseq', 'description': 'Bulk RNAseq'}",
+        "value": "{'ubkg_code': 'C200900', 'assaytype': 'bulk-RNA', 'vitessce-hints': [], 'dir-schema': 'rnaseq-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'RNAseq', 'description': 'Bulk RNAseq'}",
         "rule_description": "DCWG bulk-RNA"
     },
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'ATACseq' and assay_input_entity == 'tissue (bulk)'",
-        "value": "{'assaytype': 'ATACseq-bulk', 'vitessce-hints': [], 'dir-schema': 'atacseq-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'ATACseq', 'description': 'Bulk ATACseq'}",
+        "value": "{'ubkg_code': 'C200910', 'assaytype': 'ATACseq-bulk', 'vitessce-hints': [], 'dir-schema': 'atacseq-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'ATACseq', 'description': 'Bulk ATACseq'}",
         "rule_description": "DCWG ATACseq-bulk"
     },
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'ATACseq' and assay_input_entity == 'single cell' and barcode_read =~~ 'Not applicable'",
-        "value": "{'assaytype': 'sciATACseq', 'vitessce-hints': [], 'dir-schema': 'atacseq-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'ATACseq', 'description': 'sciATACseq'}",
+        "value": "{'ubkg_code': 'C200920', 'assaytype': 'sciATACseq', 'vitessce-hints': [], 'dir-schema': 'atacseq-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'ATACseq', 'description': 'sciATACseq'}",
         "rule_description": "DCWG sciATACseq"
     },
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'Histology'  and stain_name == 'PAS'",
-        "value": "{'assaytype': 'PAS', 'vitessce-hints': [], 'dir-schema': 'histology-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'Histology', 'description': 'PAS Stained Microscopy'}",
+        "value": "{'ubkg_code': 'C200930', 'assaytype': 'PAS', 'vitessce-hints': [], 'dir-schema': 'histology-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'Histology', 'description': 'PAS Stained Microscopy'}",
         "rule_description": "DCWG PAS"
     },
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'Histology'  and stain_name == 'H&E'",
-        "value": "{'assaytype': 'h-and-e', 'vitessce-hints': [], 'dir-schema': 'histology-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'Histology', 'description': 'H&E Stained Microscopy'}",
+        "value": "{'ubkg_code': 'C200940', 'assaytype': 'h-and-e', 'vitessce-hints': [], 'dir-schema': 'histology-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'Histology', 'description': 'H&E Stained Microscopy'}",
         "rule_description": "DCWG h-and-e"
     },
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'CODEX'",
-        "value": "{'assaytype': 'CODEX', 'vitessce-hints': [], 'dir-schema': 'codex-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'CODEX', 'description': 'CODEX'}",
+        "value": "{'ubkg_code': 'C200950', 'assaytype': 'CODEX', 'vitessce-hints': [], 'dir-schema': 'codex-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'CODEX', 'description': 'CODEX'}",
         "rule_description": "DCWG CODEX"
     },
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'PhenoCycler'",
-        "value": "{'assaytype': 'phenocycler', 'vitessce-hints': [], 'dir-schema': 'phenocycler-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'PhenoCycler', 'description': 'PhenoCycler'}",
+        "value": "{'ubkg_code': 'C200960', 'assaytype': 'phenocycler', 'vitessce-hints': [], 'dir-schema': 'phenocycler-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'PhenoCycler', 'description': 'PhenoCycler'}",
         "rule_description": "DCWG phenocycler"
     },
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'CycIF'",
-        "value": "{'assaytype': 'cycif', 'vitessce-hints': [], 'dir-schema': 'cycif-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'CycIF', 'description': 'CycIF'}",
+        "value": "{'ubkg_code': 'C200970', 'assaytype': 'cycif', 'vitessce-hints': [], 'dir-schema': 'cycif-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'CycIF', 'description': 'CycIF'}",
         "rule_description": "DCWG cycif"
     },
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'MERFISH'",
-        "value": "{'assaytype': 'merfish', 'vitessce-hints': [], 'dir-schema': 'merfish-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'MERFISH', 'description': 'MERFISH'}",
+        "value": "{'ubkg_code': 'C200980', 'assaytype': 'merfish', 'vitessce-hints': [], 'dir-schema': 'merfish-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'MERFISH', 'description': 'MERFISH'}",
         "rule_description": "DCWG merfish"
     },
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'Cell DIVE'",
-        "value": "{'assaytype': 'cell-dive', 'vitessce-hints': [], 'dir-schema': 'celldive-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'Cell DIVE', 'description': 'Cell DIVE'}",
+        "value": "{'ubkg_code': 'C200990', 'assaytype': 'cell-dive', 'vitessce-hints': [], 'dir-schema': 'celldive-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'Cell DIVE', 'description': 'Cell DIVE'}",
         "rule_description": "DCWG cell-dive"
     },
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'MALDI'",
-        "value": "{'assaytype': 'MALDI-IMS', 'vitessce-hints': [], 'dir-schema': 'maldi-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'MALDI', 'description': 'MALDI IMS'}",
+        "value": "{'ubkg_code': 'C201000', 'assaytype': 'MALDI-IMS', 'vitessce-hints': [], 'dir-schema': 'maldi-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'MALDI', 'description': 'MALDI IMS'}",
         "rule_description": "DCWG MALDI-IMS"
     },
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'SIMS'",
-        "value": "{'assaytype': 'SIMS-IMS', 'vitessce-hints': [], 'dir-schema': 'sims-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'SIMS', 'description': 'SIMS-IMS'}",
+        "value": "{'ubkg_code': 'C201010', 'assaytype': 'SIMS-IMS', 'vitessce-hints': [], 'dir-schema': 'sims-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'SIMS', 'description': 'SIMS-IMS'}",
         "rule_description": "DCWG SIMS-IMS"
     },
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'DESI'",
-        "value": "{'assaytype': 'DESI-IMS', 'vitessce-hints': [], 'dir-schema': 'desi-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'DESI', 'description': 'DESI'}",
+        "value": "{'ubkg_code': 'C201020', 'assaytype': 'DESI-IMS', 'vitessce-hints': [], 'dir-schema': 'desi-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'DESI', 'description': 'DESI'}",
         "rule_description": "DCWG DESI-IMS"
     },
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'MIBI'",
-        "value": "{'assaytype': 'MIBI', 'vitessce-hints': [], 'dir-schema': 'mibi-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'MIBI', 'description': 'Multiplex Ion Beam Imaging'}",
+        "value": "{'ubkg_code': 'C201030', 'assaytype': 'MIBI', 'vitessce-hints': [], 'dir-schema': 'mibi-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'MIBI', 'description': 'Multiplex Ion Beam Imaging'}",
         "rule_description": "DCWG MIBI"
     },
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == '2D Imaging Mass Cytometry'",
-        "value": "{'assaytype': 'IMC2D', 'vitessce-hints': [], 'dir-schema': 'imc-v2', 'contains-pii': false, 'primary': true, 'dataset-type': '2D Imaging Mass Cytometry', 'description': '2D Imaging Mass Cytometry'}",
+        "value": "{'ubkg_code': 'C201040', 'assaytype': 'IMC2D', 'vitessce-hints': [], 'dir-schema': 'imc-v2', 'contains-pii': false, 'primary': true, 'dataset-type': '2D Imaging Mass Cytometry', 'description': '2D Imaging Mass Cytometry'}",
         "rule_description": "DCWG IMC2D"
     },
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'LC-MS'",
-        "value": "{'assaytype': 'LC-MS', 'vitessce-hints': [], 'dir-schema': 'lcms-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'LC-MS', 'description': 'LC-MS'}",
+        "value": "{'ubkg_code': 'C201050', 'assaytype': 'LC-MS', 'vitessce-hints': [], 'dir-schema': 'lcms-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'LC-MS', 'description': 'LC-MS'}",
         "rule_description": "DCWG LC-MS"
     },
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'nanoSPLITS'",
-        "value": "{'assaytype': 'nano-splits', 'vitessce-hints': [], 'dir-schema': 'nano-splits-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'nanoSPLITS', 'description': 'nanoSPLITS'}",
+        "value": "{'ubkg_code': 'C201060', 'assaytype': 'nano-splits', 'vitessce-hints': [], 'dir-schema': 'nano-splits-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'nanoSPLITS', 'description': 'nanoSPLITS'}",
         "rule_description": "DCWG nano-splits"
     },
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'Auto-fluorescence'",
-        "value": "{'assaytype': 'AF', 'vitessce-hints': [], 'dir-schema': 'af-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'Auto-fluorescence', 'description': 'Auto-fluorescence Microscopy'}",
+        "value": "{'ubkg_code': 'C201070', 'assaytype': 'AF', 'vitessce-hints': [], 'dir-schema': 'af-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'Auto-fluorescence', 'description': 'Auto-fluorescence Microscopy'}",
         "rule_description": "DCWG AF"
     },
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'Light Sheet'",
-        "value": "{'assaytype': 'Lightsheet', 'vitessce-hints': [], 'dir-schema': 'lightsheet-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'Light Sheet', 'description': 'Light Sheet Microscopy'}",
+        "value": "{'ubkg_code': 'C201080', 'assaytype': 'Lightsheet', 'vitessce-hints': [], 'dir-schema': 'lightsheet-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'Light Sheet', 'description': 'Light Sheet Microscopy'}",
         "rule_description": "DCWG Lightsheet"
     },
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'Confocal'",
-        "value": "{'assaytype': 'confocal', 'vitessce-hints': [], 'dir-schema': 'confocal-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'Confocal', 'description': 'Confocal Microscopy'}",
+        "value": "{'ubkg_code': 'C201090', 'assaytype': 'confocal', 'vitessce-hints': [], 'dir-schema': 'confocal-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'Confocal', 'description': 'Confocal Microscopy'}",
         "rule_description": "DCWG confocal"
     },
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'Thick section Multiphoton MxIF'",
-        "value": "{'assaytype': 'thick-section-multiphoton-mxif', 'vitessce-hints': [], 'dir-schema': 'thick-section-multiphoton-mxif-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'Thick section Multiphoton MxIF', 'description': 'Thick section Multiphoton MxIF'}",
+        "value": "{'ubkg_code': 'C201100', 'assaytype': 'thick-section-multiphoton-mxif', 'vitessce-hints': [], 'dir-schema': 'thick-section-multiphoton-mxif-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'Thick section Multiphoton MxIF', 'description': 'Thick section Multiphoton MxIF'}",
         "rule_description": "DCWG thick-section-multiphoton-mxif"
     },
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'Second Harmonic Generation (SHG)'",
-        "value": "{'assaytype': 'second-harmonic-generation', 'vitessce-hints': [], 'dir-schema': 'second-harmonic-generation-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'Second Harmonic Generation (SHG)', 'description': 'Second Harmonic Generation (SHG)'}",
+        "value": "{'ubkg_code': 'C201110', 'assaytype': 'second-harmonic-generation', 'vitessce-hints': [], 'dir-schema': 'second-harmonic-generation-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'Second Harmonic Generation (SHG)', 'description': 'Second Harmonic Generation (SHG)'}",
         "rule_description": "DCWG second-harmonic-generation"
     },
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'Enhanced Stimulated Raman Spectroscopy (SRS)'",
-        "value": "{'assaytype': 'enhanced-srs', 'vitessce-hints': [], 'dir-schema': 'enhanced-srs-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'Enhanced Stimulated Raman Spectroscopy (SRS)', 'description': 'Enhanced Stimulated Raman Spectroscopy (SRS)'}",
+        "value": "{'ubkg_code': 'C201120', 'assaytype': 'enhanced-srs', 'vitessce-hints': [], 'dir-schema': 'enhanced-srs-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'Enhanced Stimulated Raman Spectroscopy (SRS)', 'description': 'Enhanced Stimulated Raman Spectroscopy (SRS)'}",
         "rule_description": "DCWG enhanced-srs"
     },
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'Molecular Cartography'",
-        "value": "{'assaytype': 'molecular-cartography', 'vitessce-hints': [], 'dir-schema': 'mc-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'Molecular Cartography', 'description': 'Molecular Cartography'}",
+        "value": "{'ubkg_code': 'C201130', 'assaytype': 'molecular-cartography', 'vitessce-hints': [], 'dir-schema': 'mc-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'Molecular Cartography', 'description': 'Molecular Cartography'}",
         "rule_description": "DCWG molecular-cartography"
     },
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['visium_no_probes']",
-        "value": "{'assaytype': 'visium-no-probes', 'vitessce-hints': ['rna', 'is_image', 'anndata', 'spatial'], 'primary': false, 'contains-pii': false, 'description': 'Visium (no probes) [Salmon + Scanpy]', 'is-multi-assay': true, 'pipeline-shorthand': 'Salmon + Scanpy'}",
+        "value": "{'ubkg_code': 'C201140', 'assaytype': 'visium-no-probes', 'vitessce-hints': ['rna', 'is_image', 'anndata', 'spatial'], 'primary': false, 'contains-pii': false, 'description': 'Visium (no probes) [Salmon + Scanpy]', 'is-multi-assay': true, 'pipeline-shorthand': 'Salmon + Scanpy'}",
         "rule_description": "derived visium-no-probes"
     },
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['multiome_snareseq']",
-        "value": "{'assaytype': 'multiome-snare-seq2', 'vitessce-hints': ['rna', 'atac', 'spatial', 'anndata'], 'primary': false, 'contains-pii': false, 'description': 'SNAREseq2 [Salmon + ArchR + Muon]', 'is-multi-assay': true, 'pipeline-shorthand': 'Salmon + ArchR + Muon'}",
+        "value": "{'ubkg_code': 'C201150', 'assaytype': 'multiome-snare-seq2', 'vitessce-hints': ['rna', 'atac', 'spatial', 'anndata'], 'primary': false, 'contains-pii': false, 'description': 'SNAREseq2 [Salmon + ArchR + Muon]', 'is-multi-assay': true, 'pipeline-shorthand': 'Salmon + ArchR + Muon'}",
         "rule_description": "derived multiome snare-seq2"
     },
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['multiome_10x']",
-        "value": "{'assaytype': 'multiome-10x', 'vitessce-hints': ['is_sc', 'rna', 'atac', 'anndata'], 'primary': false, 'contains-pii': false, 'description': '10x Multiome [Salmon + ArchR + Muon]', 'is-multi-assay': true, 'pipeline-shorthand': 'Salmon + ArchR + Muon'}",
+        "value": "{'ubkg_code': 'C201160', 'assaytype': 'multiome-10x', 'vitessce-hints': ['is_sc', 'rna', 'atac', 'anndata'], 'primary': false, 'contains-pii': false, 'description': '10x Multiome [Salmon + ArchR + Muon]', 'is-multi-assay': true, 'pipeline-shorthand': 'Salmon + ArchR + Muon'}",
         "rule_description": "derived multiome 10x"
     },
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'MUSIC'",
-        "value": "{'assaytype': 'music', 'vitessce-hints': [], 'dir-schema': 'music-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'MUSIC', 'description': 'MUSIC'}",
+        "value": "{'ubkg_code': 'C201170', 'assaytype': 'music', 'vitessce-hints': [], 'dir-schema': 'music-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'MUSIC', 'description': 'MUSIC'}",
         "rule_description": "DCWG music"
     },
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['phenocycler_deepcell']",
-        "value": "{'assaytype': 'phenocycler_deepcell', 'vitessce-hints': ['is_image', 'is_tiled', 'sprm', 'anndata'], 'primary': false, 'contains-pii': false, 'description': 'PhenoCycler [DeepCell + SPRM]', 'pipeline-shorthand': 'DeepCell + SPRM'}",
+        "value": "{'ubkg_code': 'C201180', 'assaytype': 'phenocycler_deepcell', 'vitessce-hints': ['is_image', 'is_tiled', 'sprm', 'anndata'], 'primary': false, 'contains-pii': false, 'description': 'PhenoCycler [DeepCell + SPRM]', 'pipeline-shorthand': 'DeepCell + SPRM'}",
         "rule_description": "derived phenocycler"
     },
     {
         "type": "match",
         "match": "is_epic and derived_dataset_type == 'Segmentation Mask'",
-        "value": "{'assaytype': 'segmentation-mask', 'vitessce-hints': [], 'dir-schema': 'segmentation-mask-v2', 'contains-pii': false, 'primary': false, 'dataset-type': 'Segmentation Mask', 'description': 'Segmentation Mask', 'process_state': 'epic'}",
+        "value": "{'ubkg_code': 'C202020', 'assaytype': 'segmentation-mask', 'vitessce-hints': [], 'dir-schema': 'segmentation-mask-v2', 'contains-pii': false, 'primary': false, 'dataset-type': 'Segmentation Mask', 'description': 'Segmentation Mask', 'process_state': 'epic'}",
         "rule_description": "EPIC dataset segmentation mask"
     },
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'RNAseq (with probes)' and oligo_probe_panel in ['NanoString Technologies; GeoMx Human Whole Transcriptome Atlas, 4 slides; PN GMX-RNA-NGS-HuWTA-4', 'NanoString Technologies; GeoMx Mouse Whole Transcriptome Atlas, 4 slides; PN GMX-RNA-NGS-MsWTA-4'] and assay_input_entity == 'area of interest'",
-        "value": "{'assaytype': 'geomx-rnaseq-with-probes', 'vitessce-hints': [], 'dir-schema': 'rnaseq-with-probes-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'RNAseq (with probes)', 'description': 'GeoMx RNAseq (with probes)'}",
+        "value": "{'ubkg_code': 'C202030', 'assaytype': 'geomx-rnaseq-with-probes', 'vitessce-hints': [], 'dir-schema': 'rnaseq-with-probes-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'RNAseq (with probes)', 'description': 'GeoMx RNAseq (with probes)'}",
         "rule_description": "DCWG RNAseq-geomx-with-probes"
     },
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'RNAseq (with probes)' and oligo_probe_panel in ['10X Genomics; Chromium Next GEM Single Cell Fixed RNA Human Transcriptome Probe Kit, 64 rxns; PN 1000456', '10X Genomics; Chromium Next GEM Single Cell Fixed RNA Human Transcriptome Probe Kit, 16 rxns; PN 1000420'] and assay_input_entity == 'single cell' and barcode_read =~~ 'Read 1' and barcode_size == 16 and barcode_offset == 0 and umi_read =~~ 'Read 1' and umi_size == 12 and umi_offset == 16",
-        "value": "{'assaytype': 'scRNAseq-with-probes', 'vitessce-hints': [], 'dir-schema': 'rnaseq-with-probes-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'RNAseq (with probes)', 'description': 'RNAseq (with probes)'}",
+        "value": "{'ubkg_code': 'C202040', 'assaytype': 'scRNAseq-with-probes', 'vitessce-hints': [], 'dir-schema': 'rnaseq-with-probes-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'RNAseq (with probes)', 'description': 'RNAseq (with probes)'}",
         "rule_description": "DCWG scRNAseq-with-probes"
     }
 ]
