@@ -796,5 +796,11 @@
         "match": "is_dcwg and is_primary and dataset_type == 'RNAseq (with probes)' and oligo_probe_panel in ['10X Genomics; Chromium Next GEM Single Cell Fixed RNA Human Transcriptome Probe Kit, 64 rxns; PN 1000456', '10X Genomics; Chromium Next GEM Single Cell Fixed RNA Human Transcriptome Probe Kit, 16 rxns; PN 1000420'] and assay_input_entity == 'single cell' and barcode_read =~~ 'Read 1' and barcode_size == 16 and barcode_offset == 0 and umi_read =~~ 'Read 1' and umi_size == 12 and umi_offset == 16",
         "value": "{'assaytype': 'scRNAseq-with-probes', 'vitessce-hints': [], 'dir-schema': 'rnaseq-with-probes-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'RNAseq (with probes)', 'description': 'RNAseq (with probes)'}",
         "rule_description": "DCWG scRNAseq-with-probes"
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and is_primary and dataset_type == 'Xenium'",
+        "value": "{'assaytype': 'xenium', 'vitessce-hints': [], 'dir-schema': 'xenium-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'Xenium', 'description': 'Xenium'}",
+        "rule_description": "DCWG xenium"
     }
 ]
