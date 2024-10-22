@@ -692,7 +692,7 @@
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == '2D Imaging Mass Cytometry'",
-        "value": "{'assaytype': 'IMC2D', 'vitessce-hints': [], 'dir-schema': 'imc-v2', 'contains-pii': false, 'primary': true, 'dataset-type': '2D Imaging Mass Cytometry', 'description': '2D Imaging Mass Cytometry'}",
+        "value": "{'assaytype': 'IMC2D', 'vitessce-hints': [], 'dir-schema': 'imc-2d-v2', 'contains-pii': false, 'primary': true, 'dataset-type': '2D Imaging Mass Cytometry', 'description': '2D Imaging Mass Cytometry'}",
         "rule_description": "DCWG IMC2D"
     },
     {
