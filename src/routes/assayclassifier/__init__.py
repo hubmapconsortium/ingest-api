@@ -45,14 +45,15 @@ pre_integration_to_ubkg_translation = {
 # These are the keys returned by the rule chain before UBKG integration.
 # We will return the UBKG data in this format as well for MVP.
 # This is to avoid too much churn on end-users.
+# We set contains-pii and dataset-type manually so ignore them.
 pre_integration_keys = [
     'assaytype',
     'vitessce-hints',
     'dir-schema',
     'tbl-schema',
-    'contains-pii',
-    'primary',
-    'dataset-type',
+    #'contains-pii',
+    #'primary',
+    #'dataset-type',
     'description',
     'is-multi-assay',
     'pipeline-shorthand',
@@ -177,7 +178,7 @@ def apply_source_type_transformations(source_type: str, rule_value_set: dict) ->
 
 def get_data_from_ubkg(ubkg_code: str) -> dict:
     query = urllib.parse.urlencode({"application_context": current_app.config['APPLICATION_CONTEXT']})
-    ubkg_api_url = f"{current_app.config['UBKG_WEBSERVICE_URL']}assayclasses/{ubkg_code}/?{query}"
+    ubkg_api_url = f"{current_app.config['UBKG_INTEGRATION_ENDPOINT']}assayclasses/{ubkg_code}?{query}"
     req = urllib.request.Request(ubkg_api_url)
     try:
         with urllib.request.urlopen(req) as response:
@@ -194,11 +195,12 @@ def standardize_results(rule_chain_json: dict, ubkg_json: dict) -> dict:
     # (also dataset_type is nested under dataset_type in ubkg_json)
     ubkg_transformed_json = {
         "contains-pii": ubkg_json.get("measurement_assay", {}).get("contains_full_genetic_sequences", False),
-        "dataset-type": ubkg_json.get("dataset_type", {}).get("dataset_type")
+        "dataset-type": ubkg_json.get("dataset_type", {}).get("dataset_type"),
+        "primary": ubkg_json.get("process_state") == "primary"
     }
 
     for pre_integration_key in pre_integration_keys:
-        ubkg_key = pre_integration_to_ubkg_translation[pre_integration_key]
+        ubkg_key = pre_integration_to_ubkg_translation.get(pre_integration_key, pre_integration_key)
         ubkg_value = ubkg_json.get(ubkg_key)
         ubkg_transformed_json[pre_integration_key] = ubkg_value
 
