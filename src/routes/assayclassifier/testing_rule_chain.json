@@ -524,7 +524,7 @@
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'GeoMx (NGS)'",
-        "value": "{'ubkg_code': 'C200760', 'assaytype': 'geomx_ngs?', 'vitessce-hints': [], 'dir-schema': 'geomx-ngs-v2', 'description': 'GeoMx (NGS)', 'contains-pii': true, 'primary': true, 'dataset-type': 'GeoMx (NGS)', 'must-contain': ['RNAseq'], 'is-multi-assay': true}",
+        "value": "{'ubkg_code': 'C200760', 'assaytype': 'geomx_ngs?', 'vitessce-hints': [], 'dir-schema': 'geomx-ngs-v2', 'description': 'GeoMx (NGS)', 'contains-pii': true, 'primary': true, 'dataset-type': 'GeoMx (NGS)', 'must-contain': ['RNAseq (with probes)'], 'is-multi-assay': true}",
         "rule_description": "DCWG geomx_ngs?"
     },
     {
@@ -692,7 +692,7 @@
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == '2D Imaging Mass Cytometry'",
-        "value": "{'ubkg_code': 'C201040', 'assaytype': 'IMC2D', 'vitessce-hints': [], 'dir-schema': 'imc-v2', 'contains-pii': false, 'primary': true, 'dataset-type': '2D Imaging Mass Cytometry', 'description': '2D Imaging Mass Cytometry'}",
+        "value": "{'ubkg_code': 'C201040', 'assaytype': 'IMC2D', 'vitessce-hints': [], 'dir-schema': 'imc-2d-v2', 'contains-pii': false, 'primary': true, 'dataset-type': '2D Imaging Mass Cytometry', 'description': '2D Imaging Mass Cytometry'}",
         "rule_description": "DCWG IMC2D"
     },
     {
@@ -782,7 +782,7 @@
     {
         "type": "match",
         "match": "is_epic and derived_dataset_type == 'Segmentation Mask'",
-        "value": "{'ubkg_code': 'C202020', 'assaytype': 'segmentation-mask', 'vitessce-hints': [], 'dir-schema': 'segmentation-mask-v2', 'contains-pii': false, 'primary': false, 'dataset-type': 'Segmentation Mask', 'description': 'Segmentation Mask', 'process_state': 'epic'}",
+        "value": "{'ubkg_code': 'C202020', 'assaytype': 'segmentation-mask', 'vitessce-hints': ['segmentation_mask', 'is_image', 'pyramid'], 'dir-schema': 'segmentation-mask-v2', 'contains-pii': false, 'primary': false, 'dataset-type': 'Segmentation Mask', 'description': 'Segmentation Mask', 'process_state': 'epic'}",
         "rule_description": "EPIC dataset segmentation mask"
     },
     {
