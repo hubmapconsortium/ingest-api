@@ -36,24 +36,26 @@ rule_chain = None
 pre_integration_to_ubkg_translation = {
     'vitessce-hints': 'vitessce_hints',
     'dir-schema': 'dir_schema',
+    'tbl-schema': 'tbl_schema',
+    'contains-pii': 'contains_full_genetic_sequences',
+    'dataset-type': 'dataset-type',
     'is-multi-assay': 'is_multiassay',
     'pipeline-shorthand': 'pipeline_shorthand',
-    'tbl-schema': 'tbl_schema',
-    'must-contain': 'must_contain'
+    'must-contain': 'must_contain',
 }
 
 # These are the keys returned by the rule chain before UBKG integration.
 # We will return the UBKG data in this format as well for MVP.
 # This is to avoid too much churn on end-users.
-# We set contains-pii and dataset-type manually so ignore them.
+# We set primary manually so ignore it.
 pre_integration_keys = [
     'assaytype',
     'vitessce-hints',
     'dir-schema',
     'tbl-schema',
-    #'contains-pii',
+    'contains-pii',
     #'primary',
-    #'dataset-type',
+    'dataset-type',
     'description',
     'is-multi-assay',
     'pipeline-shorthand',
@@ -191,11 +193,8 @@ def get_data_from_ubkg(ubkg_code: str) -> dict:
 
 
 def standardize_results(rule_chain_json: dict, ubkg_json: dict) -> dict:
-    # This translation is manual to avoid writing a deep function
-    # (also dataset_type is nested under dataset_type in ubkg_json)
+    # Initialize this with conditional logic to set 'primary' true or false.
     ubkg_transformed_json = {
-        "contains-pii": ubkg_json.get("measurement_assay", {}).get("contains_full_genetic_sequences", False),
-        "dataset-type": ubkg_json.get("dataset_type", {}).get("dataset_type"),
         "primary": ubkg_json.get("process_state") == "primary"
     }
 
