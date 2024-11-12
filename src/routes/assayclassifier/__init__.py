@@ -38,7 +38,7 @@ pre_integration_to_ubkg_translation = {
     'dir-schema': 'dir_schema',
     'tbl-schema': 'tbl_schema',
     'contains-pii': 'contains_full_genetic_sequences',
-    'dataset-type': 'dataset-type',
+    'dataset-type': 'dataset_type',
     'is-multi-assay': 'is_multiassay',
     'pipeline-shorthand': 'pipeline_shorthand',
     'must-contain': 'must_contain',
