@@ -137,7 +137,7 @@ def build_entity_metadata(entity) -> dict:
     if hasattr(entity, "ingest_metadata"):
         # This if block should catch primary datasets because primary datasets should
         # have their metadata ingested as part of the reorganization.
-        if "metadata" in entity.ingest_metadata:
+        if "metadata" in entity.ingest_metadata and not isinstance(entity.ingest_metadata["metadata"], list):
             metadata = entity.ingest_metadata["metadata"]
         else:
             # If there is no ingest-metadata, then it must be a derived dataset
