@@ -198,65 +198,6 @@ paths:
           description: One or more supplied datasets do not exist
         "500":
           description: An unexpected error occurred
-  /collections:
-    get:
-      tags:
-        - collection
-      summary: Get a list of dataset collections
-      operationId: getCollections
-      responses:
-        "200":
-          description: successful operation
-          content:
-            application/json:
-              schema:
-                properties:
-                  collections:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Collection'
-        "400":
-          description: There was a system error
-        "401":
-          description: User's token is not valid
-    put:
-      tags:
-        - collection
-      summary: Create a dataset collection
-      operationId: addCollection
-      responses:
-        "201":
-          description: successful operation
-        "400":
-          description: There was a system error or an error in the data submitted
-        "401":
-          description: User's token is not valid
-  "/collections/{identifier}":
-    get:
-      tags:
-        - collection
-      summary: Get a single collection by uuid
-      operationId: getCollection
-      parameters:
-        - name: identifier
-          in: path
-          description: The unique identifier of collection.  This must be a uuid.
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: successful operation
-          content:
-            application/json:
-              schema:
-                properties:
-                  collection:
-                    $ref: "#/components/schemas/Collection"
-        "400":
-          description: Missing collection identifier or identifier cannot be found or a system error
-        "401":
-          description: User's token is not valid
   /specimens:
     put:
       tags:
