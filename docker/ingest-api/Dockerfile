@@ -31,22 +31,21 @@ module_hotfixes=true\n'\
 # 1 - Install the prerequisites
 # 2 - By default, the repository for stable nginx packages is used. We would like to use mainline nginx packages
 # 3 - Install nginx (using the custom yum repo specified earlier)
-# 4 - Remove the default nginx config file
-# 5 - Overwrite the nginx.conf with ours to run nginx as non-root
-# 6 - Remove the nginx directory copied from host machine (nginx/conf.d gets mounted to the container)
-# 7 - Upgrade pip (the one installed in base image may be old) and install flask app dependencies (pip3 also works)
+# 4 - Overwrite the nginx.conf with ours to run nginx as non-root
+# 5 - Remove the nginx directory copied from host machine (nginx/conf.d gets mounted to the container)
+# 6 - Upgrade pip (the one installed in base image may be old) and install flask app dependencies (pip3 also works)
+# 7 - Install submodule dependencies
 # 8 - Make the start script executable
 # 9 - Clean all yum cache
 RUN yum install -y yum-utils && \
+    dnf install langpacks-en glibc-all-langpacks -y && \
     yum-config-manager --enable nginx-mainline && \
     yum install -y nginx && \
-    rm /etc/nginx/conf.d/default.conf && \
     mv nginx/nginx.conf /etc/nginx/nginx.conf && \
     rm -rf nginx && \
     pip install -r src/requirements.txt && \
     pip install -r src/routes/validation/ingest_validation_tools/requirements.txt && \
     chmod +x start.sh && \
-    dnf install langpacks-en glibc-all-langpacks -y && \
     yum clean all
 
 # The EXPOSE instruction informs Docker that the container listens on the specified network ports at runtime. 

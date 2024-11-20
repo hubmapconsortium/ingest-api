@@ -46,13 +46,14 @@ if [ $? -ne 0 ]; then
 fi
 
 # When running Nginx as a non-root user, we need to create the pid file
-# and give read and write access to /var/run/nginx.pid, /var/cache/nginx, and /var/log/nginx
+# and give read and write access to a few directories
 # In individual nginx *.conf, also don't listen on ports 80 or 443 because 
 # only root processes can listen to ports below 1024
 touch /var/run/nginx.pid
 chown -R $BASE_USER_NAME:$BASE_USER_NAME /var/run/nginx.pid
 chown -R $BASE_USER_NAME:$BASE_USER_NAME /var/cache/nginx
 chown -R $BASE_USER_NAME:$BASE_USER_NAME /var/log/nginx
+chown -R $BASE_USER_NAME:$BASE_USER_NAME /var/lib/nginx
 
 # Also make the ssl certificate accessible
 chown -R $BASE_USER_NAME:$BASE_USER_NAME /etc/pki/nginx
