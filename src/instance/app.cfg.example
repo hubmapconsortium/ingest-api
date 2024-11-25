@@ -147,3 +147,6 @@ UMLS_KEY = ''
 # UMLS URL
 UMLS_VALIDATE_URL = 'https://utslogin.nlm.nih.gov/validateUser'
 
+# UBKG Integration Configs
+UBKG_INTEGRATION_ENDPOINT = 'http://gateway.dev.hubmapconsortium.org:8181/'
+APPLICATION_CONTEXT = 'HUBMAP'
