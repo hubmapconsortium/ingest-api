@@ -201,7 +201,8 @@ def standardize_results(rule_chain_json: dict, ubkg_json: dict) -> dict:
     for pre_integration_key in pre_integration_keys:
         ubkg_key = pre_integration_to_ubkg_translation.get(pre_integration_key, pre_integration_key)
         ubkg_value = ubkg_json.get(ubkg_key)
-        ubkg_transformed_json[pre_integration_key] = ubkg_value
+        if ubkg_value is not None:
+            ubkg_transformed_json[pre_integration_key] = ubkg_value
 
     return rule_chain_json | ubkg_transformed_json
 
