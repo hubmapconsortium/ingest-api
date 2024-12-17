@@ -5,7 +5,7 @@ import hubmap_sdk
 import requests
 
 from datacite_doi_helper_object import DataCiteDoiHelper
-from api.datacite_api import DataCiteApi
+from api.datacite_api import DataCiteApi, DataciteApiException
 from datetime import datetime
 
 
@@ -134,14 +134,20 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
 
     
     @patch('api.datacite_api.requests.post')
-    def test_create_dataset_draft_doi_happy_path(self, mock_post):
+    @patch('datacite_doi_helper_object.DataCiteApi.get_doi_by_id')
+    def test_create_dataset_draft_doi_happy_path(self, mock_get_doi_by_id, mock_post):
         def resp():
             r = requests.Response()
             r.status_code = 201
             r.json = lambda: None
             return r
+        def resp2():
+            r = requests.Response()
+            r.status_code = 400
+            r.json = lambda: self.response_doi
+            return r
         mock_post.side_effect = [resp()]
-
+        mock_get_doi_by_id.side_effect = [resp2()]
         self.datacite_doi_helper.create_dataset_draft_doi(self.dataset)
 
         mock_post.assert_called()
@@ -213,15 +219,24 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
         self.assertEqual(json_from_put_call['data']['attributes']['event'], 'publish')
 
     @patch('datacite_doi_helper_object.DataCiteApi.create_new_draft_doi')
-    def test_create_dataset_draft_doi_fail(self, mock_create_new_draft_doi):
+    @patch('datacite_doi_helper_object.DataCiteApi.get_doi_by_id')
+    def test_create_dataset_draft_doi_fail(self, mock_get_doi_by_id, mock_create_new_draft_doi):
         def resp1():
             r = requests.Response()
             r.status_code = 400
             r.json = lambda: self.response_doi
             return r
-        mock_create_new_draft_doi.side_effect = [resp1()]
+        
+        def resp2():
+            r = requests.Response()
+            r.status_code = 400
+            r.json = lambda: self.response_doi
+            return r
 
-        self.assertRaises(requests.RequestException,
+        mock_create_new_draft_doi.side_effect = [resp1()]
+        mock_get_doi_by_id.side_effect = [resp2()]
+
+        self.assertRaises(DataciteApiException,
                           self.datacite_doi_helper.create_dataset_draft_doi, self.dataset)
         mock_create_new_draft_doi.assert_called()
 
