@@ -802,5 +802,11 @@
         "match": "is_dcwg and is_primary and dataset_type == 'Xenium'",
         "value": "{'ubkg_code': 'C202050', 'assaytype': 'xenium', 'vitessce-hints': [], 'dir-schema': 'xenium-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'Xenium', 'description': 'Xenium'}",
         "rule_description": "DCWG xenium"
+    },
+    {
+        "type": "match",
+        "match": "is_central_processed and data_types[0] in ['kaggle_2_segmentation']",
+        "value": "{'ubkg_code': 'C202060', 'assaytype': 'h-and-e', 'vitessce-hints': [], 'primary': false, 'contains-pii': false, 'description': 'H&E Stained Microscopy [Kaggle-2 Segmentation]', 'pipeline-shorthand': 'Kaggle-2 Segmentation'}",
+        "rule_description": "derived h-and-e"
     }
 ]
