@@ -6,7 +6,7 @@ from datetime import datetime
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 import logging
 from flask import Flask
-from api.datacite_api import DataCiteApi
+from api.datacite_api import DataCiteApi, DataciteApiException
 from hubmap_sdk import EntitySdk
 from dataset_helper_object import DatasetHelper
 from hubmap_commons.exceptions import HTTPException
@@ -151,7 +151,7 @@ class DataCiteDoiHelper:
             # In case the given dataset is not published
             if check_publication_status:
                 if dataset['status'].lower() != 'published':
-                    raise ValueError('This Dataset is not Published, can not register DOI')
+                    raise DataciteApiException('This Dataset is not Published, can not register DOI')
 
             datacite_api = DataCiteApi(self.datacite_repository_id, self.datacite_repository_password,
                                        self.datacite_hubmap_prefix, self.datacite_api_url, self.entity_api_url)
@@ -161,13 +161,19 @@ class DataCiteDoiHelper:
             if 'published_timestamp' in dataset:
                 # The timestamp stored with using neo4j's TIMESTAMP() function contains milliseconds
                 publication_year = int(datetime.fromtimestamp(dataset['published_timestamp']/1000).year)
-
-            response = datacite_api.create_new_draft_doi(dataset['hubmap_id'], 
-                                                dataset['uuid'],
-                                                self.build_doi_contributors(dataset), 
-                                                dataset['title'],
-                                                publication_year,
-                                                self.build_doi_creators(dataset))
+            doi_name = datacite_api.build_doi_name(dataset['hubmap_id'])
+            doi_response = datacite_api.get_doi_by_id(doi_name)
+            if doi_response.status_code == 200:
+                raise DataciteApiException(error_code=409, message=f"DOI already exists for collection with HuBMAP ID {dataset['hubmap_id']}")
+            try:
+                response = datacite_api.create_new_draft_doi(dataset['hubmap_id'], 
+                                                    dataset['uuid'],
+                                                    self.build_doi_contributors(dataset), 
+                                                    dataset['title'],
+                                                    publication_year,
+                                                    self.build_doi_creators(dataset))
+            except requests.exceptions.RequestException as e:
+                raise DataciteApiException(error_code=500, message="Failed to connect to DataCite")
 
             if response.status_code == 201:
                 logger.info(f"======Created draft DOI for dataset {dataset['uuid']} via DataCite======")
@@ -183,9 +189,10 @@ class DataCiteDoiHelper:
                 logger.debug(response.text)
 
                 # Also bubble up the error message from DataCite
-                raise requests.exceptions.RequestException(response.text)
+                #raise requests.exceptions.RequestException(response.text)
+                raise DataciteApiException(response.text, error_code=response.status_code)
         else:
-            raise KeyError('Either the entity_type of the given Dataset is missing or the entity is not a Dataset')
+            raise DataciteApiException('Either the entity_type of the given Dataset is missing or the entity is not a Dataset')
 
 
     """
@@ -213,13 +220,20 @@ class DataCiteDoiHelper:
     def create_collection_draft_doi(self, collection: dict) -> object:
         datacite_api = DataCiteApi(self.datacite_repository_id, self.datacite_repository_password, self.datacite_hubmap_prefix, self.datacite_api_url, self.entity_api_url)
         publication_year = int(datetime.now().year)
-        response = datacite_api.create_new_draft_doi(collection['hubmap_id'], 
-                                                collection['uuid'],
-                                                self.build_doi_contributors(collection), 
-                                                collection['title'],
-                                                publication_year,
-                                                self.build_doi_creators(collection),
-                                                entity_type='Collection')
+        doi_name = datacite_api.build_doi_name(collection['hubmap_id'])
+        doi_response = datacite_api.get_doi_by_id(doi_name)
+        if doi_response.status_code == 200:
+            raise DataciteApiException(error_code=409, message=f"DOI already exists for collection with HuBMAP ID {collection['hubmap_id']}")
+        try:
+            response = datacite_api.create_new_draft_doi(collection['hubmap_id'], 
+                                                    collection['uuid'],
+                                                    self.build_doi_contributors(collection), 
+                                                    collection['title'],
+                                                    publication_year,
+                                                    self.build_doi_creators(collection),
+                                                    entity_type='Collection')
+        except requests.exceptions.RequestException as e:
+            raise DataciteApiException(error_code=500, message="Failed to connect to DataCite") 
         if response.status_code == 201:
                 logger.info(f"======Created draft DOI for collection {collection['uuid']} via DataCite======")
                 doi_data = response.json()
@@ -234,7 +248,8 @@ class DataCiteDoiHelper:
             logger.debug(response.text)
 
             # Also bubble up the error message from DataCite
-            raise requests.exceptions.RequestException(response.text)
+            
+            raise DataciteApiException(error_code=response.status_code, message=response.text)
 
 
     """
