@@ -2840,7 +2840,7 @@ def update_uploads_datastatus():
         "OPTIONAL MATCH (up)<-[:IN_UPLOAD]-(ds:Dataset) "
         "RETURN up.uuid AS uuid, up.group_name AS group_name, up.hubmap_id AS hubmap_id, up.status AS status, "
         "up.title AS title, up.ingest_task AS ingest_task, up.assigned_to_group_name AS assigned_to_group_name, "
-        "up.intended_organ AS intended_organ, up.intended_dataset_type AS intended_dataset_type "
+        "up.intended_organ AS intended_organ, up.intended_dataset_type AS intended_dataset_type, "
         "COLLECT(DISTINCT ds.uuid) AS datasets "
     )
 
