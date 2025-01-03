@@ -2840,11 +2840,12 @@ def update_uploads_datastatus():
         "OPTIONAL MATCH (up)<-[:IN_UPLOAD]-(ds:Dataset) "
         "RETURN up.uuid AS uuid, up.group_name AS group_name, up.hubmap_id AS hubmap_id, up.status AS status, "
         "up.title AS title, up.ingest_task AS ingest_task, up.assigned_to_group_name AS assigned_to_group_name, "
+        "up.intended_organ AS intended_organ, up.intended_dataset_type AS intended_dataset_type, "
         "COLLECT(DISTINCT ds.uuid) AS datasets "
     )
 
     displayed_fields = [
-        "uuid", "group_name", "hubmap_id", "status", "title", "datasets"
+        "uuid", "group_name", "hubmap_id", "status", "title", "datasets", "intended_organ", "intended_dataset_type"
     ]
 
     with neo4j_driver_instance.session() as session:
