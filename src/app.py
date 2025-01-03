@@ -45,7 +45,7 @@ from file_upload_helper import UploadFileHelper
 import app_manager
 from dataset import Dataset
 from datacite_doi_helper_object import DataCiteDoiHelper
-
+from api.datacite_api import DataciteApiException
 from app_utils.request_validation import require_json
 from app_utils.error import unauthorized_error, not_found_error, internal_server_error, bad_request_error
 from app_utils.misc import __get_dict_prop
@@ -1068,9 +1068,9 @@ def publish_datastage(identifier):
                 datacite_doi_helper = DataCiteDoiHelper()
                 try:
                     datacite_doi_helper.create_dataset_draft_doi(entity_dict, check_publication_status=False)
-                except Exception as e:
+                except DataciteApiException as e:
                     logger.exception(f"Exception while creating a draft doi for {dataset_uuid}")
-                    return jsonify({"error": f"Error occurred while trying to create a draft doi for {dataset_uuid}. Check logs."}), 500
+                    return jsonify({"error": f"Error occurred while trying to create a draft doi for {dataset_uuid}. {e}"}), 500
                 # This will make the draft DOI created above 'findable'....
                 try:
                     doi_info = datacite_doi_helper.move_doi_state_from_draft_to_findable(entity_dict, auth_tokens)
@@ -1758,6 +1758,8 @@ def register_collections_doi(collection_id):
             datacite_doi_helper = DataCiteDoiHelper()
             try:
                 datacite_doi_helper.create_collection_draft_doi(entity_dict)
+            except DataciteApiException as datacite_exception:
+                return jsonify({"error": str(datacite_exception)}), datacite_exception.error_code
             except Exception as e:
                 logger.exception(f"Exception while creating a draft doi for {collection_uuid}")
                 return jsonify({"error": f"Error occurred while trying to create a draft doi for {collection_uuid}. Check logs."}), 500
