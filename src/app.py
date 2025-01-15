@@ -2945,8 +2945,7 @@ if __name__ == '__main__':
         parser = argparse.ArgumentParser()
         parser.add_argument("-p", "--port")
         args = parser.parse_args()
-        # port = 8484
-        port = 5000
+        port = 8484
         if args.port:
             port = int(args.port)
         app.run(port=port, host='0.0.0.0')
