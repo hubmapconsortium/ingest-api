@@ -342,9 +342,6 @@ def validate_records_uuids(records: list, entity_type: str, sub_type, pathname: 
                              'There are invalid `uuids` and/or unmatched entity sub types', errors,
                              dict_only=True)
 
-# @REVIEW? @MAX
-
-
 @validation_blueprint.route('/metadata/validate', methods=['POST'])
 def validate_metadata_upload():
     print("validate_metadata_upload")

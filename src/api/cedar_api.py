@@ -10,8 +10,7 @@ class CEDARApi:
     def __init__(self):
         hubmap_APIkey = current_app.config['CEDAR_API_KEY'] 
         self.auth = HTTPBasicAuth('apiKey', hubmap_APIkey)            
-        self.ssl_verification_enabed = False # @MAX Needed
-
+        self.ssl_verification_enabed = False
         
     # Schema Versions Retrieval
     def get_schema_details(self, schema_id: str) -> object:

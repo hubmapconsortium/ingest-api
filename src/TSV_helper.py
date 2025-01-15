@@ -1,8 +1,7 @@
 import logging
 from pathlib import Path
 import csv
-# @MAX Is this the right way to get this in here? with a _helper?  OR should this go in Utils? 
-# OR an upcomming Contributors Helper? 
+
 from hubmap_commons.hubmap_const import HubmapConst
 
 # Set logging format and level (default is warning)
