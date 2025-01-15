@@ -60,7 +60,9 @@ class VersionHelper:
 
         except CEDARApiException as e:
             logger.exception(f"Exception while gathering schemas for schema id {schema_id}. {e}")
-            return jsonify({"error": f"Error occurred while gathering schemas for schema id {schema_id}. {e}"}), 500
+            return Response(
+                f"Error occurred while gathering schemas for schema id {schema_id}: " + str(e), 500
+            )
         
 
 
