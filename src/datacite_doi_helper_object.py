@@ -126,7 +126,25 @@ class DataCiteDoiHelper:
             return None
 
         return creators
+    
 
+    def check_doi_existence_and_state(self, entity: dict):
+        datacite_api = DataCiteApi(self.datacite_repository_id, self.datacite_repository_password, 
+                                   self.datacite_hubmap_prefix, self.datacite_api_url, self.entity_api_url)
+        doi_name = datacite_api.build_doi_name(entity['hubmap_id'])
+        try:
+            doi_response = datacite_api.get_doi_by_id(doi_name)
+        except requests.exceptions.RequestException as e:
+            raise DataciteApiException(error_code=500, message="Failed to connect to DataCite")
+        if doi_response.status_code == 200:
+            logger.debug("==========DOI already exists. Skipping create-draft=========")
+            response_data = doi_response.json()
+            state = response_data.get("data", {}).get("attributes", {}).get("state")
+            if state == "findable":
+                return True
+            else:
+                return False
+        return None
 
     """
     Register a draft DOI with DataCite
@@ -161,10 +179,7 @@ class DataCiteDoiHelper:
             if 'published_timestamp' in dataset:
                 # The timestamp stored with using neo4j's TIMESTAMP() function contains milliseconds
                 publication_year = int(datetime.fromtimestamp(dataset['published_timestamp']/1000).year)
-            doi_name = datacite_api.build_doi_name(dataset['hubmap_id'])
-            doi_response = datacite_api.get_doi_by_id(doi_name)
-            if doi_response.status_code == 200:
-                raise DataciteApiException(error_code=409, message=f"DOI already exists for collection with HuBMAP ID {dataset['hubmap_id']}")
+
             try:
                 response = datacite_api.create_new_draft_doi(dataset['hubmap_id'], 
                                                     dataset['uuid'],
@@ -220,10 +235,7 @@ class DataCiteDoiHelper:
     def create_collection_draft_doi(self, collection: dict) -> object:
         datacite_api = DataCiteApi(self.datacite_repository_id, self.datacite_repository_password, self.datacite_hubmap_prefix, self.datacite_api_url, self.entity_api_url)
         publication_year = int(datetime.now().year)
-        doi_name = datacite_api.build_doi_name(collection['hubmap_id'])
-        doi_response = datacite_api.get_doi_by_id(doi_name)
-        if doi_response.status_code == 200:
-            raise DataciteApiException(error_code=409, message=f"DOI already exists for collection with HuBMAP ID {collection['hubmap_id']}")
+        
         try:
             response = datacite_api.create_new_draft_doi(collection['hubmap_id'], 
                                                     collection['uuid'],
@@ -251,7 +263,11 @@ class DataCiteDoiHelper:
             
             raise DataciteApiException(error_code=response.status_code, message=response.text)
 
-
+    def build_doi_name(self, entity):
+        datacite_api = DataCiteApi(self.datacite_repository_id, self.datacite_repository_password, self.datacite_hubmap_prefix, self.datacite_api_url, self.entity_api_url)
+        doi_name = datacite_api.build_doi_name(entity['hubmap_id'])
+        return doi_name
+    
     """
     Move the DOI state from draft to findable, meaning publish this dataset. 
     No PUT call made against entity-api to update the two DOI fields here. 
