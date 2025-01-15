@@ -6,6 +6,7 @@ import csv
 import logging
 from typing import Union, Optional
 from flask import Blueprint, current_app, Response, request
+from pathlib import Path
 import requests
 
 from importlib import import_module
@@ -14,6 +15,8 @@ from routes.validation.lib.file import get_csv_records, get_base_path, check_upl
 
 from hubmap_commons import file_helper as commons_file_helper
 from hubmap_commons.hm_auth import AuthHelper
+
+from version_helper import VersionHelper
 
 from utils.string import equals, to_title_case
 from utils.rest import (
@@ -339,9 +342,12 @@ def validate_records_uuids(records: list, entity_type: str, sub_type, pathname: 
                              'There are invalid `uuids` and/or unmatched entity sub types', errors,
                              dict_only=True)
 
+# @REVIEW? @MAX
+
 
 @validation_blueprint.route('/metadata/validate', methods=['POST'])
 def validate_metadata_upload():
+    print("validate_metadata_upload")
     try:
         if is_json_request():
             data = request.json
@@ -353,6 +359,7 @@ def validate_metadata_upload():
         sub_type = data.get('sub_type')
         validate_uuids = data.get('validate_uuids')
         tsv_row = data.get('tsv_row')
+        ensure_latest_cedar_version = data.get('ensure-latest-cedar-version')
 
         if pathname is None:
             upload = check_metadata_upload()
@@ -366,6 +373,31 @@ def validate_metadata_upload():
         response = error
 
         if error is None:
+
+            # @MAX should this be here or in app.py?
+            if ensure_latest_cedar_version is not None:
+                # if ensure_latest_cedar_version is == None: #maybe check for true specifically?
+                path: str = upload.get('fullpath')
+                latestVersion = False
+                try:
+                    schema_id = VersionHelper.get_schema_id(path, str)
+                    latestVersion = VersionHelper.get_latest_published_schema(
+                        schema_id)
+                    isLatest = (schema_id == latestVersion)
+                    print(isLatest)
+                    if isLatest == True:
+                        print("Schema ID Matches the latest CEDAR version.")
+                        # return True
+                        response = rest_response(StatusCodes.OK, "Is Latest",{"IsLatest":True})
+                    else:
+                        print("Schema ID Does Not Match the latest CEDAR version.")
+                        # return False
+                        response = rest_response(StatusCodes.OK,  "Is Not Latest",{"IsLatest":False})
+                    return response
+                except Exception as e:
+                    return rest_server_err(e, True)
+            # END VERSION CHECK
+
             if check_cedar(entity_type, sub_type, upload) is False:
                 id_sub_type = get_cedar_schema_ids().get(sub_type)
                 return rest_response(StatusCodes.UNACCEPTABLE,

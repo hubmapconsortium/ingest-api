@@ -53,3 +53,5 @@ docker/ingest-api/nginx/conf.d
 venv-hm-ingest-api/*
 .vscode/bookmarks.json
 .vscode/settings.json
+src/venv-hm-ingest-api
+.vscode/launch.json
