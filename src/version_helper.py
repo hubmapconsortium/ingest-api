@@ -5,8 +5,6 @@ import csv
 from api.cedar_api import CEDARApi, CEDARApiException
 
 
-# @MAX Is this the right way to get this in here? with a _helper?  OR should this go in Utils? 
-# OR an upcomming Contributors Helper? 
 from hubmap_commons.hubmap_const import HubmapConst
 
 from TSV_helper import TSVError, tsv_reader_wrapper

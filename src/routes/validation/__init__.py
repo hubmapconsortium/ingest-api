@@ -374,29 +374,20 @@ def validate_metadata_upload():
 
         if error is None:
 
-            # @MAX should this be here or in app.py?
             if ensure_latest_cedar_version is not None:
                 # if ensure_latest_cedar_version is == None: #maybe check for true specifically?
-                path: str = upload.get('fullpath')
-                latestVersion = False
+                # IE "isLatestVersion, "isLatestPublishedVersion or "isLatestDraftVersion" 
                 try:
                     schema_id = VersionHelper.get_schema_id(path, str)
-                    latestVersion = VersionHelper.get_latest_published_schema(
-                        schema_id)
+                    latestVersion = VersionHelper.get_latest_published_schema(schema_id)
                     isLatest = (schema_id == latestVersion)
-                    print(isLatest)
                     if isLatest == True:
-                        print("Schema ID Matches the latest CEDAR version.")
-                        # return True
                         response = rest_response(StatusCodes.OK, "Is Latest",{"IsLatest":True})
                     else:
-                        print("Schema ID Does Not Match the latest CEDAR version.")
-                        # return False
                         response = rest_response(StatusCodes.OK,  "Is Not Latest",{"IsLatest":False})
                     return response
                 except Exception as e:
                     return rest_server_err(e, True)
-            # END VERSION CHECK
 
             if check_cedar(entity_type, sub_type, upload) is False:
                 id_sub_type = get_cedar_schema_ids().get(sub_type)
