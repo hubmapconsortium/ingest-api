@@ -2,8 +2,6 @@ import logging
 from pathlib import Path
 import csv
 
-from hubmap_commons.hubmap_const import HubmapConst
-
 # Set logging format and level (default is warning)
 # All the API logging is forwarded to the uWSGI server and gets written into the log file `uwsgi-ingest-api.log`
 # Log rotation is handled via logrotate on the host system with a configuration file
@@ -19,6 +17,5 @@ class TSVError(Exception):
 def tsv_reader_wrapper(path, encoding: str) -> list:
     with open(path) as f:
         rows = list(csv.DictReader(f, dialect="excel-tab"))
-        # row = list(csv.DictReader(f, dialect="excel-tab"))
         f.close()
     return rows

@@ -55,3 +55,4 @@ venv-hm-ingest-api/*
 .vscode/settings.json
 src/venv-hm-ingest-api
 .vscode/launch.json
+src/test/file_upload/temp_dir

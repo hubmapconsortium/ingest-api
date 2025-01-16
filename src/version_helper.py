@@ -50,7 +50,7 @@ class VersionHelper:
         CEDAR_API = CEDARApi()
         try:
             schema_details = CEDAR_API.get_schema_details(schema_id)
-            if schema_details["statusCode"] != 200:
+            if 'resources' not in schema_details:
                 return jsonify({"error": f"Error occurred while gathering schemas for schema id {schema_id}. {schema_details['errorMessage']}"}), 500
             for schema in schema_details['resources']:
                 if schema["isLatestVersion"]:

@@ -15,9 +15,7 @@ class CEDARApi:
     # Schema Versions Retrieval
     def get_schema_details(self, schema_id: str) -> object:
         logger.debug(f"======get_schema_details: {schema_id}======")
-        cedar_api_url = "https://resource.metadatacenter.org/templates/"
-        cedar_repo_url = "https%3A%2F%2Frepo.metadatacenter.org%2Ftemplates%2F"+schema_id
-        cedar_versions_url = cedar_api_url+cedar_repo_url+"/versions"
+        cedar_versions_url = current_app.config['CEDAR_API_URL']+schema_id+"/versions"
         response = requests.get(
             url=f"{cedar_versions_url}",
             headers={
@@ -26,7 +24,6 @@ class CEDARApi:
                 },
             verify=self.ssl_verification_enabed
         )
-        response_JSON = response.json()
         return response.json()
 
 

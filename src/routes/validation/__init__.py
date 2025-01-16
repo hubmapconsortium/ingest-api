@@ -344,7 +344,6 @@ def validate_records_uuids(records: list, entity_type: str, sub_type, pathname: 
 
 @validation_blueprint.route('/metadata/validate', methods=['POST'])
 def validate_metadata_upload():
-    print("validate_metadata_upload")
     try:
         if is_json_request():
             data = request.json
@@ -370,12 +369,12 @@ def validate_metadata_upload():
         response = error
 
         if error is None:
-
+            
             if ensure_latest_cedar_version is not None:
                 # if ensure_latest_cedar_version is == None: #maybe check for true specifically?
                 # IE "isLatestVersion, "isLatestPublishedVersion or "isLatestDraftVersion" 
                 try:
-                    schema_id = VersionHelper.get_schema_id(path, str)
+                    schema_id = VersionHelper.get_schema_id(upload.get('fullpath'), str)
                     latestVersion = VersionHelper.get_latest_published_schema(schema_id)
                     isLatest = (schema_id == latestVersion)
                     if isLatest == True:
@@ -394,7 +393,7 @@ def validate_metadata_upload():
                                      f"Valid id for \"{sub_type}\": {id_sub_type}. "
                                      "For more details, check out the docs: "
                                      "https://docs.hubmapconsortium.org/metadata")
-            path: str = upload.get('fullpath')
+            path = upload.get('fullpath')
             schema = determine_schema(entity_type, sub_type)
 
             # On bad tsv file, validate_tsv() returns a list of errors
