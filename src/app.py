@@ -2008,6 +2008,97 @@ DATASETS_DATA_STATUS_LAST_UPDATED_KEY = "datasets_data_status_last_updated_key"
 UPLOADS_DATA_STATUS_KEY = "uploads_data_status_key"
 UPLOADS_DATA_STATUS_LAST_UPDATED_KEY = "uploads_data_status_last_updated_key"
 
+
+# /has-pipeline-test-privs endpoint
+# Endpoint to check if a user has permission to kick off jobs in the
+# pipeline testing infrastructure.  The user has permission if they are a member
+# of either the "Pipeline Testing" group or the "Data Admin" group.
+#
+# Request is a GET to this endpoint which includes the standard HuBMMAP Auth Bearer header/token
+#
+# Responses
+# 200- With a json response like the following, with the "has_pipeline_test_privs" returning
+#      a boolean telling if the user has permission or not (json true or false returned)
+#      {
+#         "has_pipeline_test_privs": false,
+#         "message": "The user is not allowed to submit to pipeline runs for testing"
+#      }
+#
+# 401- Invalid or no token received
+# 500- Unexpected error occurred
+@app.route('/has-pipeline-test-privs', methods=['GET'])
+def has_pipeline_test_privs():
+    token = auth_helper_instance.getAuthorizationTokens(request.headers)
+    if isinstance(token, Response):
+        return token;
+    has_priv = auth_helper_instance.has_pipeline_testing_privs(token)
+    if isinstance(has_priv, Response):
+        return has_priv
+    elif not has_priv:
+        return Response(json.dumps({'has_pipeline_test_privs': False, 'message': 'The user is not allowed to submit pipeline runs for testing'}), 200, mimetype='application/json')
+    else:
+        return Response(json.dumps({'has_pipeline_test_privs': True, 'message': 'The user is allowed to submit pipeline runs for testing'}), 200, mimetype='application/json')
+
+
+# /datasets/{identifier}/submit-for-pipeline-testing endpoint
+# This endpoint will submit a dataset for pipeline processing in the testing
+# infrastructure. The required {identifier? path variable is required and
+# can be either a Dataset uuid or HuBMAP ID.  The submitted dataset must be
+# a primary (not derived) Dataset
+#
+# Request POST to /datasets/{identifier}/submit-for-pipeline-testing where
+#         the {identifier} is a valid uuid or HuBMAP ID of a Primary dataset
+#         This POST method requires no additional data payload.
+#
+#         The request must include a standard HuBMAP Authorization Bearer
+#         header with a user token
+#
+# Responses
+# 200 - The dataset was successfully submitted for pipeline process testing
+# 202 - The dataset was accepted, but pipeline processing is currently disabled
+# 400 - An error in the requested data, either a bad identifier was submitted
+#       or an identifier for a non-Primary dataset or something other than a
+#       Dataset was submitted (displayable message included as response message)
+# 401 - Invalid or no token supplied.
+# 403 - non-authorized token supplied.  The user muse be a member of either the
+#       HuBMAP-Pipeline-Testing or HuBMAP-Data-Admin groups
+# 500 - An unexpected error occurred
+#
+#@app.route('/datasets/{identifier}/submit-for-pipeline-testing', methods=['POST'])
+@app.route('/datasets/<identifier>/submit-for-pipeline-testing', methods=['POST'])
+def submit_for_pipeline_testing(identifier):
+
+    token = auth_helper_instance.getAuthorizationTokens(request.headers)
+    if isinstance(token, Response):
+        return token;
+    has_priv = auth_helper_instance.has_pipeline_testing_privs(token)
+    if isinstance(has_priv, Response):
+        return has_priv
+    elif not has_priv:
+        return Response("User not authorized to submit to the pipeline testing queue", 403)
+
+    if identifier is None or len(identifier) == 0:
+        return Response("Missing or improper dataset identifier", 400)
+    r = requests.get(app.config['UUID_WEBSERVICE_URL'] + "/" + identifier, headers={'Authorization': request.headers["AUTHORIZATION"]})
+    if r.ok is False:
+        return Response(r.text, r.status_code)
+    dataset_uuid = json.loads(r.text)['hm_uuid']
+    if not dataset_is_primary(dataset_uuid):
+        return Response("Can only submit a Primary Dataset for processing.", 400)
+    submit_url = app.config['PIPELINE_TESTING_URL']
+    if submit_url is None or len(submit_url) == 0:
+        return Response("Check ingest-api config, PIPELINE_TESTING_URL property is invalid", 500)
+    elif (submit_url.strip().lower() == "disabled"):
+        return Response("Submitting to the testing pipeline is currently disabled", 202)
+
+    submit_request = {"collection_type": "generic_metadatatsv", "uuid_list": [dataset_uuid]}
+    response = requests.post(submit_url, json = submit_request)
+    
+    if response.status_code != 200:
+        return Response(response.text, response.status_code)
+    else:
+        return Response("The dataset was successfully submitted for pipeline processing testing", 200)
+  
 """
 Description
 """
