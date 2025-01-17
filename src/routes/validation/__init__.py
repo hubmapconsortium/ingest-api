@@ -344,6 +344,12 @@ def validate_records_uuids(records: list, entity_type: str, sub_type, pathname: 
 
 @validation_blueprint.route('/metadata/validate', methods=['POST'])
 def validate_metadata_upload():
+    
+    try:  
+        ensure_latest_cedar_version = request.args.get('ensure-latest-cedar-version') # checking for query parameters
+    except Exception as e:
+        return rest_server_err(e, True)
+    
     try:
         if is_json_request():
             data = request.json
@@ -355,7 +361,6 @@ def validate_metadata_upload():
         sub_type = data.get('sub_type')
         validate_uuids = data.get('validate_uuids')
         tsv_row = data.get('tsv_row')
-        ensure_latest_cedar_version = data.get('ensure-latest-cedar-version')
 
         if pathname is None:
             upload = check_metadata_upload()
@@ -370,7 +375,7 @@ def validate_metadata_upload():
 
         if error is None:
             
-            if ensure_latest_cedar_version is not None:
+            if (ensure_latest_cedar_version is not None) & (ensure_latest_cedar_version == "true"):
                 # if ensure_latest_cedar_version is == None: #maybe check for true specifically?
                 # IE "isLatestVersion, "isLatestPublishedVersion or "isLatestDraftVersion" 
                 try:
