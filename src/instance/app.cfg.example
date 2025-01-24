@@ -119,6 +119,13 @@ DATA_INGEST_BOARD_NAME = 'Data Ingest Board - DEV'
 INGEST_PIPELINE_URL = 'https://hivevm191.psc.edu:5555/api/hubmap'
 # internal test: INGEST_PIPELINE_URL = 'http://localhost:5005/datasets/submissions'
 
+# URL for the Dataset processing testing pipeline
+# standard value for production environment, other environments should be set to disable (see below)
+PIPELINE_TESTING_URL = 'https://vm023.hive.psc.edu:5555/api/hubmap/request_dev_analysis'
+# if set to Disabled (case-insensitive), the request will be ignored
+# but a positive response will be returned
+#PIPELINE_TESTING_URL = 'DISABLED'
+
 # Default processing type for ingest pipeline API.
 INGEST_PIPELINE_DEFAULT_PROCESS = 'SCAN.AND.BEGIN.PROCESSING'
 
