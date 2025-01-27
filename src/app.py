@@ -2040,9 +2040,99 @@ def has_pipeline_test_privs():
         return Response(json.dumps({'has_pipeline_test_privs': True, 'message': 'The user is allowed to submit pipeline runs for testing'}), 200, mimetype='application/json')
 
 
+
+def __submit_mult_for_pipeline_testing(token, ids):
+    has_priv = auth_helper_instance.has_pipeline_testing_privs(token)
+    if isinstance(has_priv, Response):
+        return has_priv
+    elif not has_priv:
+        return Response("User not authorized to submit to the pipeline testing queue", 403)
+
+    if ids is None or len(ids) == 0:
+        return Response("Missing or improper dataset identifiers", 400)
+    
+    #check to see if a) all ids are valid and b) they are for primary datasets
+    lower_ids = ids.copy()
+    lower_ids = [id.lower() for id in lower_ids]
+    find_datasets_q = f"""MATCH (ds:Dataset)<-[:ACTIVITY_OUTPUT]-(a:Activity)
+                             WHERE toLower(a.creation_action) = 'create dataset activity' and
+                                   ds.entity_type = 'Dataset' and
+                                   (toLower(ds.uuid) in {lower_ids} or
+                                    toLower(ds.hubmap_id) in {lower_ids} or
+                                    toLower(ds.submission_id) in {lower_ids})
+                             return ds.uuid, ds.hubmap_id"""
+    with neo4j_driver_instance.session() as neo_session:
+        result = neo_session.run(find_datasets_q).data()
+        if len(result) == 0:
+            return Response("None of the submitted ids were found to be Primary Datasets.", 400)
+        dset_uuids = []
+        not_found_ids = []
+        for id in ids:
+            found = False
+            for dset in result:
+                lower_id = id.lower()
+                if lower_id == dset['ds.uuid'].lower() or lower_id == dset['ds.hubmap_id'].lower():
+                    uuid = dset['ds.uuid']
+                    if not uuid in dset_uuids:
+                        dset_uuids.append(uuid)
+                    found = True
+                    break
+            if not found:
+                not_found_ids.append(id)
+    
+    if len(not_found_ids) == 1:
+        return Response(f"id {not_found_ids[0]} not found or isn't a Primary Dataset", 400)
+    elif len(not_found_ids) > 1:
+        return Response(f"ids not found or not Primary Datasets: {not_found_ids}", 400)
+    
+    submit_url = app.config['PIPELINE_TESTING_URL']
+    if submit_url is None or len(submit_url) == 0:
+        return Response("Check ingest-api config, PIPELINE_TESTING_URL property is invalid", 500)
+    elif (submit_url.strip().lower() == "disabled"):
+        return Response("Submitting to the testing pipeline is currently disabled", 202)
+
+    
+    #inner function to submit multiple datasets for processing
+    #called in thread in if..elif..else block below
+    def submit_remaining_to_airflow():
+        try:
+            for dset_uuid in dset_uuids:
+                #sleep for 1 second between submitting datasets
+                time.sleep(10)
+                submit_request = {"collection_type": "generic_metadatatsv", "uuid_list": [dset_uuid]}
+                response = requests.post(submit_url, json = submit_request)
+                if response.status_code != 200:
+                    error_msg = f"call to {put_url} for dataset uuid: {dset_uuid}. Failed with code:{response.status_code} and message:" + response.text
+                    logger.error(error_msg)                    
+        except HTTPException as hte:
+            logger.error(hte)
+        except Exception as e:
+            logger.error(e, exc_info=True)
+    
+    #submit the first dataset and check for an error...if error abort the whole thing.
+    submit_request = {"collection_type": "generic_metadatatsv", "uuid_list": [dset_uuids[0]]}
+    response = requests.post(submit_url, json = submit_request)
+    if response.status_code != 200:
+        return Response(response.text, response.status_code)
+    #if more than one submit them in a thread and return 202
+    elif len(dset_uuids) > 1:
+        dset_uuids.pop(0)
+        thread = Thread(target=submit_remaining_to_airflow)
+        thread.start()
+        return Response("Submission accepted, Datasets currently being sent to AirFlow one at a time.", 202)     
+    #if only one dataset and we got a 200 response from AirFlow, return
+    else:
+        return Response("The dataset was successfully submitted for pipeline processing testing", 200)    
+
+
+
+
+
+
+
 # /datasets/{identifier}/submit-for-pipeline-testing endpoint
 # This endpoint will submit a dataset for pipeline processing in the testing
-# infrastructure. The required {identifier? path variable is required and
+# infrastructure. The {identifier} path variable is required and
 # can be either a Dataset uuid or HuBMAP ID.  The submitted dataset must be
 # a primary (not derived) Dataset
 #
@@ -2067,37 +2157,45 @@ def has_pipeline_test_privs():
 #@app.route('/datasets/{identifier}/submit-for-pipeline-testing', methods=['POST'])
 @app.route('/datasets/<identifier>/submit-for-pipeline-testing', methods=['POST'])
 def submit_for_pipeline_testing(identifier):
-
     token = auth_helper_instance.getAuthorizationTokens(request.headers)
     if isinstance(token, Response):
         return token;
-    has_priv = auth_helper_instance.has_pipeline_testing_privs(token)
-    if isinstance(has_priv, Response):
-        return has_priv
-    elif not has_priv:
-        return Response("User not authorized to submit to the pipeline testing queue", 403)
+    return __submit_mult_for_pipeline_testing(token, [identifier])
 
-    if identifier is None or len(identifier) == 0:
-        return Response("Missing or improper dataset identifier", 400)
-    r = requests.get(app.config['UUID_WEBSERVICE_URL'] + "/" + identifier, headers={'Authorization': request.headers["AUTHORIZATION"]})
-    if r.ok is False:
-        return Response(r.text, r.status_code)
-    dataset_uuid = json.loads(r.text)['hm_uuid']
-    if not dataset_is_primary(dataset_uuid):
-        return Response("Can only submit a Primary Dataset for processing.", 400)
-    submit_url = app.config['PIPELINE_TESTING_URL']
-    if submit_url is None or len(submit_url) == 0:
-        return Response("Check ingest-api config, PIPELINE_TESTING_URL property is invalid", 500)
-    elif (submit_url.strip().lower() == "disabled"):
-        return Response("Submitting to the testing pipeline is currently disabled", 202)
-
-    submit_request = {"collection_type": "generic_metadatatsv", "uuid_list": [dataset_uuid]}
-    response = requests.post(submit_url, json = submit_request)
+# /datasets//submit-for-pipeline-testing endpoint
+# This endpoint will submit a datasets for pipeline processing in the testing
+# infrastructure. A POST json data payload of a list of dataset ids is required.
+# The ids can be either Dataset uuids or HuBMAP IDs.  The submitted datasets must
+# be primary datasets (not derived)
+#
+# Request POST to /datasets//submit-for-pipeline-testing
+#            with a json data payload of a list of ids
+#
+#         The request must include a standard HuBMAP Authorization Bearer
+#         header with a user token
+#
+# Responses
+# 200 - The datasets were successfully submitted for pipeline process testing
+# 202 - The datasets were accepted, but pipeline processing is currently disabled
+# 400 - An error in the requested data, either a bad identifier was submitted
+#       or an identifier for a non-Primary dataset or something other than a
+#       Dataset was submitted (displayable message included as response message)
+# 401 - Invalid or no token supplied.
+# 403 - non-authorized token supplied.  The user muse be a member of either the
+#       HuBMAP-Pipeline-Testing or HuBMAP-Data-Admin groups
+# 500 - An unexpected error occurred
+#
+@app.route('/datasets/submit-for-pipeline-testing', methods=['POST'])
+def mult_submit_for_pipeline_testing():
+    token = auth_helper_instance.getAuthorizationTokens(request.headers)
+    if isinstance(token, Response):
+        return token;
     
-    if response.status_code != 200:
-        return Response(response.text, response.status_code)
-    else:
-        return Response("The dataset was successfully submitted for pipeline processing testing", 200)
+    require_json(request)
+    json_data = request.json    
+    if json_data is None or not isinstance(json_data, list):
+        return Response("Must provide a list of ids")
+    return __submit_mult_for_pipeline_testing(token, json_data)
   
 """
 Description
