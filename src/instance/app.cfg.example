@@ -103,7 +103,7 @@ REDIS_URL = 'redis://ingest-api-rq-server:6379'
 
 # For UI login/logout
 # Flask app session key
-SECRET_KEY = 'a%@3k9Hdlkfjakjajf99adsf909oel'
+SECRET_KEY = ''
 
 # Need the trailing slash / (shown for DEV)
 FLASK_APP_BASE_URI = 'https://ingest-api.dev.hubmapconsortium.org/'
@@ -157,3 +157,8 @@ UMLS_VALIDATE_URL = 'https://utslogin.nlm.nih.gov/validateUser'
 # UBKG Integration Configs
 UBKG_INTEGRATION_ENDPOINT = 'http://gateway.dev.hubmapconsortium.org:8181/'
 APPLICATION_CONTEXT = 'HUBMAP'
+
+# CEDAR API KEY, get one at: https://cedar.metadatacenter.org/
+
+CEDAR_API_KEY = ''
+CEDAR_API_URL = 'https://resource.metadatacenter.org/templates/https%3A%2F%2Frepo.metadatacenter.org%2Ftemplates%2F'
