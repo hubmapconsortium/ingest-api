@@ -380,6 +380,9 @@ def validate_metadata_upload():
                 # IE "isLatestVersion, "isLatestPublishedVersion or "isLatestDraftVersion" 
                 try:
                     schema_id = VersionHelper.get_schema_id(upload.get('fullpath'), str)
+                    if type(schema_id) == tuple:
+                       return rest_response(StatusCodes.BAD_REQUEST,  "Error", "metadata_schema_id not found in header")
+                    # if schema_id is None:
                     latestVersion = VersionHelper.get_latest_published_schema(schema_id)
                     isLatest = (schema_id == latestVersion)
                     if isLatest == True:
