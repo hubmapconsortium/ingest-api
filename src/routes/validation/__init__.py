@@ -385,11 +385,8 @@ def validate_metadata_upload():
                     # if schema_id is None:
                     latestVersion = VersionHelper.get_latest_published_schema(schema_id)
                     isLatest = (schema_id == latestVersion)
-                    if isLatest == True:
-                        response = rest_response(StatusCodes.OK, "Is Latest",{"IsLatest":True})
-                    else:
-                        response = rest_response(StatusCodes.BAD_REQUEST,  "This is not the latest version of the metadata specification as defined in CEDAR", "This is not the latest version of the metadata specification as defined in CEDAR")
-                    return response
+                    if isLatest != True:
+                        return rest_response(StatusCodes.BAD_REQUEST,  "This is not the latest version of the metadata specification as defined in CEDAR", "This is not the latest version of the metadata specification as defined in CEDAR")
                 except Exception as e:
                     return rest_server_err(e, True)
 
