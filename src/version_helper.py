@@ -19,6 +19,16 @@ logger = logging.getLogger(__name__)
 
 
 class VersionHelper:
+    
+    #returns the metadata_schema_id of the specified (by path argument) file
+    # - if the metadata_schema_id column is not found, returns None
+    # - returns the message "File does not exist" with the specified path 
+    #   in the case that the specified file does not exist
+    # - returns the message "File has no data rows" with the specified path
+    #   in the case that the file doesn't contain any rows of tsv data
+    # - returns the message "Expected a TSV, but found a directory" with the specified
+    #   path for the case that a directory was passed in instead of a file
+    # - throws a TSVError exception if the file is not a TSV file
     @staticmethod
     def get_schema_id(path: Path, encoding: str) -> object:
         message = None
@@ -29,13 +39,11 @@ class VersionHelper:
             rows = tsv_reader_wrapper(path, str)
             if not rows:
                 message = {"File has no data rows": f"{path}"}
-            else:
-                first_row = rows[0]
-                if "metadata_schema_id" not in first_row:
-                    message = {"metadata_schema_id not found in header": f"{path}"}
-                    raise TSVError(message)
-                schema_id = first_row['metadata_schema_id']
-                return schema_id 
+            first_row = rows[0]
+            if not 'metadata_schema_id' in first_row:
+                return None
+            schema_id = first_row['metadata_schema_id']
+            return schema_id 
        
         except IsADirectoryError:
             message = {"Expected a TSV, but found a directory": f"{path}"}

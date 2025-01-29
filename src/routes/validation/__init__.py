@@ -380,6 +380,8 @@ def validate_metadata_upload():
                 # IE "isLatestVersion, "isLatestPublishedVersion or "isLatestDraftVersion" 
                 try:
                     schema_id = VersionHelper.get_schema_id(upload.get('fullpath'), str)
+                    if schema_id is None:
+                        return Response("No CEDAR schema id found.  Not the latest version.", 400)
                     latestVersion = VersionHelper.get_latest_published_schema(schema_id)
                     isLatest = (schema_id == latestVersion)
                     if isLatest == True:
