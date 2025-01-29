@@ -405,7 +405,7 @@ def validate_metadata_upload():
             # For the good tsv, it returns an empty list
             validation_results = validate_tsv(path=path, schema=schema)
             if len(validation_results) > 0:
-                response = rest_response(StatusCodes.UNACCEPTABLE, 'Unacceptable Metadata', validation_results, True)
+                return rest_response(StatusCodes.UNACCEPTABLE, 'Unacceptable Metadata', validation_results, False)
             else:
                 records = get_metadata(upload.get('fullpath'))
                 response = _get_response(records, entity_type, sub_type, validate_uuids,
