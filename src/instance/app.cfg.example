@@ -88,6 +88,9 @@ SEARCH_WEBSERVICE_URL = 'https://search-api.dev.hubmapconsortium.org/v3'
 # URL to the entity-api web service (shown for DEV)
 ENTITY_WEBSERVICE_URL = 'https://entity-api.dev.hubmapconsortium.org'
 
+# The base url for the HuBMAP ingest website
+INGEST_URL = 'https://ingest-api.dev.hubmapconsortium.org/'
+
 # URL to the UBKG web service (shown for DEV)
 UBKG_WEBSERVICE_URL = 'https://ontology-api.dev.hubmapconsortium.org/'
 
