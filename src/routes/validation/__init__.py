@@ -380,13 +380,13 @@ def validate_metadata_upload():
                 # IE "isLatestVersion, "isLatestPublishedVersion or "isLatestDraftVersion" 
                 try:
                     schema_id = VersionHelper.get_schema_id(upload.get('fullpath'), str)
+                    if type(schema_id) == tuple:
+                       return rest_response(StatusCodes.BAD_REQUEST,  "Error", "metadata_schema_id not found in header")
+                    # if schema_id is None:
                     latestVersion = VersionHelper.get_latest_published_schema(schema_id)
                     isLatest = (schema_id == latestVersion)
-                    if isLatest == True:
-                        response = rest_response(StatusCodes.OK, "Is Latest",{"IsLatest":True})
-                    else:
-                        response = rest_response(StatusCodes.BAD_REQUEST,  "This is not the latest version of the metadata specification as defined in CEDAR", "This is not the latest version of the metadata specification as defined in CEDAR")
-                    return response
+                    if isLatest != True:
+                        return rest_response(StatusCodes.BAD_REQUEST,  "This is not the latest version of the metadata specification as defined in CEDAR", "This is not the latest version of the metadata specification as defined in CEDAR")
                 except Exception as e:
                     return rest_server_err(e, True)
 
@@ -405,7 +405,7 @@ def validate_metadata_upload():
             # For the good tsv, it returns an empty list
             validation_results = validate_tsv(path=path, schema=schema)
             if len(validation_results) > 0:
-                response = rest_response(StatusCodes.UNACCEPTABLE, 'Unacceptable Metadata', validation_results, True)
+                return rest_response(StatusCodes.UNACCEPTABLE, 'Unacceptable Metadata', validation_results, False)
             else:
                 records = get_metadata(upload.get('fullpath'))
                 response = _get_response(records, entity_type, sub_type, validate_uuids,
