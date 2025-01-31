@@ -1146,7 +1146,8 @@ def publish_datastage(identifier):
                                                                                   dataset_group_uuid, dataset_uuid)
                 md_file = os.path.join(ds_path, "metadata.json")
                 try:
-                    prov_metadata_url = f"{app.config['ENTITY_WEBSERVICE_URL']}/datasets/{dataset_uuid}/prov-metadata"
+                    entity_base_url = commons_file_helper.removeTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL'])
+                    prov_metadata_url = f"{entity_base_url}/datasets/{dataset_uuid}/prov-metadata"
                     rspn = requests.get(    url=prov_metadata_url
                                             ,headers = {'Authorization': request.headers["AUTHORIZATION"]})
                     json_object = f"{json.dumps(obj=rspn.json(), indent=4)}\n"
@@ -1239,7 +1240,8 @@ def datasets_metadata_json(identifier):
                                                                 dataset_published)
         md_file = os.path.join(ds_path, "metadata.json")
         try:
-            prov_metadata_url = f"{app.config['ENTITY_WEBSERVICE_URL']}/datasets/{identifier}/prov-metadata"
+            entity_base_url = commons_file_helper.removeTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL'])
+            prov_metadata_url = f"{entity_base_url}/datasets/{identifier}/prov-metadata"
             rspn = requests.get(url=prov_metadata_url
                                 , headers={'Authorization': request.headers["AUTHORIZATION"]})
             json_object = f"{json.dumps(obj=rspn.json(), indent=4)}\n"
