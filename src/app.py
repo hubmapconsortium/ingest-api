@@ -2360,7 +2360,25 @@ def validate_uploaded_metadata(upload, token, data):
     return message
             
 
+"""
+Accepts a tsv containing metadata of multiple samples, validates with cedar via ingest-validation-tools, validates sample ids
+and their associated sources. If invalid, returns the errors, if valid, updates the provided samples metadata via neo4j, 
+flushes the cache in entity-api, and reindexes the entities via search-api
+Input
+--------
+Input is via PUT request multipart/form-data body. Most of the fields are given by an attached tsv file; additional fields are also included
 
+metadata : tsv file
+    the tsv file containing datasets to have their metadata registered
+sub_type : str
+        The sample category of the given samples
+validate_uuids: int
+    An integer value 1 or 0 indicating whether the individual samples should be validated along with the schema. 
+Returns
+--------
+message : json array of representing the individual errors returned from ingest-validation-tools
+200: json containing {'message': 'success'}
+"""
 @app.route('/sample-bulk-metadata', methods=['PUT'])
 def sample_bulk_metadata():
     if 'file' not in request.files:
