@@ -14,6 +14,7 @@ import time
 from threading import Thread
 from hubmap_sdk import EntitySdk
 from apscheduler.schedulers.background import BackgroundScheduler
+from neo4j.exceptions import Neo4jError
 from apscheduler.triggers.interval import IntervalTrigger
 from apscheduler.triggers.date import DateTrigger
 # Don't confuse urllib (Python native library) with urllib3 (3rd-party library, requests also uses urllib3)
@@ -2409,32 +2410,35 @@ def sample_bulk_metadata():
             records.append(data_row)
             if first:
                 first = False
-    entity_response = {}
-    row_num = 1
-    entity_updated = False
-    entity_failed_to_update = False
+    updates = []
+    ids = []
     for r in records:
-        entity_id = r.get("sample_id")
-        update_json = {"metadata": r}
-        r = requests.put(commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + f'entities/{entity_id}', headers=header, json=update_json)
-        entity_response[row_num] = r.json()
-        row_num = row_num + 1
-        status_code = r.status_code
-        if r.status_code > 399:
-            entity_failed_to_update = True
-        else:
-            entity_updated = True
-    if entity_updated and not entity_failed_to_update:
-        response_status = "Success - All Entities Metadata Registered Successfully"
-        status_code = 201
-    elif entity_failed_to_update and not entity_updated:
-        response_status = "Failure - None of the Entities Metadata Registered Successfully"
-        status_code = 500
-    elif entity_updated and entity_failed_to_update:
-        response_status = "Partial Success - Some Entities Metadata Registered Successfully"
-        status_code = 207
-    response = {"status": response_status, "data": entity_response}
-    return Response(json.dumps(response, sort_keys=True), status_code, mimetype='application/json')
+        id = r.get('sample_id')
+        update = {
+            'id': id,
+            'metadata': json.dumps(r).replace('"', "'") 
+        }
+        updates.append(update)
+        ids.append(id)
+
+    update_query = "WITH ["
+    update_query += ", ".join([f"{{id: \"{u['id']}\", metadata: \"{u['metadata']}\"}}" for u in updates])
+    update_query += f"] AS updates UNWIND updates AS u MATCH (e {{hubmap_id: u.id}}) SET e.metadata = u.metadata"
+    try:
+        with neo4j_driver_instance.session() as neo_session:
+            result = neo_session.run(update_query).data()
+    except Neo4jError as e:
+        internal_server_error(f"Metadata was validated but failed to update entities metadata. {e}")
+    for id in ids:
+        try:
+            entity_resp = requests.delete(commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + f'flush-cache/{id}', headers=header)
+            search_resp = requests.put(commons_file_helper.ensureTrailingSlashURL(app.config['SEARCH_WEBSERVICE_URL']) + f'reindex/{id}', headers=header)
+        except HTTPException as hte:
+            logger.error(f"Validated metadata and updated entities, but failed to reach flush entity cache or reindex entities. {hte.get_description()}, {hte.get_status_code()}")
+        except Exception as e:
+            logger.error(f"Validated metadata and updated entities, but failed to reach flush entity cache or reindex entities. {e}")
+        
+    return jsonify({"message": "Success"}), 200
 
 @app.route('/donors/bulk-upload', methods=['POST'])
 def bulk_donors_upload_and_validate():
