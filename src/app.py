@@ -2307,7 +2307,7 @@ def validate_uploaded_metadata(upload, token, data):
         idx = 1
         for r in records:
             ok = True
-            # First get the id column name, in order to get SenNet id in the record
+            # First get the id column name, in order to get HuBMAP id in the record
             id_col = "sample_id"
             entity_id = r.get(id_col)
             if entity_id is None:
@@ -2339,7 +2339,7 @@ def validate_uploaded_metadata(upload, token, data):
                     errors.append(f"Invalid `{related_id_col}`: `{related_entity_id}`", idx, id_col)
                     ok = False
             else:
-                message = f'Unsupported uploaded TSV spec for "sample {sub_type}". Missing `{related_id_col}` column. For more details, check out the docs: https://docs.sennetconsortium.org/libraries/ingest-validation-tools/schemas'
+                message = f'Unsupported uploaded TSV spec for "sample {sub_type}". Missing `{related_id_col}` column. For more details, check out the docs: https://hubmapconsortium.github.io/ingest-validation-tools/current'
                 return message
             if sub_type is not None:
                 sub_type_col = 'sample_category'
