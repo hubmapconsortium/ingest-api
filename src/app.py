@@ -14,7 +14,7 @@ import time
 from threading import Thread
 from hubmap_sdk import EntitySdk
 from apscheduler.schedulers.background import BackgroundScheduler
-from neo4j.exceptions import Neo4jError
+from neo4j.exceptions import TransactionError
 from apscheduler.triggers.interval import IntervalTrigger
 from apscheduler.triggers.date import DateTrigger
 # Don't confuse urllib (Python native library) with urllib3 (3rd-party library, requests also uses urllib3)
@@ -2268,7 +2268,7 @@ def validate_uploaded_metadata(upload, token, data):
         "suspension": "ea4fb93c-508e-4ec4-8a4b-89492ba68088"
     }
     if not (len(records) and"metadata_schema_id" in records[0]):
-        message.append(f'Unsupported uploaded TSV spec for sample {sub_type}. CEDAR formatting is required for samples. For more details, check out the docs: https://docs.sennetconsortium.org/libraries/ingest-validation-tools/schemas')
+        message.append(f'Unsupported uploaded TSV spec for sample {sub_type}. CEDAR formatting is required for samples. For more details, check out the docs: https://hubmapconsortium.github.io/ingest-validation-tools/current')
         return message
     else:
         if records[0]["metadata_schema_id"].lower() != cedar_sample_sub_type_ids[sub_type].lower():
@@ -2278,7 +2278,7 @@ def validate_uploaded_metadata(upload, token, data):
     try:
         app_context = {
             "request_header": {"X-Hubmap-Application": "ingest-api"},
-            "ingest_url": commons_file_helper.ensureTrailingSlashURL(app.config["INGEST_URL"]),
+            "ingest_url": commons_file_helper.ensureTrailingSlashURL(app.config["FLASK_APP_BASE_URI"]),
             "entities_url": f"{commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL'])}entities/",
             "constraints_url": f"{commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL'])}constraints/"
 
@@ -2444,8 +2444,14 @@ def sample_bulk_metadata():
     update_query += f"] AS updates UNWIND updates AS u MATCH (e {{hubmap_id: u.id}}) SET e.metadata = u.metadata"
     try:
         with neo4j_driver_instance.session() as neo_session:
-            result = neo_session.run(update_query).data()
-    except Neo4jError as e:
+            tx = neo_session.begin_transaction()
+            result = tx.run(update_query)
+            tx.commit()
+    except TransactionError as e:
+        if tx and tx.closed() == False:
+            tx.rollback()
+        internal_server_error(f"Metadata was validated but failed to update entities metadata. Transaction error: {e}")
+    except Exception as e:
         internal_server_error(f"Metadata was validated but failed to update entities metadata. {e}")
     for id in ids:
         try:
