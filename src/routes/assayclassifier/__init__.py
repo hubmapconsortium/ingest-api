@@ -287,7 +287,7 @@ def get_assaytype_from_metadata():
 @bp.route("/reload-assaytypes", methods=["PUT"])
 def reload_chain():
     try:
-        initialize_rule_chain()
+        initialize_rule_chains()
         return jsonify({})
     except ResponseException as re:
         logger.error(re, exc_info=True)
