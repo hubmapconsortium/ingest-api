@@ -1,6 +1,7 @@
 from flask import Blueprint, request, Response, current_app, jsonify
 import logging
 from sys import stdout
+from typing import Callable
 import json
 import urllib.request
 import urllib.error
@@ -99,7 +100,7 @@ def calculate_data_types(entity: dict) -> list[str]:
     return data_types
 
 
-def get_entity(ds_uuid: str) -> dict:
+def get_entity(ds_uuid: str) -> object:
     """
     Given a uuid and the (implicit) request, return the entity-sdk
     entity.
@@ -120,6 +121,13 @@ def get_entity(ds_uuid: str) -> dict:
         )  # may again raise SDKException
 
     return entity
+
+
+def get_entity_json(ds_uuid: str) -> dict:
+    """
+    Return the JSON associated with the entity associated with the given uuid
+    """
+    return get_entity(ds_uuid).metadata
 
 
 def build_entity_metadata(entity) -> dict:
@@ -179,10 +187,11 @@ def get_ds_assaytype(ds_uuid: str):
     try:
         entity = get_entity(ds_uuid)
         metadata = build_entity_metadata(entity)
-        is_human = source_is_human([ds_uuid],
-                                   lambda (some_uuid): (entity if some_uuid == ds_uuid
-                                                        else get_entity(some_uuid))
-                                   )
+        is_human = source_is_human(
+            [ds_uuid],
+            lambda some_uuid: (entity.metadata if some_uuid == ds_uuid
+                               else get_entity_json(some_uuid))
+        )
         rules_json = calculate_assay_info(metadata,
                                           is_human,
                                           get_data_from_ubkg
@@ -248,7 +257,8 @@ def get_assaytype_from_metadata():
         require_json(request)
         metadata = request.json
         if parent_sample_ids := metadata.get("parent_sample_id"):
-            is_human = source_is_human(parent_sample_ds.split(","), get_entity)
+            is_human = source_is_human(parent_sample_ids.split(","),
+                                       get_entity_json)
         else:
             is_human = True  # default to human for safety
         rules_json = calculate_assay_info(metadata, is_human, get_data_from_ubkg)
