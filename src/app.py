@@ -11,6 +11,7 @@ import json
 from uuid import UUID
 import csv
 import time
+from operator import xor
 from threading import Thread
 from hubmap_sdk import EntitySdk
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -954,15 +955,11 @@ def publish_datastage(identifier):
                             return jsonify({"error": f"donor.metadata is missing for {dataset_uuid}"}), 400
                         metadata = metadata.replace("'", '"')
                         metadata_dict = json.loads(metadata)
-                        living_donor = True
-                        organ_donor = True
-                        if metadata_dict.get('organ_donor_data') is None:
-                            living_donor = False
-                        if metadata_dict.get('living_donor_data') is None:
-                            organ_donor = False
                         has_organ_donor_data = metadata_dict.get('organ_donor_data') is not None
                         has_living_donor_data = metadata_dict.get('living_donor_data') is not None
-                        if not has_organ_donor_data ^ has_living_donor_data:
+                        # Use the bit-wise xor operator with bool values to determine if
+                        # exactly one of required Donor characteristics is indicated in the metadata.
+                        if not xor(has_organ_donor_data, has_living_donor_data):
                             return jsonify({"error": f"donor.metadata.organ_donor_data or "
                                                      f"donor.metadata.living_donor_data required. "
                                                      f"Both cannot be None. Both cannot be present. Only one."}), 400
@@ -1150,11 +1147,15 @@ def publish_datastage(identifier):
                     prov_metadata_url = f"{entity_base_url}/datasets/{dataset_uuid}/prov-metadata"
                     rspn = requests.get(    url=prov_metadata_url
                                             ,headers = {'Authorization': request.headers["AUTHORIZATION"]})
+                    if rspn.status_code not in [200]:
+                        raise Exception(f"Retrieving provenance metadata for {dataset_uuid}"
+                                        f" from Entity API resulted in: {rspn.json()['error']}")
                     json_object = f"{json.dumps(obj=rspn.json(), indent=4)}\n"
-                except:
+                except Exception as e:
                     logger.exception(   f"An exception occurred retrieving prov-metadata for"
                                         f" dataset_uuid={dataset_uuid} while"
                                         f" publishing identifier={identifier}")
+                    raise e
 
                 logger.info(f"publish_datastage; writing metadata.json file: '{md_file}'; "
                             f"containing: '{json_object}'")
@@ -1244,10 +1245,15 @@ def datasets_metadata_json(identifier):
             prov_metadata_url = f"{entity_base_url}/datasets/{identifier}/prov-metadata"
             rspn = requests.get(url=prov_metadata_url
                                 , headers={'Authorization': request.headers["AUTHORIZATION"]})
+            if rspn.status_code not in [200]:
+                raise Exception(f"Retrieving provenance metadata for {identifier}"
+                                f" from Entity API resulted in: {rspn.json()['error']}")
             json_object = f"{json.dumps(obj=rspn.json(), indent=4)}\n"
-        except:
+        except Exception as e:
             logger.exception(f"An exception occurred retrieving prov-metadata while"
                              f" updating metadata for identifier={identifier}")
+            raise e
+
         logger.info(f"publish_datastage; writing md_file: '{md_file}'; "
                     f"containing: '{json_object}'")
         try:
