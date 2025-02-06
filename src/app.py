@@ -11,6 +11,7 @@ import json
 from uuid import UUID
 import csv
 import time
+from operator import xor
 from threading import Thread
 from hubmap_sdk import EntitySdk
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -237,10 +238,22 @@ def index():
 @app.route('/status', methods=['GET'])
 def status():
     response_code = 200
+    try:
+        file_build_content = (Path(__file__).absolute().parent.parent / 'BUILD').read_text().strip()
+    except Exception as e:
+        file_build_content = str(e)
+
+    try:
+        redis_conn = redis.from_url(redis_url)
+        redis_ping_status = redis_conn.ping()
+    except Exception as e:
+        redis_ping_status = str(e)
+
     response_data = {
         # Use strip() to remove leading and trailing spaces, newlines, and tabs
         'version': (Path(__file__).absolute().parent.parent / 'VERSION').read_text().strip(),
-        'build': (Path(__file__).absolute().parent.parent / 'BUILD').read_text().strip(),
+        'redis': redis_ping_status,
+        'build': file_build_content
     }
 
     try:
@@ -845,23 +858,6 @@ def obj_to_dict(obj) -> dict:
         json.dumps(obj, default=lambda o: getattr(o, '__dict__', str(o)))
     )
 
-def entity_json_dumps(entity_instance: EntitySdk, dataset_uuid: str) -> str:
-    """
-    Because entity and the content of the arrays returned from entity_instance.get_associated_*
-    contain user defined objects we need to turn them into simple python objects (e.g., dicts, lists, str)
-    before we can convert them wth json.dumps.
-
-    Here we create an expanded version of the entity associated with the dataset_uuid and return it as a json string.
-    """
-    entity = obj_to_dict(entity_instance.get_entity_by_id(dataset_uuid))
-    entity['organs'] = obj_to_dict(entity_instance.get_associated_organs_from_dataset(dataset_uuid))
-    entity['samples'] = obj_to_dict(entity_instance.get_associated_samples_from_dataset(dataset_uuid))
-    entity['donors'] = obj_to_dict(entity_instance.get_associated_donors_from_dataset(dataset_uuid))
-
-    json_object = json.dumps(entity, indent=4)
-    json_object += '\n'
-    return json_object
-
 def metadata_json_based_on_creation_action(creation_action: str) -> bool:
     """
     https://github.com/hubmapconsortium/ingest-api/issues/575
@@ -959,13 +955,11 @@ def publish_datastage(identifier):
                             return jsonify({"error": f"donor.metadata is missing for {dataset_uuid}"}), 400
                         metadata = metadata.replace("'", '"')
                         metadata_dict = json.loads(metadata)
-                        living_donor = True
-                        organ_donor = True
-                        if metadata_dict.get('organ_donor_data') is None:
-                            living_donor = False
-                        if metadata_dict.get('living_donor_data') is None:
-                            organ_donor = False
-                        if (organ_donor and living_donor) or (not organ_donor and not living_donor):
+                        has_organ_donor_data = metadata_dict.get('organ_donor_data') is not None
+                        has_living_donor_data = metadata_dict.get('living_donor_data') is not None
+                        # Use the bit-wise xor operator with bool values to determine if
+                        # exactly one of required Donor characteristics is indicated in the metadata.
+                        if not xor(has_organ_donor_data, has_living_donor_data):
                             return jsonify({"error": f"donor.metadata.organ_donor_data or "
                                                      f"donor.metadata.living_donor_data required. "
                                                      f"Both cannot be None. Both cannot be present. Only one."}), 400
@@ -978,7 +972,8 @@ def publish_datastage(identifier):
                                         f"Will not Publish. Ancestor dataset is: {uuid}", 400)
 
             if has_donor is False:
-                return Response(f"{dataset_uuid}: no donor found for dataset, will not Publish")
+                return Response(    response=f"{dataset_uuid}: no donor found for dataset, will not Publish"
+                                    , status=400)
 
             #get info for the dataset to be published
             q = f"MATCH (e:Dataset {{uuid: '{dataset_uuid}'}}) RETURN " \
@@ -1147,7 +1142,21 @@ def publish_datastage(identifier):
                 ds_path = ingest_helper.dataset_directory_absolute_path_published(data_access_level,
                                                                                   dataset_group_uuid, dataset_uuid)
                 md_file = os.path.join(ds_path, "metadata.json")
-                json_object = entity_json_dumps(entity_instance, dataset_uuid)
+                try:
+                    entity_base_url = commons_file_helper.removeTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL'])
+                    prov_metadata_url = f"{entity_base_url}/datasets/{dataset_uuid}/prov-metadata"
+                    rspn = requests.get(    url=prov_metadata_url
+                                            ,headers = {'Authorization': request.headers["AUTHORIZATION"]})
+                    if rspn.status_code not in [200]:
+                        raise Exception(f"Retrieving provenance metadata for {dataset_uuid}"
+                                        f" from Entity API resulted in: {rspn.json()['error']}")
+                    json_object = f"{json.dumps(obj=rspn.json(), indent=4)}\n"
+                except Exception as e:
+                    logger.exception(   f"An exception occurred retrieving prov-metadata for"
+                                        f" dataset_uuid={dataset_uuid} while"
+                                        f" publishing identifier={identifier}")
+                    raise e
+
                 logger.info(f"publish_datastage; writing metadata.json file: '{md_file}'; "
                             f"containing: '{json_object}'")
                 try:
@@ -1231,7 +1240,20 @@ def datasets_metadata_json(identifier):
                                                                 identifier,
                                                                 dataset_published)
         md_file = os.path.join(ds_path, "metadata.json")
-        json_object = entity_json_dumps(entity_instance, identifier)
+        try:
+            entity_base_url = commons_file_helper.removeTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL'])
+            prov_metadata_url = f"{entity_base_url}/datasets/{identifier}/prov-metadata"
+            rspn = requests.get(url=prov_metadata_url
+                                , headers={'Authorization': request.headers["AUTHORIZATION"]})
+            if rspn.status_code not in [200]:
+                raise Exception(f"Retrieving provenance metadata for {identifier}"
+                                f" from Entity API resulted in: {rspn.json()['error']}")
+            json_object = f"{json.dumps(obj=rspn.json(), indent=4)}\n"
+        except Exception as e:
+            logger.exception(f"An exception occurred retrieving prov-metadata while"
+                             f" updating metadata for identifier={identifier}")
+            raise e
+
         logger.info(f"publish_datastage; writing md_file: '{md_file}'; "
                     f"containing: '{json_object}'")
         try:

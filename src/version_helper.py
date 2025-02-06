@@ -32,8 +32,9 @@ class VersionHelper:
             else:
                 first_row = rows[0]
                 if "metadata_schema_id" not in first_row:
-                    message = {"metadata_schema_id not found in header": f"{path}"}
-                    raise TSVError(message)
+                    return jsonify("metadata_schema_id not found in header"), 406
+                    # message = {"metadata_schema_id not found in header": f"{path}"}
+                    # raise TSVError(message)
                 schema_id = first_row['metadata_schema_id']
                 return schema_id 
        
