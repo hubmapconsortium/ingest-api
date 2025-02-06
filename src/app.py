@@ -2289,6 +2289,10 @@ def validate_uploaded_metadata(upload, token, data):
         "section": "01e9bc58-bdf2-49f4-9cf9-dd34f3cc62d7",
         "suspension": "ea4fb93c-508e-4ec4-8a4b-89492ba68088"
     }
+    accepted_subtypes = ", ".join(cedar_sample_sub_type_ids.keys())
+    if not sub_type in cedar_sample_sub_type_ids:
+        message.append(f'Unrecognized sub_type {sub_type}. Valid subtypes for samples are: {accepted_subtypes}')
+        return message
     if not (len(records) and"metadata_schema_id" in records[0]):
         message.append(f'Unsupported uploaded TSV spec for sample {sub_type}. CEDAR formatting is required for samples. For more details, check out the docs: https://hubmapconsortium.github.io/ingest-validation-tools/current')
         return message
@@ -2376,9 +2380,9 @@ def validate_uploaded_metadata(upload, token, data):
                 result_entity["metadata"] = r
                 passing.append(result_entity)
             idx += 1
-    if len(errors) >= 0:
-        message = errors
-        return message
+        if len(errors) >= 0:
+            message = errors
+            return message
     return message
             
 
@@ -2403,9 +2407,9 @@ message : json array of representing the individual errors returned from ingest-
 """
 @app.route('/sample-bulk-metadata', methods=['PUT'])
 def sample_bulk_metadata():
-    if 'file' not in request.files:
-        bad_request_error('No file part')
-    file = request.files['file']
+    if 'metadata' not in request.files:
+        bad_request_error('No metadata part')
+    file = request.files['metadata']
     sub_type = request.form.get('sub_type')
     validate_uuids = request.form.get('validate_uuids')
     if sub_type is None:
@@ -2435,7 +2439,10 @@ def sample_bulk_metadata():
     }
     message = validate_uploaded_metadata(file_details, token, data)
     if len(message) > 0:
-        return jsonify(f"Errors occurred during validation. {message}"), 400
+        # The validated output appears to be adding ADDITIONAL escape characters. Cleaning the message leaves it with the expected escapes.
+        cleaned_message = [msg.replace('\"', '"').replace('\\n', '\n') for msg in message]
+        error_message = ", ".join(cleaned_message)
+        return jsonify({"error": f"Errors occurred during validation. {error_message}"}), 400
     headers = []
     records = []
     with open(file_details['fullpath'], newline="") as tsvfile:
