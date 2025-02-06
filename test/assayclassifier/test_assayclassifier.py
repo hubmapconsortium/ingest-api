@@ -19,6 +19,8 @@ class TestAssayClassifier(unittest.TestCase):
           - type: 'match'
             match: 'assay_class == "bar_type" and othername == "baz"'
             value: "{'assaytype': 'baz'}"
+        pre: []
+        post: []
         """
         chain_dict = RuleLoader(test_rule_yaml).load()
         self.chain = chain_dict["body"]
