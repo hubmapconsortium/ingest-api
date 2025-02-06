@@ -1,6 +1,7 @@
 from flask import Blueprint, request, Response, current_app, jsonify
 import logging
 from sys import stdout
+from typing import Callable
 import json
 import urllib.request
 import urllib.error
@@ -23,69 +24,60 @@ from .rule_chain import (
     RuleLogicException,
 )
 
+from .source_is_human import source_is_human
+
 bp = Blueprint("assayclassifier", __name__)
 
 logger: logging.Logger = logging.getLogger(__name__)
 
+pre_rule_chain = None
+body_rule_chain = None
+post_rule_chain = None
 
-rule_chain = None
 
-# Have to translate pre-UBKG keys to UBKG keys
-# Format is:
-# "Key before UBKG integration": "UBKG Key"
-pre_integration_to_ubkg_translation = {
-    'vitessce-hints': 'vitessce_hints',
-    'dir-schema': 'dir_schema',
-    'tbl-schema': 'tbl_schema',
-    'contains-pii': 'contains_full_genetic_sequences',
-    'dataset-type': 'dataset_type',
-    'is-multi-assay': 'is_multiassay',
-    'pipeline-shorthand': 'pipeline_shorthand',
-    'must-contain': 'must_contain',
-}
-
-# These are the keys returned by the rule chain before UBKG integration.
-# We will return the UBKG data in this format as well for MVP.
-# This is to avoid too much churn on end-users.
-# We set primary manually so ignore it.
-pre_integration_keys = [
-    'assaytype',
-    'vitessce-hints',
-    'dir-schema',
-    'tbl-schema',
-    'contains-pii',
-    #'primary',
-    'dataset-type',
-    'description',
-    'is-multi-assay',
-    'pipeline-shorthand',
-    'must-contain',
-    "process_state"
-]
-
-def initialize_rule_chain():
-    global rule_chain
+def initialize_rule_chains():
+    global pre_rule_chain, body_rule_chain, post_rule_chain
     rule_src_uri = current_app.config["RULE_CHAIN_URI"]
     try:
-        json_rules = urllib.request.urlopen(rule_src_uri)
+        rule_json = urllib.request.urlopen(rule_src_uri)
     except json.decoder.JSONDecodeError as excp:
         raise RuleSyntaxException(excp) from excp
-    rule_chain = RuleLoader(json_rules).load()
-    print("RULE CHAIN FOLLOWS")
-    rule_chain.dump(stdout)
-    print("RULE CHAIN ABOVE")
+    rule_chain_dict = RuleLoader(rule_json).load()
+    pre_rule_chain = rule_chain_dict["pre"]
+    body_rule_chain = rule_chain_dict["body"]
+    post_rule_chain = rule_chain_dict["post"]
 
 
-def calculate_assay_info(metadata: dict) -> dict:
-    if not rule_chain:
-        initialize_rule_chain()
+def calculate_assay_info(metadata: dict,
+                         source_is_human: bool,
+                         lookup_ubkg: Callable[[str], dict]
+                         ) -> dict:
+    if any(elt is None
+           for elt in [pre_rule_chain, body_rule_chain, post_rule_chain]):
+        initialize_rule_chains()
     for key, value in metadata.items():
         if type(value) is str:
             if value.isdigit():
                 metadata[key] = int(value)
-    rslt = rule_chain.apply(metadata)
-    # TODO: check that rslt has the expected parts
-    return rslt
+    try:
+        pre_values = pre_rule_chain.apply(metadata)
+        body_values = body_rule_chain.apply(metadata, ctx=pre_values)
+        assert "ubkg_code" in body_values, ("Rule matched but lacked ubkg_code:"
+                                            f" {body_values}")
+        ubkg_values = lookup_ubkg(body_values.get("ubkg_code", "NO_CODE")).get("value", {})
+        rslt = post_rule_chain.apply(
+            {},
+            ctx={
+                "source_is_human": source_is_human,
+                "values": body_values,
+                "ubkg_values": ubkg_values,
+                "pre_values": pre_values,
+                # "DEBUG": True
+            }
+        )
+        return rslt
+    except NoMatchException:
+        return {}
 
 
 def calculate_data_types(entity: dict) -> list[str]:
@@ -108,7 +100,7 @@ def calculate_data_types(entity: dict) -> list[str]:
     return data_types
 
 
-def get_entity(ds_uuid: str) -> dict:
+def get_entity(ds_uuid: str) -> object:
     """
     Given a uuid and the (implicit) request, return the entity-sdk
     entity.
@@ -129,6 +121,13 @@ def get_entity(ds_uuid: str) -> dict:
         )  # may again raise SDKException
 
     return entity
+
+
+def get_entity_json(ds_uuid: str) -> dict:
+    """
+    Return the JSON associated with the entity associated with the given uuid
+    """
+    return get_entity(ds_uuid).metadata
 
 
 def build_entity_metadata(entity) -> dict:
@@ -169,15 +168,6 @@ def build_entity_metadata(entity) -> dict:
     return metadata
 
 
-def apply_source_type_transformations(source_type: str, rule_value_set: dict) -> dict:
-    # If we get more complicated transformations we should consider refactoring.
-    # For now, this should suffice.
-    if source_type.upper() == "MOUSE":
-        rule_value_set["contains-pii"] = False
-
-    return rule_value_set
-
-
 def get_data_from_ubkg(ubkg_code: str) -> dict:
     query = urllib.parse.urlencode({"application_context": current_app.config['APPLICATION_CONTEXT']})
     ubkg_api_url = f"{current_app.config['UBKG_INTEGRATION_ENDPOINT']}assayclasses/{ubkg_code}?{query}"
@@ -192,41 +182,21 @@ def get_data_from_ubkg(ubkg_code: str) -> dict:
     return json.loads(response_data)
 
 
-def standardize_results(rule_chain_json: dict, ubkg_json: dict) -> dict:
-    # Initialize this with conditional logic to set 'primary' true or false.
-    ubkg_transformed_json = {
-        "primary": ubkg_json.get("process_state") == "primary"
-    }
-
-    for pre_integration_key in pre_integration_keys:
-        ubkg_key = pre_integration_to_ubkg_translation.get(pre_integration_key, pre_integration_key)
-        ubkg_value = ubkg_json.get(ubkg_key)
-        if ubkg_value is not None:
-            ubkg_transformed_json[pre_integration_key] = ubkg_value
-
-    return rule_chain_json | ubkg_transformed_json
-
-
 @bp.route("/assaytype/<ds_uuid>", methods=["GET"])
 def get_ds_assaytype(ds_uuid: str):
     try:
         entity = get_entity(ds_uuid)
         metadata = build_entity_metadata(entity)
-        rules_json = calculate_assay_info(metadata)
-
-        if hasattr(entity, "sources") and isinstance(entity.sources, list):
-            source_type = ""
-            for source in entity.sources:
-                if source_type := source.get("source_type"):
-                    # If there is a single Human source_type, treat this as a Human case
-                    if source_type.upper() == "HUMAN":
-                        break
-            apply_source_type_transformations(source_type, rules_json)
-
-        ubkg_value_json = get_data_from_ubkg(rules_json.get("ubkg_code")).get("value", {})
-        merged_json = standardize_results(rules_json, ubkg_value_json)
-        merged_json["ubkg_json"] = ubkg_value_json
-        return jsonify(merged_json)
+        is_human = source_is_human(
+            [ds_uuid],
+            lambda some_uuid: (entity.metadata if some_uuid == ds_uuid
+                               else get_entity_json(some_uuid))
+        )
+        rules_json = calculate_assay_info(metadata,
+                                          is_human,
+                                          get_data_from_ubkg
+                                          )
+        return jsonify(rules_json)
     except ValueError as excp:
         logger.error(excp, exc_info=True)
         return Response("Bad parameter: {excp}", 400)
@@ -286,24 +256,13 @@ def get_assaytype_from_metadata():
     try:
         require_json(request)
         metadata = request.json
-        rules_json = calculate_assay_info(metadata)
-
         if parent_sample_ids := metadata.get("parent_sample_id"):
-            source_type = ""
-            parent_sample_ids = parent_sample_ids.split(",")
-            for parent_sample_id in parent_sample_ids:
-                parent_entity = get_entity(parent_sample_id)
-                if hasattr(parent_entity, "source"):
-                    if source_type := parent_entity.source.get("source_type"):
-                        # If there is a single Human source_type, treat this as a Human case
-                        if source_type.upper() == "HUMAN":
-                            break
-            apply_source_type_transformations(source_type, rules_json)
-
-        ubkg_value_json = get_data_from_ubkg(rules_json.get("ubkg_code")).get("value", {})
-        merged_json = standardize_results(rules_json, ubkg_value_json)
-        merged_json["ubkg_json"] = ubkg_value_json
-        return jsonify(merged_json)
+            is_human = source_is_human(parent_sample_ids.split(","),
+                                       get_entity_json)
+        else:
+            is_human = True  # default to human for safety
+        rules_json = calculate_assay_info(metadata, is_human, get_data_from_ubkg)
+        return jsonify(rules_json)
     except ResponseException as re:
         logger.error(re, exc_info=True)
         return re.response
@@ -328,7 +287,7 @@ def get_assaytype_from_metadata():
 @bp.route("/reload-assaytypes", methods=["PUT"])
 def reload_chain():
     try:
-        initialize_rule_chain()
+        initialize_rule_chains()
         return jsonify({})
     except ResponseException as re:
         logger.error(re, exc_info=True)
