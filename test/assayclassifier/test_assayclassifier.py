@@ -9,17 +9,19 @@ class TestAssayClassifier(unittest.TestCase):
 
     def setUp(self):
         test_rule_yaml = """
-        - type: 'match'
-          match: 'name == "foo"'
-          value: "{'assaytype': name}"
-        - type: 'note'
-          match: 'name=="bar"'
-          value: "{'assay_class': 'bar_type'}"
-        - type: 'match'
-          match: 'assay_class == "bar_type" and othername == "baz"'
-          value: "{'assaytype': 'baz'}"
+        body:
+          - type: 'match'
+            match: 'name == "foo"'
+            value: "{'assaytype': name}"
+          - type: 'note'
+            match: 'name=="bar"'
+            value: "{'assay_class': 'bar_type'}"
+          - type: 'match'
+            match: 'assay_class == "bar_type" and othername == "baz"'
+            value: "{'assaytype': 'baz'}"
         """
-        self.chain = RuleLoader(test_rule_yaml).load()
+        chain_dict = RuleLoader(test_rule_yaml).load()
+        self.chain = chain_dict["body"]
 
     def test_matches(self):
         for test_case, expected_val in [
