@@ -2032,6 +2032,10 @@ DATASETS_DATA_STATUS_KEY = "datasets_data_status_key"
 DATASETS_DATA_STATUS_LAST_UPDATED_KEY = "datasets_data_status_last_updated_key"
 UPLOADS_DATA_STATUS_KEY = "uploads_data_status_key"
 UPLOADS_DATA_STATUS_LAST_UPDATED_KEY = "uploads_data_status_last_updated_key"
+# Redis Key tracking whether the datset/uploads data-status is running or not. Redis treats these true/false values as ints 1 and 0
+DATASETS_DATA_STATUS_RUNNING_KEY = "datasets_data_status_running_key"
+UPLOADS_DATA_STATUS_RUNNING_KEY = "uploads_data_status_running_key"
+
 
 
 # /has-pipeline-test-privs endpoint
@@ -2227,8 +2231,13 @@ Description
 """
 @app.route('/datasets/data-status', methods=['GET'])
 def dataset_data_status():
-    redis_connection = redis.from_url(app.config['REDIS_URL'])
     try:
+        try:
+            datasets_data_status_running = bool(int(redis_connection.get(DATASETS_DATA_STATUS_RUNNING_KEY)))
+            if datasets_data_status_running:
+                return jsonify({"status": "Job to update dataset data-status already in progress"}), 202
+        except Exception as e:
+            logger.error("Failed to retrieve datasets_data_status_running_key to determine whether job already started")
         cached_data = redis_connection.get(DATASETS_DATA_STATUS_KEY)
         if cached_data:
             cached_data_json = json.loads(cached_data.decode('utf-8'))
@@ -2249,8 +2258,13 @@ Description
 """
 @app.route('/uploads/data-status', methods=['GET'])
 def upload_data_status():
-    redis_connection = redis.from_url(app.config['REDIS_URL'])
     try:
+        try:
+            uploads_data_status_running = bool(int(redis_connection.get(UPLOADS_DATA_STATUS_RUNNING_KEY)))
+            if uploads_data_status_running == True:
+                return jsonify({"status": "Job to update upload data-status already in progress"}), 202
+        except Exception as e:
+            logger.error("Failed to retrieve uploads_data_status_running_key to determine whether job already started")
         cached_data = redis_connection.get(UPLOADS_DATA_STATUS_KEY)
         if cached_data:
             cached_data_json = json.loads(cached_data.decode('utf-8'))
@@ -3319,10 +3333,18 @@ def update_datasets_datastatus():
     try:
         combined_results_string = json.dumps(combined_results)
     except json.JSONDecodeError as e:
+        try:
+            redis_connection.set(DATASETS_DATA_STATUS_RUNNING_KEY, int(False))
+        except Exception as v:
+            logger.error(f"Failed to set datasets_data_status_running {v}")
         bad_request_error(e)
-    redis_connection = redis.from_url(app.config['REDIS_URL'])
-    redis_connection.set(DATASETS_DATA_STATUS_KEY, combined_results_string)
-    redis_connection.set(DATASETS_DATA_STATUS_LAST_UPDATED_KEY, int(time.time() * 1000))
+    try:
+        redis_connection.set(DATASETS_DATA_STATUS_KEY, combined_results_string)
+        redis_connection.set(DATASETS_DATA_STATUS_LAST_UPDATED_KEY, int(time.time() * 1000))
+        redis_connection.set(DATASETS_DATA_STATUS_RUNNING_KEY, int(False))
+    except Exception as e:
+        # In the event of a caching failue, the endpoint should regenerate the data every call
+        logger.error(f"Failed to set datasets_data_status in redis {e}")
     return combined_results
 
 def update_uploads_datastatus():
@@ -3370,10 +3392,18 @@ def update_uploads_datastatus():
     try:
         results_string = json.dumps(results)
     except json.JSONDecodeError as e:
+        try:
+            redis_connection.set(UPLOADS_DATA_STATUS_RUNNING_KEY, int(False))
+        except Exception as v:
+            logger.error(f"Failed to set uploads_data_status_running {v}")
         bad_request_error(e)
-    redis_connection = redis.from_url(app.config['REDIS_URL'])
-    redis_connection.set(UPLOADS_DATA_STATUS_KEY, results_string)
-    redis_connection.set(UPLOADS_DATA_STATUS_LAST_UPDATED_KEY, int(time.time() * 1000))
+    try:
+        redis_connection.set(UPLOADS_DATA_STATUS_KEY, results_string)
+        redis_connection.set(UPLOADS_DATA_STATUS_LAST_UPDATED_KEY, int(time.time() * 1000))
+        redis_connection.set(UPLOADS_DATA_STATUS_RUNNING_KEY, int(False))
+    except Exception as e:
+        # In the event of a caching failue, the endpoint should regenerate the data every call
+        logger.error(f"Failed to set uploads_data_status in redis {e}")
     return results
 
 
@@ -3400,6 +3430,17 @@ def files_exist(uuid, data_access_level, group_name, metadata=False):
                 return False
     else:
         return False
+
+# From the time update_datasets/uploads_datastatus are queued, until they complete for the first time, a 202 should be returned
+# This flag is tracked in redis    
+redis_connection = redis.from_url(app.config['REDIS_URL'])
+try:
+    redis_connection.set(DATASETS_DATA_STATUS_RUNNING_KEY, int(True))
+    redis_connection.set(UPLOADS_DATA_STATUS_RUNNING_KEY, int(True))
+except Exception as e:
+    # If for some reason redis were to encounter a problem here, just log it so it doesn't hold up the rest of the ingest service. A redundant 
+    # call to update data status is better than throwing an error
+    logger.error("Failed to set datasets/uploads_data_status_running_key")
 
 scheduler = BackgroundScheduler()
 scheduler.start()
