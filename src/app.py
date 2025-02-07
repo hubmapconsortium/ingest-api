@@ -2286,6 +2286,8 @@ def validate_uploaded_metadata(upload, token, data):
     message = []
     records = []
     headers = []
+    sample_ids_list = []
+    source_ids_list = []
     with open(fullpath, newline="") as tsvfile:
         reader = csv.DictReader(tsvfile, delimiter="\t")
         first = True
@@ -2296,8 +2298,47 @@ def validate_uploaded_metadata(upload, token, data):
                     headers.append(key)
                 data_row[key] = row[key]
             records.append(data_row)
+            if data_row.get('sample_id'):
+                sample_ids_list.append(data_row.get('sample_id'))
+            if data_row.get('source_id'):
+                source_ids_list.append(data_row.get('source_id'))
             if first:
                 first = False
+    # Verify all source and sample id's exist
+    source_ids_str = ", ".join([f"'{id}'" for id in source_ids_list])
+    sample_ids_str = ", ".join([f"'{id}'" for id in sample_ids_list])
+    entities_exist_query = (
+        f"WITH [{source_ids_str}] AS source_ids, [{sample_ids_str}] AS sample_ids "
+        f"UNWIND source_ids AS sid "
+        f"OPTIONAL MATCH (n) WHERE n.hubmap_id = sid "
+        f"WITH source_ids, sample_ids, sid, n "
+        f"WHERE n IS NULL "
+        f"WITH collect(sid) AS missing_source_ids, sample_ids "
+        f"UNWIND sample_ids AS samp "
+        f"OPTIONAL MATCH (m) WHERE m.hubmap_id = samp "
+        f"WITH missing_source_ids, samp, m "
+        f"WHERE m IS NULL "
+        f"WITH missing_source_ids, collect(samp) AS missing_sample_ids "
+        f"RETURN missing_source_ids, missing_sample_ids "
+    )
+    try:
+        missing_source_ids = None
+        missing_sample_ids = None
+        with neo4j_driver_instance.session() as neo_session:       
+            result = neo_session.run(entities_exist_query)
+            row = result.single()
+            if row:
+                row = dict(row)
+                missing_source_ids = row['missing_source_ids'] if 'missing_source_ids' in row else []
+                missing_sample_ids = row['missing_sample_ids'] if 'missing_sample_ids' in row else []
+    except Exception as e:
+        internal_server_error(f"Unable to validate existence of source and sample ids. {e}")
+    if missing_sample_ids:
+        message.append(f"The following sample_ids were not found: {', '.join(missing_sample_ids)}")
+    if missing_source_ids:
+        message.append(f"The following source_ids were not found: {', '.join(missing_source_ids)}")
+    if missing_sample_ids or missing_source_ids:
+        return message
     cedar_sample_sub_type_ids = {
         "block": "3e98cee6-d3fb-467b-8d4e-9ba7ee49eeff",
         "section": "01e9bc58-bdf2-49f4-9cf9-dd34f3cc62d7",
