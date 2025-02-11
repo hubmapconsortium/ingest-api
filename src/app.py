@@ -2458,7 +2458,7 @@ validate_uuids: int
 Returns
 --------
 message : json array of representing the individual errors returned from ingest-validation-tools
-200: json containing {'message': 'success'}
+202: json containing {'message': 'accepted'}
 """
 @app.route('/sample-bulk-metadata', methods=['PUT'])
 def sample_bulk_metadata():
@@ -2546,7 +2546,7 @@ def sample_bulk_metadata():
         except Exception as e:
             logger.error(f"Validated metadata and updated entities, but failed to reach flush entity cache or reindex entities. {e}")
         
-    return jsonify({"message": "Success"}), 200
+    return jsonify({"message": "Accepted"}), 202
 
 @app.route('/donors/bulk-upload', methods=['POST'])
 def bulk_donors_upload_and_validate():
