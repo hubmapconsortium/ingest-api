@@ -3056,10 +3056,13 @@ def update_datasets_datastatus():
         globus_url = get_globus_url(dataset.get('data_access_level'), dataset.get('group_name'), dataset.get('uuid'))
         dataset['globus_url'] = globus_url
         dataset['last_touch'] = dataset['last_touch'] if dataset['published_timestamp'] is None else dataset['published_timestamp']
-        if dataset.get('activity_creation_action').lower().endswith("process"):
-            dataset['is_primary'] = "False"
-        else:
-            dataset['is_primary'] = "True"
+        
+        # Identify primary dataset based on `Activity.creation_action == "Create Dataset Activity"`
+        # Component datasets grnerated by `Multi-Assay Split` and 
+        # Processed datasets from `Central Process|ExternalProcess|Lab Process` are NOT primary
+        # For performance, don't call `dataset_is_primary()` since it issues separate Neo4j query on each dataset - Zhou 2/10/2025
+        dataset['is_primary'] = "True" if dataset.get('activity_creation_action').lower() == "create dataset activity" else "False"
+
         has_data = files_exist(dataset.get('uuid'), dataset.get('data_access_level'), dataset.get('group_name'))
         has_dataset_metadata = files_exist(dataset.get('uuid'), dataset.get('data_access_level'), dataset.get('group_name'), metadata=True)
         dataset['has_data'] = has_data
