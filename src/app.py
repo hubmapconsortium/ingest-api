@@ -15,6 +15,7 @@ from operator import xor
 from threading import Thread
 from hubmap_sdk import EntitySdk
 from apscheduler.schedulers.background import BackgroundScheduler
+from neo4j.exceptions import TransactionError
 from apscheduler.triggers.interval import IntervalTrigger
 from apscheduler.triggers.date import DateTrigger
 # Don't confuse urllib (Python native library) with urllib3 (3rd-party library, requests also uses urllib3)
@@ -61,6 +62,8 @@ from routes.assayclassifier import bp as assayclassifier_blueprint
 from routes.validation import validation_blueprint
 from routes.datasets_bulk_submit import datasets_bulk_submit_blueprint
 from routes.privs import privs_blueprint
+from ingest_validation_tools import schema_loader, table_validator 
+from ingest_validation_tools import validation_utils as iv_utils
 
 # Set logging format and level (default is warning)
 # All the API logging is forwarded to the uWSGI server and gets written into the log file `uwsgi-ingest-api.log`
@@ -2276,6 +2279,274 @@ def upload_data_status():
     last_updated = int(time.time() * 1000)
     return jsonify({"data": results, "last_updated": last_updated})
 
+def validate_uploaded_metadata(upload, token, data):
+    sub_type = data.get('sub_type').lower()
+    fullpath = upload.get("fullpath")
+    validate_uuids = data.get('validate_uuids')
+    message = []
+    records = []
+    headers = []
+    sample_ids_list = []
+    source_ids_list = []
+    with open(fullpath, newline="") as tsvfile:
+        reader = csv.DictReader(tsvfile, delimiter="\t")
+        first = True
+        for row in reader:
+            data_row = {}
+            for key in row.keys():
+                if first:
+                    headers.append(key)
+                data_row[key] = row[key]
+            records.append(data_row)
+            if data_row.get('sample_id'):
+                sample_ids_list.append(data_row.get('sample_id'))
+            if data_row.get('source_id'):
+                source_ids_list.append(data_row.get('source_id'))
+            if first:
+                first = False
+    # Verify all source and sample id's exist
+    source_ids_str = ", ".join([f"'{id}'" for id in source_ids_list])
+    sample_ids_str = ", ".join([f"'{id}'" for id in sample_ids_list])
+    entities_exist_query = (
+        f"WITH [{source_ids_str}] AS source_ids, [{sample_ids_str}] AS sample_ids "
+        f"UNWIND source_ids AS sid "
+        f"OPTIONAL MATCH (n) WHERE n.hubmap_id = sid "
+        f"WITH source_ids, sample_ids, sid, n "
+        f"WHERE n IS NULL "
+        f"WITH collect(sid) AS missing_source_ids, sample_ids "
+        f"UNWIND sample_ids AS samp "
+        f"OPTIONAL MATCH (m) WHERE m.hubmap_id = samp "
+        f"WITH missing_source_ids, samp, m "
+        f"WHERE m IS NULL "
+        f"WITH missing_source_ids, collect(samp) AS missing_sample_ids "
+        f"RETURN missing_source_ids, missing_sample_ids "
+    )
+    try:
+        missing_source_ids = None
+        missing_sample_ids = None
+        with neo4j_driver_instance.session() as neo_session:       
+            result = neo_session.run(entities_exist_query)
+            row = result.single()
+            if row:
+                row = dict(row)
+                missing_source_ids = row['missing_source_ids'] if 'missing_source_ids' in row else []
+                missing_sample_ids = row['missing_sample_ids'] if 'missing_sample_ids' in row else []
+    except Exception as e:
+        internal_server_error(f"Unable to validate existence of source and sample ids. {e}")
+    if missing_sample_ids:
+        message.append(f"The following sample_ids were not found: {', '.join(missing_sample_ids)}")
+    if missing_source_ids:
+        message.append(f"The following source_ids were not found: {', '.join(missing_source_ids)}")
+    if missing_sample_ids or missing_source_ids:
+        return message
+    cedar_sample_sub_type_ids = {
+        "block": "3e98cee6-d3fb-467b-8d4e-9ba7ee49eeff",
+        "section": "01e9bc58-bdf2-49f4-9cf9-dd34f3cc62d7",
+        "suspension": "ea4fb93c-508e-4ec4-8a4b-89492ba68088"
+    }
+    accepted_subtypes = ", ".join(cedar_sample_sub_type_ids.keys())
+    if not sub_type in cedar_sample_sub_type_ids:
+        message.append(f'Unrecognized sub_type {sub_type}. Valid subtypes for samples are: {accepted_subtypes}')
+        return message
+    if not (len(records) and"metadata_schema_id" in records[0]):
+        message.append(f'Unsupported uploaded TSV spec for sample {sub_type}. CEDAR formatting is required for samples. For more details, check out the docs: https://hubmapconsortium.github.io/ingest-validation-tools/current')
+        return message
+    else:
+        if records[0]["metadata_schema_id"].lower() != cedar_sample_sub_type_ids[sub_type].lower():
+            message.append(f'Mismatch of "sample {sub_type}" and "metadata_schema_id". \nValid id for "{sub_type}": {cedar_sample_sub_type_ids[sub_type]}. \nFor more details, check out the docs "https://hubmapconsortium.github.io/ingest-validation-tools/"')
+            return message
+    schema = f'sample-{sub_type}'
+    try:
+        app_context = {
+            "request_header": {"X-Hubmap-Application": "ingest-api"},
+            "ingest_url": commons_file_helper.ensureTrailingSlashURL(app.config["FLASK_APP_BASE_URI"]),
+            "entities_url": f"{commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL'])}entities/",
+            "constraints_url": f"{commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL'])}constraints/"
+
+        }
+        validation_results = iv_utils.get_tsv_errors(
+            fullpath,
+            schema_name=schema,
+            report_type=table_validator.ReportType.JSON,
+            globus_token=token,
+            app_context=app_context,
+        )
+    except schema_loader.PreflightError as e:
+        internal_server_error(f"'Preflight': {str(e)}")
+    except Exception as e:
+        internal_server_error(e)
+    if len(validation_results) > 0:
+        if not isinstance(validation_results, list):
+            validation_results = [validation_results]
+
+        logger.error(f"Error validating metadata: {validation_results}")
+        message.append(f"Error validating metadata: {validation_results}")
+        return message
+    if validate_uuids == "1":
+        errors = []
+        passing = []
+        idx = 1
+        for r in records:
+            ok = True
+            # First get the id column name, in order to get HuBMAP id in the record
+            id_col = "sample_id"
+            entity_id = r.get(id_col)
+            if entity_id is None:
+                errors.append(f"Must supply `{id_col}` and valid value", idx, id_col)
+                message = errors
+                return message
+            try:
+                url = commons_file_helper.ensureTrailingSlashURL(app.config["ENTITY_WEBSERVICE_URL"])+ "entities/"+ entity_id
+                header = {'Authorization': 'Bearer ' + token,  'X-Hubmap-Application': 'ingest-api'}
+                resp = requests.get(url, headers=header)
+            except requests.exceptions.RequestException as e:
+                logger.error(f"Error validating metadata: {e}")
+            if resp.status_code > 299:
+                errors.append(f"Invalid `{id_col}`: `{entity_id}`", idx, id_col)
+                message = errors
+                return message
+            entity = resp.json()
+            result_entity = {"uuid": entity["uuid"]}
+            related_id_col = "source_id"
+            related_entity_id = r.get('source_id')
+            if related_entity_id is not None:
+                try:
+                    url = commons_file_helper.ensureTrailingSlashURL(app.config["ENTITY_WEBSERVICE_URL"])+ "entities/"+ related_entity_id
+                    header = {'Authorization': 'Bearer ' + token,  'X-Hubmap-Application': 'ingest-api'}
+                    resp = requests.get(url, headers=header)
+                except requests.exceptions.RequestException as e:
+                    logger.error(f"Error validating metadata: {e}")
+                if resp.status_code > 299:
+                    errors.append(f"Invalid `{related_id_col}`: `{related_entity_id}`", idx, id_col)
+                    ok = False
+            else:
+                message = f'Unsupported uploaded TSV spec for "sample {sub_type}". Missing `{related_id_col}` column. For more details, check out the docs: https://hubmapconsortium.github.io/ingest-validation-tools/current'
+                return message
+            if sub_type is not None:
+                sub_type_col = 'sample_category'
+                _sub_type = entity.get(sub_type_col)
+                if _sub_type.lower() not in ['block', 'section', 'suspension']:
+                    errors.append(f'{sub_type} unsupported on check of given `{entity_id}`. {idx}. {sub_type_col}')
+                    ok = False
+                if _sub_type.lower() != sub_type.lower():
+                    errors.append(f'got `{_sub_type}` on check of given `{entity_id}` expected `{sub_type}` for `{sub_type_col}`. {idx}. {id_col}')
+                    ok = False
+            if ok is True:
+                result_entity["metadata"] = r
+                passing.append(result_entity)
+            idx += 1
+        if len(errors) >= 0:
+            message = errors
+            return message
+    return message
+            
+
+"""
+Accepts a tsv containing metadata of multiple samples, validates with cedar via ingest-validation-tools, validates sample ids
+and their associated sources. If invalid, returns the errors, if valid, updates the provided samples metadata via neo4j, 
+flushes the cache in entity-api, and reindexes the entities via search-api
+Input
+--------
+Input is via PUT request multipart/form-data body. Most of the fields are given by an attached tsv file; additional fields are also included
+
+metadata : tsv file
+    the tsv file containing datasets to have their metadata registered
+sub_type : str
+        The sample category of the given samples
+validate_uuids: int
+    An integer value 1 or 0 indicating whether the individual samples should be validated along with the schema. 
+Returns
+--------
+message : json array of representing the individual errors returned from ingest-validation-tools
+202: json containing {'message': 'accepted'}
+"""
+@app.route('/sample-bulk-metadata', methods=['PUT'])
+def sample_bulk_metadata():
+    if 'metadata' not in request.files:
+        bad_request_error('No metadata part')
+    file = request.files['metadata']
+    sub_type = request.form.get('sub_type')
+    validate_uuids = request.form.get('validate_uuids')
+    if sub_type is None:
+        bad_request_error('No sub_type in request')
+    if validate_uuids is None:
+        validate_uuids = "0"
+    data = {
+        "entity_type": "sample",
+        "sub_type": sub_type,
+        "validate_uuids": validate_uuids
+    }
+    if file.filename == '':
+        bad_request_error('No selected file')
+    file.filename = file.filename.replace(" ", "_")
+    token = auth_helper_instance.getAuthorizationTokens(request.headers)
+    header = {'Authorization': 'Bearer ' + token}
+    try:
+        temp_id = file_upload_helper_instance.save_temp_file(file)
+    except Exception as e:
+        bad_request_error(f"Failed to create temp_id: {e}")
+    file.filename = utils.secure_filename(file.filename)
+    path_name = temp_id + os.sep + file.filename
+    file_details = {
+        "filename": os.path.basename(path_name),
+        "pathname": path_name,
+        "fullpath": commons_file_helper.ensureTrailingSlash(app.config['FILE_UPLOAD_TEMP_DIR']) + temp_id + os.sep + file.filename
+    }
+    message = validate_uploaded_metadata(file_details, token, data)
+    if len(message) > 0:
+        # The validated output appears to be adding ADDITIONAL escape characters. Cleaning the message leaves it with the expected escapes.
+        cleaned_message = [msg.replace('\"', '"').replace('\\n', '\n') for msg in message]
+        error_message = ", ".join(cleaned_message)
+        return jsonify({"error": f"Errors occurred during validation. {error_message}"}), 400
+    headers = []
+    records = []
+    with open(file_details['fullpath'], newline="") as tsvfile:
+        reader = csv.DictReader(tsvfile, delimiter="\t")
+        first = True
+        for row in reader:
+            data_row = {}
+            for key in row.keys():
+                if first:
+                    headers.append(key)
+                data_row[key] = row[key]
+            records.append(data_row)
+            if first:
+                first = False
+    updates = []
+    ids = []
+    for r in records:
+        id = r.get('sample_id')
+        update = {
+            'id': id,
+            'metadata': json.dumps(r).replace('"', "'") 
+        }
+        updates.append(update)
+        ids.append(id)
+
+    update_query = "WITH ["
+    update_query += ", ".join([f"{{id: \"{u['id']}\", metadata: \"{u['metadata']}\"}}" for u in updates])
+    update_query += f"] AS updates UNWIND updates AS u MATCH (e {{hubmap_id: u.id}}) SET e.metadata = u.metadata"
+    try:
+        with neo4j_driver_instance.session() as neo_session:
+            tx = neo_session.begin_transaction()
+            result = tx.run(update_query)
+            tx.commit()
+    except TransactionError as e:
+        if tx and tx.closed() == False:
+            tx.rollback()
+        internal_server_error(f"Metadata was validated but failed to update entities metadata. Transaction error: {e}")
+    except Exception as e:
+        internal_server_error(f"Metadata was validated but failed to update entities metadata. {e}")
+    for id in ids:
+        try:
+            entity_resp = requests.delete(commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + f'flush-cache/{id}', headers=header)
+            search_resp = requests.put(commons_file_helper.ensureTrailingSlashURL(app.config['SEARCH_WEBSERVICE_URL']) + f'reindex/{id}', headers=header)
+        except HTTPException as hte:
+            logger.error(f"Validated metadata and updated entities, but failed to reach flush entity cache or reindex entities. {hte.get_description()}, {hte.get_status_code()}")
+        except Exception as e:
+            logger.error(f"Validated metadata and updated entities, but failed to reach flush entity cache or reindex entities. {e}")
+        
+    return jsonify({"message": "Accepted"}), 202
 
 @app.route('/donors/bulk-upload', methods=['POST'])
 def bulk_donors_upload_and_validate():
