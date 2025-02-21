@@ -2252,20 +2252,31 @@ def validate_uploaded_metadata(upload, token, data):
     headers = []
     sample_ids_list = []
     source_ids_list = []
+    row_num = 0
+    blank_sources_or_samples = False
     with open(fullpath, newline="") as tsvfile:
         reader = csv.DictReader(tsvfile, delimiter="\t")
         first = True
         for row in reader:
+            row_num = row_num + 1
             data_row = {}
             for key in row.keys():
                 if first:
                     headers.append(key)
                 data_row[key] = row[key]
             records.append(data_row)
-            if data_row.get('sample_id'):
+            sample_id = data_row.get('sample_id')
+            source_id = data_row.get('source_id')
+            if sample_id and sample_id.strip():
                 sample_ids_list.append(data_row.get('sample_id'))
-            if data_row.get('source_id'):
+            else:
+                message.append(f"Missing sample_id for row {row_num}")
+                blank_sources_or_samples = True
+            if source_id and source_id.strip():
                 source_ids_list.append(data_row.get('source_id'))
+            else:
+                message.append(f"Missing source_id for row {row_num}")
+                blank_sources_or_samples = True
             if first:
                 first = False
     # Verify all source and sample id's exist
@@ -2301,7 +2312,7 @@ def validate_uploaded_metadata(upload, token, data):
         message.append(f"The following sample_ids were not found: {', '.join(missing_sample_ids)}")
     if missing_source_ids:
         message.append(f"The following source_ids were not found: {', '.join(missing_source_ids)}")
-    if missing_sample_ids or missing_source_ids:
+    if missing_sample_ids or missing_source_ids or blank_sources_or_samples:
         return message
     cedar_sample_sub_type_ids = {
         "block": "3e98cee6-d3fb-467b-8d4e-9ba7ee49eeff",
@@ -3438,17 +3449,17 @@ scheduler.add_job(
     name="Update Upload Data Status Job"
 )
 
-scheduler.add_job(
-    func=update_datasets_datastatus,
-    trigger=DateTrigger(run_date=datetime.datetime.now() + datetime.timedelta(minutes=1)),
-    name="Initial run of Dataset Data Status Job"
-)
+# scheduler.add_job(
+#     func=update_datasets_datastatus,
+#     trigger=DateTrigger(run_date=datetime.datetime.now() + datetime.timedelta(minutes=1)),
+#     name="Initial run of Dataset Data Status Job"
+# )
 
-scheduler.add_job(
-    func=update_uploads_datastatus,
-    trigger=DateTrigger(run_date=datetime.datetime.now() + datetime.timedelta(minutes=1)),
-    name="Initial run of Dataset Data Status Job"
-)
+# scheduler.add_job(
+#     func=update_uploads_datastatus,
+#     trigger=DateTrigger(run_date=datetime.datetime.now() + datetime.timedelta(minutes=1)),
+#     name="Initial run of Dataset Data Status Job"
+# )
 
 # For local development/testing
 if __name__ == '__main__':
