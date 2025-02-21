@@ -11,6 +11,7 @@ import json
 from uuid import UUID
 import csv
 import time
+from operator import xor
 from threading import Thread
 from hubmap_sdk import EntitySdk
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -240,10 +241,22 @@ def index():
 @app.route('/status', methods=['GET'])
 def status():
     response_code = 200
+    try:
+        file_build_content = (Path(__file__).absolute().parent.parent / 'BUILD').read_text().strip()
+    except Exception as e:
+        file_build_content = str(e)
+
+    try:
+        redis_conn = redis.from_url(redis_url)
+        redis_ping_status = redis_conn.ping()
+    except Exception as e:
+        redis_ping_status = str(e)
+
     response_data = {
         # Use strip() to remove leading and trailing spaces, newlines, and tabs
         'version': (Path(__file__).absolute().parent.parent / 'VERSION').read_text().strip(),
-        'build': (Path(__file__).absolute().parent.parent / 'BUILD').read_text().strip(),
+        'redis': redis_ping_status,
+        'build': file_build_content
     }
 
     try:
@@ -848,23 +861,6 @@ def obj_to_dict(obj) -> dict:
         json.dumps(obj, default=lambda o: getattr(o, '__dict__', str(o)))
     )
 
-def entity_json_dumps(entity_instance: EntitySdk, dataset_uuid: str) -> str:
-    """
-    Because entity and the content of the arrays returned from entity_instance.get_associated_*
-    contain user defined objects we need to turn them into simple python objects (e.g., dicts, lists, str)
-    before we can convert them wth json.dumps.
-
-    Here we create an expanded version of the entity associated with the dataset_uuid and return it as a json string.
-    """
-    entity = obj_to_dict(entity_instance.get_entity_by_id(dataset_uuid))
-    entity['organs'] = obj_to_dict(entity_instance.get_associated_organs_from_dataset(dataset_uuid))
-    entity['samples'] = obj_to_dict(entity_instance.get_associated_samples_from_dataset(dataset_uuid))
-    entity['donors'] = obj_to_dict(entity_instance.get_associated_donors_from_dataset(dataset_uuid))
-
-    json_object = json.dumps(entity, indent=4)
-    json_object += '\n'
-    return json_object
-
 def metadata_json_based_on_creation_action(creation_action: str) -> bool:
     """
     https://github.com/hubmapconsortium/ingest-api/issues/575
@@ -962,13 +958,11 @@ def publish_datastage(identifier):
                             return jsonify({"error": f"donor.metadata is missing for {dataset_uuid}"}), 400
                         metadata = metadata.replace("'", '"')
                         metadata_dict = json.loads(metadata)
-                        living_donor = True
-                        organ_donor = True
-                        if metadata_dict.get('organ_donor_data') is None:
-                            living_donor = False
-                        if metadata_dict.get('living_donor_data') is None:
-                            organ_donor = False
-                        if (organ_donor and living_donor) or (not organ_donor and not living_donor):
+                        has_organ_donor_data = metadata_dict.get('organ_donor_data') is not None
+                        has_living_donor_data = metadata_dict.get('living_donor_data') is not None
+                        # Use the bit-wise xor operator with bool values to determine if
+                        # exactly one of required Donor characteristics is indicated in the metadata.
+                        if not xor(has_organ_donor_data, has_living_donor_data):
                             return jsonify({"error": f"donor.metadata.organ_donor_data or "
                                                      f"donor.metadata.living_donor_data required. "
                                                      f"Both cannot be None. Both cannot be present. Only one."}), 400
@@ -981,7 +975,8 @@ def publish_datastage(identifier):
                                         f"Will not Publish. Ancestor dataset is: {uuid}", 400)
 
             if has_donor is False:
-                return Response(f"{dataset_uuid}: no donor found for dataset, will not Publish")
+                return Response(    response=f"{dataset_uuid}: no donor found for dataset, will not Publish"
+                                    , status=400)
 
             #get info for the dataset to be published
             q = f"MATCH (e:Dataset {{uuid: '{dataset_uuid}'}}) RETURN " \
@@ -1150,7 +1145,21 @@ def publish_datastage(identifier):
                 ds_path = ingest_helper.dataset_directory_absolute_path_published(data_access_level,
                                                                                   dataset_group_uuid, dataset_uuid)
                 md_file = os.path.join(ds_path, "metadata.json")
-                json_object = entity_json_dumps(entity_instance, dataset_uuid)
+                try:
+                    entity_base_url = commons_file_helper.removeTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL'])
+                    prov_metadata_url = f"{entity_base_url}/datasets/{dataset_uuid}/prov-metadata"
+                    rspn = requests.get(    url=prov_metadata_url
+                                            ,headers = {'Authorization': request.headers["AUTHORIZATION"]})
+                    if rspn.status_code not in [200]:
+                        raise Exception(f"Retrieving provenance metadata for {dataset_uuid}"
+                                        f" from Entity API resulted in: {rspn.json()['error']}")
+                    json_object = f"{json.dumps(obj=rspn.json(), indent=4)}\n"
+                except Exception as e:
+                    logger.exception(   f"An exception occurred retrieving prov-metadata for"
+                                        f" dataset_uuid={dataset_uuid} while"
+                                        f" publishing identifier={identifier}")
+                    raise e
+
                 logger.info(f"publish_datastage; writing metadata.json file: '{md_file}'; "
                             f"containing: '{json_object}'")
                 try:
@@ -1234,7 +1243,20 @@ def datasets_metadata_json(identifier):
                                                                 identifier,
                                                                 dataset_published)
         md_file = os.path.join(ds_path, "metadata.json")
-        json_object = entity_json_dumps(entity_instance, identifier)
+        try:
+            entity_base_url = commons_file_helper.removeTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL'])
+            prov_metadata_url = f"{entity_base_url}/datasets/{identifier}/prov-metadata"
+            rspn = requests.get(url=prov_metadata_url
+                                , headers={'Authorization': request.headers["AUTHORIZATION"]})
+            if rspn.status_code not in [200]:
+                raise Exception(f"Retrieving provenance metadata for {identifier}"
+                                f" from Entity API resulted in: {rspn.json()['error']}")
+            json_object = f"{json.dumps(obj=rspn.json(), indent=4)}\n"
+        except Exception as e:
+            logger.exception(f"An exception occurred retrieving prov-metadata while"
+                             f" updating metadata for identifier={identifier}")
+            raise e
+
         logger.info(f"publish_datastage; writing md_file: '{md_file}'; "
                     f"containing: '{json_object}'")
         try:
@@ -2010,6 +2032,10 @@ DATASETS_DATA_STATUS_KEY = "datasets_data_status_key"
 DATASETS_DATA_STATUS_LAST_UPDATED_KEY = "datasets_data_status_last_updated_key"
 UPLOADS_DATA_STATUS_KEY = "uploads_data_status_key"
 UPLOADS_DATA_STATUS_LAST_UPDATED_KEY = "uploads_data_status_last_updated_key"
+# Redis Key tracking whether the datset/uploads data-status is running or not. Redis treats these true/false values as ints 1 and 0
+DATASETS_DATA_STATUS_RUNNING_KEY = "datasets_data_status_running_key"
+UPLOADS_DATA_STATUS_RUNNING_KEY = "uploads_data_status_running_key"
+
 
 
 # /has-pipeline-test-privs endpoint
@@ -2205,8 +2231,13 @@ Description
 """
 @app.route('/datasets/data-status', methods=['GET'])
 def dataset_data_status():
-    redis_connection = redis.from_url(app.config['REDIS_URL'])
     try:
+        try:
+            datasets_data_status_running = bool(int(redis_connection.get(DATASETS_DATA_STATUS_RUNNING_KEY)))
+            if datasets_data_status_running:
+                return jsonify({"status": "Job to update dataset data-status already in progress"}), 202
+        except Exception as e:
+            logger.error("Failed to retrieve datasets_data_status_running_key to determine whether job already started")
         cached_data = redis_connection.get(DATASETS_DATA_STATUS_KEY)
         if cached_data:
             cached_data_json = json.loads(cached_data.decode('utf-8'))
@@ -2227,8 +2258,13 @@ Description
 """
 @app.route('/uploads/data-status', methods=['GET'])
 def upload_data_status():
-    redis_connection = redis.from_url(app.config['REDIS_URL'])
     try:
+        try:
+            uploads_data_status_running = bool(int(redis_connection.get(UPLOADS_DATA_STATUS_RUNNING_KEY)))
+            if uploads_data_status_running == True:
+                return jsonify({"status": "Job to update upload data-status already in progress"}), 202
+        except Exception as e:
+            logger.error("Failed to retrieve uploads_data_status_running_key to determine whether job already started")
         cached_data = redis_connection.get(UPLOADS_DATA_STATUS_KEY)
         if cached_data:
             cached_data_json = json.loads(cached_data.decode('utf-8'))
@@ -3302,10 +3338,13 @@ def update_datasets_datastatus():
         globus_url = get_globus_url(dataset.get('data_access_level'), dataset.get('group_name'), dataset.get('uuid'))
         dataset['globus_url'] = globus_url
         dataset['last_touch'] = dataset['last_touch'] if dataset['published_timestamp'] is None else dataset['published_timestamp']
-        if dataset.get('activity_creation_action').lower().endswith("process"):
-            dataset['is_primary'] = "False"
-        else:
-            dataset['is_primary'] = "True"
+        
+        # Identify primary dataset based on `Activity.creation_action == "Create Dataset Activity"`
+        # Component datasets grnerated by `Multi-Assay Split` and 
+        # Processed datasets from `Central Process|ExternalProcess|Lab Process` are NOT primary
+        # For performance, don't call `dataset_is_primary()` since it issues separate Neo4j query on each dataset - Zhou 2/10/2025
+        dataset['is_primary'] = "True" if dataset.get('activity_creation_action').lower() == "create dataset activity" else "False"
+
         has_data = files_exist(dataset.get('uuid'), dataset.get('data_access_level'), dataset.get('group_name'))
         has_dataset_metadata = files_exist(dataset.get('uuid'), dataset.get('data_access_level'), dataset.get('group_name'), metadata=True)
         dataset['has_data'] = has_data
@@ -3349,10 +3388,18 @@ def update_datasets_datastatus():
     try:
         combined_results_string = json.dumps(combined_results)
     except json.JSONDecodeError as e:
+        try:
+            redis_connection.set(DATASETS_DATA_STATUS_RUNNING_KEY, int(False))
+        except Exception as v:
+            logger.error(f"Failed to set datasets_data_status_running {v}")
         bad_request_error(e)
-    redis_connection = redis.from_url(app.config['REDIS_URL'])
-    redis_connection.set(DATASETS_DATA_STATUS_KEY, combined_results_string)
-    redis_connection.set(DATASETS_DATA_STATUS_LAST_UPDATED_KEY, int(time.time() * 1000))
+    try:
+        redis_connection.set(DATASETS_DATA_STATUS_KEY, combined_results_string)
+        redis_connection.set(DATASETS_DATA_STATUS_LAST_UPDATED_KEY, int(time.time() * 1000))
+        redis_connection.set(DATASETS_DATA_STATUS_RUNNING_KEY, int(False))
+    except Exception as e:
+        # In the event of a caching failue, the endpoint should regenerate the data every call
+        logger.error(f"Failed to set datasets_data_status in redis {e}")
     return combined_results
 
 def update_uploads_datastatus():
@@ -3400,10 +3447,18 @@ def update_uploads_datastatus():
     try:
         results_string = json.dumps(results)
     except json.JSONDecodeError as e:
+        try:
+            redis_connection.set(UPLOADS_DATA_STATUS_RUNNING_KEY, int(False))
+        except Exception as v:
+            logger.error(f"Failed to set uploads_data_status_running {v}")
         bad_request_error(e)
-    redis_connection = redis.from_url(app.config['REDIS_URL'])
-    redis_connection.set(UPLOADS_DATA_STATUS_KEY, results_string)
-    redis_connection.set(UPLOADS_DATA_STATUS_LAST_UPDATED_KEY, int(time.time() * 1000))
+    try:
+        redis_connection.set(UPLOADS_DATA_STATUS_KEY, results_string)
+        redis_connection.set(UPLOADS_DATA_STATUS_LAST_UPDATED_KEY, int(time.time() * 1000))
+        redis_connection.set(UPLOADS_DATA_STATUS_RUNNING_KEY, int(False))
+    except Exception as e:
+        # In the event of a caching failue, the endpoint should regenerate the data every call
+        logger.error(f"Failed to set uploads_data_status in redis {e}")
     return results
 
 
@@ -3430,6 +3485,17 @@ def files_exist(uuid, data_access_level, group_name, metadata=False):
                 return False
     else:
         return False
+
+# From the time update_datasets/uploads_datastatus are queued, until they complete for the first time, a 202 should be returned
+# This flag is tracked in redis    
+redis_connection = redis.from_url(app.config['REDIS_URL'])
+try:
+    redis_connection.set(DATASETS_DATA_STATUS_RUNNING_KEY, int(True))
+    redis_connection.set(UPLOADS_DATA_STATUS_RUNNING_KEY, int(True))
+except Exception as e:
+    # If for some reason redis were to encounter a problem here, just log it so it doesn't hold up the rest of the ingest service. A redundant 
+    # call to update data status is better than throwing an error
+    logger.error("Failed to set datasets/uploads_data_status_running_key")
 
 scheduler = BackgroundScheduler()
 scheduler.start()
