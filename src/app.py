@@ -3479,7 +3479,7 @@ def files_exist(uuid, data_access_level, group_name, metadata=False):
         if not metadata:
             return True
         else:
-            if any(glob.glob(os.path.join(file_path, '*metadata.tsv'))):
+            if any(glob.iglob(os.path.join(file_path, '*metadata.tsv'))):
                 return True
             else:
                 return False
