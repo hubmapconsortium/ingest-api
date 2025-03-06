@@ -1,52 +1,6 @@
-[
-    {
-        "type": "note",
-        "match": "metadata_schema_id == null",
-        "value": "{'not_dcwg': true, 'is_dcwg': false}",
-        "rule_description": "Preamble rule identifying DCWG"
-    },
-    {
-        "type": "note",
-        "match": "metadata_schema_id != null",
-        "value": "{'not_dcwg': false, 'is_dcwg': true}",
-        "rule_description": "Preamble rule identifying non-DCWG"
-    },
-    {
-        "type": "note",
-        "match": "creation_action == 'Create Dataset Activity' or creation_action == 'Multi-Assay Split' or (creation_action == null and (dataset_type != null or assay_type != null))",
-        "value": "{'is_primary': true}",
-        "rule_description": "Preamble rule identifying primary datasets"
-    },
-    {
-        "type": "note",
-        "match": "creation_action == 'Central Process'",
-        "value": "{'is_central_processed': true}",
-        "rule_description": "Preamble rule identifying centrally processed datasets"
-    },
-    {
-        "type": "note",
-        "match": "creation_action == 'Create Publication Activity' or dataset_type == 'Publication' or assay_type == 'publication'",
-        "value": "{'is_publication': true}",
-        "rule_description": "Preamble rule identifying publications"
-    },
-    {
-        "type": "note",
-        "match": "creation_action == 'Lab Process'",
-        "value": "{'is_lab_processed': true}",
-        "rule_description": "Preamble rule identifying lab processed datasets"
-    },
-    {
-        "type": "note",
-        "match": "not_dcwg and is_primary and version == null",
-        "value": "{'version': 0}",
-        "rule_description": "Cover default schema version = 0 for non-DCWG metadata"
-    },
-    {
-        "type": "note",
-        "match": "creation_action == 'External Process' or (parent_dataset_id != null and derived_dataset_type != null)",
-        "value": "{'is_epic': true}",
-        "rule_description": "Preamble rule identifying EPIC"
-    },
+{
+  "body":
+  [
     {
         "type": "match",
         "match": "not_dcwg and is_primary and assay_type in ['AF']",
@@ -782,7 +736,7 @@
     {
         "type": "match",
         "match": "is_epic and derived_dataset_type == 'Segmentation Mask'",
-        "value": "{'ubkg_code': 'C202020', 'assaytype': 'segmentation-mask', 'vitessce-hints': ['segmentation_mask', 'is_image', 'pyramid'], 'dir-schema': 'segmentation-mask-v2', 'contains-pii': false, 'primary': false, 'dataset-type': 'Segmentation Mask', 'description': 'Segmentation Mask', 'process_state': 'epic'}",
+        "value": "{'ubkg_code': 'C202020', 'assaytype': 'segmentation-mask', 'vitessce-hints': ['segmentation_mask', 'is_image', 'pyramid', 'epic'], 'dir-schema': 'segmentation-mask-v2', 'contains-pii': false, 'primary': false, 'dataset-type': 'Segmentation Mask', 'description': 'Segmentation Mask', 'process_state': 'epic'}",
         "rule_description": "EPIC dataset segmentation mask"
     },
     {
@@ -806,7 +760,140 @@
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['kaggle_2_segmentation']",
-        "value": "{'ubkg_code': 'C202060', 'assaytype': 'h-and-e', 'vitessce-hints': [], 'primary': false, 'contains-pii': false, 'description': 'H&E Stained Microscopy [Kaggle-2 Segmentation]', 'pipeline-shorthand': 'Kaggle-2 Segmentation'}",
+        "value": "{'ubkg_code': 'C202060', 'assaytype': 'h-and-e', 'vitessce-hints': ['segmentation_mask', 'is_image', 'pyramid'], 'primary': false, 'contains-pii': false, 'description': 'H&E Stained Microscopy [Kaggle-2 Segmentation]', 'pipeline-shorthand': 'Kaggle-2 Segmentation'}",
         "rule_description": "derived h-and-e"
     }
-]
+  ],
+"pre":
+  [
+    {
+        "type": "note",
+        "match": "metadata_schema_id == null",
+        "value": "{'not_dcwg': true, 'is_dcwg': false}",
+        "rule_description": "Preamble rule identifying DCWG"
+    },
+    {
+        "type": "note",
+        "match": "metadata_schema_id != null",
+        "value": "{'not_dcwg': false, 'is_dcwg': true}",
+        "rule_description": "Preamble rule identifying non-DCWG"
+    },
+    {
+        "type": "note",
+        "match": "creation_action == 'Create Dataset Activity' or creation_action == 'Multi-Assay Split' or (creation_action == null and (dataset_type != null or assay_type != null))",
+        "value": "{'is_primary': true}",
+        "rule_description": "Preamble rule identifying primary datasets"
+    },
+    {
+        "type": "note",
+        "match": "creation_action == 'Central Process'",
+        "value": "{'is_central_processed': true}",
+        "rule_description": "Preamble rule identifying centrally processed datasets"
+    },
+    {
+        "type": "note",
+        "match": "creation_action == 'Create Publication Activity' or dataset_type == 'Publication' or assay_type == 'publication'",
+        "value": "{'is_publication': true}",
+        "rule_description": "Preamble rule identifying publications"
+    },
+    {
+        "type": "note",
+        "match": "creation_action == 'Lab Process'",
+        "value": "{'is_lab_processed': true}",
+        "rule_description": "Preamble rule identifying lab processed datasets"
+    },
+    {
+        "type": "note",
+        "match": "not_dcwg and is_primary and version == null",
+        "value": "{'version': 0}",
+        "rule_description": "Cover default schema version = 0 for non-DCWG metadata"
+    },
+    {
+        "type": "note",
+        "match": "creation_action == 'External Process' or (parent_dataset_id != null and derived_dataset_type != null)",
+        "value": "{'is_epic': true}",
+        "rule_description": "Preamble rule identifying EPIC"
+    },
+    {
+        "type": "match",
+        "match": "true",
+        "value": "{'not_dcwg': not_dcwg, 'is_dcwg': is_dcwg, 'is_primary': is_primary, 'is_central_processed': is_central_processed, 'is_publication': is_publcation, 'is_lab_processed': is_lab_processed, 'version': version, 'is_epic': is_epic}",
+        "rule_description": "return expected values from preamble"
+    }
+  ],
+"post":
+  [
+    {
+        "type": "note",
+        "match": "true",
+        "value": "{'final_contains_pii': (source_is_human and values['contains-pii'])}",
+        "rule_description": "non-human data is not PII"
+    },
+    {
+        "type": "note",
+        "match": "true",
+        "value": "{'final_vitessce_hints': (ubkg_values&['vitessce_hints'] ? ubkg_values&['vitessce_hints'] : values&['vitessce-hints'])}",
+        "rule_description": "use UBKG vitessce_hints if available"
+    },
+    {
+        "type": "note",
+        "match": "true",
+        "value": "{'final_assaytype': (ubkg_values&['assaytype'] ? ubkg_values&['assaytype'] : values&['assaytype'])}",
+        "rule_description": "use UBKG assaytype if available"
+    },
+    {
+        "type": "note",
+        "match": "true",
+        "value": "{'final_dir_schema': (ubkg_values&['dir_schema'] ? ubkg_values&['dir_schema'] : values&['dir-schema'])}",
+        "rule_description": "use UBKG dir_schema if available"
+    },
+    {
+        "type": "note",
+        "match": "true",
+        "value": "{'final_primary': (ubkg_values&['primary'] ? ubkg_values&['primary'] : values&['primary'])}",
+        "rule_description": "use UBKG primary if available"
+    },
+    {
+        "type": "note",
+        "match": "true",
+        "value": "{'final_dataset_type': (ubkg_values&['dataset_type'] ? ubkg_values&['dataset_type'] : values&['dataset-type'])}",
+        "rule_description": "use UBKG dataset_type if available"
+    },
+    {
+        "type": "note",
+        "match": "true",
+        "value": "{'final_description': (ubkg_values&['description'] ? ubkg_values&['description'] : values&['description'])}",
+        "rule_description": "use UBKG description if available"
+    },
+    {
+        "type": "note",
+        "match": "true",
+        "value": "{'final_must_contain': (ubkg_values&['must_contain'] ? ubkg_values&['must_contain'] : values&['must-contain'])}",
+        "rule_description": "use UBKG must_contain if available"
+    },
+    {
+        "type": "note",
+        "match": "true",
+        "value": "{'final_is_multi_assay': (ubkg_values&['is_multi_assay'] ? ubkg_values&['is_multi_assay'] : values&['is-multi-assay'])}",
+        "rule_description": "use UBKG must_contain if available"
+    },
+    {
+        "type": "note",
+        "match": "true",
+        "value": "{'final_pipeline_shorthand': (ubkg_values&['pipeline_shorthand'] ? ubkg_values&['pipeline_shorthand'] : values&['pipeline-shorthand'])}",
+        "rule_description": "use UBKG must_contain if available"
+    },
+    {
+        "type": "note",
+        "match": "true",
+        "value": "{'final_tbl_schema': (ubkg_values&['tbl_schema'] ? ubkg_values&['tbl_schema']+pre_values['version'].to_str : values&['tbl-schema'])}",
+        "rule_description": "use UBKG must_contain if available"
+    },
+    {
+        "type": "match",
+        "match": "true",
+        "value": "{'contains-pii': final_contains_pii, 'vitessce-hints': final_vitessce_hints, 'assaytype': final_assaytype, 'dir-schema': final_dir_schema, 'primary': final_primary, 'dataset-type': final_dataset_type, 'description': final_description, 'must-contain': final_must_contain, 'is-multi-assay': final_is_multi_assay, 'pipeline-shorthand': final_pipeline_shorthand, 'tbl-schema': final_tbl_schema, 'ubkg_code': values&['ubkg_code']}",
+        "rule_description": "return expected values"
+    }
+  ]
+}
