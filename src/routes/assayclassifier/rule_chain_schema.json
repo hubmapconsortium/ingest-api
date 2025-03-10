@@ -3,7 +3,7 @@
   "$id": "http://schemata.hubmapconsortium.org/rule_chain_schema.json",
   "title": "rule chain schema",
   "description": "rule chain schema",
-  "allOf":[{"$ref": "#/definitions/rule_chain"}],
+  "allOf":[{"$ref": "#/definitions/rule_chain_dict"}],
   "definitions": {
     "chain_record": {
       "type": "object",
@@ -32,6 +32,16 @@
     "rule_chain": {
       "type": "array",
       "items": { "$ref": "#/definitions/chain_record" }
+    },
+    "rule_chain_dict": {
+      "type": "object",
+      "properties": {
+	"pre": { "$ref": "#/definitions/rule_chain" },
+	"body": { "$ref": "#/definitions/rule_chain" },
+	"post": { "$re": "#/definitions/rule_chain" }
+      },
+      "required": ["body", "pre", "post"],
+      "additionalProperties": false
     }
   }
 }
