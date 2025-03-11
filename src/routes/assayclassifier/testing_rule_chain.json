@@ -817,7 +817,7 @@
     {
         "type": "match",
         "match": "true",
-        "value": "{'not_dcwg': not_dcwg, 'is_dcwg': is_dcwg, 'is_primary': is_primary, 'is_central_processed': is_central_processed, 'is_publication': is_publcation, 'is_lab_processed': is_lab_processed, 'version': version, 'is_epic': is_epic}",
+        "value": "{'not_dcwg': not_dcwg, 'is_dcwg': is_dcwg, 'is_primary': is_primary, 'is_central_processed': is_central_processed, 'is_publication': is_publication, 'is_lab_processed': is_lab_processed, 'version': version, 'is_epic': is_epic}",
         "rule_description": "return expected values from preamble"
     }
   ],
