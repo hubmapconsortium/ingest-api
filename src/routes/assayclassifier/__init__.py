@@ -7,8 +7,6 @@ import urllib.request
 import urllib.error
 
 from hubmap_commons.exceptions import HTTPException
-from hubmap_sdk import EntitySdk
-from hubmap_sdk.sdk_helper import HTTPException as SDKException
 from werkzeug.exceptions import HTTPException as WerkzeugException
 from worker.utils import ResponseException
 
@@ -212,7 +210,7 @@ def get_ds_assaytype(ds_uuid: str):
         return Response(f"Error applying classification rules: {excp}", 500)
     except WerkzeugException as excp:
         return excp
-    except (HTTPException, SDKException) as hte:
+    except HTTPException as hte:
         return Response(
             f"Error while getting assay type for {ds_uuid}: " + hte.get_description(),
             hte.get_status_code(),
@@ -247,7 +245,7 @@ def get_ds_rule_metadata(ds_uuid: str):
         return Response(f"Error applying classification rules: {excp}", 500)
     except WerkzeugException as excp:
         return excp
-    except (HTTPException, SDKException) as hte:
+    except HTTPException as hte:
         return Response(
             f"Error while getting assay type for {ds_uuid}: " + hte.get_description(),
             hte.get_status_code(),
@@ -285,7 +283,7 @@ def get_assaytype_from_metadata():
         return Response(f"Error applying classification rules: {excp}", 500)
     except WerkzeugException as excp:
         return excp
-    except (HTTPException, SDKException) as hte:
+    except HTTPException as hte:
         return Response(
             f"Error while getting assay type from metadata: " + hte.get_description(),
             hte.get_status_code(),
@@ -312,7 +310,7 @@ def reload_chain():
         return re.response
     except (RuleSyntaxException, RuleLogicException) as excp:
         return Response(f"Error applying classification rules: {excp}", 500)
-    except (HTTPException, SDKException) as hte:
+    except HTTPException as hte:
         return Response(
             f"Error while getting assay type for {ds_uuid}: " + hte.get_description(),
             hte.get_status_code(),
