@@ -753,7 +753,7 @@
     },
     {
         "type": "match",
-        "match": "is_dcwg and is_primary and dataset_type == 'Xenium'",
+        "match": "is_dcwg and is_primary and dataset_type == 'Xenium' and oligo_probe_panel in ['10x Genomics; Xenium Human Multi-Tissue and Cancer Panel v1; PN 1000626', '10x Genomics; Xenium Prime 5K Human Pan Tissue & Pathways Panel; PN 1000724']",
         "value": "{'ubkg_code': 'C202050', 'assaytype': 'xenium', 'vitessce-hints': [], 'dir-schema': 'xenium-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'Xenium', 'description': 'Xenium'}",
         "rule_description": "DCWG xenium"
     },
@@ -762,6 +762,12 @@
         "match": "is_central_processed and data_types[0] in ['kaggle_2_segmentation']",
         "value": "{'ubkg_code': 'C202060', 'assaytype': 'h-and-e', 'vitessce-hints': ['segmentation_mask', 'is_image', 'pyramid'], 'primary': false, 'contains-pii': false, 'description': 'H&E Stained Microscopy [Kaggle-2 Segmentation]', 'pipeline-shorthand': 'Kaggle-2 Segmentation'}",
         "rule_description": "derived h-and-e"
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and is_primary and dataset_type == 'CyTOF'",
+        "value": "{'ubkg_code': 'C202070', 'assaytype': 'cytof', 'vitessce-hints': [], 'dir-schema': 'cytof-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'CyTOF', 'description': 'CyTOF'}",
+        "rule_description": "DCWG CyTOF"
     }
   ],
 "pre":
