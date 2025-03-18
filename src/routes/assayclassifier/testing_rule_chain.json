@@ -773,7 +773,7 @@
       "type": "match",
       "match": "is_dcwg and is_primary and dataset_type == 'Histology'  and stain_name == 'AB-PAS'",
       "value": "{'ubkg_code': 'C202080', 'assaytype': 'AB-PAS', 'vitessce-hints': [], 'dir-schema': 'histology-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'Histology', 'description': 'AB-PAS Histology'}",
-      "rule_description": "DCWG AB-PAS"
+      "rule_description": "DCWG AB-PAS Histology"
     }
   ],
 "pre":
