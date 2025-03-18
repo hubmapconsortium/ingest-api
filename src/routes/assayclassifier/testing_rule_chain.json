@@ -768,6 +768,12 @@
         "match": "is_dcwg and is_primary and dataset_type == 'CyTOF'",
         "value": "{'ubkg_code': 'C202070', 'assaytype': 'cytof', 'vitessce-hints': [], 'dir-schema': 'cytof-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'CyTOF', 'description': 'CyTOF'}",
         "rule_description": "DCWG CyTOF"
+    },
+    {
+      "type": "match",
+      "match": "is_dcwg and is_primary and dataset_type == 'Histology'  and stain_name == 'AB-PAS'",
+      "value": "{'ubkg_code': 'C202080', 'assaytype': 'AB-PAS', 'vitessce-hints': [], 'dir-schema': 'histology-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'Histology', 'description': 'AB-PAS Histology'}",
+      "rule_description": "DCWG AB-PAS"
     }
   ],
 "pre":
