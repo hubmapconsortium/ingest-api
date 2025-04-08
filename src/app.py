@@ -3282,6 +3282,12 @@ def update_datasets_datastatus():
         "RETURN ds.uuid AS uuid, any(rui_location IN rui_locations WHERE rui_location IS NOT NULL) AS has_rui_info"
     )
 
+    displayed_fields = [
+        "hubmap_id", "group_name", "status", "organ", "provider_experiment_id", "last_touch", "has_contacts",
+        "has_contributors", "donor_hubmap_id", "donor_submission_id", "donor_lab_id",
+        "has_dataset_metadata", "has_donor_metadata", "upload", "has_rui_info", "globus_url", "has_data", "organ_hubmap_id"
+    ]
+
     queries = [all_datasets_query, organ_query, donor_query, processed_datasets_query,
                upload_query, has_rui_query]
     results = [None] * len(queries)
@@ -3369,6 +3375,9 @@ def update_datasets_datastatus():
             if prop == 'processed_datasets':
                 for processed in dataset['processed_datasets']:
                     processed['globus_url'] = get_globus_url(processed.get('data_access_level'), processed.get('group_name'), processed.get('uuid'))
+        for field in displayed_fields:
+            if dataset.get(field) is None:
+                dataset[field] = ""
         if dataset.get('organ') and rui_organs_list:
             rui_codes = [organ['rui_code'] for organ in rui_organs_list]
             if dataset['organ'].upper() not in rui_codes:
