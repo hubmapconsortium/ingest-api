@@ -3409,6 +3409,7 @@ def update_uploads_datastatus():
         "RETURN up.uuid AS uuid, up.group_name AS group_name, up.hubmap_id AS hubmap_id, up.status AS status, "
         "up.title AS title, up.ingest_task AS ingest_task, up.assigned_to_group_name AS assigned_to_group_name, "
         "up.intended_organ AS intended_organ, up.intended_dataset_type AS intended_dataset_type, "
+        "up.anticipated_complete_upload_month AS anticipated_complete_upload_month, up.anticipated_dataset_count AS anticipated_dataset_count, "
         "COLLECT(DISTINCT ds.uuid) AS datasets "
     )
 
