@@ -3409,12 +3409,9 @@ def update_uploads_datastatus():
         "RETURN up.uuid AS uuid, up.group_name AS group_name, up.hubmap_id AS hubmap_id, up.status AS status, "
         "up.title AS title, up.ingest_task AS ingest_task, up.assigned_to_group_name AS assigned_to_group_name, "
         "up.intended_organ AS intended_organ, up.intended_dataset_type AS intended_dataset_type, "
+        "up.anticipated_complete_upload_month AS anticipated_complete_upload_month, up.anticipated_dataset_count AS anticipated_dataset_count, "
         "COLLECT(DISTINCT ds.uuid) AS datasets "
     )
-
-    displayed_fields = [
-        "uuid", "group_name", "hubmap_id", "status", "title", "datasets", "intended_organ", "intended_dataset_type"
-    ]
 
     with neo4j_driver_instance.session() as session:
         results = session.run(all_uploads_query).data()
@@ -3441,9 +3438,6 @@ def update_uploads_datastatus():
                         pass
                 if upload[prop] is None:
                     upload[prop] = ""
-            for field in displayed_fields:
-                if upload.get(field) is None:
-                    upload[field] = ""
     try:
         results_string = json.dumps(results)
     except json.JSONDecodeError as e:
