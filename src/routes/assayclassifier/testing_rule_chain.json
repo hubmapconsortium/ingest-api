@@ -513,7 +513,7 @@
     },
     {
         "type": "match",
-        "match": "is_dcwg and is_primary and dataset_type == 'RNAseq (with probes)' and oligo_probe_panel in ['10x Genomics; Visium Human Transcriptome Probe Kit v2 - Small; PN 1000466', '10x Genomics; Visium Human Transcriptome Probe Kit-Small; PN 1000363', '10x Genomics; Visium Human Transcriptome Probe Kit-Large; PN 1000364', '10x Genomics; Visium Mouse Transcriptome Probe Kit - Small; PN 1000365'] and assay_input_entity == 'spot' and barcode_read =~~ 'Read 1' and barcode_size == 16 and barcode_offset == 0 and umi_read =~~ 'Read 1' and umi_size == 12 and umi_offset == 16",
+        "match": "is_dcwg and is_primary and dataset_type == 'RNAseq (with probes)' and oligo_probe_panel in ['10x Genomics; Visium Human Transcriptome Probe Kit v2 - Small; PN 1000466', '10x Genomics; Visium Human Transcriptome Probe Kit-Small; PN 1000363', '10x Genomics; Visium Human Transcriptome Probe Kit-Large; PN 1000364', '10x Genomics; Visium Mouse Transcriptome Probe Kit - Small; PN 1000365', '10x Genomics; Visium Mouse Transcriptome Probes v2 - small; PN 1000667'] and assay_input_entity == 'spot' and barcode_read =~~ 'Read 1' and barcode_size == 16 and barcode_offset == 0 and umi_read =~~ 'Read 1' and umi_size == 12 and umi_offset == 16",
         "value": "{'ubkg_code': 'C200820', 'assaytype': 'scRNAseq-visium-with-probes', 'vitessce-hints': [], 'dir-schema': 'rnaseq-with-probes-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'RNAseq (with probes)', 'description': 'Visium RNAseq (with probes)'}",
         "rule_description": "DCWG scRNAseq-visium-with-probes"
     },
@@ -753,7 +753,7 @@
     },
     {
         "type": "match",
-        "match": "is_dcwg and is_primary and dataset_type == 'Xenium' and oligo_probe_panel in ['10x Genomics; Xenium Human Multi-Tissue and Cancer Panel v1; PN 1000626', '10x Genomics; Xenium Prime 5K Human Pan Tissue & Pathways Panel; PN 1000724']",
+        "match": "is_dcwg and is_primary and dataset_type == 'Xenium' and oligo_probe_panel in ['10x Genomics; Xenium Human Multi-Tissue and Cancer Panel v1; PN 1000626', '10x Genomics; Xenium Prime 5K Human Pan Tissue & Pathways Panel; PN 1000724', 'Custom']",
         "value": "{'ubkg_code': 'C202050', 'assaytype': 'xenium', 'vitessce-hints': [], 'dir-schema': 'xenium-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'Xenium', 'description': 'Xenium'}",
         "rule_description": "DCWG xenium"
     },
@@ -786,6 +786,18 @@
         "match": "is_dcwg and is_primary and dataset_type == 'Singular Genomics G4X'",
         "value": "{'ubkg_code': 'C202100', 'assaytype': 'singular-genomics-g4x', 'vitessce-hints': [], 'dir-schema': 'singular-genomics-g4x-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'Singular Genomics G4X', 'description': 'Singular Genomics G4X'}",
         "rule_description": "DCWG Singular Genomics G4X"
+    },
+    {
+        "type": "match",
+        "match": "is_central_processed and data_types[0] in ['geomx']",
+        "value": "{'ubkg_code': 'C202110', 'assaytype': 'geomx_ngs', 'vitessce-hints': ['geomx', 'is_image', 'pyramid'], 'primary': false, 'contains-pii': false, 'description': 'GeoMx (NGS) [AnnData]', 'pipeline-shorthand': 'AnnData'}",
+        "rule_description": "derived geomx_ngs"
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and is_primary and dataset_type == 'CosMx' and oligo_probe_panel in ['NanoString Technologies; CosMx Human Universal Cell Characterization Panel (RNA, 1000 Plex); PN CMX-H-USCP-1KP-R']",
+        "value": "{'ubkg_code': 'C202120', 'assaytype': 'cosmx', 'vitessce-hints': [], 'dir-schema': 'cosmx-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'CosMx', 'description': 'CosMx'}",
+        "rule_description": "DCWG CosMx"
     }
   ],
 "pre":
