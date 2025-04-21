@@ -98,28 +98,21 @@ def calculate_data_types(entity_json: dict) -> list[str]:
     return data_types
 
 
-def wrapped_get_json(url: str, use_auth=True) -> dict:
+def wrapped_get_json(url: str) -> dict:
     """
     Do a GET on the given URL with appropriate auth tokens, returning
     the json content of the response.  Setting use_auth=False suppresses
     the attempt to add an Authorization header
     """
     req = urllib.request.Request(url)
-    if use_auth:
-        groups_token = (
-            groups_token_from_request_headers(request.headers)
-            if "AUTHORIZATION" in request.headers
-            else None
-        )
-        if groups_token:
-            req.add_header("Authorization", f"Bearer {groups_token}")
+    if "AUTHORIZATION" in request.headers:
+        groups_token_from_request_headers(request.headers)
+        req.add_header("Authorization", f"Bearer {groups_token}")
+
     try:
         return json.loads(urllib.request.urlopen(req).read())
-    except urllib.error.HTTPError as excp:
-        if use_auth:
-            return wrapped_get_json(url, use_auth=False)  # may raise HTTPError again
-        else:
-            raise
+    except urllib.error.HTTPError:
+        raise
 
 
 def get_entity_json(ds_uuid: str) -> dict:
