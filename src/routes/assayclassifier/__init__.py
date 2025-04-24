@@ -106,7 +106,7 @@ def wrapped_get_json(url: str) -> dict:
     """
     req = urllib.request.Request(url)
     if "AUTHORIZATION" in request.headers:
-        groups_token_from_request_headers(request.headers)
+        groups_token = groups_token_from_request_headers(request.headers)
         req.add_header("Authorization", f"Bearer {groups_token}")
 
     try:
