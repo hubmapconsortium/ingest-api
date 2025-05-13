@@ -603,12 +603,6 @@
     },
     {
         "type": "match",
-        "match": "is_dcwg and is_primary and dataset_type == 'CycIF'",
-        "value": "{'ubkg_code': 'C200970', 'assaytype': 'cycif', 'vitessce-hints': [], 'dir-schema': 'cycif-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'CycIF', 'description': 'CycIF'}",
-        "rule_description": "DCWG cycif"
-    },
-    {
-        "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'MERFISH'",
         "value": "{'ubkg_code': 'C200980', 'assaytype': 'merfish', 'vitessce-hints': [], 'dir-schema': 'merfish-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'MERFISH', 'description': 'MERFISH'}",
         "rule_description": "DCWG merfish"
