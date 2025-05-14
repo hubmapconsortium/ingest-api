@@ -741,7 +741,7 @@
     },
     {
         "type": "match",
-        "match": "is_dcwg and is_primary and dataset_type == 'RNAseq (with probes)' and oligo_probe_panel in ['10X Genomics; Chromium Next GEM Single Cell Fixed RNA Human Transcriptome Probe Kit, 64 rxns; PN 1000456', '10X Genomics; Chromium Next GEM Single Cell Fixed RNA Human Transcriptome Probe Kit, 16 rxns; PN 1000420', '10X Genomics; Chromium Next GEM Single Cell Fixed RNA, Mouse Transcriptome Probe Kit, 64 rxns; PN 1000492'] and assay_input_entity == 'single cell' and barcode_read =~~ 'Read 1' and barcode_size == 16 and barcode_offset == 0 and umi_read =~~ 'Read 1' and umi_size == 12 and umi_offset == 16",
+        "match": "is_dcwg and is_primary and dataset_type == 'RNAseq (with probes)' and oligo_probe_panel in ['10X Genomics; Chromium Next GEM Single Cell Fixed RNA Human Transcriptome Probe Kit, 64 rxns; PN 1000456', '10X Genomics; Chromium Next GEM Single Cell Fixed RNA Human Transcriptome Probe Kit, 16 rxns; PN 1000420', '10X Genomics; Chromium Next GEM Single Cell Fixed RNA, Mouse Transcriptome Probe Kit, 64 rxns; PN 1000492', '10x Genomics; Chromium Fixed RNA Kit, Human Transcriptome 4 rxns x 1 BC; PN 1000474'] and assay_input_entity == 'single cell' and barcode_read =~~ 'Read 1' and barcode_size == 16 and barcode_offset == 0 and umi_read =~~ 'Read 1' and umi_size == 12 and umi_offset == 16",
         "value": "{'ubkg_code': 'C202040', 'assaytype': 'scRNAseq-with-probes', 'vitessce-hints': [], 'dir-schema': 'rnaseq-with-probes-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'RNAseq (with probes)', 'description': 'RNAseq (with probes)'}",
         "rule_description": "DCWG scRNAseq-with-probes"
     },
