@@ -3282,6 +3282,13 @@ def update_datasets_datastatus():
         "RETURN ds.uuid AS uuid, any(rui_location IN rui_locations WHERE rui_location IS NOT NULL) AS has_rui_info"
     )
 
+    has_source_sample_metadata_query = (
+        "MATCH (ds:Dataset)<-[:ACTIVITY_OUTPUT]-(:Activity {creation_action: 'Create Dataset Activity'}) "
+        "MATCH (:Dataset)<-[:ACTIVITY_OUTPUT]-(:Activity)<-[:ACTIVITY_INPUT]-(s:Sample) "
+        "WHERE (ds)<-[*]-(s) "
+        "RETURN ds.uuid as uuid, s.metadata IS NOT NULL AS has_source_sample_metadata "
+    )
+
     displayed_fields = [
         "hubmap_id", "group_name", "status", "organ", "provider_experiment_id", "last_touch", "has_contacts",
         "has_contributors", "donor_hubmap_id", "donor_submission_id", "donor_lab_id",
@@ -3289,7 +3296,7 @@ def update_datasets_datastatus():
     ]
 
     queries = [all_datasets_query, organ_query, donor_query, processed_datasets_query,
-               upload_query, has_rui_query]
+               upload_query, has_rui_query, has_source_sample_metadata_query]
     results = [None] * len(queries)
     threads = []
     for i, query in enumerate(queries):
@@ -3306,6 +3313,7 @@ def update_datasets_datastatus():
     processed_datasets_result = results[3]
     upload_result = results[4]
     has_rui_result = results[5]
+    has_source_sample_metadata_result = results[6]
 
     for dataset in all_datasets_result:
         output_dict[dataset['uuid']] = dataset
@@ -3329,6 +3337,9 @@ def update_datasets_datastatus():
     for dataset in has_rui_result:
         if output_dict.get(dataset['uuid']):
             output_dict[dataset['uuid']]['has_rui_info'] = dataset['has_rui_info']
+    for dataset in has_source_sample_metadata_result:
+        if output_dict.get(dataset['uuid']):
+            output_dict[dataset['uuid']]['has_source_sample_metadata'] = dataset['has_source_sample_metadata']
 
     combined_results = []
     for uuid in output_dict:
