@@ -3291,8 +3291,8 @@ def update_datasets_datastatus():
 
     displayed_fields = [
         "hubmap_id", "group_name", "status", "organ", "provider_experiment_id", "last_touch", "has_contacts",
-        "has_contributors", "donor_hubmap_id", "donor_submission_id", "donor_lab_id",
-        "has_dataset_metadata", "has_donor_metadata", "upload", "has_rui_info", "globus_url", "has_data", "organ_hubmap_id"
+        "has_contributors", "donor_hubmap_id", "donor_submission_id", "donor_lab_id", "has_dataset_metadata", 
+        "has_donor_metadata", "upload", "has_rui_info", "globus_url", "has_data", "organ_hubmap_id", "has_source_sample_metadata"
     ]
 
     queries = [all_datasets_query, organ_query, donor_query, processed_datasets_query,
