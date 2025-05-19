@@ -1515,7 +1515,7 @@ def submit_upload(upload_uuid):
     upload_changes['status'] = 'Submitted'
 
     if 'priority_project_list' not in request.json:
-        return Response("Missing required property 'priority_project_list'. Field is required even if the value is an empty array.")
+        return Response("Missing required property 'priority_project_list'. Field is required even if the value is an empty array.", 400)
     
     #get auth info to use in other calls
     #add the app specific header info
@@ -3512,17 +3512,17 @@ scheduler.add_job(
     name="Update Upload Data Status Job"
 )
 
-scheduler.add_job(
-    func=update_datasets_datastatus,
-    trigger=DateTrigger(run_date=datetime.datetime.now() + datetime.timedelta(minutes=1)),
-    name="Initial run of Dataset Data Status Job"
-)
+# scheduler.add_job(
+#     func=update_datasets_datastatus,
+#     trigger=DateTrigger(run_date=datetime.datetime.now() + datetime.timedelta(minutes=1)),
+#     name="Initial run of Dataset Data Status Job"
+# )
 
-scheduler.add_job(
-    func=update_uploads_datastatus,
-    trigger=DateTrigger(run_date=datetime.datetime.now() + datetime.timedelta(minutes=1)),
-    name="Initial run of Dataset Data Status Job"
-)
+# scheduler.add_job(
+#     func=update_uploads_datastatus,
+#     trigger=DateTrigger(run_date=datetime.datetime.now() + datetime.timedelta(minutes=1)),
+#     name="Initial run of Dataset Data Status Job"
+# )
 
 # For local development/testing
 if __name__ == '__main__':
