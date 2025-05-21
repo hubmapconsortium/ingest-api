@@ -792,7 +792,13 @@
         "match": "is_dcwg and is_primary and dataset_type == 'CosMx' and oligo_probe_panel in ['NanoString Technologies; CosMx Human Universal Cell Characterization Panel (RNA, 1000 Plex); PN CMX-H-USCP-1KP-R']",
         "value": "{'ubkg_code': 'C202120', 'assaytype': 'cosmx', 'vitessce-hints': [], 'dir-schema': 'cosmx-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'CosMx', 'description': 'CosMx'}",
         "rule_description": "DCWG CosMx"
-    }
+    },
+    {
+        "type": "match",
+        "match": "is_central_processed and data_types[0] in ['visium_with_probes']",
+        "value": "{'ubkg_code': 'C202130', 'assaytype': 'visium-with-probes', 'vitessce-hints': ['rna', 'is_image', 'anndata', 'spatial'], 'description': 'Visium (with probes) [Salmon + Scanpy]', 'contains-pii': false, 'primary': false, 'pipeline-shorthand': 'Salmon + Scanpy'}",
+        "rule_description": "derived visium-with-probes"
+    },
   ],
 "pre":
   [
