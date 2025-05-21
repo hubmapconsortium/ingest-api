@@ -1513,6 +1513,9 @@ def submit_upload(upload_uuid):
 
     upload_changes = request.json
     upload_changes['status'] = 'Submitted'
+
+    if 'priority_project_list' not in request.json:
+        return Response("Missing required property 'priority_project_list'. Field is required even if the value is an empty array.", 400)
     
     #get auth info to use in other calls
     #add the app specific header info
