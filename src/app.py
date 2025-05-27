@@ -3286,10 +3286,10 @@ def update_datasets_datastatus():
     )
 
     has_source_sample_metadata_query = (
-        "MATCH (ds:Dataset)<-[:ACTIVITY_OUTPUT]-(:Activity {creation_action: 'Create Dataset Activity'}) "
-        "MATCH (:Dataset)<-[:ACTIVITY_OUTPUT]-(:Activity)<-[:ACTIVITY_INPUT]-(s:Sample) "
-        "WHERE (ds)<-[*]-(s) "
-        "RETURN ds.uuid as uuid, s.metadata IS NOT NULL AS has_source_sample_metadata "
+        "MATCH (ds:Dataset)<-[:ACTIVITY_OUTPUT]-(a:Activity {creation_action: 'Create Dataset Activity'}) "
+        "WITH ds, [s IN [(ds)<-[*]-(s:Sample) | s] "
+        "WHERE (s)-[:ACTIVITY_INPUT]->(:Activity)-[:ACTIVITY_OUTPUT]->(:Dataset) | s.metadata] AS sourceMetadataList "
+        "RETURN ds.uuid AS uuid, any(md IN sourceMetadataList WHERE md IS NOT NULL) AS has_source_sample_metadata"
     )
 
     displayed_fields = [
