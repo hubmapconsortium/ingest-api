@@ -3247,7 +3247,7 @@ def update_datasets_datastatus():
         "ds.hubmap_id AS hubmap_id, ds.lab_dataset_id AS provider_experiment_id, ds.status AS status, "
         "ds.status_history AS status_history, ds.assigned_to_group_name AS assigned_to_group_name, "
         "ds.last_modified_timestamp AS last_touch, ds.published_timestamp AS published_timestamp, ds.created_timestamp AS created_timestamp, "
-        "ds.data_access_level AS data_access_level, ds.ingest_task AS ingest_task, ds.dataset_type as dataset_type, ds.priority_project_list, "
+        "ds.data_access_level AS data_access_level, ds.ingest_task AS ingest_task, ds.dataset_type as dataset_type, ds.priority_project_list AS priority_project_list, "
         "COALESCE(ds.contributors IS NOT NULL) AS has_contributors, "
         "COALESCE(ds.contacts IS NOT NULL) AS has_contacts, "
         "a.creation_action AS activity_creation_action"
