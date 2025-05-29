@@ -3247,7 +3247,7 @@ def update_datasets_datastatus():
         "ds.hubmap_id AS hubmap_id, ds.lab_dataset_id AS provider_experiment_id, ds.status AS status, "
         "ds.status_history AS status_history, ds.assigned_to_group_name AS assigned_to_group_name, "
         "ds.last_modified_timestamp AS last_touch, ds.published_timestamp AS published_timestamp, ds.created_timestamp AS created_timestamp, "
-        "ds.data_access_level AS data_access_level, ds.ingest_task AS ingest_task, ds.dataset_type as dataset_type, "
+        "ds.data_access_level AS data_access_level, ds.ingest_task AS ingest_task, ds.dataset_type as dataset_type, ds.priority_project_list AS priority_project_list, "
         "COALESCE(ds.contributors IS NOT NULL) AS has_contributors, "
         "COALESCE(ds.contacts IS NOT NULL) AS has_contacts, "
         "a.creation_action AS activity_creation_action"
@@ -3285,14 +3285,22 @@ def update_datasets_datastatus():
         "RETURN ds.uuid AS uuid, any(rui_location IN rui_locations WHERE rui_location IS NOT NULL) AS has_rui_info"
     )
 
+    has_source_sample_metadata_query = (
+        "MATCH (ds:Dataset)<-[:ACTIVITY_OUTPUT]-(a:Activity {creation_action: 'Create Dataset Activity'}) "
+        "WITH ds, [s IN [(ds)<-[*]-(s:Sample) | s] "
+        "WHERE (s)-[:ACTIVITY_INPUT]->(:Activity)-[:ACTIVITY_OUTPUT]->(:Dataset) | s.metadata] AS sourceMetadataList "
+        "RETURN ds.uuid AS uuid, any(md IN sourceMetadataList WHERE md IS NOT NULL) AS has_source_sample_metadata"
+    )
+
     displayed_fields = [
         "hubmap_id", "group_name", "status", "organ", "provider_experiment_id", "last_touch", "has_contacts",
-        "has_contributors", "donor_hubmap_id", "donor_submission_id", "donor_lab_id",
-        "has_dataset_metadata", "has_donor_metadata", "upload", "has_rui_info", "globus_url", "has_data", "organ_hubmap_id"
+        "has_contributors", "donor_hubmap_id", "donor_submission_id", "donor_lab_id", "has_dataset_metadata", 
+        "has_donor_metadata", "upload", "has_rui_info", "globus_url", "has_data", "organ_hubmap_id", "has_source_sample_metadata",
+        "priority_project_list"
     ]
 
     queries = [all_datasets_query, organ_query, donor_query, processed_datasets_query,
-               upload_query, has_rui_query]
+               upload_query, has_rui_query, has_source_sample_metadata_query]
     results = [None] * len(queries)
     threads = []
     for i, query in enumerate(queries):
@@ -3309,6 +3317,7 @@ def update_datasets_datastatus():
     processed_datasets_result = results[3]
     upload_result = results[4]
     has_rui_result = results[5]
+    has_source_sample_metadata_result = results[6]
 
     for dataset in all_datasets_result:
         output_dict[dataset['uuid']] = dataset
@@ -3332,6 +3341,9 @@ def update_datasets_datastatus():
     for dataset in has_rui_result:
         if output_dict.get(dataset['uuid']):
             output_dict[dataset['uuid']]['has_rui_info'] = dataset['has_rui_info']
+    for dataset in has_source_sample_metadata_result:
+        if output_dict.get(dataset['uuid']):
+            output_dict[dataset['uuid']]['has_source_sample_metadata'] = dataset['has_source_sample_metadata']
 
     combined_results = []
     for uuid in output_dict:
@@ -3411,7 +3423,7 @@ def update_uploads_datastatus():
         "OPTIONAL MATCH (up)<-[:IN_UPLOAD]-(ds:Dataset) "
         "RETURN up.uuid AS uuid, up.group_name AS group_name, up.hubmap_id AS hubmap_id, up.status AS status, "
         "up.title AS title, up.ingest_task AS ingest_task, up.assigned_to_group_name AS assigned_to_group_name, "
-        "up.intended_organ AS intended_organ, up.intended_dataset_type AS intended_dataset_type, "
+        "up.intended_organ AS intended_organ, up.intended_dataset_type AS intended_dataset_type, up.priority_project_list AS priority_project_list, "
         "up.anticipated_complete_upload_month AS anticipated_complete_upload_month, up.anticipated_dataset_count AS anticipated_dataset_count, "
         "COLLECT(DISTINCT ds.uuid) AS datasets "
     )
