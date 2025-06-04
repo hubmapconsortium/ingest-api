@@ -799,6 +799,12 @@
         "value": "{'ubkg_code': 'C202130', 'assaytype': 'visium-with-probes', 'vitessce-hints': ['rna', 'is_image', 'anndata', 'spatial'], 'description': 'Visium (with probes) [Salmon + Scanpy]', 'contains-pii': false, 'primary': false, 'pipeline-shorthand': 'Salmon + Scanpy'}",
         "rule_description": "derived visium-with-probes"
     },
+    {
+        "type": "match",
+        "match": "is_dcwg and is_primary and dataset_type == 'Stereo-seq'",
+        "value": "{'ubkg_code': 'C202140', 'assaytype': 'stereo-seq', 'vitessce-hints': [], 'dir-schema': 'stereo-seq-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'Stereo-seq', 'description': 'Stereo-seq'}",
+        "rule_description": "DCWG Stereo-seq"
+    },
   ],
 "pre":
   [
