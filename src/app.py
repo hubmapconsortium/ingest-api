@@ -982,7 +982,7 @@ def publish_datastage(identifier):
             q = f"MATCH (e:Dataset {{uuid: '{dataset_uuid}'}}) RETURN " \
                 "e.uuid as uuid, e.entity_type as entitytype, e.status as status, " \
                 "e.data_access_level as data_access_level, e.group_uuid as group_uuid, " \
-                "e.contacts as contacts, e.contributors as contributors, e.status_history as status_history"
+                "e.contacts as contacts, e.contributors as contributors, e.status_history as status_history, e.metadata as metadata"
             if is_primary:
                 q += ", e.ingest_metadata as ingest_metadata"
             rval = neo_session.run(q).data()
@@ -992,6 +992,7 @@ def publish_datastage(identifier):
             dataset_group_uuid = rval[0]['group_uuid']
             dataset_contacts = rval[0]['contacts']
             dataset_contributors = rval[0]['contributors']
+            dataset_metadata = rval[0].get('metadata')
             dataset_ingest_matadata_dict = None
             if is_primary:
                 dataset_ingest_metadata = rval[0].get('ingest_metadata')
@@ -999,6 +1000,13 @@ def publish_datastage(identifier):
                     dataset_ingest_matadata_dict: dict =\
                         string_helper.convert_str_literal(dataset_ingest_metadata)
                 logger.info(f"publish_datastage; ingest_matadata: {dataset_ingest_matadata_dict}")
+
+            #check to see if the "dummy" protocol id was used, if so we can't publish
+            dummy_protocol_doi_id = 'hbm767.ckzb.378'
+            if dataset_metadata is not None:
+                if dummy_protocol_doi_id in dataset_metadata.lower():
+                    return Response(f"{dataset_uuid} has metadata that might contain the dummy protocol DOI- {dummy_protocol_doi_id}",400)
+
             if not get_entity_type_instanceof(dataset_entitytype, 'Dataset', auth_header="Bearer " + auth_helper_instance.getProcessSecret()):
                 return Response(f"{dataset_uuid} is not a dataset will not Publish, entity type is {dataset_entitytype}", 400)
             if not dataset_status == 'QA':
