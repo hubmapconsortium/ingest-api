@@ -789,9 +789,9 @@
     },
     {
         "type": "match",
-        "match": "is_dcwg and is_primary and dataset_type == 'CosMx' and oligo_probe_panel in ['NanoString Technologies; CosMx Human Universal Cell Characterization Panel (RNA, 1000 Plex); PN CMX-H-USCP-1KP-R']",
-        "value": "{'ubkg_code': 'C202120', 'assaytype': 'cosmx', 'vitessce-hints': [], 'dir-schema': 'cosmx-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'CosMx', 'description': 'CosMx'}",
-        "rule_description": "DCWG CosMx"
+        "match": "is_dcwg and is_primary and dataset_type == 'CosMx Transcriptomics' and oligo_probe_panel in ['NanoString Technologies; CosMx Human Universal Cell Characterization Panel (RNA, 1000 Plex); PN CMX-H-USCP-1KP-R']",
+        "value": "{'ubkg_code': 'C202120', 'assaytype': 'cosmx_transcriptomics', 'vitessce-hints': [], 'dir-schema': 'cosmx-transcriptomics-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'CosMx Transcriptomics', 'description': 'CosMx Transcriptomics'}",
+        "rule_description": "DCWG CosMx Transcriptomics"
     },
     {
         "type": "match",
@@ -804,6 +804,12 @@
         "match": "is_dcwg and is_primary and dataset_type == 'Stereo-seq'",
         "value": "{'ubkg_code': 'C202140', 'assaytype': 'stereo-seq', 'vitessce-hints': [], 'dir-schema': 'stereo-seq-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'Stereo-seq', 'description': 'Stereo-seq'}",
         "rule_description": "DCWG Stereo-seq"
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and is_primary and dataset_type == 'CosMx Proteomics'",
+        "value": "{'ubkg_code': 'C202150', 'assaytype': 'cosmx_proteomics', 'vitessce-hints': [], 'dir-schema': 'cosmx-proteomics-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'CosMx Proteomics', 'description': 'CosMx Proteomics'}",
+        "rule_description": "DCWG CosMx Proteomics"
     },
   ],
 "pre":
