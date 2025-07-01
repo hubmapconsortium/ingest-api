@@ -811,6 +811,12 @@
         "value": "{'ubkg_code': 'C202150', 'assaytype': 'cosmx_proteomics', 'vitessce-hints': [], 'dir-schema': 'cosmx-proteomics-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'CosMx Proteomics', 'description': 'CosMx Proteomics'}",
         "rule_description": "DCWG CosMx Proteomics"
     },
+    {
+        "type": "match",
+        "match": "is_dcwg and is_primary and dataset_type == 'FACS'",
+        "value": "{'ubkg_code': 'C202160', 'assaytype': 'FACS', 'vitessce-hints': [], 'dir-schema': 'facs-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'FACS', 'description': 'FACS'}",
+        "rule_description": "DCWG FACS"
+    },
   ],
 "pre":
   [
