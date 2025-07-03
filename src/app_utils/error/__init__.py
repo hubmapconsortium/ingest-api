@@ -11,6 +11,16 @@ def unauthorized_error(err_msg):
     """
     abort(401, description=err_msg)
 
+"""
+Throws error for 403 Forbidden with message
+
+Parameters
+----------
+err_msg : str
+    The custom error message to return to end users
+"""
+def forbidden_error(err_msg):
+    abort(403, description = err_msg)
 
 def not_found_error(err_msg):
     """

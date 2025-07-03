@@ -70,6 +70,12 @@ python3 -m flask run -p 5000
 
 ## Development process
 
+### Verification of tests
+The GitHub repository for ingest-api will run the `nose2` tests in the `test` directory when code changes are pushed.  These can be run locally prior to pushing using the following commands:
+- cd $DEVELOPMENT_HOME/ingest-api/
+- source .venv/bin/activate
+- `nose2 --verbose --log-level debug`
+
 ### To release via TEST infrastructure
 - Make new feature or bug fix branches from `main` branch (the default branch)
 - Make PRs to `main`
