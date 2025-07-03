@@ -14,7 +14,13 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
 
     @patch("dataset_helper_object.load_flask_instance_config")
     def setUp(self, mock_load_flask_instance_config):
-        mock_load_flask_instance_config.return_value = {'ENTITY_WEBSERVICE_URL': 'eUrl', 'SEARCH_WEBSERVICE_URL': 'sUrl', 'UBKG_WEBSERVICE_URL': 'oURL'}
+        mock_load_flask_instance_config.return_value = {'ENTITY_WEBSERVICE_URL': 'eUrl'
+                                                        , 'SEARCH_WEBSERVICE_URL': 'sUrl'
+                                                        , 'UBKG_WEBSERVICE_URL': 'oURL'
+                                                        , 'GLOBUS_PUBLIC_ENDPOINT_FILEPATH': '/hive/hubmap-dev/data/public'
+                                                        , 'GLOBUS_CONSORTIUM_ENDPOINT_FILEPATH': '/hive/hubmap-dev/data/consortium'
+                                                        , 'GLOBUS_PROTECTED_ENDPOINT_FILEPATH': '/hive/hubmap-dev/data/protected'
+        }
         self.dataset_helper = DatasetHelper()
 
         # For a "Dataset": response.json() from requests.get(url = f"{_entity_api_url}/entities/{dataset_uuid}", ...)
