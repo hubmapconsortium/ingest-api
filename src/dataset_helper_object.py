@@ -137,8 +137,11 @@ class DatasetHelper:
             sdk_entity = entity_api.get_entity_by_id(entity_id)
         except sdk_helper.HTTPException as he:
             if he.status_code == 404 and \
-                    re.match(pattern=f"^404 Not Found: Could not find the target id: {entity_id}$",
-                             string=he.description):
+                re.match(pattern=f"^404 Not Found: Could not find the target id: {entity_id}$",
+                         string=he.description):
+                # We will log when the user is checking on entities which do not exist.
+                logger.debug(f"User accessibilty retrieval of non-valid {entity_id}"
+                             f" resulted in he={str(he)}")
                 # Create a simple dict when entity_id is not for an existing entity
                 return {'valid_id': False}
             else:

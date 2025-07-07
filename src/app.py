@@ -461,41 +461,6 @@ def notify():
     return jsonify(notification_results)
 
 ####################################################################################################
-## Internal Functions
-####################################################################################################
-
-"""
-Validate the provided token when Authorization header presents
-
-Parameters
-----------
-request : flask.request object
-    The Flask http request object
-"""
-def _validate_token_if_auth_header_exists(request):
-    # No matter if token is required or not, when an invalid token provided,
-    # we need to tell the client with a 401 error
-    # HTTP header names are case-insensitive
-    # request.headers.get('Authorization') returns None if the header doesn't exist
-    if request.headers.get('Authorization') is not None:
-        user_token = auth_helper_instance.getAuthorizationTokens(request.headers)
-
-        # When the Authorization header provided but the user_token is a flask.Response instance,
-        # it MUST be a 401 error with message.
-        # That's how commons.auth_helper.getAuthorizationTokens() was designed
-        if isinstance(user_token, Response):
-            # We wrap the message in a json and send back to requester as 401 too
-            # The Response.data returns binary string, need to decode
-            unauthorized_error(user_token.get_data().decode())
-
-        # Also check if the parsed token is invalid or expired
-        # Set the second parameter as False to skip group check
-        user_info = auth_helper_instance.getUserInfo(user_token, False)
-
-        if isinstance(user_info, Response):
-            unauthorized_error(user_info.get_data().decode())
-
-####################################################################################################
 ## Ingest API Endpoints
 ####################################################################################################
 
@@ -505,8 +470,6 @@ for the user authorization of the Request.
 
 An HTTP 400 Response is returned for reasons described in the error message, such as
 not providing the list of identifiers.
-
-An HTTP 401 Response is returned when a token is presented that is not valid.
 
 An HTTP 500 is returned for unexpected errors
 
@@ -539,14 +502,8 @@ json
 def get_accessible_data_directories():
     dataset_helper = DatasetHelper()
 
-    # If not token is provided or an invalid token is provided, return a 401 error.
-    if request.headers.get('Authorization') is None:
-        unauthorized_error('A valid token must be provided.')
-
-    # If an invalid token provided, we need to tell the client with a 401 error, rather
-    # than a 500 error later if the token is not good.
-    _validate_token_if_auth_header_exists(request)
-    # Get user token from Authorization header
+    # AWS Gateway authorization checks will have assured a valid token is
+    # available prior to invoking this route. Get the user token from Authorization header
     user_token = auth_helper_instance.getAuthorizationTokens(request.headers)
 
     # Get user group information which will be used to determine accessibility on
