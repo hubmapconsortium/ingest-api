@@ -26,7 +26,7 @@ from flask import Flask, g, jsonify, abort, request, json, Response
 from flask_cors import CORS
 from flask_mail import Mail, Message
 
-from src.dataset_helper_object import DatasetHelper
+from dataset_helper_object import DatasetHelper
 from worker.utils import ResponseException
 
 # HuBMAP commons
