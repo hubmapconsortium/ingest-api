@@ -13,7 +13,7 @@ import csv
 import time
 from operator import xor
 from threading import Thread
-from hubmap_sdk import EntitySdk
+from hubmap_sdk import EntitySdk, sdk_helper
 from apscheduler.schedulers.background import BackgroundScheduler
 from neo4j.exceptions import TransactionError
 from apscheduler.triggers.interval import IntervalTrigger
@@ -25,6 +25,8 @@ from pathlib import Path
 from flask import Flask, g, jsonify, abort, request, json, Response
 from flask_cors import CORS
 from flask_mail import Mail, Message
+
+from dataset_helper_object import DatasetHelper
 from worker.utils import ResponseException
 
 # HuBMAP commons
@@ -49,7 +51,7 @@ from dataset import Dataset
 from datacite_doi_helper_object import DataCiteDoiHelper
 from api.datacite_api import DataciteApiException
 from app_utils.request_validation import require_json
-from app_utils.error import unauthorized_error, not_found_error, internal_server_error, bad_request_error
+from app_utils.error import unauthorized_error, not_found_error, internal_server_error, bad_request_error, forbidden_error
 from app_utils.misc import __get_dict_prop
 from app_utils.entity import __get_entity, get_entity_type_instanceof
 from app_utils.task_queue import TaskQueue
@@ -461,6 +463,78 @@ def notify():
 ####################################################################################################
 ## Ingest API Endpoints
 ####################################################################################################
+
+"""
+For each element in a list of identifiers, return accessibility information appropriate
+for the user authorization of the Request.
+
+An HTTP 400 Response is returned for reasons described in the error message, such as
+not providing the list of identifiers.
+
+An HTTP 500 is returned for unexpected errors
+
+Parameters
+----------
+request : flask.request
+    The flask http request object that containing the Authorization header
+    with a valid Globus groups token for checking group information. The
+    Request will have the Content-type header set to application/json. The
+    JSON body of the request will contain a JSON Array of strings with
+    UUID or HuBMAP-ID strings.
+
+Returns
+-------
+json
+    Valid JSON for a single JSON Object containing only JSON Objects, one per
+    entity evaluated.  This enclosing Object will have keys for each identifier
+    submitted with the request, whose value is a JSON Object containing
+    accessibility information for the entity. Each entity JSON Object will contain
+    "valid_id": true/false,  --true if the id resolves to a HuBMAP Dataset or Upload
+    ----------  below here only returned if valid_id == true
+    "access_allowed": true/false --true if the user is allowed to access the data for this entity
+    ----------  below here only returned if access_allowed == true
+    "hubmap_id": "<corresponding HuBMAP ID of the requested id>",
+    "uuid": "<uuid of Dataset or Upload>",
+    "entity_type": "<Dataset or Upload>",
+    "file_system_path": "<full absolute file system path to the Dataset or upload>"
+"""
+@app.route('/entities/accessible-data-directories', methods=['POST'])
+def get_accessible_data_directories():
+    dataset_helper = DatasetHelper()
+
+    # AWS Gateway authorization checks will have assured a valid token is
+    # available prior to invoking this route. Get the user token from Authorization header
+    user_token = auth_helper_instance.getAuthorizationTokens(request.headers)
+
+    # Get user group information which will be used to determine accessibility on
+    # a per-entity basis.
+    user_data_access_level = auth_helper_instance.getUserDataAccessLevel(request)
+
+    if not request.is_json:
+        bad_request_error("A json body and appropriate Content-Type header are required.")
+    json_payload = request.get_json()
+    if not isinstance(json_payload, list) or not json_payload:
+        bad_request_error('The Request payload must be a non-empty JSON Array of strings.')
+    for identifier in json_payload:
+        if not isinstance(identifier, str):
+            bad_request_error('The Request payload JSON Array must contain only identifier strings.')
+
+    payload_accessibility_dict = {}
+    for identifier in json_payload:
+        try:
+            identifier_accessibility_dict = dataset_helper.get_entity_accessibility(identifier
+                                                                                    , user_token
+                                                                                    , user_data_access_level=user_data_access_level)
+            payload_accessibility_dict[identifier] = identifier_accessibility_dict
+        except (HTTPException, sdk_helper.HTTPException) as he:
+            return jsonify({'error': he.get_description()}), he.get_status_code()
+        except ValueError as ve:
+            logger.error(str(ve))
+            return jsonify({'error': str(ve)}), 400
+        except Exception as e:
+            logger.error(e, exc_info=True)
+            return Response("Unexpected error: " + str(e), 500)
+    return jsonify(payload_accessibility_dict), 200
 
 """
 Retrieve the path of Datasets or Uploads relative to the Globus endpoint mount point give from a list of entity uuids
