@@ -128,7 +128,7 @@ class DatasetHelper:
     #
     # Returns a JSON Object containing accessibility information for the entity.
     #
-    def get_entity_accessibility(self, entity_id: str, user_token: str, user_data_access_level: dict = None) -> array:
+    def get_entity_accessibility(self, entity_id: str, user_token: str, user_data_access_level: dict = None) -> dict:
         entity_api = EntitySdk(token=user_token, service_url=_entity_api_url)
         supported_entity_type_list = ['Dataset', 'Upload']
 
@@ -136,14 +136,25 @@ class DatasetHelper:
         try:
             sdk_entity = entity_api.get_entity_by_id(entity_id)
         except sdk_helper.HTTPException as he:
+            # Determine if this entity_id should be shown as inaccessible in an
+            # HTTP 200 Response. Otherwise, let the HTTPException be processed
             if he.status_code == 404 and \
-                re.match(pattern=f"^404 Not Found: Could not find the target id: {entity_id}$",
-                         string=he.description):
-                # We will log when the user is checking on entities which do not exist.
+               re.match(pattern=f"^404 Not Found: Could not find the target id: {entity_id}$"
+                        , string=he.description):
+                # We will log when the user is checking on entities which are inaccessible.
                 logger.debug(f"User accessibilty retrieval of non-valid {entity_id}"
                              f" resulted in he={str(he)}")
                 # Create a simple dict when entity_id is not for an existing entity
                 return {'valid_id': False}
+            elif he.status_code == 403 and \
+                 re.match(pattern=f"^403 Forbidden: The requested Upload has non-public data.  A Globus token with access permission is required.$"
+                          , string=he.description):
+                    # We will log when the user is checking on entities which are inaccessible.
+                    logger.debug(f"User accessibilty retrieval of non-valid {entity_id}"
+                                 f" resulted in he={str(he)}")
+                    # Create a simple dict when entity_id is not for an existing entity
+                    return {'valid_id': True
+                            , 'access_allowed': False}
             else:
                 raise he
         except Exception as e:
@@ -224,14 +235,14 @@ class DatasetHelper:
             return entity_accessibility_dict
         elif entity_dict['entity_type'] == 'Upload':
             user_access_allowed = (user_data_access_level['data_access_level'] in [
-                                      HubmapConst.ACCESS_LEVEL_PROTECTED] \
+                                      HubmapConst.ACCESS_LEVEL_PROTECTED]
                                    or entity_dict['group_uuid'] in user_data_access_level['group_membership_ids'])
             abs_path = os.path.join(_globus_protected_endpoint_filepath
                                     , entity_dict['group_name']
                                     , entity_dict['uuid'])
 
-            entity_accessibility_dict = {'valid_id': True
-                , 'access_allowed': user_access_allowed}
+            entity_accessibility_dict = {   'valid_id': True
+                                            , 'access_allowed': user_access_allowed}
             if user_access_allowed:
                 entity_accessibility_dict['hubmap_id'] = entity_dict['hubmap_id']
                 entity_accessibility_dict['uuid'] = entity_dict['uuid']
