@@ -140,14 +140,14 @@ class DatasetHelper:
             # HTTP 200 Response. Otherwise, let the HTTPException be processed
             if he.status_code == 404:
                 # We will log when the user is checking on entities which are inaccessible.
-                logger.debug(f"User accessibilty retrieval of non-valid {entity_id}"
-                             f" resulted in he={str(he)}")
+                logger.debug(f"User accessibility retrieval of non-valid {entity_id}"
+                             f" resulted in {he.status_code} exception he={str(he)}")
                 # Create a simple dict when entity_id is not for an existing entity
                 return {'valid_id': False}
             elif he.status_code == 403:
                 # We will log when the user is checking on entities which are inaccessible.
-                logger.debug(f"User accessibilty retrieval of non-valid {entity_id}"
-                             f" resulted in he={str(he)}")
+                logger.debug(f"User accessibility retrieval of valid, inaccessible {entity_id}"
+                             f" resulted in {he.status_code} exception he={str(he)}")
                 # Create a simple dict when entity_id is not for an existing entity
                 return {'valid_id': True
                         , 'access_allowed': False}
