@@ -110,6 +110,7 @@ class UploadFileHelper:
 
         #get a uuid for the file
         md5_checksum = hashlib.md5(open(file_from_path, 'rb').read()).hexdigest()
+        sha256_checksum = hashlib.sha256(open(file_from_path, 'rb').read()).hexdigest()
         filesize = os.path.getsize(file_from_path)
         headers = {'Authorization': 'Bearer ' + user_token, 'Content-Type': 'application/json'}
         data = {}
@@ -118,6 +119,7 @@ class UploadFileHelper:
         file_info= {}
         file_info['path'] = file_to_dir + '<uuid>' + os.sep + temp_file_name
         file_info['md5_checksum'] = md5_checksum
+        file_info['sha256_checksum'] = sha256_checksum
         file_info['base_dir'] = 'INGEST_PORTAL_UPLOAD'
         file_info['size'] = filesize
         data['file_info'] = [file_info]
