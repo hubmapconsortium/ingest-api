@@ -472,7 +472,7 @@
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'Visium (with probes)'",
-        "value": "{'ubkg_code': 'C200750', 'assaytype': 'visium-with-probes', 'vitessce-hints': [], 'dir-schema': 'visium-with-probes-v3', 'description': 'Visium (with probes)', 'contains-pii': true, 'primary': true, 'dataset-type': 'Visium (with probes)', 'must-contain': ['Histology','RNAseq (with probes)'], 'is-multi-assay': true}",
+        "value": "{'ubkg_code': 'C200750', 'assaytype': 'visium-with-probes', 'vitessce-hints': [], 'dir-schema': 'visium-with-probes-v3', 'description': 'Visium (with probes)', 'contains-pii': false, 'primary': true, 'dataset-type': 'Visium (with probes)', 'must-contain': ['Histology','RNAseq (with probes)'], 'is-multi-assay': true}",
         "rule_description": "DCWG visium-with-probes"
     },
     {
@@ -754,7 +754,7 @@
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'Xenium' and oligo_probe_panel in ['10x Genomics; Xenium Human Multi-Tissue and Cancer Panel v1; PN 1000626', '10x Genomics; Xenium Prime 5K Human Pan Tissue & Pathways Panel; PN 1000724', 'Custom']",
-        "value": "{'ubkg_code': 'C202050', 'assaytype': 'xenium', 'vitessce-hints': [], 'dir-schema': 'xenium-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'Xenium', 'description': 'Xenium'}",
+        "value": "{'ubkg_code': 'C202050', 'assaytype': 'xenium', 'vitessce-hints': [], 'dir-schema': 'xenium-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'Xenium', 'description': 'Xenium'}",
         "rule_description": "DCWG xenium"
     },
     {
@@ -778,7 +778,7 @@
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'DBiT-seq'",
-        "value": "{'ubkg_code': 'C202090', 'assaytype': 'dbit-seq', 'vitessce-hints': [], 'dir-schema': 'dbit-seq-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'DBiT-seq', 'description': 'DBiT-seq'}",
+        "value": "{'ubkg_code': 'C202090', 'assaytype': 'dbit-seq', 'vitessce-hints': [], 'dir-schema': 'dbit-seq-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'DBiT-seq', 'description': 'DBiT-seq'}",
         "rule_description": "DCWG DBiT-seq"
     },
     {
@@ -796,7 +796,7 @@
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'CosMx Transcriptomics' and oligo_probe_panel in ['NanoString Technologies; CosMx Human Universal Cell Characterization Panel (RNA, 1000 Plex); PN CMX-H-USCP-1KP-R']",
-        "value": "{'ubkg_code': 'C202120', 'assaytype': 'cosmx_transcriptomics', 'vitessce-hints': [], 'dir-schema': 'cosmx-transcriptomics-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'CosMx Transcriptomics', 'description': 'CosMx Transcriptomics'}",
+        "value": "{'ubkg_code': 'C202120', 'assaytype': 'cosmx_transcriptomics', 'vitessce-hints': [], 'dir-schema': 'cosmx-transcriptomics-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'CosMx Transcriptomics', 'description': 'CosMx Transcriptomics'}",
         "rule_description": "DCWG CosMx Transcriptomics"
     },
     {
