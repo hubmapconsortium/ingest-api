@@ -20,39 +20,6 @@ class TestAppManager(unittest.TestCase):
 
         self.assertEqual(result, self.token)
 
-    def update_ingest_status_with_status_qa(self):
-        self.dataset.get_dataset_ingest_update_record.return_value = {
-            'dataset_id': '287d61b60b806fdf54916e3b7795ad5a',
-            'status': 'QA',
-            'message': 'the process ran'
-        }
-
-        result = app_manager.update_ingest_status_title_thumbnail(None, 
-                                                                  self.request_json, 
-                                                                  self.request_headers, 
-                                                                  MagicMock(),
-                                                                  MagicMock())
-
-        self.assertTrue('title' in result)
-        self.assertEqual(result['title'], 'Dataset Title String')
-        self.assertEqual(len(result), 4)
-
-    def update_ingest_status_with_not_status_qa(self):
-        self.dataset.get_dataset_ingest_update_record.return_value = {
-            'dataset_id': '287d61b60b806fdf54916e3b7795ad5a',
-            'status': 'Unknown',
-            'message': 'the process ran'
-        }
-
-        result = app_manager.update_ingest_status_title_thumbnail(None, 
-                                                                  self.request_json, 
-                                                                  self.request_headers, 
-                                                                  MagicMock(),
-                                                                  MagicMock())
-
-        self.assertFalse('title' in result)
-        self.assertEqual(len(result), 3)
-
 if __name__ == "__main__":
     import nose2
     nose2.main()

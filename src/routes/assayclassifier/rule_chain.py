@@ -1,4 +1,3 @@
-import sys
 import logging
 import yaml
 import json
@@ -30,30 +29,34 @@ class RuleLoader:
         assert format in ['yaml', 'json'], f"unknown format {format}"
         self.format = format
     def load(self):
-        rule_chain = RuleChain()
+        rule_chain_dict = {}
         if self.format == 'yaml':
-            json_recs = yaml.safe_load(self.stream)
+            json_dict = yaml.safe_load(self.stream)
         elif self.format == 'json':
             if isinstance(self.stream, str):
-                json_recs = json.loads(self.stream)
+                json_dict = json.loads(self.stream)
             else:
-                json_recs = json.load(self.stream)
+                json_dict = json.load(self.stream)
         else:
             raise RuntimeError(f"Unknown format {self.format} for input stream")
-        check_json_matches_schema(json_recs,
+        check_json_matches_schema(json_dict,
                                   SCHEMA_FILE,
                                   str(Path(__file__).parent),
                                   SCHEMA_BASE_URI)
-        for rec in json_recs:
-            for rule in [rec[key] for key in ['match', 'value']]:
-                assert Rule.is_valid(rule), f"Syntax error in rule string {rule}"
-            try:
-                rule_cls = {'note': NoteRule,
-                            'match': MatchRule}[rec['type'].lower()]
-            except KeyError:
-                raise RuleSyntaxException(f"Unknown rule type {rec['type']}")
-            rule_chain.add(rule_cls(rec['match'], rec['value']))
-        return rule_chain
+        for key in json_dict:
+            rule_chain = RuleChain()
+            json_recs = json_dict[key]
+            for rec in json_recs:
+                for rule in [rec[key2] for key2 in ['match', 'value']]:
+                    assert Rule.is_valid(rule), f"Syntax error in rule string {rule}"
+                try:
+                    rule_cls = {'note': NoteRule,
+                                'match': MatchRule}[rec['type'].lower()]
+                    rule_chain.add(rule_cls(rec['match'], rec['value']))
+                except KeyError:
+                    raise RuleSyntaxException(f"Unknown rule type {rec['type']}")
+            rule_chain_dict[key] = rule_chain
+        return rule_chain_dict
 
 
 class _RuleChainIter:
@@ -77,10 +80,10 @@ class RuleChain:
     def add(self, link):
         self.links.append(link)
     def dump(self, ofile):
-        print(f"START DUMP of {len(list(iter(self)))} rules")
+        ofile.write(f"START DUMP of {len(list(iter(self)))} rules\n")
         for idx, elt in enumerate(iter(self)):
-            print(f"{idx}: {elt}")
-        print(f"END DUMP of rules")
+            ofile.write(f"{idx}: {elt}\n")
+        ofile.write(f"END DUMP of rules\n")
     def __iter__(self):
         return _RuleChainIter(self)
     @classmethod
@@ -94,10 +97,12 @@ class RuleChain:
             return list(cls.cleanup(elt) for elt in val)
         else:
             return val
-    def apply(self, rec):
-        ctx = {}  # so rules can leave notes for later rules
+    def apply(self, rec, ctx = None):
+        if ctx is None:
+            ctx = {}  # so rules can leave notes for later rules
         for elt in iter(self):
-            #logger.debug(f"applying {elt} to rec:{rec}  ctx:{ctx}")
+            if ctx.get("DEBUG"):
+                logger.debug(f"applying {elt} to rec:{rec}  ctx:{ctx}")
             rec_dict = rec | ctx;
             try:
                 if elt.match_rule.matches(rec_dict):
@@ -110,8 +115,10 @@ class RuleChain:
                     else:
                         raise NotImplementedError(f"Unknown rule type {type(elt)}")
             except EngineError as excp:
-                print(f"ENGINE_ERROR {type(excp)} {excp}")
+                logger.error(f"ENGINE_ERROR {type(excp)} {excp}")
                 raise RuleLogicException(excp) from excp
+            if ctx.get("DEBUG"):
+                logger.debug("done")
         raise NoMatchException(f"No rule matched record {rec}")
 
 

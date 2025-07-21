@@ -1,6 +1,6 @@
 # HuBMAP Data Ingest API
 
-A restful web service exposing calls needed for the [Ingest UI](https://github.com/hubmapconsortium/ingest-ui) React application. The API is documented [here](https://smart-api.info/registry?q=5a6bea1158d2652743c7a201fdb1c44d).
+A restful web service exposing calls needed for the [Ingest UI](https://github.com/hubmapconsortium/ingest-ui) React application.
 
 ## Working with submodule
 
@@ -68,11 +68,13 @@ export FLASK_ENV=development
 python3 -m flask run -p 5000
 ````
 
-### Updating API Documentation
-
-The documentation for the API calls is hosted on SmartAPI.  Modifying the `ingest-api-spec.yaml` file and commititng the changes to github should update the API shown on SmartAPI.  SmartAPI allows users to register API documents.  The documentation is associated with this github account: api-developers@hubmapconsortium.org. 
-
 ## Development process
+
+### Verification of tests
+The GitHub repository for ingest-api will run the `nose2` tests in the `test` directory when code changes are pushed.  These can be run locally prior to pushing using the following commands:
+- cd $DEVELOPMENT_HOME/ingest-api/
+- source .venv/bin/activate
+- `nose2 --verbose --log-level debug`
 
 ### To release via TEST infrastructure
 - Make new feature or bug fix branches from `main` branch (the default branch)

@@ -14,7 +14,13 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
 
     @patch("dataset_helper_object.load_flask_instance_config")
     def setUp(self, mock_load_flask_instance_config):
-        mock_load_flask_instance_config.return_value = {'ENTITY_WEBSERVICE_URL': 'eUrl', 'SEARCH_WEBSERVICE_URL': 'sUrl', 'UBKG_WEBSERVICE_URL': 'oURL'}
+        mock_load_flask_instance_config.return_value = {'ENTITY_WEBSERVICE_URL': 'eUrl'
+                                                        , 'SEARCH_WEBSERVICE_URL': 'sUrl'
+                                                        , 'UBKG_WEBSERVICE_URL': 'oURL'
+                                                        , 'GLOBUS_PUBLIC_ENDPOINT_FILEPATH': '/hive/hubmap-dev/data/public'
+                                                        , 'GLOBUS_CONSORTIUM_ENDPOINT_FILEPATH': '/hive/hubmap-dev/data/consortium'
+                                                        , 'GLOBUS_PROTECTED_ENDPOINT_FILEPATH': '/hive/hubmap-dev/data/protected'
+        }
         self.dataset_helper = DatasetHelper()
 
         # For a "Dataset": response.json() from requests.get(url = f"{_entity_api_url}/entities/{dataset_uuid}", ...)
@@ -181,7 +187,7 @@ class TestVerifyDatasetTitleInfo(unittest.TestCase):
         mock_get_entity_by_id.assert_called()
         mock_url_get.assert_called()
 
-    @patch('dataset_helper_object.urllib.request.urlopen')
+    @patch('urllib.request.urlopen')
     @patch('dataset_helper_object.EntitySdk.get_entity_by_id')
     @patch('dataset_helper_object.EntitySdk.get_ancestors')
     def test_verify_dataset_title_info_organ_key_not_found(self, mock_get_ancestors, mock_get_entity_by_id, mock_url_open):

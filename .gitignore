@@ -18,7 +18,7 @@ docker/ingest-api/BUILD
 BUILD
 
 # Ignore the docker mounted BUILD and VERSION
-src/BUILD
+BUILD
 src/VERSION
 
 # Ignore __pycache__ directories in any path
@@ -53,3 +53,6 @@ docker/ingest-api/nginx/conf.d
 venv-hm-ingest-api/*
 .vscode/bookmarks.json
 .vscode/settings.json
+src/venv-hm-ingest-api
+.vscode/launch.json
+src/test/file_upload/temp_dir

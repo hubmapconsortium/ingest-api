@@ -1,7 +1,6 @@
 import requests
 from requests.auth import HTTPBasicAuth
 import logging
-from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -19,13 +18,13 @@ class DataCiteApi:
         self.ssl_verification_enabed = False
 
     # https://support.datacite.org/docs/doi-basics
-    def build_doi_name(self, dataset_hubmap_id: str):
+    def build_doi_name(self, entity_hubmap_id: str):
         # Format: prefix/suffix, no need for proxy part
-        return f"{self.datacite_hubmap_prefix}/{dataset_hubmap_id}"
+        return f"{self.datacite_hubmap_prefix}/{entity_hubmap_id}"
 
     # DOI retrieval
     # https://support.datacite.org/reference/dois-2#get_dois-id
-    def get_doi_by_id(self, dataset_hubmap_id: str) -> object:
+    def get_doi_by_id(self, doi_id: str) -> object:
         logger.debug(f"======Target DOI ID: {doi_id}======")
 
         response = requests.get(
@@ -39,18 +38,19 @@ class DataCiteApi:
     # https://support.datacite.org/reference/dois-2#post_dois
     # and https://docs.python.org/3/library/typing.html
     def create_new_draft_doi(self,
-                    dataset_hubmap_id: str, 
-                    dataset_uuid: str,
+                    hubmap_id: str, 
+                    uuid: str,
                     contributors: list, 
-                    dataset_title: str,
+                    title: str,
                     publication_year: int,
-                    creators: list) -> object:
+                    creators: list,
+                    entity_type='Dataset') -> object:
         publisher = 'HuBMAP Consortium'
 
         # Draft DOI doesn't specify the 'event' attribute
         json = {
             'data': {
-                'id': dataset_hubmap_id,
+                'id': hubmap_id,
                 'type': 'dois',
                 'attributes': {
                     # ==============ATTENTION==============
@@ -65,10 +65,10 @@ class DataCiteApi:
                     # https://schema.datacite.org/meta/kernel-4.3/doc/DataCite-MetadataKernel_v4.3.pdf#%5B%7B%22num%22%3A19%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C68%2C549%2C0%5D
 
                     # The globally unique string that identifies the resource and can't be changed
-                    'doi': self.build_doi_name(dataset_hubmap_id),
+                    'doi': self.build_doi_name(hubmap_id),
                     # One or more names or titles by which the resource is known
                     'titles': [{
-                        'title': dataset_title
+                        'title': title
                     }],
                     # The name of the entity that holds, archives, publishes prints, distributes,
                     # releases, issues, or produces the resource
@@ -77,10 +77,10 @@ class DataCiteApi:
                     'publicationYear': publication_year,  # Integer
                     # The general type of the resource
                     'types': {
-                        'resourceTypeGeneral': 'Dataset'
+                        'resourceTypeGeneral': entity_type
                     },
                     # The location of the landing page with more information about the resource
-                    'url': f"{self.redirect_prefix}/{dataset_uuid}"
+                    'url': f"{self.redirect_prefix}/{uuid}"
                 }
             }
         }
@@ -105,8 +105,8 @@ class DataCiteApi:
         return response
 
     # https://support.datacite.org/reference/dois-2#put_dois-id
-    def update_doi_event_publish(self, dataset_hubmap_id: str) -> object:
-        doi = self.build_doi_name(dataset_hubmap_id)
+    def update_doi_event_publish(self, entity_hubmap_id: str) -> object:
+        doi = self.build_doi_name(entity_hubmap_id)
         json = {
             'data': {
                 'id': doi,
@@ -129,3 +129,9 @@ class DataCiteApi:
             verify=self.ssl_verification_enabed
         )
         return response
+
+class DataciteApiException(Exception):
+    
+    def __init__(self, message, error_code=None):
+        super().__init__(message)
+        self.error_code = error_code

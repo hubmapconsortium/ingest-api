@@ -1,5 +1,3 @@
-import os
-from os import listdir
 import secrets
 import shutil
 import logging
@@ -10,6 +8,7 @@ from requests.packages.urllib3.exceptions import InsecureRequestWarning
 #from requests.packages.urllib3.exceptions import InsecureRequestWarning
 import hashlib
 import os
+from os import listdir
 from werkzeug.utils import secure_filename
 
 # HuBMAP commons
@@ -105,15 +104,13 @@ class UploadFileHelper:
             raise Exception("File not found for temporary file with id " + temp_file_id)
         if fcount > 1:
             raise Exception("Multiple files found in temporary file path for temp file id " + temp_file_id)
-        
-        
+
         file_from_path = file_temp_dir + temp_file_name
         file_to_dir = self.upload_dir + entity_uuid + os.sep
-        
-        
-        
+
         #get a uuid for the file
-        checksum = hashlib.md5(open(file_from_path, 'rb').read()).hexdigest()
+        md5_checksum = hashlib.md5(open(file_from_path, 'rb').read()).hexdigest()
+        sha256_checksum = hashlib.sha256(open(file_from_path, 'rb').read()).hexdigest()
         filesize = os.path.getsize(file_from_path)
         headers = {'Authorization': 'Bearer ' + user_token, 'Content-Type': 'application/json'}
         data = {}
@@ -121,7 +118,8 @@ class UploadFileHelper:
         data['parent_ids'] = [entity_uuid]
         file_info= {}
         file_info['path'] = file_to_dir + '<uuid>' + os.sep + temp_file_name
-        file_info['checksum'] = checksum
+        file_info['md5_checksum'] = md5_checksum
+        file_info['sha256_checksum'] = sha256_checksum
         file_info['base_dir'] = 'INGEST_PORTAL_UPLOAD'
         file_info['size'] = filesize
         data['file_info'] = [file_info]

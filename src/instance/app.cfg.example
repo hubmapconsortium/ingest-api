@@ -103,7 +103,7 @@ REDIS_URL = 'redis://ingest-api-rq-server:6379'
 
 # For UI login/logout
 # Flask app session key
-SECRET_KEY = 'a%@3k9Hdlkfjakjajf99adsf909oel'
+SECRET_KEY = ''
 
 # Need the trailing slash / (shown for DEV)
 FLASK_APP_BASE_URI = 'https://ingest-api.dev.hubmapconsortium.org/'
@@ -118,6 +118,13 @@ DATA_INGEST_BOARD_NAME = 'Data Ingest Board - DEV'
 # Port 5555 is open on the host, not mapped via ingest-api container
 INGEST_PIPELINE_URL = 'https://hivevm191.psc.edu:5555/api/hubmap'
 # internal test: INGEST_PIPELINE_URL = 'http://localhost:5005/datasets/submissions'
+
+# URL for the Dataset processing testing pipeline
+# standard value for production environment, other environments should be set to disable (see below)
+PIPELINE_TESTING_URL = 'https://vm023.hive.psc.edu:5555/api/hubmap/request_dev_analysis'
+# if set to Disabled (case-insensitive), the request will be ignored
+# but a positive response will be returned
+#PIPELINE_TESTING_URL = 'DISABLED'
 
 # Default processing type for ingest pipeline API.
 INGEST_PIPELINE_DEFAULT_PROCESS = 'SCAN.AND.BEGIN.PROCESSING'
@@ -141,12 +148,17 @@ COOKIE_DOMAIN = '.hubmapconsortium.org'
 # URI from which to load the assay classifier rules.
 RULE_CHAIN_URI = ''
 
-# CEDAR API KEY, get one at: https://cedar.metadatacenter.org/
-CEDAR_API_KEY = ''
-
 # UMLS-KEY
 UMLS_KEY = ''
 
 # UMLS URL
 UMLS_VALIDATE_URL = 'https://utslogin.nlm.nih.gov/validateUser'
 
+# UBKG Integration Configs
+UBKG_INTEGRATION_ENDPOINT = 'http://gateway.dev.hubmapconsortium.org:8181/'
+APPLICATION_CONTEXT = 'HUBMAP'
+
+# CEDAR API KEY, get one at: https://cedar.metadatacenter.org/
+
+CEDAR_API_KEY = ''
+CEDAR_API_URL = 'https://resource.metadatacenter.org/templates/https%3A%2F%2Frepo.metadatacenter.org%2Ftemplates%2F'

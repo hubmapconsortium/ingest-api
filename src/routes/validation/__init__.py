@@ -6,6 +6,7 @@ import csv
 import logging
 from typing import Union, Optional
 from flask import Blueprint, current_app, Response, request
+from pathlib import Path
 import requests
 
 from importlib import import_module
@@ -14,6 +15,8 @@ from routes.validation.lib.file import get_csv_records, get_base_path, check_upl
 
 from hubmap_commons import file_helper as commons_file_helper
 from hubmap_commons.hm_auth import AuthHelper
+
+from version_helper import VersionHelper
 
 from utils.string import equals, to_title_case
 from utils.rest import (
@@ -126,14 +129,16 @@ def validate_tsv(schema: str = "metadata", path: Optional[str] = None) -> dict:
     """
     auth_helper_instance: AuthHelper = AuthHelper.instance()
     globus_token = auth_helper_instance.getAuthorizationTokens(request.headers)
-    
+
     try:
         schema_name = (
             schema if schema != "metadata"
             else ingest_validation_tools_validation_utils.get_schema_version(
                 path=path,
                 encoding="ascii",
+                entity_url=f"{commons_file_helper.ensureTrailingSlashURL(current_app.config['ENTITY_WEBSERVICE_URL'])}entities/",
                 ingest_url=commons_file_helper.ensureTrailingSlashURL(current_app.config["FLASK_APP_BASE_URI"]),
+                globus_token=globus_token
             ).schema_name
         )
 
@@ -141,6 +146,7 @@ def validate_tsv(schema: str = "metadata", path: Optional[str] = None) -> dict:
             "request_header": {"X-Hubmap-Application": "ingest-api"},
             "ingest_url": commons_file_helper.ensureTrailingSlashURL(current_app.config["FLASK_APP_BASE_URI"]),
             "entities_url": f"{commons_file_helper.ensureTrailingSlashURL(current_app.config['ENTITY_WEBSERVICE_URL'])}entities/",
+            "constraints_url": f"{commons_file_helper.ensureTrailingSlashURL(current_app.config['ENTITY_WEBSERVICE_URL'])}constraints/"
         }
 
         result = ingest_validation_tools_validation_utils.get_tsv_errors(
@@ -336,9 +342,14 @@ def validate_records_uuids(records: list, entity_type: str, sub_type, pathname: 
                              'There are invalid `uuids` and/or unmatched entity sub types', errors,
                              dict_only=True)
 
-
 @validation_blueprint.route('/metadata/validate', methods=['POST'])
 def validate_metadata_upload():
+    
+    try:  
+        ensure_latest_cedar_version = request.args.get('ensure-latest-cedar-version') # checking for query parameters
+    except Exception as e:
+        return rest_server_err(e, True)
+    
     try:
         if is_json_request():
             data = request.json
@@ -363,6 +374,22 @@ def validate_metadata_upload():
         response = error
 
         if error is None:
+            
+            if (ensure_latest_cedar_version is not None) & (ensure_latest_cedar_version == "true"):
+                # if ensure_latest_cedar_version is == None: #maybe check for true specifically?
+                # IE "isLatestVersion, "isLatestPublishedVersion or "isLatestDraftVersion" 
+                try:
+                    schema_id = VersionHelper.get_schema_id(upload.get('fullpath'), str)
+                    if type(schema_id) == tuple:
+                       return rest_response(StatusCodes.BAD_REQUEST,  "Error", "metadata_schema_id not found in header")
+                    # if schema_id is None:
+                    latestVersion = VersionHelper.get_latest_published_schema(schema_id)
+                    isLatest = (schema_id == latestVersion)
+                    if isLatest != True:
+                        return rest_response(StatusCodes.BAD_REQUEST,  "This is not the latest version of the metadata specification as defined in CEDAR", "This is not the latest version of the metadata specification as defined in CEDAR")
+                except Exception as e:
+                    return rest_server_err(e, True)
+
             if check_cedar(entity_type, sub_type, upload) is False:
                 id_sub_type = get_cedar_schema_ids().get(sub_type)
                 return rest_response(StatusCodes.UNACCEPTABLE,
@@ -370,15 +397,15 @@ def validate_metadata_upload():
                                      f"Mismatch of \"{entity_type} {sub_type}\" and \"metadata_schema_id\". "
                                      f"Valid id for \"{sub_type}\": {id_sub_type}. "
                                      "For more details, check out the docs: "
-                                     "https://docs.sennetconsortium.org/libraries/ingest-validation-tools/schemas")
-            path: str = upload.get('fullpath')
+                                     "https://docs.hubmapconsortium.org/metadata")
+            path = upload.get('fullpath')
             schema = determine_schema(entity_type, sub_type)
 
             # On bad tsv file, validate_tsv() returns a list of errors
             # For the good tsv, it returns an empty list
             validation_results = validate_tsv(path=path, schema=schema)
             if len(validation_results) > 0:
-                response = rest_response(StatusCodes.UNACCEPTABLE, 'Unacceptable Metadata', validation_results, True)
+                return rest_response(StatusCodes.UNACCEPTABLE, 'Unacceptable Metadata', validation_results, False)
             else:
                 records = get_metadata(upload.get('fullpath'))
                 response = _get_response(records, entity_type, sub_type, validate_uuids,

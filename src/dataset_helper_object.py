@@ -1,23 +1,21 @@
 import os
-import sys
+import re
 from array import array
 
 import requests
 import logging
 from flask import Flask
-import urllib.request
-from pathlib import Path
-from shutil import copy2
-from hubmap_commons.exceptions import HTTPException
-from hubmap_sdk import EntitySdk, SearchSdk
+from hubmap_commons.hubmap_const import HubmapConst
+from hubmap_sdk import EntitySdk, SearchSdk, sdk_helper
+from pandas.core.array_algos.take import take_nd
 
 # Suppress InsecureRequestWarning warning when requesting status on https with ssl cert verify disabled
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
 requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
 
-# Set logging fromat and level (default is warning)
-# All the API logging is forwarded to the uWSGI server and gets written into the log file `uwsgo-entity-api.log`
+# Set logging format and level (default is warning)
+# All the API logging is forwarded to the uWSGI server and gets written into the log file `uwsgi-ingest-api.log`
 # Log rotation is handled via logrotate on the host system with a configuration file
 # Do NOT handle log file and rotation via the Python logging to avoid issues with multi-worker processes
 logging.basicConfig(format='[%(asctime)s] %(levelname)s in %(module)s: %(message)s', level=logging.DEBUG,
@@ -29,7 +27,7 @@ logger = logging.getLogger(__name__)
 _entity_api_url = None
 _search_api_url = None
 _ontology_api_url = None
-
+_globus_public_endpoint_filepath = _globus_consortium_endpoint_filepath = _globus_protected_endpoint_filepath = None
 
 def load_flask_instance_config():
     # Specify the absolute path of the instance folder and use the config file relative to the instance path
@@ -40,7 +38,6 @@ def load_flask_instance_config():
 
     return app.config
 
-
 class DatasetHelper:
 
     def __init__(self):
@@ -48,12 +45,16 @@ class DatasetHelper:
         global _entity_api_url
         global _search_api_url
         global _ontology_api_url
+        global _globus_public_endpoint_filepath, _globus_consortium_endpoint_filepath, _globus_protected_endpoint_filepath
 
         if _entity_api_url is None:
             config = load_flask_instance_config()
             _entity_api_url = config['ENTITY_WEBSERVICE_URL']
             _search_api_url = config['SEARCH_WEBSERVICE_URL']
             _ontology_api_url = config['UBKG_WEBSERVICE_URL']
+            _globus_public_endpoint_filepath = config['GLOBUS_PUBLIC_ENDPOINT_FILEPATH']
+            _globus_consortium_endpoint_filepath = config['GLOBUS_CONSORTIUM_ENDPOINT_FILEPATH']
+            _globus_protected_endpoint_filepath = config['GLOBUS_PROTECTED_ENDPOINT_FILEPATH']
 
     def get_organ_types_dict(self) -> object:
         organ_types_url = _ontology_api_url + 'organs/by-code?application_context=HUBMAP'
@@ -119,63 +120,131 @@ class DatasetHelper:
 
         return rslt
 
+    # entity_id - UUID or HM_ID
+    # user_token - The authorization token for the user, which is used to generate an appropriate
+    #              description of the user's access to the entity.
+    # user_data_access_level - Data access level information for the user, notably including
+    #                          Globus Group membership information.
+    #
+    # Returns a JSON Object containing accessibility information for the entity.
+    #
+    def get_entity_accessibility(self, entity_id: str, user_token: str, user_data_access_level: dict = None) -> dict:
+        entity_api = EntitySdk(token=user_token, service_url=_entity_api_url)
+        supported_entity_type_list = ['Dataset', 'Upload']
 
-    # Added by Zhou for handling dataset thumbnail file
-    # - delete exisiting 'thumbnail_file' via entity-api if already exists
-    # - copy the original thumbnail file to upload temp dir
-    def handle_thumbnail_file(self, thumbnail_file_abs_path: str, entity_api: EntitySdk, dataset_uuid: str,
-                              extra_headers: dict, temp_file_id: str, file_upload_temp_dir: str):
-        # Delete the old thumbnail file from Neo4j before updating with new one
-        # First retrieve the exisiting thumbnail file uuid
+        # Grab the entity from the entity-api service.
         try:
-            entity = entity_api.get_entity_by_id(dataset_uuid)
-        # All exceptions that occur in EntitySdk are HTTPExceptions
-        except HTTPException as e:
-            err_msg = f"Failed to query the dataset of uuid {dataset_uuid} while calling EntitySdk.get_entities() status code:{e.status_code}  message:{e.description}"
-            logger.error(err_msg)
-            # Bubble up the error message
-            raise requests.exceptions.RequestException(err_msg)
-
-        entity_dict = vars(entity)
-
-        logger.debug('=======EntitySdk.get_entity_by_id() resulting entity_dict=======')
-        logger.debug(entity_dict)
-
-        # Easier to ask for forgiveness than permission (EAFP)
-        # Rather than checking key existence at every level
-        try:
-            thumbnail_file_uuid = entity_dict['thumbnail_file']['file_uuid']
-
-            # To remove the existing thumbnail file, just pass the file uuid as a string
-            put_data = {
-                'thumbnail_file_to_remove': thumbnail_file_uuid
-            }
-            entity_api.header.update(extra_headers)
-            try:
-                # The PUT call just returns a message
-                result = entity_api.update_entity(dataset_uuid, put_data)
-            # All exceptions that occur in EntitySdk are HTTPExceptions
-            except HTTPException as e:
-                err_msg = f"Failed to remove the existing thumbnail file for dataset of uuid {dataset_uuid} while calling EntitySdk.put_entities() status code:{e.status_code}  message:{e.description}"
-                logger.error(err_msg)
-                # Bubble up the error message
-                raise requests.exceptions.RequestException(err_msg)
-
-            logger.info(f"Successfully removed the existing thumbnail file of the dataset uuid {dataset_uuid}")
-        except KeyError:
-            logger.info(f"No existing thumbnail file found for the dataset uuid {dataset_uuid}")
-            pass
-
-        # Create the temp file dir under the temp uploads for the thumbnail
-        # /hive/hubmap/hm_uploads_tmp/<temp_file_id> (for PROD)
-        temp_file_dir = os.path.join(file_upload_temp_dir, temp_file_id)
-
-        try:
-            Path(temp_file_dir).mkdir(parents=True, exist_ok=True)
+            sdk_entity = entity_api.get_entity_by_id(entity_id)
+        except sdk_helper.HTTPException as he:
+            # Determine if this entity_id should be shown as inaccessible in an
+            # HTTP 200 Response. Otherwise, let the HTTPException be processed
+            if he.status_code == 404:
+                # We will log when the user is checking on entities which are inaccessible.
+                logger.debug(f"User accessibility retrieval of non-valid {entity_id}"
+                             f" resulted in {he.status_code} exception he={str(he)}")
+                # Create a simple dict when entity_id is not for an existing entity
+                return {'valid_id': False}
+            elif he.status_code == 403:
+                # We will log when the user is checking on entities which are inaccessible.
+                logger.debug(f"User accessibility retrieval of valid, inaccessible {entity_id}"
+                             f" resulted in {he.status_code} exception he={str(he)}")
+                # Create a simple dict when entity_id is not for an existing entity
+                return {'valid_id': True
+                        , 'access_allowed': False}
+            else:
+                raise he
         except Exception as e:
-            logger.exception(f"Failed to create the thumbnail temp upload dir {temp_file_dir} for thumbnail file attched to Dataset {dataset_uuid}")
+            msg = f"Unable to get data to determine accessibility of '{entity_id}'"
+            logger.exception(msg)
+            raise Exception(msg)
 
-        # Then copy the source thumbnail file to the temp file dir
-        # shutil.copy2 is identical to shutil.copy() method
-        # but it also try to preserves the file's metadata
-        copy2(thumbnail_file_abs_path, temp_file_dir)
+        entity_dict = vars(sdk_entity)
+        if entity_dict['entity_type'] not in supported_entity_type_list:
+            raise ValueError(f"{entity_id} of type"
+                             f" {entity_dict['entity_type']} is not supported,"
+                             f" only {str(supported_entity_type_list)}")
+
+        # Make sure all expected elements for the business requirements are in the returned entity.
+        # Need to determine entity "visibility" using the same rules found in the
+
+        missing_entity_elements = []
+        if 'entity_type' not in entity_dict:
+            missing_entity_elements.append('entity_type')
+        if 'uuid' not in entity_dict:
+            missing_entity_elements.append('uuid')
+        if 'hubmap_id' not in entity_dict:
+            missing_entity_elements.append('hubmap_id')
+        if 'status' not in entity_dict:
+            missing_entity_elements.append('status')
+        if 'group_name' not in entity_dict:
+            missing_entity_elements.append('group_name')
+        if 'group_uuid' not in entity_dict:
+            missing_entity_elements.append('group_uuid')
+        if 'contains_human_genetic_sequences' not in entity_dict and \
+            entity_dict['entity_type'] == 'Dataset':
+            missing_entity_elements.append('contains_human_genetic_sequences')
+        if 'data_access_level' not in entity_dict and \
+            entity_dict['entity_type'] == 'Dataset':
+            missing_entity_elements.append('data_access_level')
+        if missing_entity_elements:
+            logger.error(f"Unexpected format for '{entity_id}'"
+                         f" , missing {str(missing_entity_elements)}"
+                         f" from entity={str(entity_dict)}.")
+            raise Exception(f"Data error determining accessibility of '{entity_id}'")
+
+        if entity_dict['entity_type'] == 'Dataset':
+            user_access_allowed = (entity_dict['data_access_level'] == HubmapConst.ACCESS_LEVEL_PUBLIC)
+            if not user_access_allowed:
+                user_access_allowed = (entity_dict['data_access_level'] == HubmapConst.ACCESS_LEVEL_CONSORTIUM) and \
+                                      user_data_access_level['data_access_level'] in [
+                                          HubmapConst.ACCESS_LEVEL_CONSORTIUM \
+                                          , HubmapConst.ACCESS_LEVEL_PROTECTED]
+            if not user_access_allowed:
+                user_access_allowed = (entity_dict['data_access_level'] == HubmapConst.ACCESS_LEVEL_PROTECTED) and \
+                                      (user_data_access_level['data_access_level'] in [
+                                          HubmapConst.ACCESS_LEVEL_PROTECTED] \
+                                       or entity_dict['group_uuid'] in user_data_access_level['group_membership_ids'])
+
+            if entity_dict['data_access_level'] == HubmapConst.ACCESS_LEVEL_PROTECTED:
+                abs_path = os.path.join(_globus_protected_endpoint_filepath
+                                        , entity_dict['group_name']
+                                        , entity_dict['uuid'])
+            elif entity_dict['data_access_level'] == HubmapConst.ACCESS_LEVEL_CONSORTIUM:
+                abs_path = os.path.join(_globus_consortium_endpoint_filepath
+                                        , entity_dict['group_name']
+                                        , entity_dict['uuid'])
+            elif entity_dict['data_access_level'] == HubmapConst.ACCESS_LEVEL_PUBLIC:
+                abs_path = os.path.join(_globus_public_endpoint_filepath
+                                        , entity_dict['uuid'])
+            else:
+                raise Exception(f"Unexpected error for {entity_id} of type"
+                                f" {entity_dict['entity_type']} with data access level"
+                                f" {entity_dict['data_access_level']}.")
+
+            entity_accessibility_dict = {'valid_id': True
+                , 'access_allowed': user_access_allowed}
+            if user_access_allowed:
+                entity_accessibility_dict['hubmap_id'] = entity_dict['hubmap_id']
+                entity_accessibility_dict['uuid'] = entity_dict['uuid']
+                entity_accessibility_dict['entity_type'] = entity_dict['entity_type']
+                entity_accessibility_dict['file_system_path'] = abs_path
+            return entity_accessibility_dict
+        elif entity_dict['entity_type'] == 'Upload':
+            user_access_allowed = (user_data_access_level['data_access_level'] in [
+                                      HubmapConst.ACCESS_LEVEL_PROTECTED]
+                                   or entity_dict['group_uuid'] in user_data_access_level['group_membership_ids'])
+            abs_path = os.path.join(_globus_protected_endpoint_filepath
+                                    , entity_dict['group_name']
+                                    , entity_dict['uuid'])
+
+            entity_accessibility_dict = {   'valid_id': True
+                                            , 'access_allowed': user_access_allowed}
+            if user_access_allowed:
+                entity_accessibility_dict['hubmap_id'] = entity_dict['hubmap_id']
+                entity_accessibility_dict['uuid'] = entity_dict['uuid']
+                entity_accessibility_dict['entity_type'] = entity_dict['entity_type']
+                entity_accessibility_dict['file_system_path'] = abs_path
+            return entity_accessibility_dict
+        else:
+            raise Exception(f"Unexpected error for {entity_id} of type"
+                            f" {entity_dict['entity_type']}.")
