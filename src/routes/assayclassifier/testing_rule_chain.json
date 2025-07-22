@@ -823,6 +823,12 @@
         "value": "{'ubkg_code': 'C202160', 'assaytype': 'FACS', 'vitessce-hints': [], 'dir-schema': 'facs-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'FACS', 'description': 'FACS'}",
         "rule_description": "DCWG FACS"
     },
+    {
+        "type": "match",
+        "match": "is_dcwg and is_primary and dataset_type == 'Olink'",
+        "value": "{'ubkg_code': 'C202180', 'assaytype': 'olink', 'vitessce-hints': [], 'dir-schema': 'olink-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'Olink', 'description': 'Olink'}",
+        "rule_description": "DCWG Olink"
+    }
   ],
 "pre":
   [
