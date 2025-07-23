@@ -828,6 +828,12 @@
         "match": "is_central_processed and data_types[0] in ['xenium']",
         "value": "{'ubkg_code': 'C202170', 'assaytype': 'xenium', 'vitessce-hints': ['xenium', 'is_image'], 'description': 'Xenium [SpatialData + Scanpy]', 'contains-pii': false, 'primary': false, 'pipeline-shorthand': 'SpatialData + Scanpy'}",
         "rule_description": "derived xenium"
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and is_primary and dataset_type == 'Olink'",
+        "value": "{'ubkg_code': 'C202180', 'assaytype': 'olink', 'vitessce-hints': [], 'dir-schema': 'olink-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'Olink', 'description': 'Olink'}",
+        "rule_description": "DCWG Olink"
     }
   ],
 "pre":
