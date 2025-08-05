@@ -3794,35 +3794,35 @@ except Exception as e:
     # call to update data status is better than throwing an error
     logger.error("Failed to set datasets/uploads_data_status_running_key")
 
-# scheduler = BackgroundScheduler()
-# scheduler.start()
+scheduler = BackgroundScheduler()
+scheduler.start()
 
 
-# scheduler.add_job(
-#     func=update_datasets_datastatus,
-#     trigger=IntervalTrigger(hours=1),
-#     id='update_dataset_data_status',
-#     name="Update Dataset Data Status Job"
-# )
+scheduler.add_job(
+    func=update_datasets_datastatus,
+    trigger=IntervalTrigger(hours=1),
+    id='update_dataset_data_status',
+    name="Update Dataset Data Status Job"
+)
 
-# scheduler.add_job(
-#     func=update_uploads_datastatus,
-#     trigger=IntervalTrigger(hours=1),
-#     id='update_upload_data_status',
-#     name="Update Upload Data Status Job"
-# )
+scheduler.add_job(
+    func=update_uploads_datastatus,
+    trigger=IntervalTrigger(hours=1),
+    id='update_upload_data_status',
+    name="Update Upload Data Status Job"
+)
 
-# scheduler.add_job(
-#     func=update_datasets_datastatus,
-#     trigger=DateTrigger(run_date=datetime.datetime.now() + datetime.timedelta(minutes=1)),
-#     name="Initial run of Dataset Data Status Job"
-# )
+scheduler.add_job(
+    func=update_datasets_datastatus,
+    trigger=DateTrigger(run_date=datetime.datetime.now() + datetime.timedelta(minutes=1)),
+    name="Initial run of Dataset Data Status Job"
+)
 
-# scheduler.add_job(
-#     func=update_uploads_datastatus,
-#     trigger=DateTrigger(run_date=datetime.datetime.now() + datetime.timedelta(minutes=1)),
-#     name="Initial run of Dataset Data Status Job"
-# )
+scheduler.add_job(
+    func=update_uploads_datastatus,
+    trigger=DateTrigger(run_date=datetime.datetime.now() + datetime.timedelta(minutes=1)),
+    name="Initial run of Dataset Data Status Job"
+)
 
 # For local development/testing
 if __name__ == '__main__':
