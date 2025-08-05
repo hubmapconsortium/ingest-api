@@ -813,7 +813,7 @@
     },
     {
         "type": "match",
-        "match": "is_dcwg and is_primary and dataset_type == 'CosMx Proteomics'",
+        "match": "is_dcwg and is_primary and dataset_type == 'CosMx Proteomics' and oligo_probe_panel in ['NanoString Technologies; CosMx Human Immuno-Oncology Panel (Protein, 64 Plex); PN CMX-H-IOP-64P-P', 'NanoString Technologies; CosMx Mouse Neuroscience Panel (Protein, 64 Plex); PN CMX-M-Neuro-64P-P']",
         "value": "{'ubkg_code': 'C202150', 'assaytype': 'cosmx_proteomics', 'vitessce-hints': [], 'dir-schema': 'cosmx-proteomics-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'CosMx Proteomics', 'description': 'CosMx Proteomics'}",
         "rule_description": "DCWG CosMx Proteomics"
     },
