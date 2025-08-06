@@ -3270,7 +3270,7 @@ def validate_datasets():
         payload['process'] = 'validate.dataset'
         payload_list.append(payload)
     if invalid_id_errors:
-        bad_request_error(f"Invalid entities: " + "\n".join(invalid_id_errors))
+        bad_request_error(f"Invalid entity:" + " ".join(invalid_id_errors))
     ingest_pipline_url = commons_file_helper.ensureTrailingSlashURL(app.config["INGEST_PIPELINE_URL"]) + "request_bulk_ingest"
     try:
         ingest_res = requests.post(
@@ -3287,7 +3287,7 @@ def validate_datasets():
         return "Unexpected error: Failed to reach Ingest Pipeline", 500 
 
     if ingest_res.status_code == 200:
-        return "Data accepted for validation", 202
+        return jsonify(list(input_to_entity.keys())), 202
     else:
         logger.error(f"Ingest Pipeline returned error {ingest_res.status_code}: {ingest_res.text}")
         return f"Ingest Pipeline responded with an unexpected error: HTTP {ingest_res.status_code}"
@@ -3357,7 +3357,7 @@ def validate_uploads():
         }
         payload_list.append(payload)
     if invalid_id_errors:
-        bad_request_error(f"Invalid entities: " + "\n".join(invalid_id_errors))
+        bad_request_error(f"Invalid entity:" + " ".join(invalid_id_errors))
     ingest_pipline_url = commons_file_helper.ensureTrailingSlashURL(app.config["INGEST_PIPELINE_URL"]) + "request_bulk_ingest"
     try:
         ingest_res = requests.post(
@@ -3374,7 +3374,7 @@ def validate_uploads():
         return "Unexpected error: Failed to reach Ingest Pipeline", 500 
 
     if ingest_res.status_code == 200:
-        return "Data accepted for validation", 202
+        return jsonify(list(input_to_entity.keys())), 202
     else:
         logger.error(f"Ingest Pipeline returned error {ingest_res.status_code}: {ingest_res.text}")
         return f"Ingest Pipeline responded with an unexpected error: HTTP {ingest_res.status_code}"
