@@ -840,6 +840,12 @@
         "match": "is_dcwg and is_primary and dataset_type == 'SeqScope'",
         "value": "{'ubkg_code': 'C202190', 'assaytype': 'seqscope', 'vitessce-hints': [], 'dir-schema': 'seq-scope-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'SeqScope', 'description': 'SeqScope'}",
         "rule_description": "DCWG SeqScope"
+    },
+    {
+        "type": "match",
+        "match": "is_epic and derived_dataset_type == 'Object x Analyte'",
+        "value": "{'ubkg_code': 'C202200', 'assaytype': 'object-x-analyte', 'vitessce-hints': [], 'dir-schema': 'object-x-analyte-v2', 'contains-pii': false, 'primary': false, 'dataset-type': 'Object x Analyte', 'description': 'Object x Analyte', 'process_state': 'epic'}",
+        "rule_description": "EPIC dataset Object x Analyte"
     }
   ],
 "pre":
