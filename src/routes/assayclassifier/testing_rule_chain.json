@@ -846,6 +846,12 @@
         "match": "is_epic and derived_dataset_type == 'Object x Analyte'",
         "value": "{'ubkg_code': 'C202200', 'assaytype': 'object-x-analyte', 'vitessce-hints': [], 'dir-schema': 'object-x-analyte-v2', 'contains-pii': false, 'primary': false, 'dataset-type': 'Object x Analyte', 'description': 'Object x Analyte', 'process_state': 'epic'}",
         "rule_description": "EPIC dataset Object x Analyte"
+    },
+    {
+         "type": "match",
+         "match": "is_central_processed and data_types[0] in ['rna_with_probes']",
+         "value": "{'ubkg_code': 'C202210', 'assaytype': 'rna_with_probes', 'vitessce-hints': ['rna', 'is_sc'], 'description': 'RNAseq (with probes) [BWA + Scanpy]', 'contains-pii': false, 'primary': false, 'pipeline-shorthand': 'BWA + Scanpy'}",
+         "rule_description": "derived RNAseq w/ Probes"
     }
   ],
 "pre":
