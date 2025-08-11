@@ -3220,14 +3220,14 @@ def validate_datasets():
         bad_request_error("Required id list not found")
     token = auth_helper_instance.getAuthorizationTokens(request.headers)
     header = {'Authorization': 'Bearer ' + token}
-    dissallowed_status_types = ["published", "processing"]
+    disallowed_status_types = ["published", "processing"]
     datasets_not_found = []
     q = """
     MATCH (ds:Entity)
     WHERE ds.uuid IN $ids OR ds.hubmap_id IN $ids
     RETURN ds.uuid AS uuid, ds.hubmap_id AS hubmap_id, ds.status AS status, ds.entity_type AS entity_type, 
     ds.group_uuid AS group_uuid, ds.contains_human_genetic_sequences AS contains_human_genetic_sequences, 
-    ds.data_access_level, ds.group_name AS group_name
+    ds.data_access_level AS data_access_level, ds.group_name AS group_name
     """
     with neo4j_driver_instance.session() as neo_session:
         output = neo_session.run(q, ids=dataset_list)
@@ -3256,41 +3256,40 @@ def validate_datasets():
         not_found_error(f"The following IDs could not be found: {', '.join(datasets_not_found)}")
     invalid_id_errors = []
     payload_list = []
-    for orignal_id, record in input_to_entity.items():    
+    for original_id, record in input_to_entity.items():
         entity_type = record.get("entity_type")
         if entity_type.lower() != "dataset":
-            invalid_id_errors.append(f"Invalid entity: All IDs in request must be for Datasets. Entity with id {original_id} is of type {entity_type}")
+            invalid_id_errors.append(f"Invalid entity: All IDs in request must be for Datasets. Entity with id {original_id} is of type {entity_type}.")
             continue
         dataset_status = record.get("status")
-        if dataset_status.lower() in dissallowed_status_types:
-            invalid_id_errors.append(f"All IDs in request must not be in disallowed status types: {', '.join(dissallowed_status_types)}. Entity with id {original_id} is currently '{dataset_status}'.")
+        if dataset_status.lower() in disallowed_status_types:
+            invalid_id_errors.append(f"Invalid entity: All IDs in request must not be in disallowed status types: {', '.join(disallowed_status_types)}. Entity with id {original_id} is currently '{dataset_status}'.")
             continue
         payload_helper = ds_helper(app.config)
         payload = payload_helper.create_ingest_payload(record)
         payload['process'] = 'validate.dataset'
         payload_list.append(payload)
     if invalid_id_errors:
-        bad_request_error(f"Invalid entity:" + " ".join(invalid_id_errors))
-    ingest_pipline_url = commons_file_helper.ensureTrailingSlashURL(app.config["INGEST_PIPELINE_URL"]) + "request_bulk_ingest"
+        bad_request_error(f" ".join(invalid_id_errors))
+    ingest_pipeline_url = commons_file_helper.ensureTrailingSlashURL(app.config["INGEST_PIPELINE_URL"]) + "request_bulk_ingest"
     try:
         ingest_res = requests.post(
-            ingest_pipline_url,
+            ingest_pipeline_url,
             json=payload_list,
             headers=header,
         )
         logger.info(
-            f"Response from ingest-pipeline {ingest_res.status_code}: {ingest_res.json()}"
+            f"Response from ingest-pipeline {ingest_res.status_code}: {ingest_res.text}"
         )
     except requests.exceptions.RequestException as e:
-        ingest_res = None
         logger.error(f"Failed to submit datasets to pipeline: {e}")
-        return "Unexpected error: Failed to reach Ingest Pipeline", 500 
+        return jsonify({"error": "Unexpected error. Failed to reach Ingest Pipeline"}), 500 
 
     if ingest_res.status_code == 200:
         return jsonify(list(input_to_entity.keys())), 202
     else:
         logger.error(f"Ingest Pipeline returned error {ingest_res.status_code}: {ingest_res.text}")
-        return f"Ingest Pipeline responded with an unexpected error: HTTP {ingest_res.status_code}"
+        return jsonify({"error": f"Ingest Pipeline responded with an unexpected error: HTTP {ingest_res.status_code}"}), 500
         
 
 @app.route('/uploads/validate', methods=['POST'])
@@ -3302,14 +3301,14 @@ def validate_uploads():
         bad_request_error("Required id list not found")
     token = auth_helper_instance.getAuthorizationTokens(request.headers)
     header = {'Authorization': 'Bearer ' + token}
-    dissallowed_status_types = ["reorganized", "processing"]
+    disallowed_status_types = ["reorganized", "processing"]
     uploads_not_found = []
     q = """
     MATCH (ds:Entity)
     WHERE ds.uuid IN $ids OR ds.hubmap_id IN $ids
     RETURN ds.uuid AS uuid, ds.hubmap_id AS hubmap_id, ds.status AS status, ds.entity_type AS entity_type, 
     ds.group_uuid AS group_uuid, ds.contains_human_genetic_sequences AS contains_human_genetic_sequences, 
-    ds.data_access_level, ds.group_name AS group_name
+    ds.data_access_level AS data_access_level, ds.group_name AS group_name
     """
     with neo4j_driver_instance.session() as neo_session:
         output = neo_session.run(q, ids=upload_list)
@@ -3338,14 +3337,14 @@ def validate_uploads():
         not_found_error(f"The following IDs could not be found: {', '.join(uploads_not_found)}")
     invalid_id_errors = []
     payload_list = []
-    for orignal_id, record in input_to_entity.items():    
+    for original_id, record in input_to_entity.items():
         entity_type = record.get("entity_type")
         if entity_type.lower() != "upload":
-            invalid_id_errors.append(f"Invalid entity: All IDs in request must be for Uploads. Entity with id {original_id} is of type {entity_type}")
+            invalid_id_errors.append(f"Invalid entity: All IDs in request must be for Uploads. Entity with id {original_id} is of type {entity_type}.")
             continue
         upload_status = record.get("status")
-        if upload_status.lower() in dissallowed_status_types:
-            invalid_id_errors.append(f"All IDs in request must not be in disallowed status types: {', '.join(dissallowed_status_types)}. Entity with id {original_id} is currently '{upload_status}'.")
+        if upload_status.lower() in disallowed_status_types:
+            invalid_id_errors.append(f"Invalid entity: All IDs in request must not be in disallowed status types: {', '.join(disallowed_status_types)}. Entity with id {original_id} is currently '{upload_status}'.")
             continue
         ingest_helper = IngestFileHelper(app.config)
         full_path = ingest_helper.get_upload_directory_absolute_path(record['group_uuid'], record['uuid'])
@@ -3357,27 +3356,26 @@ def validate_uploads():
         }
         payload_list.append(payload)
     if invalid_id_errors:
-        bad_request_error(f"Invalid entity:" + " ".join(invalid_id_errors))
-    ingest_pipline_url = commons_file_helper.ensureTrailingSlashURL(app.config["INGEST_PIPELINE_URL"]) + "request_bulk_ingest"
+        bad_request_error(f" ".join(invalid_id_errors))
+    ingest_pipeline_url = commons_file_helper.ensureTrailingSlashURL(app.config["INGEST_PIPELINE_URL"]) + "request_bulk_ingest"
     try:
         ingest_res = requests.post(
-            ingest_pipline_url,
+            ingest_pipeline_url,
             json=payload_list,
             headers=header,
         )
         logger.info(
-            f"Response from ingest-pipeline {ingest_res.status_code}: {ingest_res.json()}"
+            f"Response from ingest-pipeline {ingest_res.status_code}: {ingest_res.text}"
         )
     except requests.exceptions.RequestException as e:
-        ingest_res = None
         logger.error(f"Failed to submit uploads to pipeline: {e}")
-        return "Unexpected error: Failed to reach Ingest Pipeline", 500 
+        return jsonify({"error": "Unexpected error. Failed to reach Ingest Pipeline"}), 500 
 
     if ingest_res.status_code == 200:
         return jsonify(list(input_to_entity.keys())), 202
     else:
         logger.error(f"Ingest Pipeline returned error {ingest_res.status_code}: {ingest_res.text}")
-        return f"Ingest Pipeline responded with an unexpected error: HTTP {ingest_res.status_code}"
+        return jsonify({"error": f"Ingest Pipeline responded with an unexpected error: HTTP {ingest_res.status_code}"}), 500
 
 
 ####################################################################################################
