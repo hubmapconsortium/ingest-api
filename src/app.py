@@ -8,6 +8,8 @@ import urllib.request
 import requests
 import re
 import json
+import pandas
+import shutil
 from uuid import UUID
 import csv
 import time
@@ -46,6 +48,7 @@ from hubmap_commons.hubmap_const import HubmapConst
 from sample_helper import SampleHelper
 from ingest_file_helper import IngestFileHelper
 from file_upload_helper import UploadFileHelper
+from prov_schema_helper import ProvenanceSchemaHelper
 import app_manager
 from dataset import Dataset
 from datacite_doi_helper_object import DataCiteDoiHelper
@@ -181,6 +184,13 @@ except Exception:
     # Log the full stack trace, prepend a line with our message
     logger.exception(msg)
 
+if not 'METADATA_TSV_BACKUP_DIR' in app.config:
+    logger.exception("ERROR: METADATA_TSV_BACKUP_DIR property not found in configuration file")
+    tsv_backup_dir = None
+else:
+    tsv_backup_dir = app.config['METADATA_TSV_BACKUP_DIR']
+
+
 ####################################################################################################
 ## File upload initialization
 ####################################################################################################
@@ -207,6 +217,8 @@ except Exception:
 # Admin group UUID
 data_admin_group_uuid = app.config['HUBMAP_DATA_ADMIN_GROUP_UUID']
 data_curator_group_uuid = app.config['HUBMAP_DATA_CURATOR_GROUP_UUID']
+
+prov_schema_helper = ProvenanceSchemaHelper(app.config)
 
 ####################################################################################################
 ## Task Queue initialization
@@ -1126,6 +1138,32 @@ def publish_datastage(identifier):
             entity_instance = EntitySdk(token=auth_tokens, service_url=app.config['ENTITY_WEBSERVICE_URL'])
             has_entity_lab_processed_data_type = dataset_has_entity_lab_processed_data_type(dataset_uuid)
 
+            ingest_helper: IngestFileHelper = IngestFileHelper(app.config)
+            
+            #find any *metadata.tsv files in this dataset and check to make sure they are writable
+            dset_directory_to_check = ingest_helper.dataset_directory_absolute_path(dataset_data_access_level, dataset_group_uuid, dataset_uuid, False) 
+            #make sure directory exists and is writable
+            if not os.path.isdir(dset_directory_to_check) or not os.access(dset_directory_to_check, os.W_OK):
+                return jsonify({"error":f"ERROR: Dataset directory {dset_directory_to_check} is not writable or doesn't exist"}), 500
+            
+            tsv_files = glob.glob(os.path.join(dset_directory_to_check,"*metadata.tsv"))
+            for tsv_file in tsv_files:
+                if not os.access(tsv_file, os.W_OK):
+                    return jsonify({"error": f"ERROR: metadata.tsv file {tsv_file} is not writable"}), 500
+
+            #if we need to strip tsv files make sure the directory where we will put backups exists and is writable
+            if len(tsv_files) > 0:
+                if tsv_backup_dir is None:
+                    return jsonify({"error": "tsv backup directory is not set in configuration"}), 500
+                if not os.path.isdir(tsv_backup_dir):
+                    return jsonify({"error": f"ERROR: backup directory {tsv_backup_dir} is not a directory or does not exist"}), 500
+                if not os.access(tsv_backup_dir, os.W_OK):
+                    return jsonify({"error": f"ERROR: backup directory {tsv_backup_dir} is not writable"}), 500
+
+            #grab the columns that will be blanked from the tsvs now.  In case there is an issue, we'll fail 
+            #now before publishing the dataset
+            tsv_columns_to_blank = prov_schema_helper.get_metadata_properties_to_exclude()
+            
             #set up a status_history list to add a "Published" entry to below
             if 'status_history' in rval[0]:
                 status_history_str = rval[0]['status_history']
@@ -1147,8 +1185,6 @@ def publish_datastage(identifier):
                     return jsonify({"error": f"{dataset_uuid} missing contacts or contributors. Must have at least one of each"}), 400
                 dataset_contacts = string_helper.convert_str_literal(dataset_contacts)
                 dataset_contributors = string_helper.convert_str_literal(dataset_contributors)
-
-            ingest_helper: IngestFileHelper = IngestFileHelper(app.config)
 
             data_access_level = dataset_data_access_level
             #if consortium access level convert to public dataset, if protected access leave it protected
@@ -1256,12 +1292,13 @@ def publish_datastage(identifier):
                 for e_id in uuids_for_public:
                     entity_instance.clear_cache(e_id)
 
+            #path to the Dataset on the file system, used for both creating metadata.json and for striping lab ids from any *metadata.tsv files
+            ds_path = ingest_helper.dataset_directory_absolute_path_published(data_access_level, dataset_group_uuid, dataset_uuid)
             if is_primary or metadata_json_based_on_creation_action(entity_dict.get('creation_action')):
                 # Write out the metadata.json file after all processing has been done for publication...
                 # NOTE: The metadata.json file must be written before set_dataset_permissions published=True is executed
                 # because (on examining the code) you can see that it causes the director to be not writable.
-                ds_path = ingest_helper.dataset_directory_absolute_path_published(data_access_level,
-                                                                                  dataset_group_uuid, dataset_uuid)
+
                 md_file = os.path.join(ds_path, "metadata.json")
                 try:
                     entity_base_url = commons_file_helper.removeTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL'])
@@ -1292,6 +1329,26 @@ def publish_datastage(identifier):
             acls_cmd = ingest_helper.set_dataset_permissions(dataset_uuid, dataset_group_uuid, data_access_level,
                                                              True, no_indexing_and_acls)
 
+
+        #find all of the files that match *metadata.tsv under the dataset's directory
+        #strip the columns that can hold lab identifiers of any data
+        tsv_files = glob.glob(os.path.join(ds_path,"*metadata.tsv"))
+        for tsv_file in tsv_files:
+            tsv_data = pandas.read_csv(tsv_file, sep='\t')
+            columns = tsv_data.columns.tolist()
+            changes = False
+            for col_name in tsv_columns_to_blank:
+                if col_name in columns:
+                    changes = True
+                    tsv_data[col_name] = None
+            if changes:
+                meta_filename = os.path.basename(os.path.normpath(tsv_file))
+                dtnow = datetime.datetime.now().strftime('%Y-%m-%d-%H:%M:%S')
+                backup_filename = f"({dataset_uuid}.{dtnow}) {meta_filename}"
+                backup_file_path = os.path.join(tsv_backup_dir,backup_filename)
+                shutil.copy(tsv_file, f"{backup_file_path}")
+                tsv_data.to_csv(tsv_file, sep='\t', index=False)
+
         if no_indexing_and_acls:
             r_val = {'acl_cmd': acls_cmd, 'donors_for_indexing': donors_to_reindex, 'relink_cmd': relink_cmd}
         else:
@@ -1311,7 +1368,7 @@ def publish_datastage(identifier):
         return Response(hte.get_description(), hte.get_status_code())
     except Exception as e:
         logger.error(e, exc_info=True)
-        return Response("Unexpected error while creating a dataset: " + str(e) + "  Check the logs", 500)
+        return Response(f"Unexpected error while creating a dataset: {identifier} " + str(e) + "  Check the logs", 500)
 
 
 @app.route('/datasets/<identifier>/metadata-json', methods=['PUT'])
@@ -3780,6 +3837,8 @@ def files_exist(uuid, data_access_level, group_name, metadata=False):
                 return False
     else:
         return False
+
+
 
 # From the time update_datasets/uploads_datastatus are queued, until they complete for the first time, a 202 should be returned
 # This flag is tracked in redis    
