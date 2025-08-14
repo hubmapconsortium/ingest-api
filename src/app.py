@@ -3289,7 +3289,7 @@ def validate_datasets():
         return jsonify(list(input_to_entity.keys())), 202
     else:
         logger.error(f"Ingest Pipeline returned error {ingest_res.status_code}: {ingest_res.text}")
-        return jsonify({"error": f"Ingest Pipeline responded with an unexpected error: HTTP {ingest_res.status_code}"}), 500
+        return jsonify({"error": f"Ingest Pipeline responded with an unexpected error: HTTP {ingest_res.status_code}. Check the airflow logs to see which ID's were unsuccessful."}), 500
         
 
 @app.route('/uploads/validate', methods=['POST'])
@@ -3375,7 +3375,7 @@ def validate_uploads():
         return jsonify(list(input_to_entity.keys())), 202
     else:
         logger.error(f"Ingest Pipeline returned error {ingest_res.status_code}: {ingest_res.text}")
-        return jsonify({"error": f"Ingest Pipeline responded with an unexpected error: HTTP {ingest_res.status_code}"}), 500
+        return jsonify({"error": f"Ingest Pipeline responded with an unexpected error: HTTP {ingest_res.status_code}. Check the airflow logs to see which ID's were unsuccessful."}), 500
 
 
 ####################################################################################################
