@@ -753,7 +753,7 @@
     },
     {
         "type": "match",
-        "match": "is_dcwg and is_primary and dataset_type == 'Xenium' and oligo_probe_panel in ['10x Genomics; Xenium Human Multi-Tissue and Cancer Panel v1; PN 1000626', '10x Genomics; Xenium Prime 5K Human Pan Tissue & Pathways Panel; PN 1000724', 'Custom']",
+        "match": "is_dcwg and is_primary and dataset_type == 'Xenium' and oligo_probe_panel in ['10x Genomics; Xenium Human Multi-Tissue and Cancer Panel v1; PN 1000626', '10x Genomics; Xenium Prime 5K Human Pan Tissue & Pathways Panel; PN 1000724', 'Custom', '10x Genomics; Xenium Human Colon Gene Expression Panel; PN 1000642', '10x Genomics; Xenium Human Lung Gene Expression Panel; PN 1000601', '10x Genomics; Xenium Custom Gene Expression Panel (up to 50 genes), PN-1000464', '10x Genomics; Xenium Custom Gene Expression Panel, (51-100 genes); PN 1000561']",
         "value": "{'ubkg_code': 'C202050', 'assaytype': 'xenium', 'vitessce-hints': [], 'dir-schema': 'xenium-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'Xenium', 'description': 'Xenium'}",
         "rule_description": "DCWG xenium"
     },
@@ -813,7 +813,7 @@
     },
     {
         "type": "match",
-        "match": "is_dcwg and is_primary and dataset_type == 'CosMx Proteomics'",
+        "match": "is_dcwg and is_primary and dataset_type == 'CosMx Proteomics' and oligo_probe_panel in ['NanoString Technologies; CosMx Human Immuno-Oncology Panel (Protein, 64 Plex); PN CMX-H-IOP-64P-P', 'NanoString Technologies; CosMx Mouse Neuroscience Panel (Protein, 64 Plex); PN CMX-M-Neuro-64P-P']",
         "value": "{'ubkg_code': 'C202150', 'assaytype': 'cosmx_proteomics', 'vitessce-hints': [], 'dir-schema': 'cosmx-proteomics-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'CosMx Proteomics', 'description': 'CosMx Proteomics'}",
         "rule_description": "DCWG CosMx Proteomics"
     },
@@ -823,6 +823,36 @@
         "value": "{'ubkg_code': 'C202160', 'assaytype': 'FACS', 'vitessce-hints': [], 'dir-schema': 'facs-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'FACS', 'description': 'FACS'}",
         "rule_description": "DCWG FACS"
     },
+    {
+         "type": "match",
+         "match": "is_central_processed and data_types[0] in ['xenium']",
+         "value": "{'ubkg_code': 'C202170', 'assaytype': 'xenium', 'vitessce-hints': ['xenium', 'is_image'], 'description': 'Xenium [SpatialData + Scanpy]', 'contains-pii': false, 'primary': false, 'pipeline-shorthand': 'SpatialData + Scanpy'}",
+         "rule_description": "derived xenium"
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and is_primary and dataset_type == 'Olink'",
+        "value": "{'ubkg_code': 'C202180', 'assaytype': 'olink', 'vitessce-hints': [], 'dir-schema': 'olink-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'Olink', 'description': 'Olink'}",
+        "rule_description": "DCWG Olink"
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and is_primary and dataset_type == 'SeqScope'",
+        "value": "{'ubkg_code': 'C202190', 'assaytype': 'seqscope', 'vitessce-hints': [], 'dir-schema': 'seq-scope-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'SeqScope', 'description': 'SeqScope'}",
+        "rule_description": "DCWG SeqScope"
+    },
+    {
+        "type": "match",
+        "match": "is_epic and derived_dataset_type == 'Object x Analyte'",
+        "value": "{'ubkg_code': 'C202200', 'assaytype': 'object-x-analyte', 'vitessce-hints': [], 'dir-schema': 'object-x-analyte-v2', 'contains-pii': false, 'primary': false, 'dataset-type': 'Object x Analyte', 'description': 'Object x Analyte', 'process_state': 'epic'}",
+        "rule_description": "EPIC dataset Object x Analyte"
+    },
+    {
+         "type": "match",
+         "match": "is_central_processed and data_types[0] in ['rna_with_probes']",
+         "value": "{'ubkg_code': 'C202210', 'assaytype': 'rna_with_probes', 'vitessce-hints': ['rna', 'is_sc'], 'description': 'RNAseq (with probes) [BWA + Scanpy]', 'contains-pii': false, 'primary': false, 'pipeline-shorthand': 'BWA + Scanpy'}",
+         "rule_description": "derived RNAseq w/ Probes"
+    }
   ],
 "pre":
   [

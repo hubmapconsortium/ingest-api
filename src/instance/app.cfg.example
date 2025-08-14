@@ -54,6 +54,13 @@ FILE_UPLOAD_TEMP_DIR = '/hive/hubmap-dev/hm_uploads_tmp'
 # Remember to set the proper file system user and group permission
 FILE_UPLOAD_DIR = '/hive/hubmap-dev/hm_uploads'
 
+# Directory where backups of metadata.tsv files will be kept when they
+# are stripped of any lab ids at publication time
+METADATA_TSV_BACKUP_DIR = '/hive/hubmap-dev/data/metadata-tsv-backups'
+
+# Pointer to GitHub raw url for the HuBMAP provenance schema yaml file
+SCHEMA_YAML_URL = 'https://raw.githubusercontent.com/hubmapconsortium/entity-api/refs/heads/dev-integrate/src/schema/provenance_schema.yaml'
+
 #The Base URL to the Globus transfer application site
 GLOBUS_APP_BASE_URL = 'https://app.globus.org'
 

@@ -39,3 +39,5 @@ pyfakefs==4.5.5
 Werkzeug==3.0.3
 
 APScheduler==3.10.4
+
+pandas==2.3.1
