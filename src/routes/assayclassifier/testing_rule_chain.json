@@ -1006,7 +1006,7 @@
     {
         "type": "match",
         "match": "true",
-        "value": "{'contains-pii': final_contains_pii, 'vitessce-hints': final_vitessce_hints, 'assaytype': final_assaytype, 'dir-schema': final_dir_schema, 'primary': final_primary, 'dataset-type': final_dataset_type, 'description': final_description, 'must-contain': final_must_contain, 'is-multi-assay': final_is_multi_assay, 'pipeline-shorthand': final_pipeline_shorthand, 'tbl-schema': final_tbl_schema, 'ubkg_code': values&['ubkg_code']}",
+        "value": "{'contains-pii': final_contains_pii, 'vitessce-hints': final_vitessce_hints, 'assaytype': final_assaytype, 'dir-schema': final_dir_schema, 'primary': final_primary, 'dataset-type': final_dataset_type, 'description': final_description, 'must-contain': final_must_contain, 'is-multi-assay': final_is_multi_assay, 'pipeline-shorthand': final_pipeline_shorthand, 'tbl-schema': final_tbl_schema, 'process_state': final_process_state, 'ubkg_code': values&['ubkg_code']}",
         "rule_description": "return expected values"
     }
   ]
