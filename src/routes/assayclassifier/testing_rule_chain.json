@@ -916,7 +916,7 @@
     {
         "type": "note",
         "match": "true",
-        "value": "{'final_contains_pii': (source_is_human and values['contains-pii'])}",
+        "value": "{'final_contains_pii': (source_is_human and (ubkg_values&['contains_full_genetic_sequences'] ? ubkg_values&['contains_full_genetic_sequences'] : values&['contains-pii']))}",
         "rule_description": "non-human data is not PII"
     },
     {
