@@ -1196,7 +1196,7 @@ def publish_datastage(identifier):
                 components_primary_path = None
                 if is_component:
                     components_primary_path = get_components_primary_path(dataset_uuid)
-                relink_cmd = ingest_helper.move_dataset_files_for_publishing(dataset_uuid, dataset_group_uuid, 'consortium', False, is_component, components_primary_path)
+                    relink_cmd = ingest_helper.move_dataset_files_for_publishing(dataset_uuid, dataset_group_uuid, 'consortium', False, is_component, components_primary_path)
                 
                 uuids_for_public.append(dataset_uuid)
                 data_access_level = 'public'
