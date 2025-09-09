@@ -506,6 +506,20 @@ def _validate_token_if_auth_header_exists(request):
         if isinstance(user_info, Response):
             unauthorized_error(user_info.get_data().decode())
 
+
+# Use the Flask request.args MultiDict to see if 'reindex' is a URL parameter passed in with the
+# request and if it indicates reindexing should be supressed. Default to reindexing in all other cases.
+def _suppress_reindex() -> bool:
+    if 'reindex' not in request.args:
+        return False
+    reindex_str = request.args.get('reindex').lower()
+    if reindex_str == 'false':
+        return True
+    elif reindex_str == 'true':
+        return False
+    raise Exception(f"The value of the 'reindex' parameter must be True or False (case-insensitive)."
+                    f" '{request.args.get('reindex')}' is not recognized.")
+
 ####################################################################################################
 ## Ingest API Endpoints
 ####################################################################################################
@@ -908,8 +922,20 @@ def create_datastage():
         ingest_helper = IngestFileHelper(app.config)
         requested_group_uuid = auth_helper.get_write_group_uuid(token, requested_group_uuid)
         dataset_request['group_uuid'] = requested_group_uuid
-        post_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + f'entities/{entity_type}'
+
+        # Check URL parameters before proceeding to any CRUD operations, halting on validation failures.
+        #
+        # Check if re-indexing is to be suppressed after entity creation.
+        try:
+            suppress_reindex = _suppress_reindex()
+        except Exception as e:
+            bad_request_error(e)
+
+        post_url = f"{commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL'])}" \
+                   f"entities/{entity_type}" \
+                   f"{'?reindex=False' if suppress_reindex else ''}"
         response = requests.post(post_url, json = dataset_request, headers = {'Authorization': 'Bearer ' + token, 'X-Hubmap-Application':'ingest-api' }, verify = False)
+
         if response.status_code != 200:
             return Response(response.text, response.status_code)
         new_dataset = response.json()
@@ -959,8 +985,20 @@ def multiple_components():
         ingest_helper = IngestFileHelper(app.config)
         requested_group_uuid = auth_helper.get_write_group_uuid(token, requested_group_uuid)
         component_request['group_uuid'] = requested_group_uuid
-        post_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'datasets/components'
+
+        # Check URL parameters before proceeding to any CRUD operations, halting on validation failures.
+        #
+        # Check if re-indexing is to be suppressed after entity creation.
+        try:
+            suppress_reindex = _suppress_reindex()
+        except Exception as e:
+            bad_request_error(e)
+
+        post_url = f"{commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL'])}" \
+                   f"datasets/components" \
+                   f"{'?reindex=False' if suppress_reindex else ''}"
         response = requests.post(post_url, json = component_request, headers = {'Authorization': 'Bearer ' + token, 'X-Hubmap-Application':'ingest-api' }, verify = False)
+
         if response.status_code != 200:
             return Response(response.text, response.status_code)
         new_datasets_list = response.json()
@@ -1561,12 +1599,24 @@ def submit_dataset(uuid):
     except Exception as e:
         logger.error(e, exc_info=True)
         return Response("Unexpected error while creating a dataset: " + str(e) + "  Check the logs", 500)
+
+    # Check URL parameters before proceeding to any CRUD operations, halting on validation failures.
+    #
+    # Check if re-indexing is to be suppressed after entity creation.
     try:
-        put_url = commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/' + uuid
+        suppress_reindex = _suppress_reindex()
+    except Exception as e:
+        bad_request_error(e)
+
+    try:
+        put_url = f"{commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL'])}" \
+                   f"entities/{uuid}" \
+                   f"{'?reindex=False' if suppress_reindex else ''}"
         dataset_request['status'] = 'Processing'
         response = requests.put(put_url, json=dataset_request,
                                 headers={'Authorization': 'Bearer ' + token, 'X-Hubmap-Application': 'ingest-api'},
                                 verify=False)
+
         if not response.status_code == 200:
             error_msg = f"call to {put_url} failed with code:{response.status_code} message:" + response.text
             logger.error(error_msg)
