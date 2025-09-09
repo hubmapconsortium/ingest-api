@@ -517,7 +517,7 @@ def _suppress_reindex() -> bool:
         return True
     elif reindex_str == 'true':
         return False
-    raise Exception(f"The value of the 'reindex' parameter must be True or False."
+    raise Exception(f"The value of the 'reindex' parameter must be True or False (case-insensitive)."
                     f" '{request.args.get('reindex')}' is not recognized.")
 
 ####################################################################################################
@@ -929,7 +929,7 @@ def create_datastage():
         try:
             suppress_reindex = _suppress_reindex()
         except Exception as e:
-            return http_bad_request(e)
+            bad_request_error(e)
 
         post_url = f"{commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL'])}" \
                    f"entities/{entity_type}" \
@@ -992,7 +992,7 @@ def multiple_components():
         try:
             suppress_reindex = _suppress_reindex()
         except Exception as e:
-            return http_bad_request(e)
+            bad_request_error(e)
 
         post_url = f"{commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL'])}" \
                    f"datasets/components" \
@@ -1606,7 +1606,7 @@ def submit_dataset(uuid):
     try:
         suppress_reindex = _suppress_reindex()
     except Exception as e:
-        return http_bad_request(e)
+        bad_request_error(e)
 
     try:
         put_url = f"{commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL'])}" \
