@@ -15,6 +15,8 @@ import csv
 import time
 from operator import xor
 from threading import Thread
+
+import werkzeug.exceptions
 from hubmap_sdk import EntitySdk, sdk_helper
 from apscheduler.schedulers.background import BackgroundScheduler
 from neo4j.exceptions import TransactionError
@@ -929,12 +931,15 @@ def create_datastage():
         try:
             suppress_reindex = _suppress_reindex()
         except Exception as e:
-            bad_request_error(e)
+            bad_request_error(str(e))
 
         post_url = f"{commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL'])}" \
                    f"entities/{entity_type}" \
                    f"{'?reindex=False' if suppress_reindex else ''}"
-        response = requests.post(post_url, json = dataset_request, headers = {'Authorization': 'Bearer ' + token, 'X-Hubmap-Application':'ingest-api' }, verify = False)
+        response = requests.post(post_url
+                                 , json = dataset_request
+                                 , headers = {'Authorization': 'Bearer ' + token, 'X-Hubmap-Application':'ingest-api' }
+                                 , verify = False)
 
         if response.status_code != 200:
             return Response(response.text, response.status_code)
@@ -943,6 +948,8 @@ def create_datastage():
         ingest_helper.create_dataset_directory(new_dataset, requested_group_uuid, new_dataset['uuid'])
 
         return jsonify(new_dataset)
+    except werkzeug.exceptions.HTTPException as hte:
+        return Response(hte.description, hte.code)
     except HTTPException as hte:
         return Response(hte.get_description(), hte.get_status_code())
     except Exception as e:
