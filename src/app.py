@@ -3593,7 +3593,7 @@ def update_datasets_datastatus():
         "ds.data_access_level AS data_access_level, ds.ingest_task AS ingest_task, ds.error_message AS error_message, ds.dataset_type as dataset_type, ds.priority_project_list AS priority_project_list, "
         "COALESCE(ds.contributors IS NOT NULL) AS has_contributors, "
         "COALESCE(ds.contacts IS NOT NULL) AS has_contacts, "
-        "a.creation_action AS activity_creation_action"
+        "a.creation_action AS activity_creation_action, collect(ancestor.hubmap_id) AS ancestors"
     )
 
     organ_query = (
@@ -3624,9 +3624,10 @@ def update_datasets_datastatus():
     has_rui_query = (
         "MATCH (ds:Dataset) "
         "WHERE (ds)<-[:ACTIVITY_OUTPUT]-(:Activity) "
-        "WITH ds, [(ds)<-[*]-(s:Sample) | s.rui_location] AS rui_locations "
-        "RETURN ds.uuid AS uuid, any(rui_location IN rui_locations WHERE rui_location IS NOT NULL) AS has_rui_info"
-    )
+        "WITH ds, [(ds)<-[*]-(s:Sample) | s.rui_location] AS rui_locations, "
+        "[(ds)<-[*]-(s:Sample) WHERE s.sample_category = 'block' | s.hubmap_id] AS block_hubmap_ids "
+        "RETURN ds.uuid AS uuid, any(rui_location IN rui_locations WHERE rui_location IS NOT NULL) AS has_rui_info, block_hubmap_ids"
+)
 
     has_source_sample_metadata_query = (
         "MATCH (ds:Dataset)<-[:ACTIVITY_OUTPUT]-(a:Activity {creation_action: 'Create Dataset Activity'}) "
@@ -3684,6 +3685,7 @@ def update_datasets_datastatus():
     for dataset in has_rui_result:
         if output_dict.get(dataset['uuid']):
             output_dict[dataset['uuid']]['has_rui_info'] = dataset['has_rui_info']
+            output_dict[dataset['uuid']]['block_hubmap_ids'] = dataset['block_hubmap_ids']
     for dataset in has_source_sample_metadata_result:
         if output_dict.get(dataset['uuid']):
             output_dict[dataset['uuid']]['has_source_sample_metadata'] = dataset['has_source_sample_metadata']
