@@ -3650,7 +3650,7 @@ def update_datasets_datastatus():
         "ds.data_access_level AS data_access_level, ds.ingest_task AS ingest_task, ds.error_message AS error_message, ds.dataset_type as dataset_type, ds.priority_project_list AS priority_project_list, "
         "COALESCE(ds.contributors IS NOT NULL) AS has_contributors, "
         "COALESCE(ds.contacts IS NOT NULL) AS has_contacts, "
-        "a.creation_action AS activity_creation_action, collect(ancestor.hubmap_id) AS ancestors"
+        "a.creation_action AS activity_creation_action, collect({hubmap_id: ancestor.hubmap_id, uuid: ancestor.uuid}) AS parent_ancestors"
     )
 
     organ_query = (
@@ -3682,8 +3682,8 @@ def update_datasets_datastatus():
         "MATCH (ds:Dataset) "
         "WHERE (ds)<-[:ACTIVITY_OUTPUT]-(:Activity) "
         "WITH ds, [(ds)<-[*]-(s:Sample) | s.rui_location] AS rui_locations, "
-        "[(ds)<-[*]-(s:Sample) WHERE s.sample_category = 'block' | s.hubmap_id] AS block_hubmap_ids "
-        "RETURN ds.uuid AS uuid, any(rui_location IN rui_locations WHERE rui_location IS NOT NULL) AS has_rui_info, block_hubmap_ids"
+        "[(ds)<-[*]-(s:Sample) WHERE s.sample_category = 'block' | {hubmap_id: s.hubmap_id, uuid: s.uuid}] AS blocks "
+        "RETURN ds.uuid AS uuid, any(rui_location IN rui_locations WHERE rui_location IS NOT NULL) AS has_rui_info, blocks"
 )
 
     has_source_sample_metadata_query = (
@@ -3742,7 +3742,7 @@ def update_datasets_datastatus():
     for dataset in has_rui_result:
         if output_dict.get(dataset['uuid']):
             output_dict[dataset['uuid']]['has_rui_info'] = dataset['has_rui_info']
-            output_dict[dataset['uuid']]['block_hubmap_ids'] = dataset['block_hubmap_ids']
+            output_dict[dataset['uuid']]['blocks'] = dataset['blocks']
     for dataset in has_source_sample_metadata_result:
         if output_dict.get(dataset['uuid']):
             output_dict[dataset['uuid']]['has_source_sample_metadata'] = dataset['has_source_sample_metadata']
@@ -3769,7 +3769,10 @@ def update_datasets_datastatus():
 
         for prop in dataset:
             if isinstance(dataset[prop], list) and prop != 'processed_datasets':
-                dataset[prop] = ", ".join(dataset[prop])
+                if len(dataset[prop]) > 0 and isinstance(dataset[prop][0], dict):
+                    pass
+                else:
+                    dataset[prop] = ", ".join(dataset[prop])
             if isinstance(dataset[prop], (bool)):
                 dataset[prop] = str(dataset[prop])
             if isinstance(dataset[prop], str) and \
