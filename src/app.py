@@ -31,7 +31,6 @@ from flask_cors import CORS
 from flask_mail import Mail, Message
 
 from dataset_helper_object import DatasetHelper
-from worker.utils import ResponseException
 
 # HuBMAP commons
 from hubmap_commons import neo4j_driver
@@ -57,9 +56,8 @@ from datacite_doi_helper_object import DataCiteDoiHelper
 from api.datacite_api import DataciteApiException
 from app_utils.request_validation import require_json
 from app_utils.error import unauthorized_error, not_found_error, internal_server_error, bad_request_error, forbidden_error
-from app_utils.misc import __get_dict_prop
+from app_utils.misc import __get_dict_prop, ResponseException
 from app_utils.entity import __get_entity, get_entity_type_instanceof
-from app_utils.task_queue import TaskQueue
 from werkzeug import utils
 
 from routes.auth import auth_blueprint
@@ -222,15 +220,6 @@ data_curator_group_uuid = app.config['HUBMAP_DATA_CURATOR_GROUP_UUID']
 
 prov_schema_helper = ProvenanceSchemaHelper(app.config)
 
-####################################################################################################
-## Task Queue initialization
-####################################################################################################
-try:
-    redis_url = app.config['REDIS_URL']
-    logger.info(f'Initializing TaskQueue class successfully :) REDIS_URL={redis_url}')
-    TaskQueue.create(redis_url, 'Cell Type Count Processing')
-except Exception:
-    logger.exception("Failed to Initializing class TaskQueue")
 
 ####################################################################################################
 ## Default and Status Routes
