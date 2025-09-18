@@ -46,17 +46,6 @@ def h5ad_file_analysis_updating_cell_type_counts(h5ad_file: str,
                 cell_type_counts[cell_type] += 1
 
 
-# This is the time-consuming part of the process. It is called from a thread to prevent a HTTP response timeout.
-def extract_cell_type_counts(ds_files: dict) -> dict:
-    """Accumulate the cell type counts from the given dataset files"""
-    cell_type_counts: dict = {}
-    for ds_uuid, h5ad_file in ds_files.items():
-        h5ad_file_analysis_updating_cell_type_counts(h5ad_file, cell_type_counts)
-        logger.info(
-            f"Extracted cell count from secondary analysis file for ds_uuid: {ds_uuid}; h5ad_file: {h5ad_file}")
-    return cell_type_counts
-
-
 def get_ds_path(ds_uuid: str,
                 ingest_helper: IngestFileHelper) -> str:
     """Get the path to the dataset files"""
@@ -89,32 +78,4 @@ def sample_ds_uuid_files(ds_uuids: List[str],
             logger.error(
                 f"For ds_uuid: {ds_uuid}; Missing extracted cell count from secondary analysis h5ad_file: {h5ad_file}")
     return ds_files
-
-
-def extract_cell_count_from_secondary_analysis_files_for_sample_uuid(sample_uuid: str,
-                                                                     ds_files: dict,
-                                                                     spatial_url: str) -> None:
-    """Task to aggregate the cell type counts and send them back to Spatial-Api"""
-    logger.info(f'Extract Cell Count Job; sample_uuid:{sample_uuid}, ds_files: {ds_files}, spatial_url: {spatial_url}')
-    url = f"{spatial_url}/samples/cell-type-counts"
-    # Because this thread may take a long time we send a token that won't timeout...
-    auth_helper_instance = AuthHelper.instance()
-    headers: dict = {
-        'Authorization': f'Bearer {auth_helper_instance.getProcessSecret()}',
-        'X-Hubmap-Application': 'ingest-api',
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-    }
-    data: dict = {
-        'sample_uuid': sample_uuid,
-        'cell_type_counts': extract_cell_type_counts(ds_files)
-    }
-    logger.info(f'URL: {url} DATA: {data}')
-    # Send the data that it time-consuming to produce, spacial-api will finish up with this but respond back
-    # to us that it is simply "working on it". There is no loop to close here. Status checked just to log it.
-    resp: Response = requests.put(url, headers=headers, data=json.dumps(data))
-    if resp.status_code == 202:
-        logger.info(f'Received expected 202 status from {url} while processing sample {sample_uuid}')
-    else:
-        logger.error(f'Unexpected response ({resp.status_code}) for {url} while processing sample {sample_uuid}')
 
