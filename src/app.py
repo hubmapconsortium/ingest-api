@@ -61,7 +61,6 @@ from app_utils.entity import __get_entity, get_entity_type_instanceof
 from werkzeug import utils
 
 from routes.auth import auth_blueprint
-from routes.datasets import datasets_blueprint
 from routes.file import file_blueprint
 from routes.assayclassifier import bp as assayclassifier_blueprint
 from routes.validation import validation_blueprint
@@ -86,7 +85,6 @@ app = Flask(__name__,
 app.config.from_pyfile('app.cfg')
 
 app.register_blueprint(auth_blueprint)
-app.register_blueprint(datasets_blueprint)
 app.register_blueprint(file_blueprint)
 app.register_blueprint(assayclassifier_blueprint)
 app.register_blueprint(validation_blueprint)
