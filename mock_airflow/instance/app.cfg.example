@@ -66,9 +66,6 @@ SEARCH_WEBSERVICE_URL = 'https://search-api.dev.hubmapconsortium.org/v3'
 # URL to the entity-api web service
 ENTITY_WEBSERVICE_URL = 'https://entity-api.dev.hubmapconsortium.org'
 
-# URL to the spatial-api web service
-SPATIAL_WEBSERVICE_URL = 'https://spatial-api.dev.hubmapconsortium.org'
-
 # For UI login/logout
 # Flask app session key
 SECRET_KEY = 'a%@3k9Hdlkfjakjajf99adsf909oel'

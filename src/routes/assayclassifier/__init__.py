@@ -8,10 +8,8 @@ import urllib.error
 
 from hubmap_commons.exceptions import HTTPException
 from werkzeug.exceptions import HTTPException as WerkzeugException
-from worker.utils import ResponseException
-
+from app_utils.misc import ResponseException
 from app_utils.request_validation import require_json
-
 from app_manager import groups_token_from_request_headers
 
 from .rule_chain import (
