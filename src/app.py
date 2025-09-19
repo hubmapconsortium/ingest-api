@@ -250,7 +250,7 @@ def status():
         file_build_content = str(e)
 
     try:
-        redis_conn = redis.from_url(redis_url)
+        redis_conn = redis.from_url(app.config['REDIS_URL'])
         redis_ping_status = redis_conn.ping()
     except Exception as e:
         redis_ping_status = str(e)
