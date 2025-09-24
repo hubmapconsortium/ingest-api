@@ -160,9 +160,7 @@ class DatasetHelper:
 
         entity_dict = vars(sdk_entity)
         if entity_dict['entity_type'] not in supported_entity_type_list:
-            raise ValueError(f"{entity_id} of type"
-                             f" {entity_dict['entity_type']} is not supported,"
-                             f" only {str(supported_entity_type_list)}")
+            return {'valid_id': False}
 
         # Make sure all expected elements for the business requirements are in the returned entity.
         # Need to determine entity "visibility" using the same rules found in the
