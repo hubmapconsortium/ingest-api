@@ -120,7 +120,7 @@ def get_entity_json(ds_uuid: str) -> dict:
     entity_api_url = current_app.config["ENTITY_WEBSERVICE_URL"]
     if not entity_api_url.endswith('/'):
         entity_api_url = entity_api_url + '/'
-    entity_json = wrapped_get_json(entity_api_url + 'entities/' + ds_uuid)
+    entity_json = wrapped_get_json(entity_api_url + 'entities/' + ds_uuid + '?exclude=direct_ancestors.files')
     return entity_json
 
 
