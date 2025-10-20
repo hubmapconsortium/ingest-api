@@ -870,6 +870,12 @@
         "match": "is_dcwg and is_primary and dataset_type == 'Pixel-seqV2'",
         "value": "{'ubkg_code': 'C202240', 'assaytype': 'pixel-seqv2', 'vitessce-hints': [], 'dir-schema': 'pixel-seqv2-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'Pixel-seqV2', 'description': 'Pixel-seqV2'}",
         "rule_description": "DCWG Pixel-seqV2"
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and is_primary and dataset_type == '4i'",
+        "value": "{'ubkg_code': 'C202250', 'assaytype': '4i', 'vitessce-hints': [], 'dir-schema': '4i-v2', 'contains-pii': false, 'primary': true, 'dataset-type': '4i', 'description': '4i'}",
+        "rule_description": "DCWG 4i"
     }
   ],
 "pre":
