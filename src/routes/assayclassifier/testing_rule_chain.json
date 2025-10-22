@@ -729,7 +729,7 @@
     },
     {
         "type": "match",
-        "match": "is_central_processed and data_types[0] in ['phenocycler_deepcell']",
+        "match": "is_central_processed and data_types[0] in ['phenocycler_deepcell', 'phenocycler_low_cell_count', 'phenocycler_high_cell_count']",
         "value": "{'ubkg_code': 'C201180', 'assaytype': 'phenocycler_deepcell', 'vitessce-hints': ['is_image', 'is_tiled', 'sprm', 'anndata'], 'primary': false, 'contains-pii': false, 'description': 'PhenoCycler [DeepCell + SPRM]', 'pipeline-shorthand': 'DeepCell + SPRM'}",
         "rule_description": "derived phenocycler"
     },
