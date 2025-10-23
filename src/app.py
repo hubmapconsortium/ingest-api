@@ -387,20 +387,7 @@ def notify():
     if not isinstance(json_data['message'], str):
         bad_request_error("The value of 'message' must be a string")
 
-    # Send message to Slack
-    target_url = 'https://slack.com/api/chat.postMessage'
-    request_header = {
-        "Authorization": f"Bearer {app.config['SLACK_CHANNEL_TOKEN']}"
-    }
-    json_to_post = {
-        "channel": channel,
-        "text": f"From {user_name} ({user_email}):\n{json_data['message']}"
-    }
-
-    logger.debug("======notify() json_to_post======")
-    logger.debug(json_to_post)
-
-    response = requests.post(url = target_url, headers = request_header, json = json_to_post, verify = False)
+    response = send_slack_message(f"From {user_name} ({user_email}):\n{json_data['message']}", channel)
 
     notification_results = {'Slack': None, 'Email': None}
     # Note: Slack API wraps the error response in the 200 response instead of using non-200 status code
@@ -460,7 +447,7 @@ def notify():
                             f" {notification_results['Slack']}"), 400
 
     return jsonify(notification_results)
-
+        
 ####################################################################################################
 ## Internal Functions
 ####################################################################################################
@@ -1062,6 +1049,10 @@ def publish_datastage(identifier):
 
     Test using both protected and consortium identifiers.
     """
+    dataset_group_uuid = None
+    dataset_data_access_level = None
+    dataset_status = None
+    dataset_contains_human_genetic_sequences = None    
     try:
         auth_helper = AuthHelper.configured_instance(app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'])
         user_info = auth_helper.getUserInfoUsingRequest(request, getGroups=True)
@@ -1089,6 +1080,7 @@ def publish_datastage(identifier):
             no_indexing_and_acls = True
 
         donors_to_reindex = []
+        
         with neo4j_driver_instance.session() as neo_session:
             #recds = session.run("Match () Return 1 Limit 1")
             #for recd in recds:
@@ -1100,6 +1092,7 @@ def publish_datastage(identifier):
             #look at all of the ancestors
             #gather uuids of ancestors that need to be switched to public access_level
             #grab the id of the donor ancestor to use for reindexing
+            
             q = f"MATCH (dataset:Dataset {{uuid: '{dataset_uuid}'}})<-[:ACTIVITY_OUTPUT]-(e1)<-[:ACTIVITY_INPUT|ACTIVITY_OUTPUT*]-(all_ancestors:Entity) RETURN distinct all_ancestors.uuid as uuid, all_ancestors.entity_type as entity_type, all_ancestors.data_access_level as data_access_level, all_ancestors.status as status, all_ancestors.metadata as metadata"
             rval = neo_session.run(q).data()
             uuids_for_public = []
@@ -1137,16 +1130,17 @@ def publish_datastage(identifier):
                                         f"Will not Publish. Ancestor dataset is: {uuid}", 400)
 
             if has_donor is False:
-                return Response(    response=f"{dataset_uuid}: no donor found for dataset, will not Publish"
+                return Response(response=f"{dataset_uuid}: no donor found for dataset, will not Publish"
                                     , status=400)
 
             #get info for the dataset to be published
             q = f"MATCH (e:Dataset {{uuid: '{dataset_uuid}'}}) RETURN " \
                 "e.uuid as uuid, e.entity_type as entitytype, e.status as status, " \
                 "e.data_access_level as data_access_level, e.group_uuid as group_uuid, " \
-                "e.contacts as contacts, e.contributors as contributors, e.status_history as status_history"
+                "e.contacts as contacts, e.contributors as contributors, e.status_history as status_history, e.contains_human_genetic_sequences as contains_human_genetic_sequences"
             if is_primary:
                 q += ", e.ingest_metadata as ingest_metadata"
+                
             rval = neo_session.run(q).data()
             dataset_entitytype = rval[0]['entitytype']
             dataset_status = rval[0]['status']
@@ -1154,6 +1148,7 @@ def publish_datastage(identifier):
             dataset_group_uuid = rval[0]['group_uuid']
             dataset_contacts = rval[0]['contacts']
             dataset_contributors = rval[0]['contributors']
+            dataset_contains_human_genetic_sequences = rval[0]['contains_human_genetic_sequences']
             dataset_ingest_matadata_dict = None
             if is_primary:
                 dataset_ingest_metadata = rval[0].get('ingest_metadata')
@@ -1394,6 +1389,24 @@ def publish_datastage(identifier):
                     logger.info(f"Publishing {identifier} indexed donor {donor_uuid} with status {rspn.status_code}")
                 except:
                     logger.exception(f"While publishing {identifier} Error happened when calling reindex web service for donor {donor_uuid}")
+
+        #inner function to copy public information from a protected dataset to a public dataset 
+        def copy_protected_to_public():
+            try:
+                logger.info(f"Starting copy of protected dataset {dataset_uuid} to a public version")
+                dset_dict = {'group_uuid':dataset_group_uuid, 'uuid':dataset_uuid, 'data_access_level':dataset_data_access_level, 'status':dataset_status, 'contains_human_genetic_sequences':dataset_contains_human_genetic_sequences}
+                ingest_helper.copy_protected_files_to_public(dset_dict)
+                logger.info(f"Finished copy of protected dataset {dataset_uuid} to a public version")
+            except Exception as e:
+                msg = f"Error while making a public copy of dataset {dataset_uuid} in a thread. {str(e)}"
+                logger.exception(msg)
+                send_slack_message(f"{msg} Check logs for details.", app.config['SLACK_DEVOPS_CHANNEL'])
+
+        #if this is a protected dataset make a public copy (excluding any sequence/protected files)
+        if data_access_level == 'protected':
+            # Create a thread targeting the inner function
+            copy_thread = Thread(target=copy_protected_to_public)
+            copy_thread.start()
 
         return Response(json.dumps(r_val), 200, mimetype='application/json')                    
 
@@ -3888,6 +3901,34 @@ def files_exist(uuid, data_access_level, group_name, metadata=False):
     else:
         return False
 
+def send_slack_message(message, channel=None):
+    try:
+        if channel is None:
+            channel = app.config['SLACK_DEFAULT_CHANNEL']
+    
+        # Send message to Slack
+        target_url = 'https://slack.com/api/chat.postMessage'
+        request_header = {
+            "Authorization": f"Bearer {app.config['SLACK_CHANNEL_TOKEN']}"
+        }
+        json_to_post = {
+            "channel": channel,
+            "text": message
+        }
+    
+        logger.debug("======notify() json_to_post======")
+        logger.debug(json_to_post)
+    
+        response = requests.post(url = target_url, headers = request_header, json = json_to_post, verify = False)
+        
+        logger.debug("======notify() json_to_post======")
+        logger.debug(json_to_post)
+        
+        return response
+    except Exception as e:
+        msg = f"Error sending a slack message {str(e)}"
+        logger.exception(msg)
+        raise(e)
 
 
 # From the time update_datasets/uploads_datastatus are queued, until they complete for the first time, a 202 should be returned
