@@ -729,7 +729,7 @@
     },
     {
         "type": "match",
-        "match": "is_central_processed and data_types[0] in ['phenocycler_deepcell']",
+        "match": "is_central_processed and data_types[0] in ['phenocycler_deepcell', 'phenocycler_low_cell_count', 'phenocycler_high_cell_count']",
         "value": "{'ubkg_code': 'C201180', 'assaytype': 'phenocycler_deepcell', 'vitessce-hints': ['is_image', 'is_tiled', 'sprm', 'anndata'], 'primary': false, 'contains-pii': false, 'description': 'PhenoCycler [DeepCell + SPRM]', 'pipeline-shorthand': 'DeepCell + SPRM'}",
         "rule_description": "derived phenocycler"
     },
@@ -795,7 +795,7 @@
     },
     {
         "type": "match",
-        "match": "is_dcwg and is_primary and dataset_type == 'CosMx Transcriptomics' and oligo_probe_panel in ['NanoString Technologies; CosMx Human Universal Cell Characterization Panel (RNA, 1000 Plex); PN CMX-H-USCP-1KP-R', 'NanoString Technologies; CosMx Hs WTX RNA Panel Kit, 2 slides: PN 121500047', 'NanoString Technologies; CosMx Hs Univ Cell (RNA, 1000 Plex); PN 121500002', 'NanoString Technologies; CosMx Human 6K Discovery Panel (RNA, 6175 Plex); PN 121500041', 'NanoString Technologies; CosMx Mouse Universal Cell Characterization Panel (RNA, 1000 Plex); PN CMX-M-USCP-1KP-R']",
+        "match": "is_dcwg and is_primary and dataset_type == 'CosMx Transcriptomics' and oligo_probe_panel in ['NanoString Technologies; CosMx Human Universal Cell Characterization Panel (RNA, 1000 Plex); PN CMX-H-USCP-1KP-R', 'NanoString Technologies; CosMx Hs WTX RNA Panel Kit, 2 slides: PN 121500047', 'NanoString Technologies; CosMx Hs Univ Cell (RNA, 1000 Plex); PN 121500002', 'NanoString Technologies; CosMx Human 6K Discovery Panel (RNA, 6175 Plex); PN 121500041', 'NanoString Technologies; CosMx Mouse Universal Cell Characterization Panel (RNA, 1000 Plex); PN CMX-M-USCP-1KP-R', 'NanoString Technologies; CosMx Mouse Neuroscience Panel (RNA, 1000 Plex); PN CMX-M-NEUP-R']",
         "value": "{'ubkg_code': 'C202120', 'assaytype': 'cosmx_transcriptomics', 'vitessce-hints': [], 'dir-schema': 'cosmx-transcriptomics-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'CosMx Transcriptomics', 'description': 'CosMx Transcriptomics'}",
         "rule_description": "DCWG CosMx Transcriptomics"
     },
