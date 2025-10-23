@@ -21,7 +21,8 @@ class IngestFileHelper:
 #            return str(os.path.join(directory, file.filename))
 #        except OSError as oserr:
 #            pprint(oserr)
- 
+    excluded_protected_exts = [".fastq", ".fastq.gz", ".bam"]
+    
     def __init__(self, config):
         self.appconfig = config
         self.logger = logging.getLogger('ingest.service')
@@ -221,3 +222,50 @@ class IngestFileHelper:
                 rVal = f'ln -s "{components_primary_path}" "{pub_path}"'
         
         return rVal
+    
+    def copy_protected_files_to_public(self, dataset: dict) -> tuple[str, str]:
+            src_dir = self.get_dataset_directory_absolute_path(
+                dataset,
+                dataset["group_uuid"],
+                dataset["uuid"],
+            )
+            dst_dir = os.path.join(self.appconfig["GLOBUS_PUBLIC_ENDPOINT_FILEPATH"], dataset["uuid"])
+            if not os.path.exists(src_dir):
+                raise Exception(f"Protected dataset directory {src_dir} does not exist")
+            if os.path.exists(dst_dir):
+                raise Exception(f"Public dataset directory {dst_dir} already exists")
+    
+            # Create the public dataset directory
+            os.makedirs(dst_dir, mode=0o755, exist_ok=True)  # rwxr-xr-x
+    
+            # Recursively copy files from protected to public, exclude specific file types
+            for root, _, files in os.walk(src_dir):
+                rel_path = os.path.relpath(root, src_dir)
+                dst_root = os.path.join(dst_dir, rel_path) if rel_path != "." else dst_dir
+                os.makedirs(dst_root, mode=0o755, exist_ok=True)
+                for file in files:
+                    if not any(file.endswith(ext) for ext in self.excluded_protected_exts):
+                        src_file = os.path.join(root, file)
+                        dst_file = os.path.join(dst_root, file)
+                        shutil.copy2(src_file, dst_file)
+                        os.chmod(dst_file, 0o444)  # r--r--r--
+    
+            # Make sequence-data-removed-README.txt file in the top-level public directory
+            readme_path = os.path.join(dst_dir, "sequence-data-removed-README.txt")
+            with open(readme_path, "w") as f:
+                portal_url = file_helper.ensureTrailingSlashURL(self.appconfig["PORTAL_URL"])
+                dataset_url = f"{portal_url}browse/dataset/{dataset['uuid']}"
+                readme_txt = (
+                     "The data in this directory is incomplete because the full sequence data has been removed.\r\n\r\n"
+                     f"To get the complete data visit: {dataset_url}\r\n"
+                     " - Consortium members with access: Use the Globus link on that page.\r\n"
+                     " - Public users and Consortium members without access: Follow the instructions on that page to get the data from dbGap.\r\n\r\n"
+                     "Please note: The data will only be available on dbGap an unknown time after Consortium publication.\r\n"
+                )
+                f.write(readme_txt)
+            os.chmod(readme_path, 0o444)  # r--r--r--
+    
+            # Set directory permissions. we need to do this after copy to avoid permission issues.
+            for root, _, files in os.walk(dst_dir):
+                os.chmod(root, 0o555)  # r-xr-xr-x
+            return src_dir, dst_dir
