@@ -4,7 +4,9 @@ ENABLE_CORS = False
 
 # Slack notification
 SLACK_DEFAULT_CHANNEL = ''
+SLACK_DEVOPS_CHANNEL = 'devop-notifications'
 SLACK_CHANNEL_TOKEN = ''
+
 
 # Email settings for Flask-Mail extension
 MAIL_SERVER = ''
@@ -163,3 +165,6 @@ APPLICATION_CONTEXT = 'HUBMAP'
 
 CEDAR_API_KEY = ''
 CEDAR_API_URL = 'https://resource.metadatacenter.org/templates/https%3A%2F%2Frepo.metadatacenter.org%2Ftemplates%2F'
+
+#URL of Data Portal
+PORTAL_URL = 'https://portal.hubmapconsortium.org'
