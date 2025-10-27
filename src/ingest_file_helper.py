@@ -256,7 +256,7 @@ class IngestFileHelper:
                 portal_url = file_helper.ensureTrailingSlashURL(self.appconfig["PORTAL_URL"])
                 dataset_url = f"{portal_url}browse/dataset/{dataset['uuid']}#bulk-data-transfer"
                 readme_txt = (
-                    f"This directory includes all published data for this dataset, except person-specific human genomic sequences. SenNet Consortium members can request protected access to the sequence data, and it will be available to the public through dbGaP once released. For more details, visit the dataset's information page at {dataset_url}."
+                    f"This directory includes all published data for this dataset, except person-specific human genomic sequences. Consortium members can request protected access to the sequence data, and it will be available to the public through dbGaP once released. For more details, visit the dataset's information page at {dataset_url}."
                 )
                 f.write(readme_txt)
             os.chmod(readme_path, 0o444)  # r--r--r--
