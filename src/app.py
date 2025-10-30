@@ -1052,7 +1052,9 @@ def publish_datastage(identifier):
     dataset_group_uuid = None
     dataset_data_access_level = None
     dataset_status = None
-    dataset_contains_human_genetic_sequences = None    
+    dataset_contains_human_genetic_sequences = None
+    components_primary_path = None
+    is_component = False
     try:
         auth_helper = AuthHelper.configured_instance(app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'])
         user_info = auth_helper.getUserInfoUsingRequest(request, getGroups=True)
@@ -1220,7 +1222,7 @@ def publish_datastage(identifier):
                 #before moving check to see if there is currently a link for the dataset in the assets directory
                 asset_dir = ingest_helper.dataset_asset_directory_absolute_path(dataset_uuid)
                 asset_dir_exists = os.path.exists(asset_dir)
-                components_primary_path = None
+                
                 if is_component:
                     components_primary_path = get_components_primary_path(dataset_uuid)
                 
@@ -1228,7 +1230,7 @@ def publish_datastage(identifier):
                 
                 uuids_for_public.append(dataset_uuid)
                 data_access_level = 'public'
-                if asset_dir_exists or is_component:
+                if asset_dir_exists:
                     asset_link_cmd = ingest_helper.relink_to_public(dataset_uuid, is_component, components_primary_path)
                     if not asset_link_cmd is None:
                         relink_cmd = relink_cmd + " " + asset_link_cmd
@@ -1395,7 +1397,10 @@ def publish_datastage(identifier):
             try:
                 logger.info(f"Starting copy of protected dataset {dataset_uuid} to a public version")
                 dset_dict = {'group_uuid':dataset_group_uuid, 'uuid':dataset_uuid, 'data_access_level':dataset_data_access_level, 'status':dataset_status, 'contains_human_genetic_sequences':dataset_contains_human_genetic_sequences}
-                ingest_helper.copy_protected_files_to_public(dset_dict)
+                if is_component and not components_primary_path is None:
+                    ingest_helper.copy_protected_files_to_public(dset_dict, src_dir = components_primary_path)
+                else:
+                    ingest_helper.copy_protected_files_to_public(dset_dict)
                 logger.info(f"Finished copy of protected dataset {dataset_uuid} to a public version")
             except Exception as e:
                 msg = f"Error while making a public copy of dataset {dataset_uuid} in a thread. {str(e)}"
@@ -1403,7 +1408,7 @@ def publish_datastage(identifier):
                 send_slack_message(f"{msg} Check logs for details.", app.config['SLACK_DEVOPS_CHANNEL'])
 
         #if this is a protected dataset make a public copy (excluding any sequence/protected files)
-        if data_access_level == 'protected':
+        if data_access_level == 'protected' or (is_component and not components_primary_path is None):
             # Create a thread targeting the inner function
             copy_thread = Thread(target=copy_protected_to_public)
             copy_thread.start()
@@ -3548,7 +3553,7 @@ def dataset_is_multi_assay_component(dataset_uuid):
         q = (f"MATCH (ds:Dataset {{uuid: '{dataset_uuid}'}})<-[:ACTIVITY_OUTPUT]-(a:Activity) WHERE toLower(a.creation_action) = 'multi-assay split' RETURN ds.uuid")
         result = neo_session.run(q).data()
         if len(result) == 0:
-            return False
+            return False, None
         return True
 
 def get_components_primary_path(component_uuid):
