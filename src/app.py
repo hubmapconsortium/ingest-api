@@ -1169,30 +1169,33 @@ def publish_datastage(identifier):
 
             ingest_helper: IngestFileHelper = IngestFileHelper(app.config)
             
+            
+            #if this is not a component dataset (this will have been done for the multi-assay primary of the component)
             #find any *metadata.tsv files in this dataset and check to make sure they are writable
-            dset_directory_to_check = ingest_helper.dataset_directory_absolute_path(dataset_data_access_level, dataset_group_uuid, dataset_uuid, False) 
-            #make sure directory exists and is writable
-            if not os.path.isdir(dset_directory_to_check) or not os.access(dset_directory_to_check, os.W_OK):
-                return jsonify({"error":f"ERROR: Dataset directory {dset_directory_to_check} is not writable or doesn't exist"}), 500
-            
-            tsv_files = glob.glob(os.path.join(dset_directory_to_check,"*metadata.tsv"))
-            for tsv_file in tsv_files:
-                if not os.access(tsv_file, os.W_OK):
-                    return jsonify({"error": f"ERROR: metadata.tsv file {tsv_file} is not writable"}), 500
+            if not is_component:
+                dset_directory_to_check = ingest_helper.dataset_directory_absolute_path(dataset_data_access_level, dataset_group_uuid, dataset_uuid, False) 
+                #make sure directory exists and is writable
+                if not os.path.isdir(dset_directory_to_check) or not os.access(dset_directory_to_check, os.W_OK):
+                    return jsonify({"error":f"ERROR: Dataset directory {dset_directory_to_check} is not writable or doesn't exist"}), 500
+                
+                tsv_files = glob.glob(os.path.join(dset_directory_to_check,"*metadata.tsv"))
+                for tsv_file in tsv_files:
+                    if not os.access(tsv_file, os.W_OK):
+                        return jsonify({"error": f"ERROR: metadata.tsv file {tsv_file} is not writable"}), 500
+    
+                #if we need to strip tsv files make sure the directory where we will put backups exists and is writable
+                if len(tsv_files) > 0:
+                    if tsv_backup_dir is None:
+                        return jsonify({"error": "tsv backup directory is not set in configuration"}), 500
+                    if not os.path.isdir(tsv_backup_dir):
+                        return jsonify({"error": f"ERROR: backup directory {tsv_backup_dir} is not a directory or does not exist"}), 500
+                    if not os.access(tsv_backup_dir, os.W_OK):
+                        return jsonify({"error": f"ERROR: backup directory {tsv_backup_dir} is not writable"}), 500
 
-            #if we need to strip tsv files make sure the directory where we will put backups exists and is writable
-            if len(tsv_files) > 0:
-                if tsv_backup_dir is None:
-                    return jsonify({"error": "tsv backup directory is not set in configuration"}), 500
-                if not os.path.isdir(tsv_backup_dir):
-                    return jsonify({"error": f"ERROR: backup directory {tsv_backup_dir} is not a directory or does not exist"}), 500
-                if not os.access(tsv_backup_dir, os.W_OK):
-                    return jsonify({"error": f"ERROR: backup directory {tsv_backup_dir} is not writable"}), 500
+                #grab the columns that will be blanked from the tsvs now.  In case there is an issue, we'll fail 
+                #now before publishing the dataset
+                tsv_columns_to_blank = prov_schema_helper.get_metadata_properties_to_exclude()
 
-            #grab the columns that will be blanked from the tsvs now.  In case there is an issue, we'll fail 
-            #now before publishing the dataset
-            tsv_columns_to_blank = prov_schema_helper.get_metadata_properties_to_exclude()
-            
             #set up a status_history list to add a "Published" entry to below
             if 'status_history' in rval[0]:
                 status_history_str = rval[0]['status_history']
