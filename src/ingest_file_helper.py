@@ -238,7 +238,7 @@ class IngestFileHelper:
             raise Exception(f"Public dataset directory {dst_dir} already exists")
 
         # Create the public dataset directory
-        os.makedirs(dst_dir, mode=0o755, exist_ok=True)  # rwxr-xr-x
+        os.makedirs(dst_dir)  # rwxr-xr-x
 
         # Recursively copy files from protected to public, exclude specific file types
         for root, _, files in os.walk(src_dir):
@@ -249,7 +249,7 @@ class IngestFileHelper:
                 if not any(file.endswith(ext) for ext in self.excluded_protected_exts):
                     src_file = os.path.join(root, file)
                     dst_file = os.path.join(dst_root, file)
-                    shutil.copy2(src_file, dst_file)
+                    shutil.copyfile(src_file, dst_file)
                     os.chmod(dst_file, 0o444)  # r--r--r--
 
         # Make sequence-data-removed-README.txt file in the top-level public directory
@@ -261,9 +261,5 @@ class IngestFileHelper:
                 f"This directory includes all published data for this dataset, except person-specific human genomic sequences. Consortium members can request protected access to the sequence data, and it will be available to the public through dbGaP once released. For more details, visit the dataset's information page at {dataset_url}."
             )
             f.write(readme_txt)
-        os.chmod(readme_path, 0o444)  # r--r--r--
 
-        # Set directory permissions. we need to do this after copy to avoid permission issues.
-        for root, _, files in os.walk(dst_dir):
-            os.chmod(root, 0o555)  # r-xr-xr-x
         return src_dir, dst_dir
