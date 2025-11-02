@@ -1365,22 +1365,23 @@ def publish_datastage(identifier):
 
         #find all of the files that match *metadata.tsv under the dataset's directory
         #strip the columns that can hold lab identifiers of any data
-        tsv_files = glob.glob(os.path.join(ds_path,"*metadata.tsv"))
-        for tsv_file in tsv_files:
-            tsv_data = pandas.read_csv(tsv_file, sep='\t')
-            columns = tsv_data.columns.tolist()
-            changes = False
-            for col_name in tsv_columns_to_blank:
-                if col_name in columns:
-                    changes = True
-                    tsv_data[col_name] = None
-            if changes:
-                meta_filename = os.path.basename(os.path.normpath(tsv_file))
-                dtnow = datetime.datetime.now().strftime('%Y-%m-%d-%H:%M:%S')
-                backup_filename = f"({dataset_uuid}.{dtnow}) {meta_filename}"
-                backup_file_path = os.path.join(tsv_backup_dir,backup_filename)
-                shutil.copy(tsv_file, f"{backup_file_path}")
-                tsv_data.to_csv(tsv_file, sep='\t', index=False)
+        if not is_component:
+            tsv_files = glob.glob(os.path.join(ds_path,"*metadata.tsv"))
+            for tsv_file in tsv_files:
+                tsv_data = pandas.read_csv(tsv_file, sep='\t')
+                columns = tsv_data.columns.tolist()
+                changes = False
+                for col_name in tsv_columns_to_blank:
+                    if col_name in columns:
+                        changes = True
+                        tsv_data[col_name] = None
+                if changes:
+                    meta_filename = os.path.basename(os.path.normpath(tsv_file))
+                    dtnow = datetime.datetime.now().strftime('%Y-%m-%d-%H:%M:%S')
+                    backup_filename = f"({dataset_uuid}.{dtnow}) {meta_filename}"
+                    backup_file_path = os.path.join(tsv_backup_dir,backup_filename)
+                    shutil.copy(tsv_file, f"{backup_file_path}")
+                    tsv_data.to_csv(tsv_file, sep='\t', index=False)
 
         if no_indexing_and_acls:
             r_val = {'acl_cmd': acls_cmd, 'donors_for_indexing': donors_to_reindex, 'relink_cmd': relink_cmd}
