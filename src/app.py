@@ -2236,8 +2236,8 @@ def allowable_edit_states(hmuuid):
                         if data_access_level == 'public':
                             return Response(json.dumps(r_val), 200, mimetype='application/json')
 
-                    # else:
-                    #     return Response("Invalid data type " + entity_type + ".", 400)
+                    else:
+                        return Response("Invalid data type " + entity_type + ".", 400)
 
                     #compare the group_uuid in the entity to the users list of groups
                     #if the user is a member of the HuBMAP-Data-Admin group,
