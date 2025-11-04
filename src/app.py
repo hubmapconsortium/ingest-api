@@ -2203,6 +2203,14 @@ def allowable_edit_states(hmuuid):
                     
                     entity_type = entity_type.lower().strip()                          
                     if not entity_type == 'upload':
+                        if entity_type in ('collection', 'epicollection'):
+                            doi_url = record.get('e.doi_url', None)
+                            registered_doi = record.get('e.registered_doi', None)
+                            if isBlank(doi_url) and isBlank(registered_doi):
+                                data_access_level = "private"
+                            else:
+                                data_access_level = "public"
+                                
                         if isBlank(data_access_level): 
                             msg = f"ERROR: unable to obtain a data_access_level from database for entity uuid:{hmuuid} during a call to allowable-edit-states"
                             logger.error(msg)
@@ -2224,12 +2232,12 @@ def allowable_edit_states(hmuuid):
                             if status == 'published' or status == 'reorganized':
                                 return Response(json.dumps(r_val), 200, mimetype='application/json')
                     #if the entity is public, no write allowed
-                    elif entity_type in ['sample', 'donor']:
+                    elif entity_type in ['sample', 'donor','collection','epicollection']:
                         if data_access_level == 'public':
                             return Response(json.dumps(r_val), 200, mimetype='application/json')
 
-                    else:
-                        return Response("Invalid data type " + entity_type + ".", 400)
+                    # else:
+                    #     return Response("Invalid data type " + entity_type + ".", 400)
 
                     #compare the group_uuid in the entity to the users list of groups
                     #if the user is a member of the HuBMAP-Data-Admin group,
