@@ -2121,7 +2121,7 @@ def register_collections_doi(collection_id):
 #
 # example url:  https://my.endpoint.server/entities/a5659553c04f6ccbe54ff073b071f349/allowable-edit-states
 # inputs:
-#      - The uuid of a HuBMAP entity (Donor, Sample or Dataset) as a URL path parameter
+#      - The uuid of a HuBMAP entity (Donor, Sampl, Dataset, Collection, or EPICollection) as a URL path parameter
 #      - A valid nexus token in a authorization bearer header
 #
 # returns
@@ -2210,7 +2210,6 @@ def allowable_edit_states(hmuuid):
                                 data_access_level = "private"
                             else:
                                 data_access_level = "public"
-                                
                         if isBlank(data_access_level): 
                             msg = f"ERROR: unable to obtain a data_access_level from database for entity uuid:{hmuuid} during a call to allowable-edit-states"
                             logger.error(msg)
@@ -2232,7 +2231,7 @@ def allowable_edit_states(hmuuid):
                             if status == 'published' or status == 'reorganized':
                                 return Response(json.dumps(r_val), 200, mimetype='application/json')
                     #if the entity is public, no write allowed
-                    elif entity_type in ['sample', 'donor','collection','epicollection']:
+                    elif entity_type in ['sample', 'donor']:
                         if data_access_level == 'public':
                             return Response(json.dumps(r_val), 200, mimetype='application/json')
 
@@ -2253,6 +2252,12 @@ def allowable_edit_states(hmuuid):
                         if entity_type == 'upload':
                             if status in ['new', 'invalid', 'valid', 'error']:
                                 r_val['has_submit_priv'] = True
+                        if entity_type in ['collection','epicollection']:
+                            doi_url = record.get('e.doi_url', None)
+                            registered_doi = record.get('e.registered_doi', None)
+                            if isBlank(doi_url) and isBlank(registered_doi):
+                                r_val['has_publish_priv'] = True
+                            
                     #if in the users list of groups return true otherwise false
                     elif group_uuid in user_info['hmgroupids']:
                         if not status == 'processing':
