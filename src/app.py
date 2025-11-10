@@ -2121,7 +2121,7 @@ def register_collections_doi(collection_id):
 #
 # example url:  https://my.endpoint.server/entities/a5659553c04f6ccbe54ff073b071f349/allowable-edit-states
 # inputs:
-#      - The uuid of a HuBMAP entity (Donor, Sample or Dataset) as a URL path parameter
+#      - The uuid of a HuBMAP entity (Donor, Sample, Dataset, Collection, or EPICollection) as a URL path parameter
 #      - A valid nexus token in a authorization bearer header
 #
 # returns
@@ -2186,6 +2186,7 @@ def allowable_edit_states(hmuuid):
                     data_access_level = record.get('e.data_access_level', None)
                     entity_type = record.get('e.entity_type', None)
                     status = record.get('e.status', None)
+                    hasDOI = not isBlank(record.get('e.doi_url', None)) or not isBlank(record.get('e.registered_doi', None))
 
                     # if user is in the data admin group
                     if data_admin_group_uuid in user_info['hmgroupids']:
@@ -2203,6 +2204,11 @@ def allowable_edit_states(hmuuid):
                     
                     entity_type = entity_type.lower().strip()                          
                     if not entity_type == 'upload':
+                        if entity_type in ('collection', 'epicollection'):
+                            if hasDOI:
+                                data_access_level = "private"
+                            else:
+                                data_access_level = "public"
                         if isBlank(data_access_level): 
                             msg = f"ERROR: unable to obtain a data_access_level from database for entity uuid:{hmuuid} during a call to allowable-edit-states"
                             logger.error(msg)
@@ -2228,7 +2234,7 @@ def allowable_edit_states(hmuuid):
                         if data_access_level == 'public':
                             return Response(json.dumps(r_val), 200, mimetype='application/json')
 
-                    else:
+                    elif entity_type not in ['collection', 'epicollection', 'sample','donor','dataset']:
                         return Response("Invalid data type " + entity_type + ".", 400)
 
                     #compare the group_uuid in the entity to the users list of groups
@@ -2245,6 +2251,10 @@ def allowable_edit_states(hmuuid):
                         if entity_type == 'upload':
                             if status in ['new', 'invalid', 'valid', 'error']:
                                 r_val['has_submit_priv'] = True
+                        if entity_type in ['collection','epicollection']:
+                            if not hasDOI:
+                                r_val['has_publish_priv'] = True
+                            
                     #if in the users list of groups return true otherwise false
                     elif group_uuid in user_info['hmgroupids']:
                         if not status == 'processing':
