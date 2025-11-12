@@ -753,7 +753,7 @@
     },
     {
         "type": "match",
-        "match": "is_dcwg and is_primary and dataset_type == 'Xenium' and oligo_probe_panel in ['10x Genomics; Xenium Human Multi-Tissue and Cancer Panel v1; PN 1000626', '10x Genomics; Xenium Prime 5K Human Pan Tissue & Pathways Panel; PN 1000724', 'Custom', '10x Genomics; Xenium Human Colon Gene Expression Panel; PN 1000642', '10x Genomics; Xenium Human Lung Gene Expression Panel; PN 1000601', '10x Genomics; Xenium Custom Gene Expression Panel (up to 50 genes), PN-1000464', '10x Genomics; Xenium Custom Gene Expression Panel, (51-100 genes); PN 1000561']",
+        "match": "is_dcwg and is_primary and dataset_type == 'Xenium' and oligo_probe_panel in ['10x Genomics; Xenium Human Multi-Tissue and Cancer Panel v1; PN 1000626', '10x Genomics; Xenium Prime 5K Human Pan Tissue & Pathways Panel; PN 1000724', 'Custom', '10x Genomics; Xenium Human Colon Gene Expression Panel; PN 1000642', '10x Genomics; Xenium Human Lung Gene Expression Panel; PN 1000601', '10x Genomics; Xenium Custom Gene Expression Panel (up to 50 genes), PN-1000464', '10x Genomics; Xenium Custom Gene Expression Panel, (51-100 genes); PN 1000561', '10x Genomics; Xenium Mouse Multi-Tissue Atlassing Panel; PN 1000627']",
         "value": "{'ubkg_code': 'C202050', 'assaytype': 'xenium', 'vitessce-hints': [], 'dir-schema': 'xenium-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'Xenium', 'description': 'Xenium'}",
         "rule_description": "DCWG xenium"
     },
