@@ -3716,13 +3716,13 @@ def update_datasets_datastatus():
     descendant_qa_query = (
         "MATCH (e:Dataset)<-[:ACTIVITY_OUTPUT]-(a:Activity)<-[:ACTIVITY_INPUT]-(ds:Dataset) "
         "WHERE e.status IN ['QA'] AND TOLOWER(a.creation_action) = 'central process' "
-        "RETURN ds.uuid as uuid, COLLECT(DISTINCT {uuid: e.uuid, sennet_id: e.sennet_id}) AS descendant_qa"
+        "RETURN ds.uuid as uuid, COLLECT(DISTINCT {uuid: e.uuid, hubmap_id: e.hubmap_id}) AS descendant_qa"
     )
 
     descendant_published_query = (
         "MATCH (e:Dataset)<-[:ACTIVITY_OUTPUT]-(a:Activity)<-[:ACTIVITY_INPUT]-(ds:Dataset) "
         "WHERE e.status IN ['Published'] AND TOLOWER(a.creation_action) = 'central process' "
-        "RETURN ds.uuid as uuid, COLLECT(DISTINCT {uuid: e.uuid, sennet_id: e.sennet_id}) AS descendant_published"
+        "RETURN ds.uuid as uuid, COLLECT(DISTINCT {uuid: e.uuid, hubmap_id: e.hubmap_id}) AS descendant_published"
     )
 
     displayed_fields = [
