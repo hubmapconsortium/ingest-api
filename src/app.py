@@ -3713,6 +3713,18 @@ def update_datasets_datastatus():
         "RETURN ds.uuid AS uuid, any(md IN sourceMetadataList WHERE md IS NOT NULL) AS has_source_sample_metadata"
     )
 
+    descendant_qa_query = (
+        "MATCH (e:Dataset)<-[:ACTIVITY_OUTPUT]-(a:Activity)<-[:ACTIVITY_INPUT]-(ds:Dataset) "
+        "WHERE e.status IN ['QA'] AND TOLOWER(a.creation_action) = 'central process' "
+        "RETURN ds.uuid as uuid, COLLECT(DISTINCT {uuid: e.uuid, sennet_id: e.sennet_id}) AS descendant_qa"
+    )
+
+    descendant_published_query = (
+        "MATCH (e:Dataset)<-[:ACTIVITY_OUTPUT]-(a:Activity)<-[:ACTIVITY_INPUT]-(ds:Dataset) "
+        "WHERE e.status IN ['Published'] AND TOLOWER(a.creation_action) = 'central process' "
+        "RETURN ds.uuid as uuid, COLLECT(DISTINCT {uuid: e.uuid, sennet_id: e.sennet_id}) AS descendant_published"
+    )
+
     displayed_fields = [
         "hubmap_id", "group_name", "status", "organ", "provider_experiment_id", "last_touch", "has_contacts",
         "has_contributors", "donor_hubmap_id", "donor_submission_id", "donor_lab_id", "has_dataset_metadata", 
@@ -3721,7 +3733,9 @@ def update_datasets_datastatus():
     ]
 
     queries = [all_datasets_query, organ_query, donor_query, processed_datasets_query,
-               upload_query, has_rui_query, has_source_sample_metadata_query]
+               upload_query, has_rui_query, has_source_sample_metadata_query, descendant_qa_query,
+               descendant_published_query,]
+
     results = [None] * len(queries)
     threads = []
     for i, query in enumerate(queries):
@@ -3739,9 +3753,14 @@ def update_datasets_datastatus():
     upload_result = results[4]
     has_rui_result = results[5]
     has_source_sample_metadata_result = results[6]
+    descendant_qa_result = results[7]
+    descendant_published_result = results[8]
 
     for dataset in all_datasets_result:
         output_dict[dataset['uuid']] = dataset
+        output_dict[dataset["uuid"]]["has_qa_processed"] = False
+        output_dict[dataset["uuid"]]["has_published_processed"] = False
+
     for dataset in organ_result:
         if output_dict.get(dataset['uuid']):
             output_dict[dataset['uuid']]['organ'] = dataset['organ']
@@ -3766,6 +3785,14 @@ def update_datasets_datastatus():
     for dataset in has_source_sample_metadata_result:
         if output_dict.get(dataset['uuid']):
             output_dict[dataset['uuid']]['has_source_sample_metadata'] = dataset['has_source_sample_metadata']
+
+    for dataset in descendant_published_result:
+        if output_dict.get(dataset["uuid"]):
+            output_dict[dataset["uuid"]]["has_published_processed"] = True
+
+    for dataset in descendant_qa_result:
+        if output_dict.get(dataset["uuid"]):
+            output_dict[dataset["uuid"]]["has_qa_processed"] = True
 
     combined_results = []
     for uuid in output_dict:
