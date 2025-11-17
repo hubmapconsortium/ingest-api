@@ -3775,7 +3775,16 @@ def update_datasets_datastatus():
         globus_url = get_globus_url(dataset.get('data_access_level'), dataset.get('group_name'), dataset.get('uuid'))
         dataset['globus_url'] = globus_url
         dataset['last_touch'] = dataset['last_touch'] if dataset['published_timestamp'] is None else dataset['published_timestamp']
-        
+        has_processed_published_datasets = False
+        has_processed_qa_datasets = False
+        if dataset.get('processed_datasets'):
+            for processed_ds in dataset['processed_datasets']:
+                if processed_ds['status'].lower() == 'published':
+                    has_processed_published_datasets = True
+                if processed_ds['status'].lower() == 'qa':
+                    has_processed_qa_datasets = True
+        dataset['has_published_processed'] = has_processed_published_datasets
+        dataset['has_qa_processed'] = has_processed_qa_datasets
         # Identify primary dataset based on `Activity.creation_action == "Create Dataset Activity"`
         # Component datasets grnerated by `Multi-Assay Split` and 
         # Processed datasets from `Central Process|ExternalProcess|Lab Process` are NOT primary
