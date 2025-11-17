@@ -29,7 +29,6 @@ rule_engine==4.1.0
 
 # For unit test
 nose2==0.11.0
-pyfakefs==4.5.5
 
 APScheduler==3.10.4
 
