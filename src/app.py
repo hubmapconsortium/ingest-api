@@ -3690,7 +3690,7 @@ def update_datasets_datastatus():
     processed_datasets_query = (
         "MATCH (s:Dataset)<-[:ACTIVITY_OUTPUT]-(a:Activity)<-[:ACTIVITY_INPUT]-(ds:Dataset) WHERE "
                              "a.creation_action in ['Central Process', 'Lab Process'] RETURN DISTINCT ds.uuid AS uuid, "
-        "COLLECT(DISTINCT {uuid: s.uuid, hubmap_id: s.hubmap_id, status: s.status, created_timestamp: s.created_timestamp, data_access_level: s.data_access_level, group_name: s.group_name}) AS processed_datasets"
+        "COLLECT(DISTINCT {uuid: s.uuid, hubmap_id: s.hubmap_id, status: s.status, created_timestamp: s.created_timestamp, data_access_level: s.data_access_level, group_name: s.group_name, creation_action: a.creation_action}) AS processed_datasets"
     )
 
     upload_query = (
@@ -3775,7 +3775,18 @@ def update_datasets_datastatus():
         globus_url = get_globus_url(dataset.get('data_access_level'), dataset.get('group_name'), dataset.get('uuid'))
         dataset['globus_url'] = globus_url
         dataset['last_touch'] = dataset['last_touch'] if dataset['published_timestamp'] is None else dataset['published_timestamp']
-        
+        has_processed_published_datasets = False
+        has_processed_qa_datasets = False
+        if dataset.get('processed_datasets'):
+            for processed_ds in dataset['processed_datasets']:
+                if processed_ds['creation_action'].lower() == 'central process':
+                    if processed_ds['status'].lower() == 'published':
+                        has_processed_published_datasets = True
+                    if processed_ds['status'].lower() == 'qa':
+                        has_processed_qa_datasets = True
+                processed_ds.pop('creation_action', None)
+        dataset['has_published_processed'] = has_processed_published_datasets
+        dataset['has_qa_processed'] = has_processed_qa_datasets
         # Identify primary dataset based on `Activity.creation_action == "Create Dataset Activity"`
         # Component datasets grnerated by `Multi-Assay Split` and 
         # Processed datasets from `Central Process|ExternalProcess|Lab Process` are NOT primary
