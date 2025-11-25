@@ -10,6 +10,7 @@ from api.datacite_api import DataCiteApi, DataciteApiException
 from hubmap_sdk import EntitySdk
 from dataset_helper_object import DatasetHelper
 from hubmap_commons.exceptions import HTTPException
+from hubmap_commons import string_helper
 import ast
 
 requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
@@ -94,6 +95,18 @@ class DataCiteDoiHelper:
 
         return contributor
 
+    #helper function to check existence of a non-blank string property in a dict
+    def __contains_string_field(self, field_name, entity: dict):
+        if not field_name in entity or string_helper.isBlank(entity[field_name]):
+            return False
+        return True
+    
+    #helper function to check existence of a non-empty list property in a dict
+    def __contains_list_field(self, field_name, entity: dict):
+        if not field_name in entity or not isinstance(entity[field_name], list) or len(entity[field_name]) == 0:
+            return False
+        return True
+
     # See: https://support.datacite.org/docs/schema-optional-properties-v43#7-contributor
     def build_doi_contributors(self, dataset: dict) -> list:
         dataset_contributors = self.safely_convert_string(dataset['contacts'])
@@ -156,112 +169,81 @@ class DataCiteDoiHelper:
 
     Parameters
     ----------
-    dataset: dict
-        The dataset dict to be published
+    entity: dict
+        The dict of an entity to be published, works for Datasets, Collections or Epicollections
 
     Returns
     -------
     dict
         The registered DOI details
     """
-    def create_dataset_draft_doi(self, dataset: dict, check_publication_status=True) -> object:
-        if ('entity_type' in dataset) and (dataset['entity_type'] == 'Dataset'):
-            # In case the given dataset is not published
-            if check_publication_status:
-                if dataset['status'].lower() != 'published':
-                    raise DataciteApiException('This Dataset is not Published, can not register DOI')
-
-            datacite_api = DataCiteApi(self.datacite_repository_id, self.datacite_repository_password,
-                                       self.datacite_hubmap_prefix, self.datacite_api_url, self.entity_api_url)
-
-            # Get publication_year, default to the current year
-            publication_year = int(datetime.now().year)
-            if 'published_timestamp' in dataset:
-                # The timestamp stored with using neo4j's TIMESTAMP() function contains milliseconds
-                publication_year = int(datetime.fromtimestamp(dataset['published_timestamp']/1000).year)
-
-            try:
-                response = datacite_api.create_new_draft_doi(dataset['hubmap_id'], 
-                                                    dataset['uuid'],
-                                                    self.build_doi_contributors(dataset), 
-                                                    dataset['title'],
-                                                    publication_year,
-                                                    self.build_doi_creators(dataset))
-            except requests.exceptions.RequestException as e:
-                raise DataciteApiException(error_code=500, message="Failed to connect to DataCite")
-
-            if response.status_code == 201:
-                logger.info(f"======Created draft DOI for dataset {dataset['uuid']} via DataCite======")
-                doi_data = response.json()
-                logger.debug("======resulting json from DataCite======")
-                logger.debug(doi_data)
-                return doi_data
+    def create_draft_doi(self, entity: dict, ignore_publication_status = False) -> object:
+        missing_fields = []
+        if not self.__contains_string_field('uuid', entity) or not self.__contains_string_field('hubmap_id', entity):
+            raise Exception(f"Cannot create a draft DOI for an unknown entity.  Entity uuid and/or hubmap_id are missing.")
+        required_string_fields = ['title', 'description', 'entity_type']
+        required_list_fields = ['contacts', 'contributors']
+        for field in required_string_fields:
+            if not self.__contains_string_field(field, entity):
+                missing_fields.append(field)
+        for field in required_list_fields:
+            if not self.__contains_list_field(field, entity):
+                missing_fields.append(field)
+        n_missing_fields = len(missing_fields)           
+        if n_missing_fields > 0:
+            if n_missing_fields == 1:
+                field_desc = "field"
+                field_verb = "is"
             else:
-                # Log the full stack trace, prepend a line with our message
-                logger.exception(f"Unable to create draft DOI for dataset {dataset['uuid']} via DataCite")
-                logger.debug(f'======Status code from DataCite {response.status_code} ======')
-                logger.debug("======response text from DataCite======")
-                logger.debug(response.text)
-
-                # Also bubble up the error message from DataCite
-                #raise requests.exceptions.RequestException(response.text)
-                raise DataciteApiException(response.text, error_code=response.status_code)
-        else:
-            raise DataciteApiException('Either the entity_type of the given Dataset is missing or the entity is not a Dataset')
-
-
-    """
-    Register a draft DOI with DataCite for Collections
-
-    This is similar to create_dataset_draft_doi but for collections instead of datasets. As such, 
-    values like "status" are not included because collections don't have this value. Otherwise behaves
-    identically.
-
-    Draft DOIs may be updated to either Registered or Findable DOIs. 
-    Registered and Findable DOIs may not be returned to the Draft state, 
-    which means that changing the state of a Draft DOI is final. 
-    Draft DOIs remain until the DOI owner either deletes them or converts them to another state.
-
-    Parameters
-    ----------
-    dataset: dict
-        The dataset dict to be published
-
-    Returns
-    -------
-    dict
-        The registered DOI details
-    """
-    def create_collection_draft_doi(self, collection: dict) -> object:
-        datacite_api = DataCiteApi(self.datacite_repository_id, self.datacite_repository_password, self.datacite_hubmap_prefix, self.datacite_api_url, self.entity_api_url)
-        publication_year = int(datetime.now().year)
+                field_desc = "fields"
+                field_verb = "are"
+            raise HTTPException(f"Error cannot create a DOI for {entity['entity_type']} {entity['uuid']} because the {field_desc} \"{''.join(missing_fields)}\" {field_verb} blank.", 400)
         
+        if not entity['entity_type'] in ['Dataset', 'Collection', 'Epicollection']:
+            raise HTTPException(f"Error: cannot create a DOI for entity type {entity['entity_type']} {entity['uuid']} because it is not of required type Dataset, Collection or Epicollection", 400)
+
+        if not ignore_publication_status and entity['entity_type'] == 'Dataset' and (not self.__contains_string_field('status', entity) or not entity['status'] == 'Published'):
+            raise HTTPException(f"Error: cannot crate a DOI for Dataset {entity['uuid']} because it does not have a status of Published", 400)
+
+        datacite_api = DataCiteApi(self.datacite_repository_id, self.datacite_repository_password, self.datacite_hubmap_prefix, self.datacite_api_url, self.entity_api_url)
+
+        # Get publication_year, default to the current year
+        publication_year = int(datetime.now().year)
+        ent_type = entity['entity_type']
+        if ent_type == 'Epicollection':
+            ent_type = 'Collection'
+        if 'published_timestamp' in entity:
+            # The timestamp stored with using neo4j's TIMESTAMP() function contains milliseconds
+            publication_year = int(datetime.fromtimestamp(entity['published_timestamp']/1000).year)
+
         try:
-            response = datacite_api.create_new_draft_doi(collection['hubmap_id'], 
-                                                    collection['uuid'],
-                                                    self.build_doi_contributors(collection), 
-                                                    collection['title'],
-                                                    publication_year,
-                                                    self.build_doi_creators(collection),
-                                                    entity_type='Collection')
+            response = datacite_api.create_new_draft_doi(entity['hubmap_id'], 
+                                                entity['uuid'],
+                                                self.build_doi_contributors(entity), 
+                                                entity['title'],
+                                                publication_year,
+                                                self.build_doi_creators(entity),
+                                                entity_type = ent_type)
         except requests.exceptions.RequestException as e:
-            raise DataciteApiException(error_code=500, message="Failed to connect to DataCite") 
+            raise DataciteApiException(error_code=500, message="Failed to connect to DataCite")
+
         if response.status_code == 201:
-                logger.info(f"======Created draft DOI for collection {collection['uuid']} via DataCite======")
-                doi_data = response.json()
-                logger.debug("======resulting json from DataCite======")
-                logger.debug(doi_data)
-                return doi_data
+            logger.info(f"======Created draft DOI for entity {entity['uuid']} via DataCite======")
+            doi_data = response.json()
+            logger.debug("======resulting json from DataCite======")
+            logger.debug(doi_data)
+            return doi_data
         else:
             # Log the full stack trace, prepend a line with our message
-            logger.exception(f"Unable to create draft DOI for collection {collection['uuid']} via DataCite")
+            logger.exception(f"Unable to create draft DOI for entity {entity['uuid']} via DataCite")
             logger.debug(f'======Status code from DataCite {response.status_code} ======')
             logger.debug("======response text from DataCite======")
             logger.debug(response.text)
 
             # Also bubble up the error message from DataCite
-            
-            raise DataciteApiException(error_code=response.status_code, message=response.text)
+            #raise requests.exceptions.RequestException(response.text)
+            raise DataciteApiException(response.text, error_code=response.status_code)
+
 
     def build_doi_name(self, entity):
         datacite_api = DataCiteApi(self.datacite_repository_id, self.datacite_repository_password, self.datacite_hubmap_prefix, self.datacite_api_url, self.entity_api_url)
@@ -285,7 +267,7 @@ class DataCiteDoiHelper:
     dict
         The updated DOI properties
     """
-    def move_doi_state_from_draft_to_findable(self, entity: dict, user_token: str) -> object:
+    def move_doi_state_from_draft_to_findable(self, entity: dict) -> object:
         entity_types = ['Dataset', 'Collection', 'Epicollection']
         if ('entity_type' in entity) and (entity['entity_type'] in entity_types):
             datacite_api = DataCiteApi(self.datacite_repository_id, self.datacite_repository_password,
@@ -312,9 +294,12 @@ class DataCiteDoiHelper:
                 logger.debug(response.text)
 
                 # Also bubble up the error message from DataCite
-                raise requests.exceptions.RequestException(response.text)
+                raise HTTPException(f"Unable to make doi findable for {entity['entity_type']} {entity['uuid']}: " + response.text, 400)
         else:
-            raise KeyError(f"Either the entity_type of the given Dataset is missing or the entity is not one of the following types: {', '.join(entity_types)}")
+            entity_uuid = "UNKNOWN"
+            if 'uuid' in entity:
+                entity_uuid = entity['uuid']
+            raise HTTPException(f"Either the entity_type of the given entity with uuid:{entity_uuid} is missing or the entity is not one of the following types: {', '.join(entity_types)}", 400)
 
     """
     Update the dataset's properties after DOI is published (Draft -> Findable) 
@@ -356,6 +341,44 @@ class DataCiteDoiHelper:
             raise requests.exceptions.RequestException(e.description)
 
 
+    # Do the full DOI registration and make it findable for an entity of type Dataset, Collection or Epicollection
+    # If the DOI already exists at DataCite, just make it findable
+    def register_doi_and_make_findable(self, entity, ignore_publication_status=False):
+            # Checks both whether a doi already exists, as well as if it is already findable. If True, DOI exists and is findable
+            # If false, DOI exists but is not yet in findable. If None, doi does not yet exist. 
+            doi_info = None
+            
+            try:
+                doi_exists = self.check_doi_existence_and_state(entity)
+            except DataciteApiException as e:
+                    logger.exception(f"Exception while fetching doi for {entity['entity_type']} {entity['uuid']}")
+                    raise HTTPException(f"Error occurred while trying to confirm existence of doi for {dataset_uuid}. {e}", 500)
+            # Doi does not exist, create draft then make it findable
+            if doi_exists is None:
+                try:
+                    self.create_draft_doi(entity, ignore_publication_status)
+                except DataciteApiException as e:
+                    logger.exception(f"Exception while creating draft doi for {entity['entity_type']} {entity['uuid']}")
+                    raise HTTPException(f"Error occurred while trying to create draft doi for {dataset_uuid}. {e}", 500)                
+                doi_info = self.move_doi_state_from_draft_to_findable(entity)
+            # Doi exists, but is not yet findable. Just make it findable
+            elif doi_exists is False:
+                doi_info = self.move_doi_state_from_draft_to_findable(entity)
+            # The doi exists and it is already findable, skip both steps
+            elif doi_exists is True:
+                logger.debug(f"DOI for {entity['uuid']} is already findable. Skipping creation and state change.")
+                doi_name = datacite_doi_helper.build_doi_name(entity)
+                doi_info = {
+                    'registered_doi': doi_name,
+                    'doi_url': f'https://doi.org/{doi_name}'
+                }
+
+            #this should never or rarely happen, but could if there is an unforeseen problem returning info from existing or new DOI
+            if doi_info is None or not 'registered_doi' in doi_info or not 'doi_url' in doi_info or string_helper.isBlank(doi_info['registered_doi'] or stringHelper.isBlank(doi_info['doi_url'])):
+                raise HTTPException(f"Unexpected result while registering DOI for entity {entity['uuid']}.  DOI information not found",500)
+            
+            return doi_info
+
 # Running this python file as a script
 # cd src; python3 -m datacite_doi_helper_object <user_token>
 if __name__ == "__main__":
@@ -392,7 +415,7 @@ if __name__ == "__main__":
 
                 ### DISABLED, need to enable when use
 
-                # data_cite_doi_helper.create_dataset_draft_doi(dataset)
+                # data_cite_doi_helper.create_draft_doi(dataset)
             except Exception as e:
                 logger.exception(e)
                 sys.exit(e)

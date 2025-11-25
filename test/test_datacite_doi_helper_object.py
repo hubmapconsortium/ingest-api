@@ -148,7 +148,7 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
             return r
         mock_post.side_effect = [resp()]
         mock_get_doi_by_id.side_effect = [resp2()]
-        self.datacite_doi_helper.create_dataset_draft_doi(self.dataset)
+        self.datacite_doi_helper.create_draft_doi(self.dataset)
 
         mock_post.assert_called()
         args = mock_post.call_args_list[-1]
@@ -237,7 +237,7 @@ class TestDataciteDoiHelperObject(unittest.TestCase):
         mock_get_doi_by_id.side_effect = [resp2()]
 
         self.assertRaises(DataciteApiException,
-                          self.datacite_doi_helper.create_dataset_draft_doi, self.dataset)
+                          self.datacite_doi_helper.create_draft_doi, self.dataset)
         mock_create_new_draft_doi.assert_called()
 
     @patch('datacite_doi_helper_object.DataCiteApi.update_doi_event_publish')

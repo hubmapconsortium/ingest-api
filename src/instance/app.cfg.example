@@ -168,3 +168,5 @@ CEDAR_API_URL = 'https://resource.metadatacenter.org/templates/https%3A%2F%2Frep
 
 #URL of Data Portal
 PORTAL_URL = 'https://portal.hubmapconsortium.org'
+
+LOCKED_ENTITY_UPDATE_OVERRIDE_KEY = 'mysecretkey'
