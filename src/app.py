@@ -1055,9 +1055,22 @@ def publish_datastage(identifier):
     dataset_contains_human_genetic_sequences = None
     components_primary_path = None
     is_component = False
+    is_publication = False
+    dataset_contacts = None
+    dataset_contributors = None
+    dataset_description = None
+    is_primary = False
+    is_component = False
+    is_lab_processed = False
+    dataset_updates = {}
+    collection_uuid = None
+    doi_info = None
     try:
         auth_helper = AuthHelper.configured_instance(app.config['APP_CLIENT_ID'], app.config['APP_CLIENT_SECRET'])
-        user_info = auth_helper.getUserInfoUsingRequest(request, getGroups=True)
+        token = auth_helper.getUserTokenFromRequest(request, getGroups=True)
+        if isinstance(token, Response):
+            return token
+        user_info = auth_helper.getUserInfo(token, getGroups=True)
         if user_info is None:
             return Response("Unable to obtain user information for auth token", 401)
         if isinstance(user_info, Response):
@@ -1074,15 +1087,12 @@ def publish_datastage(identifier):
         if r.ok is False:
             raise ValueError("Cannot find specimen with identifier: " + identifier)
         dataset_uuid = json.loads(r.text)['hm_uuid']
-        is_primary = dataset_is_primary(dataset_uuid)
-        is_component = dataset_is_multi_assay_component(dataset_uuid)
         suspend_indexing_and_acls = string_helper.isYes(request.args.get('suspend-indexing-and-acls'))
         no_indexing_and_acls = False
         if suspend_indexing_and_acls:
             no_indexing_and_acls = True
 
-        donors_to_reindex = []
-        
+        entities_to_reindex = []
         with neo4j_driver_instance.session() as neo_session:
             #recds = session.run("Match () Return 1 Limit 1")
             #for recd in recds:
@@ -1093,8 +1103,7 @@ def publish_datastage(identifier):
 
             #look at all of the ancestors
             #gather uuids of ancestors that need to be switched to public access_level
-            #grab the id of the donor ancestor to use for reindexing
-            
+            #grab the id of the donor ancestor to use for reindexing        
             q = f"MATCH (dataset:Dataset {{uuid: '{dataset_uuid}'}})<-[:ACTIVITY_OUTPUT]-(e1)<-[:ACTIVITY_INPUT|ACTIVITY_OUTPUT*]-(all_ancestors:Entity) RETURN distinct all_ancestors.uuid as uuid, all_ancestors.entity_type as entity_type, all_ancestors.data_access_level as data_access_level, all_ancestors.status as status, all_ancestors.metadata as metadata"
             rval = neo_session.run(q).data()
             uuids_for_public = []
@@ -1123,7 +1132,7 @@ def publish_datastage(identifier):
                             return jsonify({"error": f"donor.metadata.organ_donor_data or "
                                                      f"donor.metadata.living_donor_data required. "
                                                      f"Both cannot be None. Both cannot be present. Only one."}), 400
-                    donors_to_reindex.append(uuid)
+                    entities_to_reindex.append(uuid)
                     if data_access_level != 'public':
                         uuids_for_public.append(uuid)
                 elif entity_type == 'Dataset':
@@ -1132,235 +1141,215 @@ def publish_datastage(identifier):
                                         f"Will not Publish. Ancestor dataset is: {uuid}", 400)
 
             if has_donor is False:
-                return Response(response=f"{dataset_uuid}: no donor found for dataset, will not Publish"
-                                    , status=400)
+                return Response(response=f"{dataset_uuid}: no donor found for dataset, will not Publish", status=400)
 
-            #get info for the dataset to be published
-            q = f"MATCH (e:Dataset {{uuid: '{dataset_uuid}'}}) RETURN " \
-                "e.uuid as uuid, e.entity_type as entitytype, e.status as status, " \
-                "e.data_access_level as data_access_level, e.group_uuid as group_uuid, " \
-                "e.contacts as contacts, e.contributors as contributors, e.status_history as status_history, e.contains_human_genetic_sequences as contains_human_genetic_sequences"
-            if is_primary:
-                q += ", e.ingest_metadata as ingest_metadata"
-                
-            rval = neo_session.run(q).data()
-            dataset_entitytype = rval[0]['entitytype']
-            dataset_status = rval[0]['status']
-            dataset_data_access_level = rval[0]['data_access_level']
-            dataset_group_uuid = rval[0]['group_uuid']
-            dataset_contacts = rval[0]['contacts']
-            dataset_contributors = rval[0]['contributors']
-            dataset_contains_human_genetic_sequences = rval[0]['contains_human_genetic_sequences']
-            dataset_ingest_matadata_dict = None
-            if is_primary:
-                dataset_ingest_metadata = rval[0].get('ingest_metadata')
-                if dataset_ingest_metadata is not None:
-                    dataset_ingest_matadata_dict: dict =\
-                        string_helper.convert_str_literal(dataset_ingest_metadata)
-                logger.info(f"publish_datastage; ingest_matadata: {dataset_ingest_matadata_dict}")
-            if not get_entity_type_instanceof(dataset_entitytype, 'Dataset', auth_header="Bearer " + auth_helper_instance.getProcessSecret()):
-                return Response(f"{dataset_uuid} is not a dataset will not Publish, entity type is {dataset_entitytype}", 400)
-            if not dataset_status == 'QA':
-                return Response(f"{dataset_uuid} is not in QA state will not Publish, status is {dataset_status}", 400)
-
-            auth_tokens = auth_helper.getAuthorizationTokens(request.headers)
-            entity_instance = EntitySdk(token=auth_tokens, service_url=app.config['ENTITY_WEBSERVICE_URL'])
-            has_entity_lab_processed_data_type = dataset_has_entity_lab_processed_data_type(dataset_uuid)
-
-            ingest_helper: IngestFileHelper = IngestFileHelper(app.config)
+        entity = __get_entity(dataset_uuid, auth_header="Bearer " + token)
+        dataset_creation_action = entity['creation_action']
+        if dataset_creation_action == 'Create Dataset Activity':
+            is_primary = True
+        elif dataset_creation_action == 'Multi-Assay Split':
+            is_component = True
+        elif dataset_creation_action == 'Lab Processed': 
+            is_lab_processed = True
+        dataset_entitytype = entity['entity_type']
+        if dataset_entitytype == 'Publication':
+            is_publication = True
+        dataset_status = entity['status']
+        dataset_data_access_level = entity['data_access_level']
+        dataset_group_uuid = entity['group_uuid']
+        dataset_contacts = entity['contacts']
+        dataset_contributors = entity['contributors']
+        dataset_contains_human_genetic_sequences = entity['contains_human_genetic_sequences']
+        dataset_ingest_matadata_dict = None
+        if 'description' in entity and not string_helper.isBlank(entity['description']):
+            dataset_description = entity['description']
+        if is_primary:
+            dataset_ingest_metadata = entity('ingest_metadata')
+            logger.info(f"publish_datastage; ingest_matadata: {dataset_ingest_matadata_dict}")
+        if not (dataset_entitytype == 'Dataset' or dataset_entitytype == 'Publication'):
+            return Response(f"{dataset_uuid} is not a dataset will not Publish, entity type is {dataset_entitytype}", 400)
+        if not dataset_status == 'QA':
+            return Response(f"{dataset_uuid} is not in QA state will not Publish, status is {dataset_status}", 400)                    
+                    
+        ingest_helper: IngestFileHelper = IngestFileHelper(app.config)
             
+        #if this is not a component dataset (this will have been done for the multi-assay primary of the component)
+        #find any *metadata.tsv files in this dataset and check to make sure they are writable
+        if not is_component:
+            dset_directory_to_check = ingest_helper.dataset_directory_absolute_path(dataset_data_access_level, dataset_group_uuid, dataset_uuid, False) 
+            #make sure directory exists and is writable
+            if not os.path.isdir(dset_directory_to_check) or not os.access(dset_directory_to_check, os.W_OK):
+                return jsonify({"error":f"ERROR: Dataset directory {dset_directory_to_check} is not writable or doesn't exist"}), 500
             
-            #if this is not a component dataset (this will have been done for the multi-assay primary of the component)
-            #find any *metadata.tsv files in this dataset and check to make sure they are writable
-            if not is_component:
-                dset_directory_to_check = ingest_helper.dataset_directory_absolute_path(dataset_data_access_level, dataset_group_uuid, dataset_uuid, False) 
-                #make sure directory exists and is writable
-                if not os.path.isdir(dset_directory_to_check) or not os.access(dset_directory_to_check, os.W_OK):
-                    return jsonify({"error":f"ERROR: Dataset directory {dset_directory_to_check} is not writable or doesn't exist"}), 500
-                
-                tsv_files = glob.glob(os.path.join(dset_directory_to_check,"*metadata.tsv"))
-                for tsv_file in tsv_files:
-                    if not os.access(tsv_file, os.W_OK):
-                        return jsonify({"error": f"ERROR: metadata.tsv file {tsv_file} is not writable"}), 500
-    
-                #if we need to strip tsv files make sure the directory where we will put backups exists and is writable
-                if len(tsv_files) > 0:
-                    if tsv_backup_dir is None:
-                        return jsonify({"error": "tsv backup directory is not set in configuration"}), 500
-                    if not os.path.isdir(tsv_backup_dir):
-                        return jsonify({"error": f"ERROR: backup directory {tsv_backup_dir} is not a directory or does not exist"}), 500
-                    if not os.access(tsv_backup_dir, os.W_OK):
-                        return jsonify({"error": f"ERROR: backup directory {tsv_backup_dir} is not writable"}), 500
+            tsv_files = glob.glob(os.path.join(dset_directory_to_check,"*metadata.tsv"))
+            for tsv_file in tsv_files:
+                if not os.access(tsv_file, os.W_OK):
+                    return jsonify({"error": f"ERROR: metadata.tsv file {tsv_file} is not writable"}), 500
 
-                #grab the columns that will be blanked from the tsvs now.  In case there is an issue, we'll fail 
-                #now before publishing the dataset
-                tsv_columns_to_blank = prov_schema_helper.get_metadata_properties_to_exclude()
+            #if we need to strip tsv files make sure the directory where we will put backups exists and is writable
+            if len(tsv_files) > 0:
+                if tsv_backup_dir is None:
+                    return jsonify({"error": "tsv backup directory is not set in configuration"}), 500
+                if not os.path.isdir(tsv_backup_dir):
+                    return jsonify({"error": f"ERROR: backup directory {tsv_backup_dir} is not a directory or does not exist"}), 500
+                if not os.access(tsv_backup_dir, os.W_OK):
+                    return jsonify({"error": f"ERROR: backup directory {tsv_backup_dir} is not writable"}), 500
 
-            #set up a status_history list to add a "Published" entry to below
-            if 'status_history' in rval[0]:
-                status_history_str = rval[0]['status_history']
-                if status_history_str is None:
-                    status_history_list = []
-                else:
-                    status_history_list = string_helper.convert_str_literal(status_history_str)
-            else:
-                status_history_list = []
+            #grab the columns that will be blanked from the tsvs now.  In case there is an issue, we'll fail 
+            #now before publishing the dataset
+            tsv_columns_to_blank = prov_schema_helper.get_metadata_properties_to_exclude()
+
+        #set up a status_history list to add a "Published" entry to below
+        if 'status_history' in entity:
+            status_history_list = entity['status_history']
+        else:
+            status_history_list = []
             
-            logger.info(f'is_primary: {is_primary}; has_entity_lab_processed_data_type: {has_entity_lab_processed_data_type}')
+        logger.info(f'is_primary: {is_primary}; is_lab_processed: {is_lab_processed}; is_component: {is_component}')
 
-            if is_primary or has_entity_lab_processed_data_type or is_component:
-                if dataset_contacts is None or dataset_contributors is None:
-                    return jsonify({"error": f"{dataset_uuid} missing contacts or contributors. Must have at least one of each"}), 400
-                #dataset_contacts = dataset_contacts.replace("'", '"')
-                #dataset_contributors = dataset_contributors.replace("'", '"')
-                if len(dataset_contacts) < 1 or len(dataset_contributors) < 1:
-                    return jsonify({"error": f"{dataset_uuid} missing contacts or contributors. Must have at least one of each"}), 400
-                dataset_contacts = string_helper.convert_str_literal(dataset_contacts)
-                dataset_contributors = string_helper.convert_str_literal(dataset_contributors)
+        if is_primary or is_lab_processed or is_component or is_publication:
+            if dataset_contacts is None or dataset_contributors is None:
+                return jsonify({"error": f"{dataset_uuid} missing contacts or contributors. Must have at least one of each"}), 400
 
-            data_access_level = dataset_data_access_level
-            #if consortium access level convert to public dataset, if protected access leave it protected
-            relink_cmd = ""
-            if dataset_data_access_level == 'consortium':
-                #before moving check to see if there is currently a link for the dataset in the assets directory
-                asset_dir = ingest_helper.dataset_asset_directory_absolute_path(dataset_uuid)
-                asset_dir_exists = os.path.exists(asset_dir)
-                
-                if is_component:
-                    components_primary_path = get_components_primary_path(dataset_uuid)
-                
-                relink_cmd = ingest_helper.move_dataset_files_for_publishing(dataset_uuid, dataset_group_uuid, 'consortium', False, is_component, components_primary_path)
-                
-                uuids_for_public.append(dataset_uuid)
-                data_access_level = 'public'
-                if asset_dir_exists:
-                    asset_link_cmd = ingest_helper.relink_to_public(dataset_uuid, is_component, components_primary_path)
-                    if not asset_link_cmd is None:
-                        relink_cmd = relink_cmd + " " + asset_link_cmd
+            if len(dataset_contacts) < 1 or len(dataset_contributors) < 1:
+                return jsonify({"error": f"{dataset_uuid} missing contacts or contributors. Must have at least one of each"}), 400
+
+        data_access_level = dataset_data_access_level
+        #if consortium access level convert to public dataset, if protected access leave it protected
+        relink_cmd = ""
+        if dataset_data_access_level == 'consortium':
+            #before moving check to see if there is currently a link for the dataset in the assets directory
+            asset_dir = ingest_helper.dataset_asset_directory_absolute_path(dataset_uuid)
+            asset_dir_exists = os.path.exists(asset_dir)
+            
+            if is_component:
+                components_primary_path = get_components_primary_path(dataset_uuid)
+            
+            relink_cmd = ingest_helper.move_dataset_files_for_publishing(dataset_uuid, dataset_group_uuid, 'consortium', False, is_component, components_primary_path)
+            
+            uuids_for_public.append(dataset_uuid)
+            data_access_level = 'public'
+            if asset_dir_exists:
+                asset_link_cmd = ingest_helper.relink_to_public(dataset_uuid, is_component, components_primary_path)
+                if not asset_link_cmd is None:
+                    relink_cmd = relink_cmd + " " + asset_link_cmd
                         
 
             auth_tokens = auth_helper.getAuthorizationTokens(request.headers)
             entity_instance = EntitySdk(token=auth_tokens, service_url=app.config['ENTITY_WEBSERVICE_URL'])
-            doi_info = None
 
-            entity = entity_instance.get_entity_by_id(dataset_uuid)
-            entity_dict = vars(entity)
+        # Generating DOI's for lab processed/derived data as well as IEC/pipeline/airflow processed/derived data).
+        if is_primary or is_lab_processed or is_component:
+            # DOI gets generated here
+            # Note: moved dataset title auto generation to entity-api - Zhou 9/29/2021
+            datacite_doi_helper = DataCiteDoiHelper()
+            doi_info = datacite_doi_helper.register_doi_and_make_findable(entity, ignore_publication_status=True)
+            dataset_updates['registered_doi'] = doi_info['registered_doi']
+            dataset_updates['doi_url'] = doi_info['doi_url']
 
-            # Generating DOI's for lab processed/derived data as well as IEC/pipeline/airflow processed/derived data).
-            if is_primary or has_entity_lab_processed_data_type or is_component:
-                # DOI gets generated here
-                # Note: moved dataset title auto generation to entity-api - Zhou 9/29/2021
-                datacite_doi_helper = DataCiteDoiHelper()
-
-                # Checks both whether a doi already exists, as well as if it is already findable. If True, DOI exists and is findable
-                # If false, DOI exists but is not yet in findable. If None, doi does not yet exist. 
-                try:
-                    doi_exists = datacite_doi_helper.check_doi_existence_and_state(entity_dict)
-                except DataciteApiException as e:
-                    logger.exception(f"Exception while fetching doi for {dataset_uuid}")
-                    return jsonify({"error": f"Error occurred while trying to confirm existence of doi for {dataset_uuid}. {e}"}), 500
-                # Doi does not exist, create draft then make it findable
-                if doi_exists is None:
-                    try:
-                        datacite_doi_helper.create_dataset_draft_doi(entity_dict, check_publication_status=False)
-                    except DataciteApiException as e:
-                        logger.exception(f"Exception while creating a draft doi for {dataset_uuid}")
-                        return jsonify({"error": f"Error occurred while trying to create a draft doi for {dataset_uuid}. {e}"}), 500
-                    # This will make the draft DOI created above 'findable'....
-                    try:
-                        doi_info = datacite_doi_helper.move_doi_state_from_draft_to_findable(entity_dict, auth_tokens)
-                    except Exception as e:
-                        logger.exception(f"Exception while creating making doi findable and saving to entity for {dataset_uuid}")
-                        return jsonify({"error": f"Error occurred while making doi findable and saving to entity for {dataset_uuid}. Check logs."}), 500
-                # Doi exists, but is not yet findable. Just make it findable 
-                elif doi_exists is False:
-                    try:
-                        doi_info = datacite_doi_helper.move_doi_state_from_draft_to_findable(entity_dict, auth_tokens)
-                    except Exception as e:
-                        logger.exception(f"Exception while creating making doi findable and saving to entity for {dataset_uuid}")
-                        return jsonify({"error": f"Error occurred while making doi findable and saving to entity for {dataset_uuid}. Check logs."}), 500
-                # The doi exists and it is already findable, skip both steps
-                elif doi_exists is True:
-                    logger.debug(f"DOI for {dataset_uuid} is already findable. Skipping creation and state change.")
-                    doi_name = datacite_doi_helper.build_doi_name(entity_dict)
-                    doi_info = {
-                        'registered_doi': doi_name,
-                        'doi_url': f'https://doi.org/{doi_name}'
-                    }
-            doi_update_clause = ""
-            if not doi_info is None:
-                doi_update_clause = f", e.registered_doi = '{doi_info['registered_doi']}', e.doi_url = '{doi_info['doi_url']}'"
-
-            #add Published status change to status history
-            status_update = {
-               "status": "Published",
-               "changed_by_email":user_info['email'],
-               "change_timestamp": "@#TIMESTAMP#@"
-            }            
-            status_history_list.append(status_update)
-            #convert from list to string that is used for storage in database
-            new_status_history_str = string_helper.convert_py_obj_to_string(status_history_list)
-            #substitute the TIMESTAMP function to let Neo4j set the change_timestamp value of this status change record
-            status_history_with_timestamp = new_status_history_str.replace("'@#TIMESTAMP#@'", '" + TIMESTAMP() + "')
-            status_history_update_clause = f', e.status_history = "{status_history_with_timestamp}"'
+        #if this is a Publication get the associated dataset uuids that we need to create a Collection and create the collection
+        if is_publication:
+            #first check to make sure we have a valid description and title
+            if string_helper.isBlank(dataset_description) or not 'title' in entity or string_helper.isBlank(entity['title']):
+                return Response(f"Publication {dataset_uuid} must contain a valid title and description.", 400)
             
-            # set dataset status to published and set the last modified user info and user who published
-            update_q = "match (e:Entity {uuid:'" + dataset_uuid + "'}) set e.status = 'Published', e.last_modified_user_sub = '" + \
-                       user_info['sub'] + "', e.last_modified_user_email = '" + user_info[
-                           'email'] + "', e.last_modified_user_displayname = '" + user_info[
-                           'name'] + "', e.last_modified_timestamp = TIMESTAMP(), e.published_timestamp = TIMESTAMP(), e.published_user_email = '" + \
-                       user_info['email'] + "', e.published_user_sub = '" + user_info[
-                           'sub'] + "', e.published_user_displayname = '" + user_info['name'] + "'" + doi_update_clause + status_history_update_clause
+            #check to see if there is a collection already associated with this publication and fail, if there is
+            if 'associated_collection' in entity and len(entity['associated_collection']) > 0:
+                return Response(f"Publication {dataset_uuid} will not be published because it is already associated with a Collection of associated Datasets", 400)
+            parent_uuids = []
+            for ancestor in entity['direct_ancestors']:
+                parent_uuids.append(ancestor['uuid'])
+                
+            collection = {'description': dataset_description, 'title': "A collection of datasets from Publication: " + entity['title'], 'contacts': dataset_contacts, 'contributors': dataset_contributors, "dataset_uuids": parent_uuids, "group_uuid": dataset_group_uuid}
+            post_url = f"{commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL'])}" \
+                       f"entities/collection" \
+                       f"{'?reindex=false' if suspend_indexing_and_acls else ''}"
+            response = requests.post(post_url, json=collection, headers={'Authorization': 'Bearer ' + token, 'X-Hubmap-Application': 'ingest-api'},verify=False)
+            if not response.status_code == 200:
+                error_msg = f"Faled to create collection for Publication {dataset_uuid} failed with code:{response.status_code} message:" + response.text
+                return Response(error_msg, response.status_code)
+            else:
+                created_collection = response.json()
+                dataset_updates['associated_collection_uuid'] = created_collection['uuid']
+                datacite_doi_helper = DataCiteDoiHelper()
+                collection_doi_info = datacite_doi_helper.register_doi_and_make_findable(created_collection)
+                collection_updates = {}
+                collection_updates['registered_doi'] = collection_doi_info['registered_doi']
+                collection_updates['doi_url'] = collection_doi_info['doi_url']                
+                put_url = f"{commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL'])}" \
+                           f"entities/{created_collection['uuid']}" \
+                           f"{'?reindex=false' if suspend_indexing_and_acls else ''}"
+                response = requests.put(put_url, json=collection_updates, headers={'Authorization': 'Bearer ' + token, 'X-Hubmap-Application': 'ingest-api'}, verify=False)
+                if not response.status_code == 200:
+                    error_msg = f"Update to Collection {created_collection['uuid']} failed, collection is attached to Publication {dataset_uuid}. Publication not Published, but Collection created failed with code:{response.status_code} message: " + response.text
+                    logger.error(error_msg)
+                    return Response(error_msg, response.status_code)
+                entities_to_reindex.append(created_collection['uuid'])
+                
+        #add status change to 'Published"
+        dataset_updates['status'] = 'Published'
+        
+        #update the dataset
+        put_url = f"{commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL'])}" \
+                   f"entities/{dataset_uuid}" \
+                   f"{'?reindex=false' if suspend_indexing_and_acls else ''}"
+        response = requests.put(put_url, json=dataset_updates, headers={'Authorization': 'Bearer ' + token, 'X-Hubmap-Application': 'ingest-api'}, verify=False)
+        if not response.status_code == 200:
+            error_msg = f"Update to Dataset {dataset_uuid} failed with code:{response.status_code} message:" + response.text
+            logger.error(error_msg)
+            return Response(error_msg, response.status_code)
 
-            logger.info(dataset_uuid + "\t" + dataset_uuid + "\tNEO4J-update-base-dataset\t" + update_q)
-            neo_session.run(update_q)
-            entity_instance.clear_cache(dataset_uuid)
 
-            # if all else worked set the list of ids to public that need to be public
-            if len(uuids_for_public) > 0:
-                id_list = string_helper.listToCommaSeparated(uuids_for_public, quoteChar="'")
-                update_q = "match (e:Entity) where e.uuid in [" + id_list + "] set e.data_access_level = 'public'"
-                logger.info(identifier + "\t" + dataset_uuid + "\tNEO4J-update-ancestors\t" + update_q)
-                neo_session.run(update_q)
-                for e_id in uuids_for_public:
-                    entity_instance.clear_cache(e_id)
+        # if all else worked set the list of ids to public that need to be public
+        base_update_url = f"{commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL'])}entities/"
+        update_url_suffix = f"{'?reindex=false' if suspend_indexing_and_acls else ''}"
+        headers={'Authorization': 'Bearer ' + token, 'X-Hubmap-Application': 'ingest-api', 'X-HuBMAP-Update-Override': app.config['LOCKED_ENTITY_UPDATE_OVERRIDE_KEY']}
+        for upid in uuids_for_public:
+            update_url = base_update_url + upid + update_url_suffix
+            resp = requests.put(update_url, json={'data_access_level': 'public'}, headers=headers, verify=False)
+            if not resp.status_code == 200:
+                error_message = f"Error while updating data_access_level on entity: {upid}, Dataset {dataset_uuid} may be published, but not all ancestors may be set to public and metadata files have not been updated!!  {resp.text}"
+                logger.error(error_message)
+                return Response(error_message, 500)
+            
 
-            #path to the Dataset on the file system, used for both creating metadata.json and for striping lab ids from any *metadata.tsv files
-            ds_path = ingest_helper.dataset_directory_absolute_path_published(data_access_level, dataset_group_uuid, dataset_uuid)
-            if is_primary or metadata_json_based_on_creation_action(entity_dict.get('creation_action')):
-                # Write out the metadata.json file after all processing has been done for publication...
-                # NOTE: The metadata.json file must be written before set_dataset_permissions published=True is executed
-                # because (on examining the code) you can see that it causes the director to be not writable.
 
-                md_file = os.path.join(ds_path, "metadata.json")
-                try:
-                    entity_base_url = commons_file_helper.removeTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL'])
-                    prov_metadata_url = f"{entity_base_url}/datasets/{dataset_uuid}/prov-metadata"
-                    rspn = requests.get(    url=prov_metadata_url
-                                            ,headers = {'Authorization': request.headers["AUTHORIZATION"]})
-                    if rspn.status_code not in [200]:
-                        raise Exception(f"Retrieving provenance metadata for {dataset_uuid}"
-                                        f" from Entity API resulted in: {rspn.json()['error']}")
-                    json_object = f"{json.dumps(obj=rspn.json(), indent=4)}\n"
-                except Exception as e:
-                    logger.exception(   f"An exception occurred retrieving prov-metadata for"
-                                        f" dataset_uuid={dataset_uuid} while"
-                                        f" publishing identifier={identifier}")
-                    raise e
+        #path to the Dataset on the file system, used for both creating metadata.json and for striping lab ids from any *metadata.tsv files
+        ds_path = ingest_helper.dataset_directory_absolute_path_published(data_access_level, dataset_group_uuid, dataset_uuid)
+        if is_primary or metadata_json_based_on_creation_action(entity['creation_action']):
+            # Write out the metadata.json file after all processing has been done for publication...
+            # NOTE: The metadata.json file must be written before set_dataset_permissions published=True is executed
+            # because (on examining the code) you can see that it causes the director to be not writable.
 
-                logger.info(f"publish_datastage; writing metadata.json file: '{md_file}'; "
-                            f"containing: '{json_object}'")
-                try:
-                    with open(md_file, "w") as outfile:
-                        outfile.write(json_object)
-                except Exception as e:
-                    logger.exception(f"Fatal error while writing md_file {md_file}; {str(e)}")
-                    return jsonify({"error": f"Dataset UUID {dataset_uuid}; Problem writing metadata.json file to path: '{md_file}'; error text: {str(e)}."}), 500
+            md_file = os.path.join(ds_path, "metadata.json")
+            try:
+                entity_base_url = commons_file_helper.removeTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL'])
+                prov_metadata_url = f"{entity_base_url}/datasets/{dataset_uuid}/prov-metadata"
+                rspn = requests.get(    url=prov_metadata_url,
+                                        headers = {'Authorization': request.headers["AUTHORIZATION"]})
+                if rspn.status_code not in [200]:
+                    raise Exception(f"Retrieving provenance metadata for {dataset_uuid}"
+                                    f" from Entity API resulted in: {rspn.json()['error']}")
+                json_object = f"{json.dumps(obj=rspn.json(), indent=4)}\n"
+            except Exception as e:
+                logger.exception(   f"An exception occurred retrieving prov-metadata for"
+                                    f" dataset_uuid={dataset_uuid} while"
+                                    f" publishing identifier={identifier}")
+                raise e
 
-            # This must be done after ALL files are written because calling it with published=True causes the
-            # directory to be made READ/EXECUTE only and any attempt to write a file will cause a server 500 error.
-            acls_cmd = ingest_helper.set_dataset_permissions(dataset_uuid, dataset_group_uuid, data_access_level,
-                                                             True, no_indexing_and_acls)
+            logger.info(f"publish_datastage; writing metadata.json file: '{md_file}'; "
+                        f"containing: '{json_object}'")
+            try:
+                with open(md_file, "w") as outfile:
+                    outfile.write(json_object)
+            except Exception as e:
+                logger.exception(f"Fatal error while writing md_file {md_file}; {str(e)}")
+                return jsonify({"error": f"Dataset UUID {dataset_uuid}; Problem writing metadata.json file to path: '{md_file}'; error text: {str(e)}."}), 500
+
+        # This must be done after ALL files are written because calling it with published=True causes the
+        # directory to be made READ/EXECUTE only and any attempt to write a file will cause a server 500 error.
+        acls_cmd = ingest_helper.set_dataset_permissions(dataset_uuid, dataset_group_uuid, data_access_level,
+                                                         True, no_indexing_and_acls)
 
 
         #find all of the files that match *metadata.tsv under the dataset's directory
@@ -1383,18 +1372,20 @@ def publish_datastage(identifier):
                     shutil.copy(tsv_file, f"{backup_file_path}")
                     tsv_data.to_csv(tsv_file, sep='\t', index=False)
 
+
         if no_indexing_and_acls:
-            r_val = {'acl_cmd': acls_cmd, 'donors_for_indexing': donors_to_reindex, 'relink_cmd': relink_cmd}
+            r_val = {'acl_cmd': acls_cmd, 'entities_for_indexing': entities_to_reindex, 'relink_cmd': relink_cmd}
+            
         else:
-            r_val = {'acl_cmd': '', 'donors_for_indexing': [], 'relink_cmd': relink_cmd}
+            r_val = {'acl_cmd': '', 'entities_for_indexing': [], 'relink_cmd': relink_cmd}
 
         if not no_indexing_and_acls:
-            for donor_uuid in donors_to_reindex:
+            for ent_uuid in entities_to_reindex:
                 try:
-                    rspn = requests.put(app.config['SEARCH_WEBSERVICE_URL'] + "/reindex/" + donor_uuid, headers={'Authorization': request.headers["AUTHORIZATION"]})
-                    logger.info(f"Publishing {identifier} indexed donor {donor_uuid} with status {rspn.status_code}")
+                    rspn = requests.put(app.config['SEARCH_WEBSERVICE_URL'] + "/reindex/" + entity_uuid, headers={'Authorization': request.headers["AUTHORIZATION"]})
+                    logger.info(f"Publishing {identifier} indexed entity {entity_uuid} with status {rspn.status_code}")
                 except:
-                    logger.exception(f"While publishing {identifier} Error happened when calling reindex web service for donor {donor_uuid}")
+                    logger.exception(f"While publishing {identifier} Error happened when calling reindex web service for entity {ent_uuid}")
 
         #inner function to copy public information from a protected dataset to a public dataset 
         def copy_protected_to_public():
@@ -2046,49 +2037,12 @@ def register_collections_doi(collection_id):
             auth_tokens = auth_helper.getAuthorizationTokens(request.headers)
             entity_instance = EntitySdk(token=auth_tokens, service_url=app.config['ENTITY_WEBSERVICE_URL'])
 
-            doi_info = None
-
             entity = entity_instance.get_entity_by_id(collection_uuid)
             entity_dict = vars(entity)
             datacite_doi_helper = DataCiteDoiHelper()
 
-            # Checks both whether a doi already exists, as well as if it is already findable. If True, DOI exists and is findable
-            # If false, DOI exists but is not yet in findable. If None, doi does not yet exist. 
-            try:
-                doi_exists = datacite_doi_helper.check_doi_existence_and_state(entity_dict)
-            except DataciteApiException as e:
-                    logger.exception(f"Exception while fetching doi for {collection_uuid}")
-                    return jsonify({"error": f"Error occurred while trying to confirm existence of doi for {dataset_uuid}. {e}"}), 500
-            # Doi does not exist, create draft then make it findable
-            if doi_exists is None:
-                try:
-                    datacite_doi_helper.create_collection_draft_doi(entity_dict)
-                except DataciteApiException as datacite_exception:
-                    return jsonify({"error": str(datacite_exception)}), datacite_exception.error_code
-                except Exception as e:
-                    logger.exception(f"Exception while creating a draft doi for {collection_uuid}")
-                    return jsonify({"error": f"Error occurred while trying to create a draft doi for {collection_uuid}. Check logs."}), 500
-                # This will make the draft DOI created above 'findable'....
-                try:
-                    doi_info = datacite_doi_helper.move_doi_state_from_draft_to_findable(entity_dict, auth_tokens)
-                except Exception as e:
-                    logger.exception(f"Exception while creating making doi findable and saving to entity for {collection_uuid}")
-                    return jsonify({"error": f"Error occurred while making doi findable and saving to entity for {collection_uuid}. Check logs."}), 500
-            # Doi exists, but is not yet findable. Just make it findable
-            elif doi_exists is False:
-                try:
-                        doi_info = datacite_doi_helper.move_doi_state_from_draft_to_findable(entity_dict, auth_tokens)
-                except Exception as e:
-                    logger.exception(f"Exception while creating making doi findable and saving to entity for {collection_uuid}")
-                    return jsonify({"error": f"Error occurred while making doi findable and saving to entity for {collection_uuid}. Check logs."}), 500
-            # The doi exists and it is already findable, skip both steps
-            elif doi_exists is True:
-                logger.debug(f"DOI for {collection_uuid} is already findable. Skipping creation and state change.")
-                doi_name = datacite_doi_helper.build_doi_name(entity_dict)
-                doi_info = {
-                    'registered_doi': doi_name,
-                    'doi_url': f'https://doi.org/{doi_name}'
-                }
+            doi_info = datacite_doi_helper.register_doi_and_make_findable(entity_dict)
+
             doi_update_data = ""
             if not doi_info is None:
                 doi_update_data = {"registered_doi": doi_info["registered_doi"], "doi_url": doi_info['doi_url']}
@@ -3543,32 +3497,6 @@ def get_dataset_abs_path(ds_uuid):
         path = ingest_helper.get_dataset_directory_absolute_path(rval, group_uuid, ds_uuid)
 
         return path
-
-# Determines if a dataset is Primary. If the list returned from the neo4j query is empty, the dataset is not primary
-def dataset_is_primary(dataset_uuid):
-    with neo4j_driver_instance.session() as neo_session:
-        q = (f"MATCH (ds:Dataset {{uuid: '{dataset_uuid}'}})<-[:ACTIVITY_OUTPUT]-(a:Activity) WHERE toLower(a.creation_action) = 'create dataset activity' RETURN ds.uuid")
-        result = neo_session.run(q).data()
-        if len(result) == 0:
-            return False
-        return True
-
-
-def dataset_has_entity_lab_processed_data_type(dataset_uuid):
-    with neo4j_driver_instance.session() as neo_session:
-        q = (f"MATCH (ds:Dataset {{uuid: '{dataset_uuid}'}})<-[:ACTIVITY_OUTPUT]-(a:Activity) WHERE a.creation_action = 'Lab Process' RETURN ds.uuid")
-        result = neo_session.run(q).data()
-        if len(result) == 0:
-            return False
-        return True
-
-def dataset_is_multi_assay_component(dataset_uuid):
-    with neo4j_driver_instance.session() as neo_session:
-        q = (f"MATCH (ds:Dataset {{uuid: '{dataset_uuid}'}})<-[:ACTIVITY_OUTPUT]-(a:Activity) WHERE toLower(a.creation_action) = 'multi-assay split' RETURN ds.uuid")
-        result = neo_session.run(q).data()
-        if len(result) == 0:
-            return False, None
-        return True
 
 def get_components_primary_path(component_uuid):
     with neo4j_driver_instance.session() as neo_session:
