@@ -367,7 +367,7 @@ class DataCiteDoiHelper:
             # The doi exists and it is already findable, skip both steps
             elif doi_exists is True:
                 logger.debug(f"DOI for {entity['uuid']} is already findable. Skipping creation and state change.")
-                doi_name = datacite_doi_helper.build_doi_name(entity)
+                doi_name = self.build_doi_name(entity)
                 doi_info = {
                     'registered_doi': doi_name,
                     'doi_url': f'https://doi.org/{doi_name}'
