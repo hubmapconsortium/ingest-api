@@ -388,13 +388,13 @@
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['salmon_sn_rnaseq_10x', 'salmon_rnaseq_10x_sn', 'salmon_rnaseq_10x_v2_sn'] and [elt for elt in dag_provenance_list if elt =~~ 'anndata']",
-        "value": "{'ubkg_code': 'C200630', 'assaytype': 'salmon_sn_rnaseq_10x', 'vitessce-hints': ['is_sc', 'rna'], 'primary': false, 'contains-pii': false, 'description': 'snRNAseq [Salmon]', 'pipeline-shorthand': 'Salmon'}",
+        "value": "{'ubkg_code': 'C200630', 'assaytype': 'salmon_sn_rnaseq_10x', 'vitessce-hints': ['is_sc', 'rna'], 'primary': false, 'contains-pii': false, 'description': 'snRNAseq (10x Genomics) [Salmon]', 'pipeline-shorthand': 'Salmon'}",
         "rule_description": "derived salmon_sn_rnaseq_10x"
     },
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['salmon_sn_rnaseq_10x', 'salmon_rnaseq_10x_sn', 'salmon_rnaseq_10x_v2_sn'] and not [elt for elt in dag_provenance_list if elt =~~ 'anndata']",
-        "value": "{'ubkg_code': 'C202000', 'assaytype': 'salmon_sn_rnaseq_10x', 'vitessce-hints': ['is_sc', 'rna', 'json_based'], 'primary': false, 'contains-pii': false, 'description': 'snRNAseq [Salmon]', 'pipeline-shorthand': 'Salmon'}",
+        "value": "{'ubkg_code': 'C202000', 'assaytype': 'salmon_sn_rnaseq_10x', 'vitessce-hints': ['is_sc', 'rna', 'json_based'], 'primary': false, 'contains-pii': false, 'description': 'snRNAseq (10x Genomics) [Salmon]', 'pipeline-shorthand': 'Salmon'}",
         "rule_description": "derived salmon_sn_rnaseq_10x json-based"
     },
     {
