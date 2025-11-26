@@ -1157,14 +1157,16 @@ def publish_datastage(identifier):
         dataset_status = entity['status']
         dataset_data_access_level = entity['data_access_level']
         dataset_group_uuid = entity['group_uuid']
-        dataset_contacts = entity['contacts']
-        dataset_contributors = entity['contributors']
+        if 'contacts' in entity:
+            dataset_contacts = entity['contacts']
+        if 'contributors' in entity:
+            dataset_contributors = entity['contributors']
         dataset_contains_human_genetic_sequences = entity['contains_human_genetic_sequences']
         dataset_ingest_matadata_dict = None
         if 'description' in entity and not string_helper.isBlank(entity['description']):
             dataset_description = entity['description']
         if is_primary:
-            dataset_ingest_metadata = entity('ingest_metadata')
+            dataset_ingest_metadata = entity['ingest_metadata']
             logger.info(f"publish_datastage; ingest_matadata: {dataset_ingest_matadata_dict}")
         if not (dataset_entitytype == 'Dataset' or dataset_entitytype == 'Publication'):
             return Response(f"{dataset_uuid} is not a dataset will not Publish, entity type is {dataset_entitytype}", 400)
@@ -1286,8 +1288,9 @@ def publish_datastage(identifier):
                     return Response(error_msg, response.status_code)
                 entities_to_reindex.append(created_collection['uuid'])
                 
-        #add status change to 'Published"
-        dataset_updates['status'] = 'Published'
+        #add status change to 'Published", except for component datasets which must be handled separately
+        if not is_component:
+            dataset_updates['status'] = 'Published'
         
         #update the dataset
         put_url = f"{commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL'])}" \
@@ -1299,6 +1302,22 @@ def publish_datastage(identifier):
             logger.error(error_msg)
             return Response(error_msg, response.status_code)
 
+        #for component datasets we must still change the status in Neo4j because the entity-api put locks us out
+        if is_component:
+            update_query = f"match (ds {{uuid:'{dataset_uuid}'}}) set ds.status = 'Published'"
+            try:
+                with neo4j_driver_instance.session() as neo_session:
+                    tx = neo_session.begin_transaction()
+                    result = tx.run(update_query)
+                    tx.commit()
+            except TransactionError as e:
+                if tx and tx.closed() == False:
+                    tx.rollback()
+                logger.exception(e)
+                return Response(f"Error while updating status on Component dataset {dataset_uuid}. See logs.  Transaction error: {e}.", 500)
+            except Exception as ex:
+                logger.exception(ex)
+                return Response(f"Unexpected error while updating status on Component datast {dataset_uuid}. See logs.  {ex}", 500)
 
         # if all else worked set the list of ids to public that need to be public
         base_update_url = f"{commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL'])}entities/"
