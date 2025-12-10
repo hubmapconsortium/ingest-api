@@ -654,10 +654,10 @@ def get_file_system_relative_path():
                                 'message': f"contains_human_genetic_sequences is not set on {ent_type} dataset",
                                 'status_code': 400}
                     error_id_list.append(error_id)
-                if not include_protected or not status.lower() == 'published':
-                    path = ingest_helper.get_dataset_directory_relative_path(dset, group_uuid, dset['uuid'])
+                if not include_protected and status.lower() == 'published':
+                    path = ingest_helper.get_dataset_directory_relative_path({'contains_human_genetic_sequences': False, 'data_access_level': 'public', 'status': status}, group_uuid, dset['uuid'])              
                 else:
-                    path = ingest_helper.get_dataset_directory_relative_path({'contains_human_genetic_sequences': False, 'data_access_level': 'public', 'status': status}, group_uuid, dset['uuid'])
+                    path = ingest_helper.get_dataset_directory_relative_path(dset, group_uuid, dset['uuid'])
             else:
                 error_id = {'id': ds_uuid, 'message': f'Unhandled entity type, must be Upload, Publication or Dataset, '
                                                       f'found {ent_type_m}', 'status_code': 400}
