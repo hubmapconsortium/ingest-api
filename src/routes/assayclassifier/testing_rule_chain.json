@@ -876,6 +876,24 @@
         "match": "is_dcwg and is_primary and dataset_type == '4i'",
         "value": "{'ubkg_code': 'C202250', 'assaytype': '4i', 'vitessce-hints': [], 'dir-schema': '4i-v2', 'contains-pii': false, 'primary': true, 'dataset-type': '4i', 'description': '4i'}",
         "rule_description": "DCWG 4i"
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and is_primary and dataset_type == 'Raman Imaging'",
+        "value": "{'ubkg_code': 'C202260', 'assaytype': 'raman-imaging', 'vitessce-hints': [], 'dir-schema': 'raman-imaging-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'Raman Imaging', 'description': 'Raman Imaging'}",
+        "rule_description": "DCWG Raman Imaging"
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and is_primary and dataset_type == 'STARmap'",
+        "value": "{'ubkg_code': 'C202270', 'assaytype': 'starmap', 'vitessce-hints': [], 'dir-schema': 'starmap-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'STARmap', 'description': 'STARmap'}",
+        "rule_description": "DCWG STARmap"
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and is_primary and dataset_type == 'RNAseq (with probes)' and oligo_probe_panel in ['NanoString Technologies; GeoMx Mouse Whole Transcriptome Atlas, 4 slides; PN GMX-RNA-NGS-MsWTA-4']",
+        "value": "{'ubkg_code': 'C202280', 'assaytype': '10x-flex', 'vitessce-hints': [], 'dir-schema': 'rnaseq-with-probes-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'RNAseq (with probes)', 'description': '10x Flex'}",
+        "rule_description": "DCWG 10x Flex"
     }
   ],
 "pre":
