@@ -62,14 +62,32 @@ class DataCiteDoiHelper:
     def build_common_dataset_contributor(self, dataset_contributor: dict) -> dict:
         contributor = {}
 
-        # This automatically sets the name based on familyName, givenname without using the 'name' value stored in Neo4j
+        # This sets the name filed to "name" (old metadata spec) or "display_name" (new metadata spec)
+        # if neither "name" or "display_name" exist, concatenate "first name" and "last name"
         # E.g., "Smith, Joe"
         contributor['nameType'] = 'Personal'
 
+        if "display_name" in dataset_contributor:
+            contributor["name"] = dataset_contributor["display_name"]
+        elif "name" in dataset_contributor:
+            contributor["name"] = dataset_contributor["name"]
+        elif all(key in dataset_contributor for key in ["first_name", "last_name"]):
+            contributor["name"] = (
+                f"{dataset_contributor['first_name']} {dataset_contributor['last_name']} "
+            )
+        else:
+            raise ValueError(
+                "Contributor must have at least one of 'display_name', 'name', "
+                "or both 'first_name' and 'last_name'."
+            )
+
+
+        # set DataCite givenname to our 'first_name'
         if 'first_name' in dataset_contributor:
             # See: https://support.datacite.org/docs/schema-optional-properties-v43#72-givenname
             contributor['givenName'] = dataset_contributor['first_name']
 
+        #set DataCite familyname to our 'last_name'
         if 'last_name' in dataset_contributor:
             # See: https://support.datacite.org/docs/schema-optional-properties-v43#73-familyname
             contributor['familyName'] = dataset_contributor['last_name']
@@ -83,12 +101,18 @@ class DataCiteDoiHelper:
             ]
 
         # NOTE: ORCID provides a persistent digital identifier (an ORCID iD) that you own and control, and that distinguishes you from every other researcher.
+        # we store as both orcid_id (old metadata spec) and orcid (new metadata spec)
+        orcid = None
         if 'orcid_id' in dataset_contributor:
+            orcid = dataset_contributor['orcid_id']
+        elif 'orcid' in dataset_contributor:
+            orcid = dataset_contributor['orcid']
+        if not orcid is None:
             # See: https://support.datacite.org/docs/schema-optional-properties-v43#74-nameidentifier
             contributor['nameIdentifiers'] = [
                 {
                     'nameIdentifierScheme': 'ORCID',
-                    'nameIdentifier': dataset_contributor['orcid_id'],
+                    'nameIdentifier': orcid,
                     'schemeUri': 'https://orcid.org/'
                 }
             ]
