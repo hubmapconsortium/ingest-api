@@ -2217,7 +2217,6 @@ def allowable_edit_states(hmuuid):
                             return Response(json.dumps(r_val), 200, mimetype='application/json')
 
                     # if the entity is not of a valid type
-                    # elif entity_type not in ['collection', 'epicollection', 'sample','donor',]:  
                     elif entity_type not in ['collection', 'epicollection', 'sample','donor','dataset']: 
                         return Response("Invalid data type " + entity_type + ".", 400)
 
