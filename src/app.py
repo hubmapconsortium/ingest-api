@@ -215,7 +215,6 @@ except Exception:
 # Admin group UUID
 data_admin_group_uuid = app.config['HUBMAP_DATA_ADMIN_GROUP_UUID']
 data_curator_group_uuid = app.config['HUBMAP_DATA_CURATOR_GROUP_UUID']
-pipeline_testing_group_uuid = app.config['HUBMAP_PIPELINE_TESTING_GROUP_UUID']
 
 prov_schema_helper = ProvenanceSchemaHelper(app.config)
 
@@ -2168,10 +2167,15 @@ def allowable_edit_states(hmuuid):
                     entity_type = record.get('e.entity_type', None)
                     status = record.get('e.status', None)
                     hasDOI = not isBlank(record.get('e.doi_url', None)) or not isBlank(record.get('e.registered_doi', None))
+                    token = auth_helper_instance.getAuthorizationTokens(request.headers)
 
                     # if user is in the data admin group
                     if data_admin_group_uuid in user_info['hmgroupids']:
                         r_val['has_admin_priv'] = True
+                        r_val['has_pipeline_testing_priv'] = True
+                        
+                    # if user is part of the pipeline testing group
+                    if auth_helper_instance.has_pipeline_testing_privs(token):
                         r_val['has_pipeline_testing_priv'] = True
 
                     if isBlank(group_uuid):
@@ -2246,11 +2250,6 @@ def allowable_edit_states(hmuuid):
                     elif data_curator_group_uuid in user_info['hmgroupids'] and entity_type == 'upload' and not status == 'processing':
                         r_val['has_write_priv'] = True
                         
-                    #if the user is a member of HuBMAP-Pipeline-Testing they are allowed to submit for pipeline testing
-                    # Admin addressed at admin check (otherwise missed here)
-                    elif pipeline_testing_group_uuid in user_info['hmgroupids'] :
-                        r_val['has_pipeline_testing_priv'] = True
-                    
                     else:
                         r_val['has_write_priv'] = False
                     
