@@ -66,7 +66,8 @@ from routes.assayclassifier import bp as assayclassifier_blueprint
 from routes.validation import validation_blueprint
 from routes.datasets_bulk_submit import datasets_bulk_submit_blueprint, DatasetHelper as ds_helper
 from routes.privs import privs_blueprint
-from ingest_validation_tools import schema_loader, table_validator 
+from ingest_validation_tools import schema_loader
+from ingest_validation_tools.local_validation import table_validator
 from ingest_validation_tools import validation_utils as iv_utils
 
 # Set logging format and level (default is warning)
