@@ -2152,7 +2152,7 @@ def allowable_edit_states(hmuuid):
             #here because standard list (len, [idx]) operators don't work with
             #the neo4j record list object
             count = 0
-            r_val = {"has_write_priv":False, "has_submit_priv":False, "has_publish_priv":False, "has_admin_priv":False  }
+            r_val = {"has_write_priv":False, "has_submit_priv":False, "has_publish_priv":False, "has_admin_priv":False, "has_pipeline_testing_priv": False  }
             for record in recds:
                 count = count + 1
                 if record.get('e.group_uuid', None) != None:
@@ -2167,11 +2167,17 @@ def allowable_edit_states(hmuuid):
                     entity_type = record.get('e.entity_type', None)
                     status = record.get('e.status', None)
                     hasDOI = not isBlank(record.get('e.doi_url', None)) or not isBlank(record.get('e.registered_doi', None))
+                    token = auth_helper_instance.getAuthorizationTokens(request.headers)
 
                     # if user is in the data admin group
                     if data_admin_group_uuid in user_info['hmgroupids']:
                         r_val['has_admin_priv'] = True
-                                        
+                        r_val['has_pipeline_testing_priv'] = True
+                        
+                    # if user is part of the pipeline testing group
+                    if auth_helper_instance.has_pipeline_testing_privs(token):
+                        r_val['has_pipeline_testing_priv'] = True
+
                     if isBlank(group_uuid):
                         msg = f"ERROR: unable to obtain a group_uuid from database for entity uuid:{hmuuid} during a call to allowable-edit-states"
                         logger.error(msg)
@@ -2214,7 +2220,8 @@ def allowable_edit_states(hmuuid):
                         if data_access_level == 'public':
                             return Response(json.dumps(r_val), 200, mimetype='application/json')
 
-                    elif entity_type not in ['collection', 'epicollection', 'sample','donor','dataset']:
+                    # if the entity is not of a valid type
+                    elif entity_type not in ['collection', 'epicollection', 'sample','donor','dataset']: 
                         return Response("Invalid data type " + entity_type + ".", 400)
 
                     #compare the group_uuid in the entity to the users list of groups
@@ -2242,8 +2249,10 @@ def allowable_edit_states(hmuuid):
                     #if the user is a data_curator they are allowed to save/validate Uploads
                     elif data_curator_group_uuid in user_info['hmgroupids'] and entity_type == 'upload' and not status == 'processing':
                         r_val['has_write_priv'] = True
+                        
                     else:
                         r_val['has_write_priv'] = False
+                    
                 else:
                     return Response("Entity group uuid not found", 400)
 
