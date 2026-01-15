@@ -388,6 +388,8 @@ def validate_metadata_upload():
                     isLatest = ingest_validation_tools_validation_utils.is_schema_latest_version(
                         schemaVers, current_app.config['CEDAR_API_KEY']
                     )
+                    if not isLatest:
+                        return rest_response(StatusCodes.BAD_REQUEST,  "This is not the latest version of the metadata specification as defined in CEDAR", "This is not the latest version of the metadata specification as defined in CEDAR")
 
                 except Exception as e:
                     return rest_server_err(e, True)
