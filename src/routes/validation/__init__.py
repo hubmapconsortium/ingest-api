@@ -15,8 +15,8 @@ from routes.validation.lib.file import get_csv_records, get_base_path, check_upl
 
 from hubmap_commons import file_helper as commons_file_helper
 from hubmap_commons.hm_auth import AuthHelper
+from hubmap_commons.file_helper import ensureTrailingSlashURL
 
-from version_helper import VersionHelper
 
 from utils.string import equals, to_title_case
 from utils.rest import (
@@ -40,7 +40,7 @@ ingest_validation_tools_error_report = import_module('ingest_validation_tools.er
 ingest_validation_tools_validation_utils = import_module('ingest_validation_tools.validation_utils')
 ingest_validation_tools_plugin_validator = import_module('ingest_validation_tools.plugin_validator')
 ingest_validation_tools_schema_loader = import_module('ingest_validation_tools.schema_loader')
-ingest_validation_tools_table_validator = import_module('ingest_validation_tools.table_validator')
+ingest_validation_tools_table_validator = import_module('ingest_validation_tools.local_validation.table_validator')
 
 __all__ = ["ingest_validation_tools_upload",
            "ingest_validation_tools_error_report",
@@ -379,14 +379,18 @@ def validate_metadata_upload():
                 # if ensure_latest_cedar_version is == None: #maybe check for true specifically?
                 # IE "isLatestVersion, "isLatestPublishedVersion or "isLatestDraftVersion" 
                 try:
-                    schema_id = VersionHelper.get_schema_id(upload.get('fullpath'), str)
-                    if type(schema_id) == tuple:
-                       return rest_response(StatusCodes.BAD_REQUEST,  "Error", "metadata_schema_id not found in header")
-                    # if schema_id is None:
-                    latestVersion = VersionHelper.get_latest_published_schema(schema_id)
-                    isLatest = (schema_id == latestVersion)
-                    if isLatest != True:
+                    # Obtain the schema object 
+                    schema_obj = ingest_validation_tools_validation_utils.get_schema_version(
+                        path=upload.get('fullpath'), encoding="ascii"
+                    )
+                    # extract version value if the returned object has one
+                    schemaVers = getattr(schema_obj, 'version', schema_obj)
+                    isLatest = ingest_validation_tools_validation_utils.is_schema_latest_version(
+                        schemaVers, current_app.config['CEDAR_API_KEY']
+                    )
+                    if not isLatest:
                         return rest_response(StatusCodes.BAD_REQUEST,  "This is not the latest version of the metadata specification as defined in CEDAR", "This is not the latest version of the metadata specification as defined in CEDAR")
+
                 except Exception as e:
                     return rest_server_err(e, True)
 
