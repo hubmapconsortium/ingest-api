@@ -894,6 +894,18 @@
         "match": "is_dcwg and is_primary and dataset_type == 'RNAseq (with probes)' and oligo_probe_panel in ['NanoString Technologies; GeoMx Mouse Whole Transcriptome Atlas, 4 slides; PN GMX-RNA-NGS-MsWTA-4']",
         "value": "{'ubkg_code': 'C202280', 'assaytype': '10x-flex', 'vitessce-hints': [], 'dir-schema': 'rnaseq-with-probes-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'RNAseq (with probes)', 'description': '10x Flex'}",
         "rule_description": "DCWG 10x Flex"
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and is_primary and dataset_type == 'iCLAP'",
+        "value": "{'ubkg_code': 'C202290', 'assaytype': 'iclap', 'vitessce-hints': [], 'dir-schema': 'iclap-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'iCLAP', 'description': 'iCLAP'}",
+        "rule_description": "DCWG iCLAP"
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and is_primary and dataset_type == 'COMET'",
+        "value": "{'ubkg_code': 'C202300', 'assaytype': 'comet', 'vitessce-hints': [], 'dir-schema': 'comet-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'COMET', 'description': 'COMET'}",
+        "rule_description": "DCWG COMET"
     }
   ],
 "pre":
