@@ -15,6 +15,7 @@ import csv
 import time
 from operator import xor
 from threading import Thread
+from enum import Enum
 
 import werkzeug.exceptions
 from hubmap_sdk import EntitySdk, sdk_helper
@@ -485,8 +486,11 @@ def _validate_token_if_auth_header_exists(request):
 
 
 # Use the Flask request.args MultiDict to see if 'reindex' is a URL parameter passed in with the
-# request and if it indicates reindexing should be supressed. Default to reindexing in all other cases.
+# request and if it indicates reindexing should be suppressed. Default to reindexing in all other cases.
 def _suppress_reindex() -> bool:
+    # N.B. This logic should be the same as that used by
+    #      entity-api schema_manager.py suppress_reindex()
+    #      https://github.com/hubmapconsortium/entity-api/blob/main/src/schema/schema_manager.py
     if 'reindex' not in request.args:
         return False
     reindex_str = request.args.get('reindex').lower()
@@ -496,6 +500,49 @@ def _suppress_reindex() -> bool:
         return False
     raise Exception(f"The value of the 'reindex' parameter must be True or False (case-insensitive)."
                     f" '{request.args.get('reindex')}' is not recognized.")
+
+"""
+See if 'reindex-priority' is a URL parameter passed in with the request, if it is valid, and
+if it is compatible with the calculated _suppress_reindex() result. Default to 1 when not specified.
+
+Parameters
+----------
+request_args:
+    The Flask request.args passed in from application request
+
+calc_suppress_reindex:
+    The value returned from the suppress_reindex() method, if previously called. 
+Returns
+-------
+int value from the enumeration ReindexPriorityLevelEnum
+"""
+def _get_reindex_priority(calc_suppress_reindex:bool) -> int:
+    # N.B. This logic should be the same as that used by
+    #      ingest-api app.py _get_reindex_priority()
+    #      https://github.com/hubmapconsortium/ingest-api/blob/main/src/app.py
+
+    # Define an enumeration of re-index priority level types.
+    # N.B. This is the same values maintained in entity-api schema_constants.py, which
+    #      must be the same levels defined for the enqueue() method at
+    #      https://github.com/x-atlas-consortia/jobq/blob/main/src/atlas_consortia_jobq/queue.py
+    class ReindexPriorityLevelEnum(Enum):
+        HIGH = 1
+        MEDIUM = 2
+        LOW = 3
+
+    if calc_suppress_reindex and 'reindex-priority' in request.args:
+        raise Exception("Specifying a re-index priority is incompatible with suppressing re-indexing.")
+    if 'reindex-priority' not in request.args:
+        return ReindexPriorityLevelEnum.HIGH.value
+    try:
+        priority_int = int(request.args.get('reindex-priority'))
+    except ValueError as ve:
+        raise Exception("The value of the 'reindex-priority' parameter must be an integer.")
+    if priority_int not in ReindexPriorityLevelEnum:
+        raise Exception(f"The value of the 'reindex-priority' parameter must be"
+                        f" greater than or equal to {ReindexPriorityLevelEnum.HIGH.value} (high priority)"
+                        f" and less than or equal to {ReindexPriorityLevelEnum.LOW.value} (low priority).")
+    return priority_int
 
 ####################################################################################################
 ## Ingest API Endpoints
@@ -909,11 +956,13 @@ def create_datastage():
 
         # Check URL parameters before proceeding to any CRUD operations, halting on validation failures.
         #
-        # Check if re-indexing is to be suppressed after entity creation.
         try:
+            # Check if re-indexing is to be suppressed after entity creation.
             suppress_reindex = _suppress_reindex()
+            # Determine valid re-indexing priority using Request parameters.
+            reindex_priority = _get_reindex_priority(calc_suppress_reindex=suppress_reindex)
         except Exception as e:
-            bad_request_error(str(e))
+            bad_request_error(e.args[0])
 
         post_url = f"{commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL'])}" \
                    f"entities/{entity_type}" \
@@ -977,11 +1026,13 @@ def multiple_components():
 
         # Check URL parameters before proceeding to any CRUD operations, halting on validation failures.
         #
-        # Check if re-indexing is to be suppressed after entity creation.
         try:
+            # Check if re-indexing is to be suppressed after entity creation.
             suppress_reindex = _suppress_reindex()
+            # Determine valid re-indexing priority using Request parameters.
+            reindex_priority = _get_reindex_priority(calc_suppress_reindex=suppress_reindex)
         except Exception as e:
-            bad_request_error(e)
+            bad_request_error(e.args[0])
 
         post_url = f"{commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL'])}" \
                    f"datasets/components" \
@@ -1637,11 +1688,13 @@ def submit_dataset(uuid):
 
     # Check URL parameters before proceeding to any CRUD operations, halting on validation failures.
     #
-    # Check if re-indexing is to be suppressed after entity creation.
     try:
+        # Check if re-indexing is to be suppressed after entity creation.
         suppress_reindex = _suppress_reindex()
+        # Determine valid re-indexing priority using Request parameters.
+        reindex_priority = _get_reindex_priority(calc_suppress_reindex=suppress_reindex)
     except Exception as e:
-        bad_request_error(e)
+        bad_request_error(e.args[0])
 
     try:
         put_url = f"{commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL'])}" \

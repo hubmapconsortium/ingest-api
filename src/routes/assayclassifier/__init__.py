@@ -259,7 +259,9 @@ def get_assaytype_from_metadata():
         require_json(request)
         metadata = request.json
         if parent_sample_ids := metadata.get("parent_sample_id"):
-            is_human = source_is_human(parent_sample_ids.split(","),
+            # Trim spaces from the elements of the ID list
+            parent_sample_list = [elt.strip() for elt in parent_sample_ids.split(",") if elt.strip()]
+            is_human = source_is_human(parent_sample_list,
                                        get_entity_json)
         else:
             is_human = True  # default to human for safety
