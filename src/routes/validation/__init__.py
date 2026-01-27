@@ -392,7 +392,7 @@ def validate_metadata_upload():
                         return rest_response(StatusCodes.BAD_REQUEST,  "This is not the latest version of the metadata specification as defined in CEDAR", "This is not the latest version of the metadata specification as defined in CEDAR")
 
                 except Exception as e:
-                    return rest_server_err(e, True)
+                    return rest_server_err(e, False)
 
             if check_cedar(entity_type, sub_type, upload) is False:
                 id_sub_type = get_cedar_schema_ids().get(sub_type)
