@@ -56,3 +56,5 @@ venv-hm-ingest-api/*
 src/venv-hm-ingest-api
 .vscode/launch.json
 src/test/file_upload/temp_dir
+.python-version
+.vscode/*
