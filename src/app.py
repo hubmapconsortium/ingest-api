@@ -1208,6 +1208,13 @@ def publish_datastage(identifier):
             is_primary = True
         elif dataset_creation_action == 'Multi-Assay Split':
             is_component = True
+            if not 'description' in entity or string_helper.isBlank(entity['description']):
+                if not 'direct_ancestors' in entity or len(entity['direct_ancestors']) < 1:
+                    return Response(f"{dataset_uuid}: direct ancestor not found and needed to set description for this component dataset.", 400)
+                dir_ancestor = entity['direct_ancestors'][0]
+                if not 'description' in dir_ancestor or string_helper.isBlank(dir_ancestor['description']):
+                    return Response(f"{dataset_uuid}: description not found in director ancestor and needed to set the description on this component dataset.", 400)
+                entity['description'] = f"{entity['dataset_type']} component of multi-assay {dir_ancestor['dataset_type']}: {dir_ancestor['description']}"
         elif dataset_creation_action == 'Lab Processed': 
             is_lab_processed = True
         dataset_entitytype = entity['entity_type']
