@@ -1351,7 +1351,7 @@ def publish_datastage(identifier):
         #add status change to 'Published", except for component datasets which must be handled separately
         if not is_component:
             dataset_updates['status'] = 'Published'
-        
+            
         #update the dataset
         put_url = f"{commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL'])}" \
                    f"entities/{dataset_uuid}?reindex=false"
@@ -1362,21 +1362,28 @@ def publish_datastage(identifier):
             return Response(error_msg, response.status_code)
 
         #for component datasets we must still change the status in Neo4j because the entity-api put locks us out
+        #for all (component and non-component) datasets, we must update the published_timestamp field directly in Neo4j because it is
+        #immutable in entity-api
+        #
         if is_component:
-            update_query = f"match (ds {{uuid:'{dataset_uuid}'}}) set ds.status = 'Published'"
-            try:
-                with neo4j_driver_instance.session() as neo_session:
-                    tx = neo_session.begin_transaction()
-                    result = tx.run(update_query)
-                    tx.commit()
-            except TransactionError as e:
-                if tx and tx.closed() == False:
-                    tx.rollback()
-                logger.exception(e)
-                return Response(f"Error while updating status on Component dataset {dataset_uuid}. See logs.  Transaction error: {e}.", 500)
-            except Exception as ex:
-                logger.exception(ex)
-                return Response(f"Unexpected error while updating status on Component datast {dataset_uuid}. See logs.  {ex}", 500)
+            set_clause = "set ds.status = 'Published', ds.published_timestamp = timestamp()"
+        else:
+            set_clause = "set ds.published_timestamp = timestamp()"
+            
+        update_query = f"match (ds {{uuid:'{dataset_uuid}'}}) {set_clause}"
+        try:
+            with neo4j_driver_instance.session() as neo_session:
+                tx = neo_session.begin_transaction()
+                result = tx.run(update_query)
+                tx.commit()
+        except TransactionError as e:
+            if tx and tx.closed() == False:
+                tx.rollback()
+            logger.exception(e)
+            return Response(f"Error while updating published_timestamp and status (for component only) on dataset {dataset_uuid}. See logs.  Transaction error: {e}.", 500)
+        except Exception as ex:
+            logger.exception(ex)
+            return Response(f"Unexpected error while updating published_timestamp and status (for component only) on dataset {dataset_uuid}. See logs.  {ex}", 500)
 
         # if all else worked set the list of ids to public that need to be public
         base_update_url = f"{commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL'])}entities/"
