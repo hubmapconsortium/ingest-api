@@ -1146,10 +1146,6 @@ def publish_datastage(identifier):
         if r.ok is False:
             raise ValueError("Cannot find specimen with identifier: " + identifier)
         dataset_uuid = json.loads(r.text)['hm_uuid']
-        suspend_indexing_and_acls = string_helper.isYes(request.args.get('suspend-indexing-and-acls'))
-        no_indexing_and_acls = False
-        if suspend_indexing_and_acls:
-            no_indexing_and_acls = True
 
         entities_to_reindex = []
         with neo4j_driver_instance.session() as neo_session:
@@ -1330,8 +1326,7 @@ def publish_datastage(identifier):
                 
             collection = {'description': dataset_description, 'title': "A collection of datasets from Publication: " + entity['title'], 'contacts': dataset_contacts, 'contributors': dataset_contributors, "dataset_uuids": parent_uuids, "group_uuid": dataset_group_uuid}
             post_url = f"{commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL'])}" \
-                       f"entities/collection" \
-                       f"{'?reindex=false' if suspend_indexing_and_acls else ''}"
+                       f"entities/collection?reindex=false"
             response = requests.post(post_url, json=collection, headers={'Authorization': 'Bearer ' + token, 'X-Hubmap-Application': 'ingest-api'},verify=False)
             if not response.status_code == 200:
                 error_msg = f"Faled to create collection for Publication {dataset_uuid} failed with code:{response.status_code} message:" + response.text
@@ -1345,8 +1340,7 @@ def publish_datastage(identifier):
                 collection_updates['registered_doi'] = collection_doi_info['registered_doi']
                 collection_updates['doi_url'] = collection_doi_info['doi_url']                
                 put_url = f"{commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL'])}" \
-                           f"entities/{created_collection['uuid']}" \
-                           f"{'?reindex=false' if suspend_indexing_and_acls else ''}"
+                           f"entities/{created_collection['uuid']}?reindex=false"
                 response = requests.put(put_url, json=collection_updates, headers={'Authorization': 'Bearer ' + token, 'X-Hubmap-Application': 'ingest-api'}, verify=False)
                 if not response.status_code == 200:
                     error_msg = f"Update to Collection {created_collection['uuid']} failed, collection is attached to Publication {dataset_uuid}. Publication not Published, but Collection created failed with code:{response.status_code} message: " + response.text
@@ -1357,11 +1351,10 @@ def publish_datastage(identifier):
         #add status change to 'Published", except for component datasets which must be handled separately
         if not is_component:
             dataset_updates['status'] = 'Published'
-        
+            
         #update the dataset
         put_url = f"{commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL'])}" \
-                   f"entities/{dataset_uuid}" \
-                   f"{'?reindex=false' if suspend_indexing_and_acls else ''}"
+                   f"entities/{dataset_uuid}?reindex=false"
         response = requests.put(put_url, json=dataset_updates, headers={'Authorization': 'Bearer ' + token, 'X-Hubmap-Application': 'ingest-api'}, verify=False)
         if not response.status_code == 200:
             error_msg = f"Update to Dataset {dataset_uuid} failed with code:{response.status_code} message:" + response.text
@@ -1369,28 +1362,34 @@ def publish_datastage(identifier):
             return Response(error_msg, response.status_code)
 
         #for component datasets we must still change the status in Neo4j because the entity-api put locks us out
+        #for all (component and non-component) datasets, we must update the published_timestamp field directly in Neo4j because it is
+        #immutable in entity-api
+        #
         if is_component:
-            update_query = f"match (ds {{uuid:'{dataset_uuid}'}}) set ds.status = 'Published'"
-            try:
-                with neo4j_driver_instance.session() as neo_session:
-                    tx = neo_session.begin_transaction()
-                    result = tx.run(update_query)
-                    tx.commit()
-            except TransactionError as e:
-                if tx and tx.closed() == False:
-                    tx.rollback()
-                logger.exception(e)
-                return Response(f"Error while updating status on Component dataset {dataset_uuid}. See logs.  Transaction error: {e}.", 500)
-            except Exception as ex:
-                logger.exception(ex)
-                return Response(f"Unexpected error while updating status on Component datast {dataset_uuid}. See logs.  {ex}", 500)
+            set_clause = "set ds.status = 'Published', ds.published_timestamp = timestamp()"
+        else:
+            set_clause = "set ds.published_timestamp = timestamp()"
+            
+        update_query = f"match (ds {{uuid:'{dataset_uuid}'}}) {set_clause}"
+        try:
+            with neo4j_driver_instance.session() as neo_session:
+                tx = neo_session.begin_transaction()
+                result = tx.run(update_query)
+                tx.commit()
+        except TransactionError as e:
+            if tx and tx.closed() == False:
+                tx.rollback()
+            logger.exception(e)
+            return Response(f"Error while updating published_timestamp and status (for component only) on dataset {dataset_uuid}. See logs.  Transaction error: {e}.", 500)
+        except Exception as ex:
+            logger.exception(ex)
+            return Response(f"Unexpected error while updating published_timestamp and status (for component only) on dataset {dataset_uuid}. See logs.  {ex}", 500)
 
         # if all else worked set the list of ids to public that need to be public
         base_update_url = f"{commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL'])}entities/"
-        update_url_suffix = f"{'?reindex=false' if suspend_indexing_and_acls else ''}"
         headers={'Authorization': 'Bearer ' + token, 'X-Hubmap-Application': 'ingest-api', 'X-HuBMAP-Update-Override': app.config['LOCKED_ENTITY_UPDATE_OVERRIDE_KEY']}
         for upid in uuids_for_public:
-            update_url = base_update_url + upid + update_url_suffix
+            update_url = base_update_url + upid + "?reindex=false"
             resp = requests.put(update_url, json={'data_access_level': 'public'}, headers=headers, verify=False)
             if not resp.status_code == 200:
                 error_message = f"Error while updating data_access_level on entity: {upid}, Dataset {dataset_uuid} may be published, but not all ancestors may be set to public and metadata files have not been updated!!  {resp.text}"
@@ -1434,7 +1433,7 @@ def publish_datastage(identifier):
         # This must be done after ALL files are written because calling it with published=True causes the
         # directory to be made READ/EXECUTE only and any attempt to write a file will cause a server 500 error.
         acls_cmd = ingest_helper.set_dataset_permissions(dataset_uuid, dataset_group_uuid, data_access_level,
-                                                         True, no_indexing_and_acls)
+                                                         True, True)
 
 
         #find all of the files that match *metadata.tsv under the dataset's directory
@@ -1458,19 +1457,7 @@ def publish_datastage(identifier):
                     tsv_data.to_csv(tsv_file, sep='\t', index=False)
 
 
-        if no_indexing_and_acls:
-            r_val = {'acl_cmd': acls_cmd, 'entities_for_indexing': entities_to_reindex, 'relink_cmd': relink_cmd}
-            
-        else:
-            r_val = {'acl_cmd': '', 'entities_for_indexing': [], 'relink_cmd': relink_cmd}
-
-        if not no_indexing_and_acls:
-            for ent_uuid in entities_to_reindex:
-                try:
-                    rspn = requests.put(app.config['SEARCH_WEBSERVICE_URL'] + "/reindex/" + entity_uuid, headers={'Authorization': request.headers["AUTHORIZATION"]})
-                    logger.info(f"Publishing {identifier} indexed entity {entity_uuid} with status {rspn.status_code}")
-                except:
-                    logger.exception(f"While publishing {identifier} Error happened when calling reindex web service for entity {ent_uuid}")
+        r_val = {'acl_cmd': acls_cmd, 'entities_for_indexing': entities_to_reindex, 'relink_cmd': relink_cmd}
 
         #inner function to copy public information from a protected dataset to a public dataset 
         def copy_protected_to_public():
