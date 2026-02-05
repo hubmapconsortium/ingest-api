@@ -3318,7 +3318,7 @@ def validate_donors(headers, records):
             error_msg.append(f"<blank> is not an accepted field. Check for incorrect spaces and tabs in the header line")
         elif field not in required_headers:
             file_is_valid = False
-            error_msg.append(f"{field} is not an accepted field. Check for any typo's in header row.")
+            error_msg.append(f"{field} is not an accepted field in the header row.")
     rownum = 0
     if file_is_valid is True:
         for data_row in records:
