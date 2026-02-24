@@ -20,7 +20,7 @@ from enum import Enum
 import werkzeug.exceptions
 from hubmap_sdk import EntitySdk, sdk_helper
 from apscheduler.schedulers.background import BackgroundScheduler
-from neo4j.exceptions import TransactionError
+from neo4j.exceptions import TransactionError, Neo4jError
 from apscheduler.triggers.interval import IntervalTrigger
 from apscheduler.triggers.date import DateTrigger
 # Don't confuse urllib (Python native library) with urllib3 (3rd-party library, requests also uses urllib3)
@@ -613,22 +613,18 @@ def get_accessible_data_directories():
         if not isinstance(identifier, str):
             bad_request_error('The Request payload JSON Array must contain only identifier strings.')
 
-    payload_accessibility_dict = {}
-    for identifier in json_payload:
-        try:
-            identifier_accessibility_dict = dataset_helper.get_entity_accessibility(identifier
-                                                                                    , user_token
-                                                                                    , user_data_access_level=user_data_access_level)
-            payload_accessibility_dict[identifier] = identifier_accessibility_dict
-        except (HTTPException, sdk_helper.HTTPException) as he:
-            return jsonify({'error': he.get_description()}), he.get_status_code()
-        except ValueError as ve:
-            logger.error(str(ve))
-            return jsonify({'error': str(ve)}), 400
-        except Exception as e:
-            logger.error(e, exc_info=True)
-            return Response("Unexpected error: " + str(e), 500)
-    return jsonify(payload_accessibility_dict), 200
+    try:
+        identifier_accessibility_dict = dataset_helper.get_entity_accessibility(neo4j_driver_instance, json_payload, user_data_access_level=user_data_access_level)
+    except Neo4jError as ne:
+        logger.error(str(ne.message))
+        return jsonify({'Unexpected error': 'Failed to retrieve accessibility info from Neo4j. Check the logs'}), 500
+    except ValueError as ve:
+        logger.error(str(ve))
+        return jsonify({'error': str(ve)}), 400
+    except Exception as e:
+        logger.error(e, exc_info=True)
+        return Response("Unexpected error: " + str(e), 500)
+    return jsonify(identifier_accessibility_dict), 200
 
 """
 Retrieve the path of Datasets or Uploads relative to the Globus endpoint mount point give from a list of entity uuids
