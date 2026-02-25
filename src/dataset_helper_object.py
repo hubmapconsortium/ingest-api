@@ -121,14 +121,14 @@ class DatasetHelper:
 
         return rslt
 
-    # entity_id - UUID or HM_ID
-    # user_token - The authorization token for the user, which is used to generate an appropriate
-    #              description of the user's access to the entity.
+    # neo4j_driver - The driver instance for neo4j
+    # json_payload - A list of ids (HM_ID or UUID)
     # user_data_access_level - Data access level information for the user, notably including
     #                          Globus Group membership information.
     #
-    # Returns a JSON Object containing accessibility information for the entity.
-    #
+    # Returns a Dict of Dicts where each of the dicts inside is keyed by its original id given
+    # in the json_payload and contains information about the accessibility of that directory 
+    # including its globus url. 
     def get_entity_accessibility(self, neo4j_driver, json_payload, user_data_access_level: dict = None) -> dict:
         supported_entity_type_list = ['Dataset', 'Upload']
         accessibility_dicts = {}
