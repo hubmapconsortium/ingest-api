@@ -129,7 +129,7 @@ class DatasetHelper:
     # Returns a Dict of Dicts where each of the dicts inside is keyed by its original id given
     # in the json_payload and contains information about the accessibility of that directory 
     # including its globus url. 
-    def get_entity_accessibility(self, neo4j_driver, json_payload, user_data_access_level: dict = None) -> dict:
+    def get_entity_accessibility(self, neo4j_driver, json_payload, user_data_access_level) -> dict:
         supported_entity_type_list = ['Dataset', 'Upload']
         accessibility_dicts = {}
 

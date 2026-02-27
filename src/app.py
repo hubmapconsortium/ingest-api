@@ -588,22 +588,14 @@ json
 def get_accessible_data_directories():
     dataset_helper = DatasetHelper()
 
-    # If not token is provided or an invalid token is provided, return a 401 error.
-    if request.headers.get('Authorization') is None:
-        unauthorized_error('A valid token must be provided.')
-
     # If an invalid token provided, we need to tell the client with a 401 error, rather
     # than a 500 error later if the token is not good.
     _validate_token_if_auth_header_exists(request)
 
-    # Get user token from Authorization header
-    # Get the user token from Authorization header
-    user_token = auth_helper_instance.getAuthorizationTokens(request.headers)
-
     # Get user group information which will be used to determine accessibility on
     # a per-entity basis.
     user_data_access_level = auth_helper_instance.getUserDataAccessLevel(request)
-
+    user_data_access_level['group_membership_ids'] = []
     if not request.is_json:
         bad_request_error("A json body and appropriate Content-Type header are required.")
     json_payload = request.get_json()
