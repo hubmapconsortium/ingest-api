@@ -5,6 +5,7 @@ from array import array
 import requests
 import logging
 from flask import Flask
+from neo4j.exceptions import Neo4jError
 from hubmap_commons.hubmap_const import HubmapConst
 from hubmap_sdk import EntitySdk, SearchSdk, sdk_helper
 from pandas.core.array_algos.take import take_nd
@@ -120,129 +121,146 @@ class DatasetHelper:
 
         return rslt
 
-    # entity_id - UUID or HM_ID
-    # user_token - The authorization token for the user, which is used to generate an appropriate
-    #              description of the user's access to the entity.
+    # neo4j_driver - The driver instance for neo4j
+    # json_payload - A list of ids (HM_ID or UUID)
     # user_data_access_level - Data access level information for the user, notably including
     #                          Globus Group membership information.
     #
-    # Returns a JSON Object containing accessibility information for the entity.
-    #
-    def get_entity_accessibility(self, entity_id: str, user_token: str, user_data_access_level: dict = None) -> dict:
-        entity_api = EntitySdk(token=user_token, service_url=_entity_api_url)
+    # Returns a Dict of Dicts where each of the dicts inside is keyed by its original id given
+    # in the json_payload and contains information about the accessibility of that directory 
+    # including its globus url. 
+    def get_entity_accessibility(self, neo4j_driver, json_payload, user_data_access_level) -> dict:
         supported_entity_type_list = ['Dataset', 'Upload']
+        accessibility_dicts = {}
 
-        # Grab the entity from the entity-api service.
-        try:
-            sdk_entity = entity_api.get_entity_by_id(entity_id)
-        except sdk_helper.HTTPException as he:
-            # Determine if this entity_id should be shown as inaccessible in an
-            # HTTP 200 Response. Otherwise, let the HTTPException be processed
-            if he.status_code == 404:
-                # We will log when the user is checking on entities which are inaccessible.
-                logger.debug(f"User accessibility retrieval of non-valid {entity_id}"
-                             f" resulted in {he.status_code} exception he={str(he)}")
-                # Create a simple dict when entity_id is not for an existing entity
-                return {'valid_id': False}
-            elif he.status_code == 403:
-                # We will log when the user is checking on entities which are inaccessible.
-                logger.debug(f"User accessibility retrieval of valid, inaccessible {entity_id}"
-                             f" resulted in {he.status_code} exception he={str(he)}")
-                # Create a simple dict when entity_id is not for an existing entity
-                return {'valid_id': True
-                        , 'access_allowed': False}
+        query = (
+            "MATCH (e:Entity) "
+            "WHERE e.uuid IN $ids OR e.hubmap_id IN $ids "
+            "RETURN COLLECT({"
+            "uuid: e.uuid, "
+            "hubmap_id: e.hubmap_id, "
+            "entity_type: e.entity_type, "
+            "status: e.status, "
+            "group_name: e.group_name, "
+            "group_uuid: e.group_uuid, "
+            "contains_human_genetic_sequences: e.contains_human_genetic_sequences, "
+            "data_access_level: e.data_access_level"
+            "}) AS entities"
+        )
+        
+        with neo4j_driver.session() as session:
+            result = session.run(query, ids=json_payload)
+            record = result.single()
+            entities = record["entities"] if record else []
+
+        requested_ids = set(json_payload)
+        matched_ids = set()
+        for e in entities:
+            if e.get("uuid"):
+                matched_ids.add(e["uuid"])
+            if e.get("hubmap_id"):
+                matched_ids.add(e["hubmap_id"])
+            if e.get("uuid") in requested_ids:
+                e['original_id'] = e.get("uuid")
             else:
-                raise he
-        except Exception as e:
-            msg = f"Unable to get data to determine accessibility of '{entity_id}'"
-            logger.exception(msg)
-            raise Exception(msg)
+                e['original_id'] = e.get("hubmap_id")
+        
+        invalid_ids = list(requested_ids - matched_ids)
 
-        entity_dict = vars(sdk_entity)
-        if entity_dict['entity_type'] not in supported_entity_type_list:
-            return {'valid_id': False}
+        for invalid in invalid_ids:
+            accessibility_dicts[invalid] = {'valid_id': False}
+        for entity_dict in entities:
 
-        # Make sure all expected elements for the business requirements are in the returned entity.
-        # Need to determine entity "visibility" using the same rules found in the
+            if entity_dict['entity_type'] not in supported_entity_type_list:
+                accessibility_dicts[entity_dict['original_id']] = {'valid_id': False}
 
-        missing_entity_elements = []
-        if 'entity_type' not in entity_dict:
-            missing_entity_elements.append('entity_type')
-        if 'uuid' not in entity_dict:
-            missing_entity_elements.append('uuid')
-        if 'hubmap_id' not in entity_dict:
-            missing_entity_elements.append('hubmap_id')
-        if 'status' not in entity_dict:
-            missing_entity_elements.append('status')
-        if 'group_name' not in entity_dict:
-            missing_entity_elements.append('group_name')
-        if 'group_uuid' not in entity_dict:
-            missing_entity_elements.append('group_uuid')
-        if 'contains_human_genetic_sequences' not in entity_dict and \
-            entity_dict['entity_type'] == 'Dataset':
-            missing_entity_elements.append('contains_human_genetic_sequences')
-        if 'data_access_level' not in entity_dict and \
-            entity_dict['entity_type'] == 'Dataset':
-            missing_entity_elements.append('data_access_level')
-        if missing_entity_elements:
-            logger.error(f"Unexpected format for '{entity_id}'"
-                         f" , missing {str(missing_entity_elements)}"
-                         f" from entity={str(entity_dict)}.")
-            raise Exception(f"Data error determining accessibility of '{entity_id}'")
+            # Make sure all expected elements for the business requirements are in the returned entity.
+            # Need to determine entity "visibility" using the same rules found in the
 
-        if entity_dict['entity_type'] == 'Dataset':
-            user_access_allowed = (entity_dict['data_access_level'] == HubmapConst.ACCESS_LEVEL_PUBLIC)
-            if not user_access_allowed:
-                user_access_allowed = (entity_dict['data_access_level'] == HubmapConst.ACCESS_LEVEL_CONSORTIUM) and \
-                                      user_data_access_level['data_access_level'] in [
-                                          HubmapConst.ACCESS_LEVEL_CONSORTIUM \
-                                          , HubmapConst.ACCESS_LEVEL_PROTECTED]
-            if not user_access_allowed:
-                user_access_allowed = (entity_dict['data_access_level'] == HubmapConst.ACCESS_LEVEL_PROTECTED) and \
-                                      (user_data_access_level['data_access_level'] in [
-                                          HubmapConst.ACCESS_LEVEL_PROTECTED] \
-                                       or entity_dict['group_uuid'] in user_data_access_level['group_membership_ids'])
+            missing_entity_elements = []
+            if 'entity_type' not in entity_dict:
+                missing_entity_elements.append('entity_type')
+            if 'uuid' not in entity_dict:
+                missing_entity_elements.append('uuid')
+            if 'hubmap_id' not in entity_dict:
+                missing_entity_elements.append('hubmap_id')
+            if 'status' not in entity_dict:
+                missing_entity_elements.append('status')
+            if 'group_name' not in entity_dict:
+                missing_entity_elements.append('group_name')
+            if 'group_uuid' not in entity_dict:
+                missing_entity_elements.append('group_uuid')
+            if 'contains_human_genetic_sequences' not in entity_dict and \
+                entity_dict['entity_type'] == 'Dataset':
+                missing_entity_elements.append('contains_human_genetic_sequences')
+            if 'data_access_level' not in entity_dict and \
+                entity_dict['entity_type'] == 'Dataset':
+                missing_entity_elements.append('data_access_level')
 
-            if entity_dict['data_access_level'] == HubmapConst.ACCESS_LEVEL_PROTECTED:
+            if missing_entity_elements:
+                logger.error(f"Unexpected format for '{entity_dict['original_id']}'"
+                            f" , missing {str(missing_entity_elements)}"
+                            f" from entity={str(entity_dict)}.")
+                raise Exception(f"Data error determining accessibility of '{entity_dict['origina_id']}'")
+
+            if entity_dict['entity_type'] == 'Dataset':
+                user_access_allowed = (entity_dict['data_access_level'] == HubmapConst.ACCESS_LEVEL_PUBLIC)
+                if not user_access_allowed:
+                    user_access_allowed = (entity_dict['data_access_level'] == HubmapConst.ACCESS_LEVEL_CONSORTIUM) and \
+                                        user_data_access_level['data_access_level'] in [
+                                            HubmapConst.ACCESS_LEVEL_CONSORTIUM \
+                                            , HubmapConst.ACCESS_LEVEL_PROTECTED]
+                if not user_access_allowed:
+                    user_access_allowed = (entity_dict['data_access_level'] == HubmapConst.ACCESS_LEVEL_PROTECTED) and \
+                                        (user_data_access_level['data_access_level'] in [
+                                            HubmapConst.ACCESS_LEVEL_PROTECTED] \
+                                        or entity_dict['group_uuid'] in user_data_access_level['group_membership_ids'])
+
+                if (entity_dict['data_access_level'] == HubmapConst.ACCESS_LEVEL_PROTECTED) and not user_access_allowed and entity_dict.get('status').lower() == 'published':
+                    abs_path = os.path.join(_globus_public_endpoint_filepath
+                                            , entity_dict['uuid'])
+                elif (entity_dict['data_access_level'] == HubmapConst.ACCESS_LEVEL_PROTECTED):
+                    abs_path = os.path.join(_globus_protected_endpoint_filepath
+                                            , entity_dict['group_name']
+                                            , entity_dict['uuid'])
+                elif entity_dict['data_access_level'] == HubmapConst.ACCESS_LEVEL_CONSORTIUM:
+                    abs_path = os.path.join(_globus_consortium_endpoint_filepath
+                                            , entity_dict['group_name']
+                                            , entity_dict['uuid'])
+                elif entity_dict['data_access_level'] == HubmapConst.ACCESS_LEVEL_PUBLIC:
+                    abs_path = os.path.join(_globus_public_endpoint_filepath
+                                            , entity_dict['uuid'])
+                else:
+                    raise Exception(f"Unexpected error for {entity_dict['original_id']} of type"
+                                    f" {entity_dict['entity_type']} with data access level"
+                                    f" {entity_dict['data_access_level']}.")
+
+                entity_accessibility_dict = {'valid_id': True, 'access_allowed': user_access_allowed}
+                if entity_dict.get('status').lower() == 'published':
+                    entity_accessibility_dict['access_allowed'] = True
+                if user_access_allowed or entity_dict.get('status').lower() == 'published':
+                    entity_accessibility_dict['hubmap_id'] = entity_dict['hubmap_id']
+                    entity_accessibility_dict['uuid'] = entity_dict['uuid']
+                    entity_accessibility_dict['entity_type'] = entity_dict['entity_type']
+                    entity_accessibility_dict['file_system_path'] = abs_path
+                accessibility_dicts[entity_dict['original_id']] = entity_accessibility_dict
+            elif entity_dict['entity_type'] == 'Upload':
+                user_access_allowed = (user_data_access_level['data_access_level'] in [
+                                        HubmapConst.ACCESS_LEVEL_PROTECTED]
+                                    or entity_dict['group_uuid'] in user_data_access_level['group_membership_ids'])
                 abs_path = os.path.join(_globus_protected_endpoint_filepath
                                         , entity_dict['group_name']
                                         , entity_dict['uuid'])
-            elif entity_dict['data_access_level'] == HubmapConst.ACCESS_LEVEL_CONSORTIUM:
-                abs_path = os.path.join(_globus_consortium_endpoint_filepath
-                                        , entity_dict['group_name']
-                                        , entity_dict['uuid'])
-            elif entity_dict['data_access_level'] == HubmapConst.ACCESS_LEVEL_PUBLIC:
-                abs_path = os.path.join(_globus_public_endpoint_filepath
-                                        , entity_dict['uuid'])
+
+                entity_accessibility_dict = {   'valid_id': True
+                                                , 'access_allowed': user_access_allowed}
+                if user_access_allowed:
+                    entity_accessibility_dict['hubmap_id'] = entity_dict['hubmap_id']
+                    entity_accessibility_dict['uuid'] = entity_dict['uuid']
+                    entity_accessibility_dict['entity_type'] = entity_dict['entity_type']
+                    entity_accessibility_dict['file_system_path'] = abs_path
+                accessibility_dicts[entity_dict['original_id']] = entity_accessibility_dict
             else:
-                raise Exception(f"Unexpected error for {entity_id} of type"
-                                f" {entity_dict['entity_type']} with data access level"
-                                f" {entity_dict['data_access_level']}.")
-
-            entity_accessibility_dict = {'valid_id': True
-                , 'access_allowed': user_access_allowed}
-            if user_access_allowed:
-                entity_accessibility_dict['hubmap_id'] = entity_dict['hubmap_id']
-                entity_accessibility_dict['uuid'] = entity_dict['uuid']
-                entity_accessibility_dict['entity_type'] = entity_dict['entity_type']
-                entity_accessibility_dict['file_system_path'] = abs_path
-            return entity_accessibility_dict
-        elif entity_dict['entity_type'] == 'Upload':
-            user_access_allowed = (user_data_access_level['data_access_level'] in [
-                                      HubmapConst.ACCESS_LEVEL_PROTECTED]
-                                   or entity_dict['group_uuid'] in user_data_access_level['group_membership_ids'])
-            abs_path = os.path.join(_globus_protected_endpoint_filepath
-                                    , entity_dict['group_name']
-                                    , entity_dict['uuid'])
-
-            entity_accessibility_dict = {   'valid_id': True
-                                            , 'access_allowed': user_access_allowed}
-            if user_access_allowed:
-                entity_accessibility_dict['hubmap_id'] = entity_dict['hubmap_id']
-                entity_accessibility_dict['uuid'] = entity_dict['uuid']
-                entity_accessibility_dict['entity_type'] = entity_dict['entity_type']
-                entity_accessibility_dict['file_system_path'] = abs_path
-            return entity_accessibility_dict
-        else:
-            raise Exception(f"Unexpected error for {entity_id} of type"
-                            f" {entity_dict['entity_type']}.")
+                raise Exception(f"Unexpected error for {entity_dict['original_id']} of type"
+                                f" {entity_dict['entity_type']}.")
+        return accessibility_dicts
