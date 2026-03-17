@@ -406,7 +406,7 @@
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['salmon_rnaseq_slideseq']",
-        "value": "{'ubkg_code': 'C200650', 'assaytype': 'salmon_rnaseq_slideseq', 'vitessce-hints': ['is_sc', 'rna'], 'primary': false, 'contains-pii': false, 'description': 'Slideseq [Salmon]', 'pipeline-shorthand': 'Salmon'}",
+        "value": "{'ubkg_code': 'C200650', 'assaytype': 'salmon_rnaseq_slideseq', 'vitessce-hints': ['is_sc', 'rna', 'spatial'], 'primary': false, 'contains-pii': false, 'description': 'Slideseq [Salmon]', 'pipeline-shorthand': 'Salmon'}",
         "rule_description": "derived salmon_rnaseq_slideseq"
     },
     {
