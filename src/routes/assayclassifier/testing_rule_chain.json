@@ -10,7 +10,7 @@
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['AF_pyramid']",
-        "value": "{'ubkg_code': 'C200010', 'assaytype': 'AF_pyramid', 'vitessce-hints': ['pyramid', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'Auto-fluorescence Microscopy [Image Pyramid]', 'pipeline-shorthand': 'Image Pyramid'}",
+        "value": "{'ubkg_code': 'C200010', 'assaytype': 'AF_pyramid', 'vitessce-hints': ['pyramid', 'is_support', 'spatial'], 'primary': false, 'contains-pii': false, 'description': 'Auto-fluorescence Microscopy [Image Pyramid]', 'pipeline-shorthand': 'Image Pyramid'}",
         "rule_description": "derived AF_pyramid"
     },
     {
@@ -34,7 +34,7 @@
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['celldive_deepcell']",
-        "value": "{'ubkg_code': 'C200050', 'assaytype': 'celldive_deepcell', 'vitessce-hints': ['sprm', 'anndata', 'is_image', 'is_tiled'], 'primary': false, 'contains-pii': false, 'description': 'Cell DIVE [DeepCell + SPRM]', 'pipeline-shorthand': 'DeepCell + SPRM'}",
+        "value": "{'ubkg_code': 'C200050', 'assaytype': 'celldive_deepcell', 'vitessce-hints': ['sprm', 'anndata', 'is_image', 'is_tiled', 'spatial'], 'primary': false, 'contains-pii': false, 'description': 'Cell DIVE [DeepCell + SPRM]', 'pipeline-shorthand': 'DeepCell + SPRM'}",
         "rule_description": "derived celldive_deepcell"
     },
     {
@@ -52,19 +52,19 @@
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['codex_cytokit_v1'] and [elt for elt in dag_provenance_list if elt =~~ 'anndata']",
-        "value": "{'ubkg_code': 'C200080', 'assaytype': 'codex_cytokit_v1', 'vitessce-hints': ['codex', 'is_image', 'is_tiled', 'anndata'], 'primary': false, 'contains-pii': false, 'description': 'CODEX [Cytokit + SPRM]', 'pipeline-shorthand': 'Cytokit + SPRM'}",
+        "value": "{'ubkg_code': 'C200080', 'assaytype': 'codex_cytokit_v1', 'vitessce-hints': ['codex', 'is_image', 'is_tiled', 'anndata', 'spatial'], 'primary': false, 'contains-pii': false, 'description': 'CODEX [Cytokit + SPRM]', 'pipeline-shorthand': 'Cytokit + SPRM'}",
         "rule_description": "derived codex_cytokit_v1"
     },
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['codex_cytokit_v1'] and not [elt for elt in dag_provenance_list if elt =~~ 'anndata']",
-        "value": "{'ubkg_code': 'C200090', 'assaytype': 'codex_cytokit_v1', 'vitessce-hints': ['codex', 'is_image', 'is_tiled', 'json_based'], 'primary': false, 'contains-pii': false, 'description': 'CODEX [Cytokit + SPRM]', 'pipeline-shorthand': 'Cytokit + SPRM'}",
+        "value": "{'ubkg_code': 'C200090', 'assaytype': 'codex_cytokit_v1', 'vitessce-hints': ['codex', 'is_image', 'is_tiled', 'json_based', 'spatial'], 'primary': false, 'contains-pii': false, 'description': 'CODEX [Cytokit + SPRM]', 'pipeline-shorthand': 'Cytokit + SPRM'}",
         "rule_description": "derived codex_cytokit_v1 json-based"
     },
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['codex_cytokit']",
-        "value": "{'ubkg_code': 'C200100', 'assaytype': 'codex_cytokit', 'vitessce-hints': ['sprm', 'anndata', 'is_image', 'is_tiled'], 'primary': false, 'contains-pii': false, 'description': 'CODEX [Cytokit + SPRM]', 'pipeline-shorthand': 'Cytokit + SPRM'}",
+        "value": "{'ubkg_code': 'C200100', 'assaytype': 'codex_cytokit', 'vitessce-hints': ['sprm', 'anndata', 'is_image', 'is_tiled', 'spatial'], 'primary': false, 'contains-pii': false, 'description': 'CODEX [Cytokit + SPRM]', 'pipeline-shorthand': 'Cytokit + SPRM'}",
         "rule_description": "derived codex_cytokit"
     },
     {
@@ -82,13 +82,13 @@
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['DESI_pyramid']",
-        "value": "{'ubkg_code': 'C200130', 'assaytype': 'DESI_pyramid', 'vitessce-hints': ['pyramid', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'DESI [Image Pyramid]', 'pipeline-shorthand': 'Image Pyramid'}",
+        "value": "{'ubkg_code': 'C200130', 'assaytype': 'DESI_pyramid', 'vitessce-hints': ['pyramid', 'is_support', 'spatial'], 'primary': false, 'contains-pii': false, 'description': 'DESI [Image Pyramid]', 'pipeline-shorthand': 'Image Pyramid'}",
         "rule_description": "derived DESI_pyramid"
     },
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['image_pyramid', 'Image Pyramid', 'ometiff_pyramid_ims', 'ometiff_pyramid']",
-        "value": "{'ubkg_code': 'C200140', 'assaytype': 'image_pyramid', 'vitessce-hints': ['is_image', 'pyramid', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'Image Pyramid', 'pipeline-shorthand': ''}",
+        "value": "{'ubkg_code': 'C200140', 'assaytype': 'image_pyramid', 'vitessce-hints': ['is_image', 'pyramid', 'is_support', 'spatial'], 'primary': false, 'contains-pii': false, 'description': 'Image Pyramid', 'pipeline-shorthand': ''}",
         "rule_description": "derived image_pyramid"
     },
     {
@@ -106,13 +106,13 @@
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['IMC2D_pyramid', 'IMC_pyramid']",
-        "value": "{'ubkg_code': 'C200170', 'assaytype': 'IMC2D_pyramid', 'vitessce-hints': ['pyramid', 'is_support'], 'primary': false, 'contains-pii': false, 'description': '2D Imaging Mass Cytometry [Image Pyramid]', 'pipeline-shorthand': 'Image Pyramid'}",
+        "value": "{'ubkg_code': 'C200170', 'assaytype': 'IMC2D_pyramid', 'vitessce-hints': ['pyramid', 'is_support', 'spatial'], 'primary': false, 'contains-pii': false, 'description': '2D Imaging Mass Cytometry [Image Pyramid]', 'pipeline-shorthand': 'Image Pyramid'}",
         "rule_description": "derived IMC2D_pyramid"
     },
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['IMC3D_pyramid', '3D-IMC_pyramid']",
-        "value": "{'ubkg_code': 'C200180', 'assaytype': 'IMC3D_pyramid', 'vitessce-hints': ['pyramid', 'is_support'], 'primary': false, 'contains-pii': false, 'description': '3D Imaging Mass Cytometry [Image Pyramid]', 'pipeline-shorthand': 'Image Pyramid'}",
+        "value": "{'ubkg_code': 'C200180', 'assaytype': 'IMC3D_pyramid', 'vitessce-hints': ['pyramid', 'is_support', 'spatial'], 'primary': false, 'contains-pii': false, 'description': '3D Imaging Mass Cytometry [Image Pyramid]', 'pipeline-shorthand': 'Image Pyramid'}",
         "rule_description": "derived IMC3D_pyramid"
     },
     {
@@ -160,7 +160,7 @@
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['MALDI-IMS_pyramid', 'MALDI-IMS-neg_pyramid', 'MALDI-IMS-pos_pyramid']",
-        "value": "{'ubkg_code': 'C200260', 'assaytype': 'MALDI-IMS_pyramid', 'vitessce-hints': ['pyramid', 'maldi', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'MALDI IMS [Image Pyramid]', 'pipeline-shorthand': 'Image Pyramid'}",
+        "value": "{'ubkg_code': 'C200260', 'assaytype': 'MALDI-IMS_pyramid', 'vitessce-hints': ['pyramid', 'maldi', 'is_support', 'spatial'], 'primary': false, 'contains-pii': false, 'description': 'MALDI IMS [Image Pyramid]', 'pipeline-shorthand': 'Image Pyramid'}",
         "rule_description": "derived MALDI-IMS_pyramid"
     },
     {
@@ -172,7 +172,7 @@
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['mibi_deepcell']",
-        "value": "{'ubkg_code': 'C200280', 'assaytype': 'mibi_deepcell', 'vitessce-hints': ['is_image', 'is_tiled', 'sprm', 'anndata'], 'primary': false, 'contains-pii': false, 'description': 'Multiplex Ion Beam Imaging [DeepCell + SPRM]', 'pipeline-shorthand': 'DeepCell + SPRM'}",
+        "value": "{'ubkg_code': 'C200280', 'assaytype': 'mibi_deepcell', 'vitessce-hints': ['is_image', 'is_tiled', 'sprm', 'anndata', 'spatial'], 'primary': false, 'contains-pii': false, 'description': 'Multiplex Ion Beam Imaging [DeepCell + SPRM]', 'pipeline-shorthand': 'DeepCell + SPRM'}",
         "rule_description": "derived mibi_deepcell"
     },
     {
@@ -184,7 +184,7 @@
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['NanoDESI_pyramid']",
-        "value": "{'ubkg_code': 'C200300', 'assaytype': 'NanoDESI_pyramid', 'vitessce-hints': ['pyramid', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'NanoDESI [Image Pyramid]', 'pipeline-shorthand': 'Image Pyramid'}",
+        "value": "{'ubkg_code': 'C200300', 'assaytype': 'NanoDESI_pyramid', 'vitessce-hints': ['pyramid', 'is_support', 'spatial'], 'primary': false, 'contains-pii': false, 'description': 'NanoDESI [Image Pyramid]', 'pipeline-shorthand': 'Image Pyramid'}",
         "rule_description": "derived NanoDESI_pyramid"
     },
     {
@@ -220,13 +220,13 @@
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['PAS_pyramid']",
-        "value": "{'ubkg_code': 'C200360', 'assaytype': 'PAS_pyramid', 'vitessce-hints': ['pyramid', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'PAS Stained Microscopy [Image Pyramid]', 'pipeline-shorthand': 'Image Pyramid'}",
+        "value": "{'ubkg_code': 'C200360', 'assaytype': 'PAS_pyramid', 'vitessce-hints': ['pyramid', 'is_support', 'spatial'], 'primary': false, 'contains-pii': false, 'description': 'PAS Stained Microscopy [Image Pyramid]', 'pipeline-shorthand': 'Image Pyramid'}",
         "rule_description": "derived PAS_pyramid"
     },
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['pas_ftu_segmentation']",
-        "value": "{'ubkg_code': 'C200370', 'assaytype': 'pas_ftu_segmentation', 'vitessce-hints': [], 'primary': false, 'contains-pii': false, 'description': 'PAS Stained Microscopy [Kaggle-1 Glomerulus Segmentation]', 'pipeline-shorthand': 'Kaggle-1 Glomerulus Segmentation'}",
+        "value": "{'ubkg_code': 'C200370', 'assaytype': 'pas_ftu_segmentation', 'vitessce-hints': ['spatial'], 'primary': false, 'contains-pii': false, 'description': 'PAS Stained Microscopy [Kaggle-1 Glomerulus Segmentation]', 'pipeline-shorthand': 'Kaggle-1 Glomerulus Segmentation'}",
         "rule_description": "derived pas_ftu_segmentation"
     },
     {
@@ -346,7 +346,7 @@
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['seqFish_pyramid']",
-        "value": "{'ubkg_code': 'C200560', 'assaytype': 'seqFish_pyramid', 'vitessce-hints': ['pyramid', 'is_support'], 'primary': false, 'contains-pii': false, 'description': 'seqFISH [Image Pyramid]', 'pipeline-shorthand': 'Image Pyramid'}",
+        "value": "{'ubkg_code': 'C200560', 'assaytype': 'seqFish_pyramid', 'vitessce-hints': ['pyramid', 'is_support', 'spatial'], 'primary': false, 'contains-pii': false, 'description': 'seqFISH [Image Pyramid]', 'pipeline-shorthand': 'Image Pyramid'}",
         "rule_description": "derived seqFish_pyramid"
     },
     {
@@ -406,7 +406,7 @@
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['salmon_rnaseq_slideseq']",
-        "value": "{'ubkg_code': 'C200650', 'assaytype': 'salmon_rnaseq_slideseq', 'vitessce-hints': ['is_sc', 'rna'], 'primary': false, 'contains-pii': false, 'description': 'Slideseq [Salmon]', 'pipeline-shorthand': 'Salmon'}",
+        "value": "{'ubkg_code': 'C200650', 'assaytype': 'salmon_rnaseq_slideseq', 'vitessce-hints': ['is_sc', 'rna', 'spatial'], 'primary': false, 'contains-pii': false, 'description': 'Slideseq [Salmon]', 'pipeline-shorthand': 'Salmon'}",
         "rule_description": "derived salmon_rnaseq_slideseq"
     },
     {
@@ -730,7 +730,7 @@
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['phenocycler_deepcell', 'phenocycler_low_cell_count', 'phenocycler_high_cell_count']",
-        "value": "{'ubkg_code': 'C201180', 'assaytype': 'phenocycler_deepcell', 'vitessce-hints': ['is_image', 'is_tiled', 'sprm', 'anndata'], 'primary': false, 'contains-pii': false, 'description': 'PhenoCycler [DeepCell + SPRM]', 'pipeline-shorthand': 'DeepCell + SPRM'}",
+        "value": "{'ubkg_code': 'C201180', 'assaytype': 'phenocycler_deepcell', 'vitessce-hints': ['is_image', 'is_tiled', 'sprm', 'anndata', 'spatial'], 'primary': false, 'contains-pii': false, 'description': 'PhenoCycler [DeepCell + SPRM]', 'pipeline-shorthand': 'DeepCell + SPRM'}",
         "rule_description": "derived phenocycler"
     },
     {
@@ -760,7 +760,7 @@
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['kaggle_2_segmentation']",
-        "value": "{'ubkg_code': 'C202060', 'assaytype': 'h-and-e', 'vitessce-hints': ['segmentation_mask', 'is_image', 'pyramid'], 'primary': false, 'contains-pii': false, 'description': 'H&E Stained Microscopy [Kaggle-2 Segmentation]', 'pipeline-shorthand': 'Kaggle-2 Segmentation'}",
+        "value": "{'ubkg_code': 'C202060', 'assaytype': 'h-and-e', 'vitessce-hints': ['segmentation_mask', 'is_image', 'pyramid', 'spatial'], 'primary': false, 'contains-pii': false, 'description': 'H&E Stained Microscopy [Kaggle-2 Segmentation]', 'pipeline-shorthand': 'Kaggle-2 Segmentation'}",
         "rule_description": "derived h-and-e"
     },
     {
@@ -790,12 +790,12 @@
     {
         "type": "match",
         "match": "is_central_processed and data_types[0] in ['geomx']",
-        "value": "{'ubkg_code': 'C202110', 'assaytype': 'geomx_ngs', 'vitessce-hints': ['geomx', 'is_image', 'pyramid'], 'primary': false, 'contains-pii': false, 'description': 'GeoMx (NGS) [AnnData]', 'pipeline-shorthand': 'AnnData'}",
+        "value": "{'ubkg_code': 'C202110', 'assaytype': 'geomx_ngs', 'vitessce-hints': ['geomx', 'is_image', 'pyramid', 'spatial'], 'primary': false, 'contains-pii': false, 'description': 'GeoMx (NGS) [AnnData]', 'pipeline-shorthand': 'AnnData'}",
         "rule_description": "derived geomx_ngs"
     },
     {
         "type": "match",
-        "match": "is_dcwg and is_primary and dataset_type == 'CosMx Transcriptomics' and oligo_probe_panel in ['NanoString Technologies; CosMx Human Universal Cell Characterization Panel (RNA, 1000 Plex); PN CMX-H-USCP-1KP-R', 'NanoString Technologies; CosMx Hs WTX RNA Panel Kit, 2 slides: PN 121500047', 'NanoString Technologies; CosMx Hs Univ Cell (RNA, 1000 Plex); PN 121500002', 'NanoString Technologies; CosMx Human 6K Discovery Panel (RNA, 6175 Plex); PN 121500041', 'NanoString Technologies; CosMx Mouse Universal Cell Characterization Panel (RNA, 1000 Plex); PN CMX-M-USCP-1KP-R', 'NanoString Technologies; CosMx Mouse Neuroscience Panel (RNA, 1000 Plex); PN CMX-M-NEUP-R']",
+        "match": "is_dcwg and is_primary and dataset_type == 'CosMx Transcriptomics' and oligo_probe_panel in ['NanoString Technologies; CosMx Human Universal Cell Characterization Panel (RNA, 1000 Plex); PN CMX-H-USCP-1KP-R', 'NanoString Technologies; CosMx Hs WTX RNA Panel Kit, 2 slides: PN 121500047', 'NanoString Technologies; CosMx Hs Univ Cell (RNA, 1000 Plex); PN 121500002', 'NanoString Technologies; CosMx Human 6K Discovery Panel (RNA, 6175 Plex); PN 121500041', 'NanoString Technologies; CosMx Mouse Universal Cell Characterization Panel (RNA, 1000 Plex); PN CMX-M-USCP-1KP-R', 'NanoString Technologies; CosMx Mouse Neuroscience Panel (RNA, 1000 Plex); PN CMX-M-NEUP-R', 'Custom']",
         "value": "{'ubkg_code': 'C202120', 'assaytype': 'cosmx_transcriptomics', 'vitessce-hints': [], 'dir-schema': 'cosmx-transcriptomics-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'CosMx Transcriptomics', 'description': 'CosMx Transcriptomics'}",
         "rule_description": "DCWG CosMx Transcriptomics"
     },
@@ -826,7 +826,7 @@
     {
          "type": "match",
          "match": "is_central_processed and data_types[0] in ['xenium']",
-         "value": "{'ubkg_code': 'C202170', 'assaytype': 'xenium', 'vitessce-hints': ['xenium', 'is_image'], 'description': 'Xenium [SpatialData + Scanpy]', 'contains-pii': false, 'primary': false, 'pipeline-shorthand': 'SpatialData + Scanpy'}",
+         "value": "{'ubkg_code': 'C202170', 'assaytype': 'xenium', 'vitessce-hints': ['xenium', 'is_image', 'spatial'], 'description': 'Xenium [SpatialData + Scanpy]', 'contains-pii': false, 'primary': false, 'pipeline-shorthand': 'SpatialData + Scanpy'}",
          "rule_description": "derived xenium"
     },
     {
