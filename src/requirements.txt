@@ -3,7 +3,7 @@ Flask-Cors==4.0.1
 Flask-Mail==0.9.1
 globus_sdk==2.0.1
 
-hubmap-sdk==1.0.10
+hubmap-sdk==1.0.11
 
 # Use pinned version of jsonref same as commons
 jsonref==0.3.0
@@ -13,7 +13,7 @@ selenium==3.141.0
 PyYAML==6.0.2
 
 # The commons package requires requests>=2.22.0
-requests==2.32.4
+requests==2.33.0
 
 # Use the published package from PyPI as default
 # Use the branch name of commons from github for testing new changes made in commons from different branch
