@@ -1,0 +1,132 @@
+﻿[
+  {
+    "dataset_type": "RNAseq",
+    "dataset_provenance_level": "primary",
+    "ds_count": 601
+  },
+  {
+    "dataset_type": "MIBI",
+    "dataset_provenance_level": "primary",
+    "ds_count": 211
+  },
+  {
+    "dataset_type": "ATACseq",
+    "dataset_provenance_level": "primary",
+    "ds_count": 449
+  },
+  {
+    "dataset_type": "3D Imaging Mass Cytometry",
+    "dataset_provenance_level": "primary",
+    "ds_count": 3
+  },
+  {
+    "dataset_type": "Cell DIVE",
+    "dataset_provenance_level": "primary",
+    "ds_count": 66
+  },
+  {
+    "dataset_type": "Light Sheet",
+    "dataset_provenance_level": "primary",
+    "ds_count": 11
+  },
+  {
+    "dataset_type": "CODEX",
+    "dataset_provenance_level": "primary",
+    "ds_count": 128
+  },
+  {
+    "dataset_type": "WGS",
+    "dataset_provenance_level": "primary",
+    "ds_count": 17
+  },
+  {
+    "dataset_type": "LC-MS",
+    "dataset_provenance_level": "primary",
+    "ds_count": 474
+  },
+  {
+    "dataset_type": "MALDI",
+    "dataset_provenance_level": "primary",
+    "ds_count": 112
+  },
+  {
+    "dataset_type": "Auto-fluorescence",
+    "dataset_provenance_level": "primary",
+    "ds_count": 248
+  },
+  {
+    "dataset_type": "Histology",
+    "dataset_provenance_level": "primary",
+    "ds_count": 398
+  },
+  {
+    "dataset_type": "seqFISH",
+    "dataset_provenance_level": "primary",
+    "ds_count": 9
+  },
+  {
+    "dataset_type": "2D Imaging Mass Cytometry",
+    "dataset_provenance_level": "primary",
+    "ds_count": 13
+  },
+  {
+    "dataset_type": "Slide-seq",
+    "dataset_provenance_level": "primary",
+    "ds_count": 42
+  },
+  {
+    "dataset_type": "10X Multiome",
+    "dataset_provenance_level": "primary",
+    "ds_count": 123
+  },
+  {
+    "dataset_type": "ATACseq",
+    "dataset_provenance_level": "component",
+    "ds_count": 407
+  },
+  {
+    "dataset_type": "RNAseq",
+    "dataset_provenance_level": "component",
+    "ds_count": 564
+  },
+  {
+    "dataset_type": "DESI",
+    "dataset_provenance_level": "primary",
+    "ds_count": 15
+  },
+  {
+    "dataset_type": "SNARE-seq2",
+    "dataset_provenance_level": "primary",
+    "ds_count": 296
+  },
+  {
+    "dataset_type": "PhenoCycler",
+    "dataset_provenance_level": "primary",
+    "ds_count": 130
+  },
+  {
+    "dataset_type": "Visium (no probes)",
+    "dataset_provenance_level": "primary",
+    "ds_count": 157
+  },
+  {
+    "dataset_type": "Histology",
+    "dataset_provenance_level": "component",
+    "ds_count": 157
+  },
+  {
+    "dataset_type": "MUSIC",
+    "dataset_provenance_level": "primary",
+    "ds_count": 14
+  },
+  {
+    "dataset_type": "CyTOF",
+    "dataset_provenance_level": "primary",
+    "ds_count": 23
+  },
+  {
+    "dataset_type": "CosMx Transcriptomics",
+    "dataset_provenance_level": "primary",
+    "ds_count": 12
+  }
+]

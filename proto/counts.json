@@ -1,0 +1,382 @@
+{
+  "organ_types": [
+    {
+      "organ_count": 64,
+      "name": "Kidney (Left)"
+    },
+    {
+      "organ_count": 7,
+      "name": "Thymus"
+    },
+    {
+      "organ_count": 53,
+      "name": "Kidney (Right)"
+    },
+    {
+      "organ_count": 14,
+      "name": "Spleen"
+    },
+    {
+      "organ_count": 37,
+      "name": "Heart"
+    },
+    {
+      "organ_count": 9,
+      "name": "Large Intestine"
+    },
+    {
+      "organ_count": 10,
+      "name": "Small Intestine"
+    },
+    {
+      "organ_count": 17,
+      "name": "Lung (Right)"
+    },
+    {
+      "organ_count": 12,
+      "name": "Pancreas"
+    },
+    {
+      "organ_count": 8,
+      "name": "Liver"
+    },
+    {
+      "organ_count": 27,
+      "name": "Lymph Node"
+    },
+    {
+      "organ_count": 86,
+      "name": "Uterus"
+    },
+    {
+      "organ_count": 46,
+      "name": "Skin"
+    },
+    {
+      "organ_count": 6,
+      "name": "Lung (Left)"
+    },
+    {
+      "organ_count": 14,
+      "name": "Blood"
+    },
+    {
+      "organ_count": 13,
+      "name": "Bladder"
+    },
+    {
+      "organ_count": 13,
+      "name": "Placenta"
+    },
+    {
+      "organ_count": 19,
+      "name": "Fallopian Tube (Right)"
+    },
+    {
+      "organ_count": 6,
+      "name": "Ovary (Right)"
+    },
+    {
+      "organ_count": 5,
+      "name": "Knee (Right)"
+    },
+    {
+      "organ_count": 1,
+      "name": "Knee (Left)"
+    },
+    {
+      "organ_count": 5,
+      "name": "Fallopian Tube (Left)"
+    },
+    {
+      "organ_count": 2,
+      "name": "Ovary (Left)"
+    },
+    {
+      "organ_count": 17,
+      "name": "Bone Marrow"
+    },
+    {
+      "organ_count": 14,
+      "name": "Brain"
+    },
+    {
+      "organ_count": 3,
+      "name": "Bronchus (Left)"
+    },
+    {
+      "organ_count": 1,
+      "name": "Blood Vasculature"
+    },
+    {
+      "organ_count": 2,
+      "name": "Bronchus (Right)"
+    }
+  ],
+  "datasets": [
+    {
+      "dataset_type": "RNAseq",
+      "dataset_provenance_level": "primary",
+      "ds_count": 601
+    },
+    {
+      "dataset_type": "MIBI",
+      "dataset_provenance_level": "primary",
+      "ds_count": 211
+    },
+    {
+      "dataset_type": "ATACseq",
+      "dataset_provenance_level": "primary",
+      "ds_count": 449
+    },
+    {
+      "dataset_type": "3D Imaging Mass Cytometry",
+      "dataset_provenance_level": "primary",
+      "ds_count": 3
+    },
+    {
+      "dataset_type": "Cell DIVE",
+      "dataset_provenance_level": "primary",
+      "ds_count": 66
+    },
+    {
+      "dataset_type": "Light Sheet",
+      "dataset_provenance_level": "primary",
+      "ds_count": 11
+    },
+    {
+      "dataset_type": "CODEX",
+      "dataset_provenance_level": "primary",
+      "ds_count": 128
+    },
+    {
+      "dataset_type": "WGS",
+      "dataset_provenance_level": "primary",
+      "ds_count": 17
+    },
+    {
+      "dataset_type": "LC-MS",
+      "dataset_provenance_level": "primary",
+      "ds_count": 474
+    },
+    {
+      "dataset_type": "MALDI",
+      "dataset_provenance_level": "primary",
+      "ds_count": 112
+    },
+    {
+      "dataset_type": "Auto-fluorescence",
+      "dataset_provenance_level": "primary",
+      "ds_count": 248
+    },
+    {
+      "dataset_type": "Histology",
+      "dataset_provenance_level": "primary",
+      "ds_count": 398
+    },
+    {
+      "dataset_type": "seqFISH",
+      "dataset_provenance_level": "primary",
+      "ds_count": 9
+    },
+    {
+      "dataset_type": "2D Imaging Mass Cytometry",
+      "dataset_provenance_level": "primary",
+      "ds_count": 13
+    },
+    {
+      "dataset_type": "Slide-seq",
+      "dataset_provenance_level": "primary",
+      "ds_count": 42
+    },
+    {
+      "dataset_type": "10X Multiome",
+      "dataset_provenance_level": "primary",
+      "ds_count": 123
+    },
+    {
+      "dataset_type": "ATACseq",
+      "dataset_provenance_level": "component",
+      "ds_count": 407
+    },
+    {
+      "dataset_type": "RNAseq",
+      "dataset_provenance_level": "component",
+      "ds_count": 564
+    },
+    {
+      "dataset_type": "DESI",
+      "dataset_provenance_level": "primary",
+      "ds_count": 15
+    },
+    {
+      "dataset_type": "SNARE-seq2",
+      "dataset_provenance_level": "primary",
+      "ds_count": 296
+    },
+    {
+      "dataset_type": "PhenoCycler",
+      "dataset_provenance_level": "primary",
+      "ds_count": 130
+    },
+    {
+      "dataset_type": "Visium (no probes)",
+      "dataset_provenance_level": "primary",
+      "ds_count": 157
+    },
+    {
+      "dataset_type": "Histology",
+      "dataset_provenance_level": "component",
+      "ds_count": 157
+    },
+    {
+      "dataset_type": "MUSIC",
+      "dataset_provenance_level": "primary",
+      "ds_count": 14
+    },
+    {
+      "dataset_type": "CyTOF",
+      "dataset_provenance_level": "primary",
+      "ds_count": 23
+    },
+    {
+      "dataset_type": "CosMx Transcriptomics",
+      "dataset_provenance_level": "primary",
+      "ds_count": 12
+    }
+  ],
+  "monthly_transfer_totals": [
+    {
+      "bytes_downloaded": 3429727289743,
+      "month": "2023-07"
+    },
+    {
+      "bytes_downloaded": 22723466455662,
+      "month": "2023-08"
+    },
+    {
+      "bytes_downloaded": 678035352356,
+      "month": "2023-09"
+    },
+    {
+      "bytes_downloaded": 2888215872264,
+      "month": "2023-10"
+    },
+    {
+      "bytes_downloaded": 3629903930164,
+      "month": "2023-11"
+    },
+    {
+      "bytes_downloaded": 18043844131222,
+      "month": "2023-12"
+    },
+    {
+      "bytes_downloaded": 2886608678268,
+      "month": "2024-01"
+    },
+    {
+      "bytes_downloaded": 5324890650344,
+      "month": "2024-02"
+    },
+    {
+      "bytes_downloaded": 19305446561885,
+      "month": "2024-03"
+    },
+    {
+      "bytes_downloaded": 29616406120775,
+      "month": "2024-04"
+    },
+    {
+      "bytes_downloaded": 3835237794456,
+      "month": "2024-05"
+    },
+    {
+      "bytes_downloaded": 1573761924200,
+      "month": "2024-06"
+    },
+    {
+      "bytes_downloaded": 248437283299,
+      "month": "2024-07"
+    },
+    {
+      "bytes_downloaded": 1301781692780,
+      "month": "2024-08"
+    },
+    {
+      "bytes_downloaded": 14584478941298,
+      "month": "2024-09"
+    },
+    {
+      "bytes_downloaded": 6382296155941,
+      "month": "2024-10"
+    },
+    {
+      "bytes_downloaded": 14530198075292,
+      "month": "2024-11"
+    },
+    {
+      "bytes_downloaded": 24524964453187,
+      "month": "2024-12"
+    },
+    {
+      "bytes_downloaded": 3117118074925,
+      "month": "2025-01"
+    },
+    {
+      "bytes_downloaded": 10445694026075,
+      "month": "2025-02"
+    },
+    {
+      "bytes_downloaded": 24747938450355,
+      "month": "2025-03"
+    },
+    {
+      "bytes_downloaded": 39905546180483,
+      "month": "2025-04"
+    },
+    {
+      "bytes_downloaded": 58464801136754,
+      "month": "2025-05"
+    },
+    {
+      "bytes_downloaded": 9993655660464,
+      "month": "2025-06"
+    },
+    {
+      "bytes_downloaded": 45451715504121,
+      "month": "2025-07"
+    },
+    {
+      "bytes_downloaded": 49491004626374,
+      "month": "2025-08"
+    },
+    {
+      "bytes_downloaded": 18575175065295,
+      "month": "2025-09"
+    },
+    {
+      "bytes_downloaded": 32495326087246,
+      "month": "2025-10"
+    },
+    {
+      "bytes_downloaded": 111070800626590,
+      "month": "2025-11"
+    },
+    {
+      "bytes_downloaded": 656178525944,
+      "month": "2025-12"
+    },
+    {
+      "bytes_downloaded": 44383355240369,
+      "month": "2026-01"
+    },
+    {
+      "bytes_downloaded": 2124316822345,
+      "month": "2026-02"
+    },
+    {
+      "bytes_downloaded": 10258274754,
+      "month": "2026-03"
+    }
+  ]
+}

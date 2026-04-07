@@ -1,0 +1,114 @@
+﻿[
+  {
+    "s.organ": "LK",
+    "organ_count": 64
+  },
+  {
+    "s.organ": "TH",
+    "organ_count": 7
+  },
+  {
+    "s.organ": "RK",
+    "organ_count": 53
+  },
+  {
+    "s.organ": "SP",
+    "organ_count": 14
+  },
+  {
+    "s.organ": "HT",
+    "organ_count": 37
+  },
+  {
+    "s.organ": "LI",
+    "organ_count": 9
+  },
+  {
+    "s.organ": "SI",
+    "organ_count": 10
+  },
+  {
+    "s.organ": "RL",
+    "organ_count": 17
+  },
+  {
+    "s.organ": "PA",
+    "organ_count": 12
+  },
+  {
+    "s.organ": "LV",
+    "organ_count": 8
+  },
+  {
+    "s.organ": "LY",
+    "organ_count": 27
+  },
+  {
+    "s.organ": "UT",
+    "organ_count": 86
+  },
+  {
+    "s.organ": "SK",
+    "organ_count": 46
+  },
+  {
+    "s.organ": "LL",
+    "organ_count": 6
+  },
+  {
+    "s.organ": "BD",
+    "organ_count": 14
+  },
+  {
+    "s.organ": "BL",
+    "organ_count": 13
+  },
+  {
+    "s.organ": "PL",
+    "organ_count": 13
+  },
+  {
+    "s.organ": "RF",
+    "organ_count": 19
+  },
+  {
+    "s.organ": "RO",
+    "organ_count": 6
+  },
+  {
+    "s.organ": "RN",
+    "organ_count": 5
+  },
+  {
+    "s.organ": "LN",
+    "organ_count": 1
+  },
+  {
+    "s.organ": "LF",
+    "organ_count": 5
+  },
+  {
+    "s.organ": "LO",
+    "organ_count": 2
+  },
+  {
+    "s.organ": "BM",
+    "organ_count": 17
+  },
+  {
+    "s.organ": "BR",
+    "organ_count": 14
+  },
+  {
+    "s.organ": "LB",
+    "organ_count": 3
+  },
+  {
+    "s.organ": "BV",
+    "organ_count": 1
+  },
+  {
+    "s.organ": "RB",
+    "organ_count": 2
+  }
+]
