@@ -33,7 +33,7 @@
     },
     {
         "type": "match",
-        "match": "is_central_processed and data_types[0] in ['celldive_deepcell']",
+        "match": "is_central_processed and data_types[0] in ['celldive_deepcell', 'celldive_sprm']",
         "value": "{'ubkg_code': 'C200050', 'assaytype': 'celldive_deepcell', 'vitessce-hints': ['sprm', 'anndata', 'is_image', 'is_tiled', 'spatial'], 'primary': false, 'contains-pii': false, 'description': 'Cell DIVE [DeepCell + SPRM]', 'pipeline-shorthand': 'DeepCell + SPRM'}",
         "rule_description": "derived celldive_deepcell"
     },
