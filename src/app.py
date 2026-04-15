@@ -2991,7 +2991,8 @@ def bulk_samples_upload_and_validate():
     file.filename = utils.secure_filename(file.filename)
     file_location = commons_file_helper.ensureTrailingSlash(
         app.config['FILE_UPLOAD_TEMP_DIR']) + temp_id + os.sep + file.filename
-    with open(file_location, newline='') as tsvfile:
+    tsvfile = open_tsv(file_location)
+    with tsvfile:
         reader = csv.DictReader(tsvfile, delimiter='\t')
         first = True
         for row in reader:
@@ -3047,7 +3048,8 @@ def create_samples_from_bulk():
     tsvfile_name = tsv_directory + temp_file_name
     records = []
     headers = []
-    with open(tsvfile_name, newline='') as tsvfile:
+    tsvfile = open_tsv(tsvfile_name)
+    with tsvfile:
         reader = csv.DictReader(tsvfile, delimiter='\t')
         first = True
         for row in reader:
@@ -3112,6 +3114,15 @@ def create_samples_from_bulk():
             status_code = 207
         response = {"status": response_status, "data": entity_response}
         return Response(json.dumps(response, sort_keys=True), status_code, mimetype='application/json')
+
+
+def open_tsv(path):
+    try:
+        f =  open(path, newline='', encoding='utf-8-sig')
+        f.read()
+        f.seek(0)
+    except UnicodeDecodeError:
+        return open(path, newline='', encoding='utf-16')
 
 
 def validate_samples(headers, records, header):
