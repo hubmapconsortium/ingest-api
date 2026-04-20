@@ -3118,9 +3118,14 @@ def create_samples_from_bulk():
 
 def open_tsv(path):
     try:
-        f =  open(path, newline='', encoding='utf-8-sig')
-        f.read()
-        f.seek(0)
+        f = open(path, newline='', encoding='utf-8-sig')
+        try:
+            f.read()
+            f.seek(0)
+            return f
+        except UnicodeDecodeError:
+            f.close()
+            return open(path, newline='', encoding='utf-16')
     except UnicodeDecodeError:
         return open(path, newline='', encoding='utf-16')
 
