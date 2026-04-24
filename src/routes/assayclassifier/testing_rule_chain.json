@@ -906,6 +906,12 @@
         "match": "is_dcwg and is_primary and dataset_type == 'COMET'",
         "value": "{'ubkg_code': 'C202300', 'assaytype': 'comet', 'vitessce-hints': [], 'dir-schema': 'comet-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'COMET', 'description': 'COMET'}",
         "rule_description": "DCWG COMET"
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and is_primary and dataset_type == 'DNA Methylation'",
+        "value": "{'ubkg_code': 'C202310', 'assaytype': 'dna-methylation', 'vitessce-hints': [], 'dir-schema': 'dna-methylation-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'DNA Methylation', 'description': 'DNA Methylation'}",
+        "rule_description": "DCWG DNA Methylation"
     }
   ],
 "pre":
