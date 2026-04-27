@@ -2807,6 +2807,8 @@ def sample_bulk_metadata():
     ids = []
     for r in records:
         id = r.get('sample_id')
+        r.pop("sample_id", None)
+        r.pop("source_id", None)
         update = {
             'id': id,
             'metadata': json.dumps(r).replace('"', "'") 
