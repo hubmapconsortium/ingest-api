@@ -2315,6 +2315,8 @@ UPLOADS_DATA_STATUS_LAST_UPDATED_KEY = "uploads_data_status_last_updated_key"
 # Redis Key tracking whether the datset/uploads data-status is running or not. Redis treats these true/false values as ints 1 and 0
 DATASETS_DATA_STATUS_RUNNING_KEY = "datasets_data_status_running_key"
 UPLOADS_DATA_STATUS_RUNNING_KEY = "uploads_data_status_running_key"
+PUBLICATION_USAGE_STATS_KEY = "publication_usage_stats_key"
+PUBLICATION_USAGE_STATS_LAST_UPDATED_KEY = "publication_usage_stats_last_updated_key"
 
 
 
@@ -3922,6 +3924,163 @@ def update_uploads_datastatus():
     return results
 
 
+def update_publication_and_usage_stats():
+    # Gather publication and usage stats (organ types, dataset counts, monthly transfer totals)
+    # and cache the JSON in Redis.
+    organ_query = (
+        "MATCH (s:Sample {sample_category:'organ', data_access_level:'public'}) "
+        "RETURN DISTINCT s.organ AS organ, count(distinct s.uuid) AS organ_count"
+    )
+
+    dataset_query = (
+        "MATCH (a:Activity)-[:ACTIVITY_OUTPUT]->(ds:Dataset {status:'Published'}) "
+        "WHERE a.creation_action in ['Create Dataset Activity','Multi-Assay Split','External Process'] "
+        "RETURN DISTINCT ds.dataset_type AS dataset_type, "
+        "case a.creation_action when 'Create Dataset Activity' then 'primary' "
+        "when 'Multi-Assay Split' then 'component' "
+        "when 'External Process' then 'EPIC' else 'UNKNOWN' end AS dataset_provenance_level, "
+        "count(distinct ds.uuid) AS ds_count"
+    )
+
+    with neo4j_driver_instance.session() as session:
+        try:
+            organ_results = session.run(organ_query).data()
+        except Exception:
+            organ_results = []
+        try:
+            dataset_results = session.run(dataset_query).data()
+        except Exception:
+            dataset_results = []
+
+    # Resolve organ code -> human name via UBKG/ontology service
+    organ_types = []
+    try:
+        organ_types_url = app.config.get('UBKG_WEBSERVICE_URL', '').rstrip('/') + '/organs/by-code?application_context=HUBMAP'
+        organ_types_dict = requests.get(organ_types_url).json()
+    except Exception:
+        organ_types_dict = {}
+
+    for r in organ_results:
+        code = r.get('organ')
+        name = organ_types_dict.get(code, code) if isinstance(organ_types_dict, dict) else code
+        organ_types.append({
+            'name': name,
+            'organ_count': int(r.get('organ_count', 0))
+        })
+
+    datasets = []
+    for r in dataset_results:
+        datasets.append({
+            'dataset_type': r.get('dataset_type', ''),
+            'dataset_provenance_level': r.get('dataset_provenance_level', ''),
+            'ds_count': int(r.get('ds_count', 0))
+        })
+
+    # We Need to build the quiery and send it in a get
+    monthly_transfer_totals = []
+    now_iso = datetime.datetime.now().isoformat(timespec='seconds')
+    searchQuery = {
+        "query": {
+            "range": {
+                "download_date_time": { 
+                    "gte": "2022-01-01T00:00:00",
+                    "lt": now_iso
+                }
+            }
+        },
+        "size": 0,
+        "aggs": {
+            "calendarHistogram": {
+                "date_histogram": {
+                    "field": "download_date_time",
+                    "calendar_interval": "month",
+                    "format": "yyyy-MM",
+                    "order": {
+                        "_key": "asc"
+                    }
+                },
+                "aggs": {
+                    "totalBytes": {
+                        "sum": {
+                            "field": "bytes_transferred"
+                        }
+                    }
+                }
+            }
+        }
+    }
+    download_url = app.config.get('DOWNLOAD_STATS_URL')
+    if download_url:
+        try:
+            # POST the provided Elasticsearch query payload to the DOWNLOAD_STATS_URL
+            resp = requests.post(download_url, json=searchQuery, timeout=30)
+            resp.raise_for_status()
+            data = resp.json()
+            print(data)
+            buckets = data.get('aggregations', {}).get('calendarHistogram', {}).get('buckets', [])
+            monthly_transfer_totals = []
+            for b in buckets:
+                # @TODO: Do we want Doc Count as well?
+                month = b.get('key_as_string') or b.get('key')
+                bytes_val = 0
+                totalBytes = b.get('totalBytes')
+                if isinstance(totalBytes, dict):
+                    bytes_val = int(totalBytes.get('value') or 0)
+                elif isinstance(totalBytes, (int, float)):
+                    bytes_val = int(totalBytes)
+                monthly_transfer_totals.append({'month': month, 'bytes_downloaded': bytes_val})
+        except Exception:
+            monthly_transfer_totals = []
+    else:
+        monthly_transfer_totals = []
+
+    output = {
+        'organ_types': organ_types,
+        'datasets': datasets,
+        'monthly_transfer_totals': monthly_transfer_totals
+    }
+
+    try:
+        output_string = json.dumps(output)
+    except Exception as e:
+        logger.exception(f"Failed to serialize publication usage stats: {e}")
+        output_string = json.dumps({'organ_types': [], 'datasets': [], 'monthly_transfer_totals': []})
+
+    try: 
+        redis_connection.set(PUBLICATION_USAGE_STATS_KEY, output_string)
+        redis_connection.set(PUBLICATION_USAGE_STATS_LAST_UPDATED_KEY, int(time.time() * 1000))
+    except Exception as e:
+        logger.error(f"Failed to set publication usage stats in redis {e}")
+
+    return output
+
+
+@app.route('/publication-and-usage-stats', methods=['GET'])
+def publication_and_usage_stats():
+    try:
+        print("Stats endpoint called")
+        # Dev toggle to always generate live results:
+        # set app.config['USE_CACHE_PUBLICATION_USAGE_STATS'] = True
+        # use_cache = app.config.get('USE_CACHE_PUBLICATION_USAGE_STATS', False)
+        use_cache = False
+        if use_cache:
+            print("Using cached publication and usage stats")
+            try:
+                cached = redis_connection.get(PUBLICATION_USAGE_STATS_KEY)
+                if cached:
+                    return Response(cached, status=200, mimetype='application/json')
+            except Exception:
+                pass
+
+        print("Generating fresh publication and usage stats")
+        # Generate fresh (live) data
+        data = update_publication_and_usage_stats()
+        return jsonify(data)
+    except Exception as e:
+        logger.exception(f"Error generating publication and usage stats: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
 def files_exist(uuid, data_access_level, group_name, metadata=False):
     if not uuid or not data_access_level:
         return False
@@ -4006,6 +4165,13 @@ scheduler.add_job(
 )
 
 scheduler.add_job(
+    func=update_publication_and_usage_stats,
+    trigger=IntervalTrigger(hours=1),
+    id='update_publication_and_usage_stats',
+    name="Update Publication and Usage Stats Job"
+)
+
+scheduler.add_job(
     func=update_datasets_datastatus,
     trigger=DateTrigger(run_date=datetime.datetime.now() + datetime.timedelta(minutes=1)),
     name="Initial run of Dataset Data Status Job"
@@ -4015,6 +4181,12 @@ scheduler.add_job(
     func=update_uploads_datastatus,
     trigger=DateTrigger(run_date=datetime.datetime.now() + datetime.timedelta(minutes=1)),
     name="Initial run of Dataset Data Status Job"
+)
+
+scheduler.add_job(
+    func=update_publication_and_usage_stats,
+    trigger=DateTrigger(run_date=datetime.datetime.now() + datetime.timedelta(days=1)),
+    name="Initial run of Publication and Usage Stats Job"
 )
 
 # For local development/testing

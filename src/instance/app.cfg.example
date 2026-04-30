@@ -169,3 +169,6 @@ CEDAR_API_KEY = ''
 PORTAL_URL = 'https://portal.hubmapconsortium.org'
 
 LOCKED_ENTITY_UPDATE_OVERRIDE_KEY = 'mysecretkey'
+
+# Cache toggle for  Usage Board data
+USE_CACHE_PUBLICATION_USAGE_STATS = 'true'
