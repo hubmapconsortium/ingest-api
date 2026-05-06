@@ -100,9 +100,6 @@ ENTITY_WEBSERVICE_URL = 'https://entity-api.dev.hubmapconsortium.org'
 # URL to the UBKG web service (shown for DEV)
 UBKG_WEBSERVICE_URL = 'https://ontology-api.dev.hubmapconsortium.org/'
 
-# URL to the Search API endpoint to get download numbers
-DOWNLOAD_STATS_URL = 'https://search-api.dev.hubmapconsortium.org/v3/logs-file-downloads/search/'
-
 # URL to the Redis server
 # Use port 6379 exposed on the ingest-api-redis-server container, not the port on host
 REDIS_URL = 'redis://ingest-api-redis-server:6379'
