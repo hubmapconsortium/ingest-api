@@ -2315,6 +2315,8 @@ UPLOADS_DATA_STATUS_LAST_UPDATED_KEY = "uploads_data_status_last_updated_key"
 # Redis Key tracking whether the datset/uploads data-status is running or not. Redis treats these true/false values as ints 1 and 0
 DATASETS_DATA_STATUS_RUNNING_KEY = "datasets_data_status_running_key"
 UPLOADS_DATA_STATUS_RUNNING_KEY = "uploads_data_status_running_key"
+PUBLICATION_USAGE_STATS_KEY = "publication_usage_stats_key"
+PUBLICATION_USAGE_STATS_LAST_UPDATED_KEY = "publication_usage_stats_last_updated_key"
 
 
 
@@ -3924,6 +3926,167 @@ def update_uploads_datastatus():
     return results
 
 
+def update_publication_and_usage_stats():
+    """
+    Gather publication and usage stats (organ types, dataset counts, monthly transfer totals),
+    cache the JSON in Redis, and return the stats as a dict.
+    """
+    organ_query = (
+        "MATCH (s:Sample {sample_category:'organ', data_access_level:'public'}) "
+        "RETURN DISTINCT s.organ AS organ, count(distinct s.uuid) AS organ_count"
+    )
+    dataset_query = (
+        "MATCH (a:Activity)-[:ACTIVITY_OUTPUT]->(ds:Dataset {status:'Published'}) "
+        "WHERE a.creation_action in ['Create Dataset Activity','Multi-Assay Split','External Process'] "
+        "RETURN DISTINCT ds.dataset_type AS dataset_type, "
+        "case a.creation_action when 'Create Dataset Activity' then 'primary' "
+        "when 'Multi-Assay Split' then 'component' "
+        "when 'External Process' then 'EPIC' else 'UNKNOWN' end AS dataset_provenance_level, "
+        "count(distinct ds.uuid) AS ds_count"
+    )
+
+    organ_results, dataset_results = [], []
+    try:
+        with neo4j_driver_instance.session() as session:
+            try:
+                organ_results = session.run(organ_query).data()
+            except Exception:
+                logger.warning("Failed to fetch organ results from Neo4j.")
+            try:
+                dataset_results = session.run(dataset_query).data()
+            except Exception:
+                logger.warning("Failed to fetch dataset results from Neo4j.")
+    except Exception as e:
+        logger.error(f"Neo4j session error: {e}")
+
+    # Organ code to human name
+    organ_types = []
+    organ_types_dict = {}
+    try:
+        organ_types_url = app.config.get('UBKG_WEBSERVICE_URL', '').rstrip('/') + '/organs/by-code?application_context=HUBMAP'
+        resp = requests.get(organ_types_url, timeout=10)
+        resp.raise_for_status()
+        organ_types_dict = resp.json()
+    except Exception as e:
+        logger.warning(f"Failed to fetch organ types from UBKG: {e}")
+
+    for r in organ_results:
+        code = r.get('organ')
+        name = organ_types_dict.get(code, code) if isinstance(organ_types_dict, dict) else code
+        organ_types.append({
+            'name': name,
+            'organ_count': int(r.get('organ_count', 0))
+        })
+
+    datasets = [
+        {
+            'dataset_type': r.get('dataset_type', ''),
+            'dataset_provenance_level': r.get('dataset_provenance_level', ''),
+            'ds_count': int(r.get('ds_count', 0))
+        }
+        for r in dataset_results
+    ]
+
+    # Monthly transfer totals
+    monthly_transfer_totals = []
+    now_iso = datetime.datetime.now().isoformat(timespec='seconds')
+    search_query = {
+        "query": {
+            "range": {
+                "download_date_time": {
+                    "gte": "2022-01-01T00:00:00",
+                    "lt": now_iso
+                }
+            }
+        },
+        "size": 0,
+        "aggs": {
+            "calendarHistogram": {
+                "date_histogram": {
+                    "field": "download_date_time",
+                    "calendar_interval": "month",
+                    "format": "yyyy-MM",
+                    "order": {"_key": "asc"}
+                },
+                "aggs": {
+                    "totalBytes": {"sum": {"field": "bytes_transferred"}}
+                }
+            }
+        }
+    }
+
+    try:
+        base_search_url = app.config.get('SEARCH_WEBSERVICE_URL')
+        download_url = commons_file_helper.ensureTrailingSlashURL(base_search_url) + "logs-file-downloads/search/"
+        resp = requests.post(download_url, json=search_query, timeout=30)
+        resp.raise_for_status()
+        data = resp.json()
+        buckets = data.get('aggregations', {}).get('calendarHistogram', {}).get('buckets', [])
+        for b in buckets:
+            month = b.get('key_as_string') or b.get('key')
+            total_bytes = b.get('totalBytes')
+            bytes_val = 0
+            if isinstance(total_bytes, dict):
+                bytes_val = int(total_bytes.get('value') or 0)
+            elif isinstance(total_bytes, (int, float)):
+                bytes_val = int(total_bytes)
+            monthly_transfer_totals.append({'month': month, 'bytes_downloaded': bytes_val})
+    except Exception as e:
+        logger.warning(f"Failed to fetch monthly transfer totals: {e}")
+
+    output = {
+        'organ_types': organ_types,
+        'datasets': datasets,
+        'monthly_transfer_totals': monthly_transfer_totals
+    }
+
+    try:
+        output_string = json.dumps(output)
+        redis_connection.set(PUBLICATION_USAGE_STATS_KEY, output_string)
+        redis_connection.set(PUBLICATION_USAGE_STATS_LAST_UPDATED_KEY, int(time.time() * 1000))
+    except Exception as e:
+        logger.error(f"Failed to cache publication usage stats in redis: {e}")
+
+    return output
+
+
+@app.route('/publication-and-usage-stats', methods=['GET'])
+def publication_and_usage_stats():
+    """
+    GET /publication-and-usage-stats
+    Returns publication and usage stats, always using cache if available. 
+    """
+    try:
+        cached = redis_connection.get(PUBLICATION_USAGE_STATS_KEY)
+        cached_ts = redis_connection.get(PUBLICATION_USAGE_STATS_LAST_UPDATED_KEY)
+        if cached:
+            try:
+                cached_str = cached.decode('utf-8') if isinstance(cached, bytes) else cached
+                data = json.loads(cached_str) if isinstance(cached_str, str) else {}
+            except Exception as e:
+                logger.warning(f"Failed to decode cached stats: {e}")
+                data = {}
+            last_touch = ''
+            if cached_ts:
+                try:
+                    ts_val = cached_ts.decode('utf-8') if isinstance(cached_ts, bytes) else cached_ts
+                    if isinstance(ts_val, str) and ts_val.isdigit():
+                        ts = int(ts_val)
+                        last_touch = datetime.datetime.utcfromtimestamp(ts / 1000).isoformat() + 'Z'
+                except Exception as e:
+                    logger.warning(f"Failed to parse cache timestamp: {e}")
+            data['last_touch'] = last_touch
+            return Response(json.dumps(data), 200, mimetype='application/json')
+
+        # If no cache, generate fresh data
+        data = update_publication_and_usage_stats()
+        data['last_touch'] = datetime.datetime.utcnow().isoformat() + 'Z'
+        return Response(json.dumps(data), 200, mimetype='application/json')
+    except Exception as e:
+        logger.exception(f"Error generating publication and usage stats: {e}")
+        return Response(json.dumps({'error': str(e)}), 500, mimetype='application/json')
+
+
 def files_exist(uuid, data_access_level, group_name, metadata=False):
     if not uuid or not data_access_level:
         return False
@@ -4008,6 +4171,13 @@ scheduler.add_job(
 )
 
 scheduler.add_job(
+    func=update_publication_and_usage_stats,
+    trigger=IntervalTrigger(hours=1),
+    id='update_publication_and_usage_stats',
+    name="Update Publication and Usage Stats Job"
+)
+
+scheduler.add_job(
     func=update_datasets_datastatus,
     trigger=DateTrigger(run_date=datetime.datetime.now() + datetime.timedelta(minutes=1)),
     name="Initial run of Dataset Data Status Job"
@@ -4016,7 +4186,13 @@ scheduler.add_job(
 scheduler.add_job(
     func=update_uploads_datastatus,
     trigger=DateTrigger(run_date=datetime.datetime.now() + datetime.timedelta(minutes=1)),
-    name="Initial run of Dataset Data Status Job"
+    name="Initial run of Upload Data Status Job"
+)
+
+scheduler.add_job(
+    func=update_publication_and_usage_stats,
+    trigger=DateTrigger(run_date=datetime.datetime.now() + datetime.timedelta(minutes=1)),
+    name="Initial run of Publication and Usage Stats Job"
 )
 
 # For local development/testing
