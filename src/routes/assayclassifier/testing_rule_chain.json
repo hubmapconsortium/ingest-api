@@ -837,9 +837,9 @@
     },
     {
         "type": "match",
-        "match": "is_dcwg and is_primary and dataset_type == 'SeqScope'",
-        "value": "{'ubkg_code': 'C202190', 'assaytype': 'seqscope', 'vitessce-hints': [], 'dir-schema': 'seq-scope-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'SeqScope', 'description': 'SeqScope'}",
-        "rule_description": "DCWG SeqScope"
+        "match": "is_dcwg and is_primary and dataset_type == 'Seq-Scope'",
+        "value": "{'ubkg_code': 'C202190', 'assaytype': 'seq-scope', 'vitessce-hints': [], 'dir-schema': 'seq-scope-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'Seq-Scope', 'description': 'Seq-Scope'}",
+        "rule_description": "DCWG Seq-Scope"
     },
     {
         "type": "match",
