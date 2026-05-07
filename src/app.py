@@ -4014,24 +4014,25 @@ def update_publication_and_usage_stats():
             }
         }
     }
-    download_url = app.config.get('DOWNLOAD_STATS_URL')
-    if download_url:
-        try:
-            resp = requests.post(download_url, json=search_query, timeout=30)
-            resp.raise_for_status()
-            data = resp.json()
-            buckets = data.get('aggregations', {}).get('calendarHistogram', {}).get('buckets', [])
-            for b in buckets:
-                month = b.get('key_as_string') or b.get('key')
-                total_bytes = b.get('totalBytes')
-                bytes_val = 0
-                if isinstance(total_bytes, dict):
-                    bytes_val = int(total_bytes.get('value') or 0)
-                elif isinstance(total_bytes, (int, float)):
-                    bytes_val = int(total_bytes)
-                monthly_transfer_totals.append({'month': month, 'bytes_downloaded': bytes_val})
-        except Exception as e:
-            logger.warning(f"Failed to fetch monthly transfer totals: {e}")
+
+    try:
+        base_search_url = app.config.get('SEARCH_WEBSERVICE_URL')
+        download_url = commons_file_helper.ensureTrailingSlashURL(base_search_url) + "logs-file-downloads/search/"
+        resp = requests.post(download_url, json=search_query, timeout=30)
+        resp.raise_for_status()
+        data = resp.json()
+        buckets = data.get('aggregations', {}).get('calendarHistogram', {}).get('buckets', [])
+        for b in buckets:
+            month = b.get('key_as_string') or b.get('key')
+            total_bytes = b.get('totalBytes')
+            bytes_val = 0
+            if isinstance(total_bytes, dict):
+                bytes_val = int(total_bytes.get('value') or 0)
+            elif isinstance(total_bytes, (int, float)):
+                bytes_val = int(total_bytes)
+            monthly_transfer_totals.append({'month': month, 'bytes_downloaded': bytes_val})
+    except Exception as e:
+        logger.warning(f"Failed to fetch monthly transfer totals: {e}")
 
     output = {
         'organ_types': organ_types,
