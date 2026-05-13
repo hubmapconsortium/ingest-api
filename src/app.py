@@ -1220,8 +1220,8 @@ def publish_datastage(identifier):
             logger.info(f"publish_datastage; ingest_matadata: {dataset_ingest_matadata_dict}")
         if not (dataset_entitytype == 'Dataset' or dataset_entitytype == 'Publication'):
             return Response(f"{dataset_uuid} is not a dataset will not Publish, entity type is {dataset_entitytype}", 400)
-        if not dataset_status == 'QA':
-            return Response(f"{dataset_uuid} is not in QA state will not Publish, status is {dataset_status}", 400)                    
+        if not dataset_status in ['QA', 'Approval']:
+            return Response(f"{dataset_uuid} is not in QA or Approval state will not Publish, status is {dataset_status}", 400)                    
                     
         ingest_helper: IngestFileHelper = IngestFileHelper(app.config)
             
@@ -2269,7 +2269,7 @@ def allowable_edit_states(hmuuid):
                         if entity_type == 'dataset':
                             if status == 'new':
                                 r_val['has_submit_priv'] = True
-                            elif status == 'qa':
+                            elif status.lower() in ['qa', 'approval']:
                                 r_val['has_publish_priv'] = True
                         if entity_type == 'upload':
                             if status in ['new', 'invalid', 'valid', 'error']:
@@ -3801,7 +3801,7 @@ def update_datasets_datastatus():
                 if processed_ds['creation_action'].lower() == 'central process':
                     if processed_ds['status'].lower() == 'published':
                         has_processed_published_datasets = True
-                    if processed_ds['status'].lower() == 'qa':
+                    if processed_ds['status'].lower() in ['qa', 'approval']:
                         has_processed_qa_datasets = True
                 processed_ds.pop('creation_action', None)
         dataset['has_published_processed'] = has_processed_published_datasets
