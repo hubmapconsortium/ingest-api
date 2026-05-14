@@ -924,6 +924,12 @@
         "match": "is_dcwg and is_primary and dataset_type == 'DICOM-MRI'",
         "value": "{'ubkg_code': 'C202330', 'assaytype': 'dicom-mri', 'vitessce-hints': [], 'dir-schema': 'dicom-mri-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'DICOM-MRI', 'description': 'DICOM-MRI'}",
         "rule_description": "DCWG DICOM-MRI"
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and is_primary and dataset_type == 'Histology'  and stain_name  in ['Trichrome', 'Fluorophores', 'H-DAB', 'LFB', 'SBB']",
+        "value": "{'ubkg_code': 'C202340', 'assaytype': 'gen_histology', 'vitessce-hints': [], 'dir-schema': 'histology-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'Histology', 'description': 'Histology'}",
+        "rule_description": "DCWG General Histology"
     }
   ],
 "pre":
