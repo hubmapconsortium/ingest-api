@@ -216,7 +216,7 @@ class DatasetHelper:
                                             HubmapConst.ACCESS_LEVEL_PROTECTED] \
                                         or entity_dict['group_uuid'] in user_data_access_level['group_membership_ids'])
 
-                if (entity_dict['data_access_level'] == HubmapConst.ACCESS_LEVEL_PROTECTED) and not user_access_allowed and entity_dict.get('status').lower() == 'published':
+                if (entity_dict['data_access_level'] == HubmapConst.ACCESS_LEVEL_PROTECTED) and not user_access_allowed and entity_dict.get('status').lower() in ['published', 'retracted']:
                     abs_path = os.path.join(_globus_public_endpoint_filepath
                                             , entity_dict['uuid'])
                 elif (entity_dict['data_access_level'] == HubmapConst.ACCESS_LEVEL_PROTECTED):
@@ -236,9 +236,9 @@ class DatasetHelper:
                                     f" {entity_dict['data_access_level']}.")
 
                 entity_accessibility_dict = {'valid_id': True, 'access_allowed': user_access_allowed}
-                if entity_dict.get('status').lower() == 'published':
+                if entity_dict.get('status').lower() in ['published', 'retracted']:
                     entity_accessibility_dict['access_allowed'] = True
-                if user_access_allowed or entity_dict.get('status').lower() == 'published':
+                if user_access_allowed or entity_dict.get('status').lower() in ['published', 'retracted']:
                     entity_accessibility_dict['hubmap_id'] = entity_dict['hubmap_id']
                     entity_accessibility_dict['uuid'] = entity_dict['uuid']
                     entity_accessibility_dict['entity_type'] = entity_dict['entity_type']

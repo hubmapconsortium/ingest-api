@@ -690,7 +690,7 @@ def get_file_system_relative_path():
                                 'message': f"contains_human_genetic_sequences is not set on {ent_type} dataset",
                                 'status_code': 400}
                     error_id_list.append(error_id)
-                if not include_protected and status.lower() == 'published':
+                if not include_protected and status.lower() in  ['published', 'retracted']:
                     path = ingest_helper.get_dataset_directory_relative_path({'contains_human_genetic_sequences': False, 'data_access_level': 'public', 'status': status}, group_uuid, dset['uuid'])              
                 else:
                     path = ingest_helper.get_dataset_directory_relative_path(dset, group_uuid, dset['uuid'])
@@ -1179,7 +1179,7 @@ def publish_datastage(identifier):
                     if data_access_level != 'public':
                         uuids_for_public.append(uuid)
                 elif entity_type == 'Dataset':
-                    if status != 'Published':
+                    if status not in ['Published', 'Retracted']:
                         return Response(f"{dataset_uuid} has an ancestor dataset that has not been Published. "
                                         f"Will not Publish. Ancestor dataset is: {uuid}", 400)
 
@@ -1511,7 +1511,7 @@ def datasets_metadata_json(identifier):
         dataset_group_uuid = entity_dict.get('group_uuid')
         dataset_data_access_level = entity_dict.get('data_access_level')
         dataset_ingest_metadata = entity_dict.get('ingest_metadata')
-        dataset_published = entity_dict.get('status') == 'Published'
+        dataset_published = entity_dict.get('status') in ['Published', 'Retracted']
 
         if dataset_ingest_metadata is None:
             return Response(f"Could not find ingest_metadata for {identifier}", 500)
@@ -2082,7 +2082,7 @@ def register_collections_doi(collection_id):
             for node in rval:
                 uuid = node['uuid']
                 status = node['status']
-                if status != 'Published':
+                if status not in ['Published', 'Retracted']:
                     unpublished_datasets.append(uuid)
             if len(unpublished_datasets) > 0:
                 return jsonify({"error": f"Collection with uuid {collection_uuid} has one more associated datasets that have not been Published.", "dataset_uuids": ', '.join(unpublished_datasets)}), 422
@@ -2249,7 +2249,7 @@ def allowable_edit_states(hmuuid):
                             return Response(msg, 500)
                         status = status.lower().strip()
                         if ignore_publication_status is False:
-                            if status == 'published' or status == 'reorganized':
+                            if status in ['published', 'reorganized', 'retracted']:
                                 return Response(json.dumps(r_val), 200, mimetype='application/json')
                     #if the entity is public, no write allowed
                     elif entity_type in ['sample', 'donor']:
@@ -3399,7 +3399,7 @@ def validate_datasets():
         bad_request_error("Required id list not found")
     token = auth_helper_instance.getAuthorizationTokens(request.headers)
     header = {'Authorization': 'Bearer ' + token}
-    disallowed_status_types = ["published", "processing"]
+    disallowed_status_types = ["published", "processing", "retracted"]
     datasets_not_found = []
     q = """
     MATCH (ds:Entity)
@@ -3799,7 +3799,7 @@ def update_datasets_datastatus():
         if dataset.get('processed_datasets'):
             for processed_ds in dataset['processed_datasets']:
                 if processed_ds['creation_action'].lower() == 'central process':
-                    if processed_ds['status'].lower() == 'published':
+                    if processed_ds['status'].lower() in ['published', 'retracted']:
                         has_processed_published_datasets = True
                     if processed_ds['status'].lower() in ['qa', 'approval']:
                         has_processed_qa_datasets = True
@@ -3936,8 +3936,9 @@ def update_publication_and_usage_stats():
         "RETURN DISTINCT s.organ AS organ, count(distinct s.uuid) AS organ_count"
     )
     dataset_query = (
-        "MATCH (a:Activity)-[:ACTIVITY_OUTPUT]->(ds:Dataset {status:'Published'}) "
-        "WHERE a.creation_action in ['Create Dataset Activity','Multi-Assay Split','External Process'] "
+        "MATCH (a:Activity)-[:ACTIVITY_OUTPUT]->(ds:Dataset) "
+        "WHERE ds.status IN ['Published', 'Retracted'] "
+        "AND a.creation_action in ['Create Dataset Activity','Multi-Assay Split','External Process'] "
         "RETURN DISTINCT ds.dataset_type AS dataset_type, "
         "case a.creation_action when 'Create Dataset Activity' then 'primary' "
         "when 'Multi-Assay Split' then 'component' "
