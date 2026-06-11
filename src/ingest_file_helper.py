@@ -45,7 +45,7 @@ class IngestFileHelper:
             access_level = dataset_record['data_access_level']
 
         published = False
-        if 'status' in dataset_record and dataset_record['status'] == 'Published':
+        if 'status' in dataset_record and dataset_record['status'] in ['Published', 'Retracted']:
             published = True
 
         return self.dataset_directory_absolute_path(access_level, group_uuid, dataset_uuid, published)
@@ -59,7 +59,7 @@ class IngestFileHelper:
             access_level = dataset_record['data_access_level']
 
         published = False
-        if 'status' in dataset_record and dataset_record['status'] == 'Published':
+        if 'status' in dataset_record and dataset_record['status'] in ['Published', 'Retracted']:
             published = True
 
         return self.__dataset_directory_relative_path(access_level, group_uuid, dataset_uuid, published)

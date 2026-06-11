@@ -173,11 +173,11 @@ class Dataset(object):
 
     @classmethod
     def change_status(self, driver, headers, uuid, oldstatus, newstatus, formdata, group_uuid):
-        if str(oldstatus).upper() == str(HubmapConst.DATASET_STATUS_PUBLISHED).upper() and str(newstatus).upper() == str(HubmapConst.DATASET_STATUS_REOPENED).upper():
+        if str(oldstatus).upper() in [str(HubmapConst.DATASET_STATUS_PUBLISHED).upper(), 'RETRACTED'] and str(newstatus).upper() == str(HubmapConst.DATASET_STATUS_REOPENED).upper():
             self.reopen_dataset(driver, headers, uuid, formdata, group_uuid)
-        elif str(oldstatus).upper() == str(HubmapConst.DATASET_STATUS_QA).upper() and str(newstatus).upper() == str(HubmapConst.DATASET_STATUS_PUBLISHED).upper():
+        elif str(oldstatus).upper() == str(HubmapConst.DATASET_STATUS_QA).upper() and str(newstatus).upper() in [str(HubmapConst.DATASET_STATUS_PUBLISHED).upper(), 'RETRACTED']:
             self.publishing_process(driver, headers, uuid, group_uuid, HubmapConst.DATASET_STATUS_PUBLISHED)
-        elif str(oldstatus).upper() == str(HubmapConst.DATASET_STATUS_PUBLISHED).upper() and str(newstatus).upper() == str(HubmapConst.DATASET_STATUS_UNPUBLISHED).upper():
+        elif str(oldstatus).upper() in [str(HubmapConst.DATASET_STATUS_PUBLISHED).upper(), 'RETRACTED'] and str(newstatus).upper() == str(HubmapConst.DATASET_STATUS_UNPUBLISHED).upper():
             self.publishing_process(driver, headers, uuid, group_uuid, HubmapConst.DATASET_STATUS_UNPUBLISHED)
         else:
             self.modify_dataset(driver, headers, uuid, formdata, group_uuid)
@@ -298,7 +298,7 @@ class Dataset(object):
                     is_donor_open_consent = True
         
         if HubmapConst.DATASET_STATUS_ATTRIBUTE in metadata_info:
-            is_dataset_published = metadata_info[HubmapConst.DATASET_STATUS_ATTRIBUTE] == HubmapConst.DATASET_STATUS_PUBLISHED
+            is_dataset_published = metadata_info[HubmapConst.DATASET_STATUS_ATTRIBUTE] in [HubmapConst.DATASET_STATUS_PUBLISHED, 'Retracted']
         
         if HubmapConst.DATASET_IS_PROTECTED in metadata_info:
             is_dataset_protected_data = str(metadata_info[HubmapConst.DATASET_IS_PROTECTED]).lower() == 'true'
@@ -419,7 +419,7 @@ def convert_dataset_status(raw_status):
         new_status = HubmapConst.DATASET_STATUS_INVALID
     elif str(raw_status).upper() == str(HubmapConst.DATASET_STATUS_VALID).upper():
         new_status = HubmapConst.DATASET_STATUS_VALID
-    elif str(raw_status).upper() == str(HubmapConst.DATASET_STATUS_PUBLISHED).upper():
+    elif str(raw_status).upper() in [str(HubmapConst.DATASET_STATUS_PUBLISHED).upper(), 'RETRACTED']:
         new_status = HubmapConst.DATASET_STATUS_PUBLISHED
     elif str(raw_status).upper() == str(HubmapConst.DATASET_STATUS_REOPENED).upper():
         new_status = HubmapConst.DATASET_STATUS_REOPENED
