@@ -25,7 +25,7 @@ hubmap-commons==2.1.23
 redis==4.3.4
 
 # For assay type rules
-rule_engine==4.1.0
+rule_engine==5.0.0
 
 # For unit test
 nose2==0.11.0
