@@ -3937,7 +3937,9 @@ def update_publication_and_usage_stats():
     )
     dataset_query = (
         "MATCH (a:Activity)-[:ACTIVITY_OUTPUT]->(ds:Dataset) "
-        "WHERE ds.status IN ['Published', 'Retracted'] "
+        "WHERE ds.status IN ['Published'] "
+        "AND NOT (ds)<-[:REVISION_OF]-(:Dataset) "
+        "AND NOT ds.entity_type = 'Publication' "
         "AND a.creation_action in ['Create Dataset Activity','Multi-Assay Split','External Process'] "
         "RETURN DISTINCT ds.dataset_type AS dataset_type, "
         "case a.creation_action when 'Create Dataset Activity' then 'primary' "
