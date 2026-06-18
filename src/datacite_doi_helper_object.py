@@ -226,7 +226,7 @@ class DataCiteDoiHelper:
         if not entity['entity_type'] in ['Dataset', 'Collection', 'Epicollection']:
             raise HTTPException(f"Error: cannot create a DOI for entity type {entity['entity_type']} {entity['uuid']} because it is not of required type Dataset, Collection or Epicollection", 400)
 
-        if not ignore_publication_status and entity['entity_type'] == 'Dataset' and (not self.__contains_string_field('status', entity) or not entity['status'] in ['Published', 'Retracted']):
+        if not ignore_publication_status and entity['entity_type'] == 'Dataset' and (not self.__contains_string_field('status', entity) or not entity['status'] in ['Published']):
             raise HTTPException(f"Error: cannot crate a DOI for Dataset {entity['uuid']} because it does not have a status of Published", 400)
 
         datacite_api = DataCiteApi(self.datacite_repository_id, self.datacite_repository_password, self.datacite_hubmap_prefix, self.datacite_api_url, self.entity_api_url)

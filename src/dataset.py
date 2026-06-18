@@ -170,17 +170,17 @@ class Dataset(object):
             
         #print(str(userinfo) + ' is curator: ' + str(is_data_curator))
     
-
-    @classmethod
-    def change_status(self, driver, headers, uuid, oldstatus, newstatus, formdata, group_uuid):
-        if str(oldstatus).upper() in [str(HubmapConst.DATASET_STATUS_PUBLISHED).upper(), 'RETRACTED'] and str(newstatus).upper() == str(HubmapConst.DATASET_STATUS_REOPENED).upper():
-            self.reopen_dataset(driver, headers, uuid, formdata, group_uuid)
-        elif str(oldstatus).upper() == str(HubmapConst.DATASET_STATUS_QA).upper() and str(newstatus).upper() in [str(HubmapConst.DATASET_STATUS_PUBLISHED).upper(), 'RETRACTED']:
-            self.publishing_process(driver, headers, uuid, group_uuid, HubmapConst.DATASET_STATUS_PUBLISHED)
-        elif str(oldstatus).upper() in [str(HubmapConst.DATASET_STATUS_PUBLISHED).upper(), 'RETRACTED'] and str(newstatus).upper() == str(HubmapConst.DATASET_STATUS_UNPUBLISHED).upper():
-            self.publishing_process(driver, headers, uuid, group_uuid, HubmapConst.DATASET_STATUS_UNPUBLISHED)
-        else:
-            self.modify_dataset(driver, headers, uuid, formdata, group_uuid)
+#no longer used commented out 6.17.2026
+#    @classmethod
+#    def change_status(self, driver, headers, uuid, oldstatus, newstatus, formdata, group_uuid):
+#        if str(oldstatus).upper() in [str(HubmapConst.DATASET_STATUS_PUBLISHED).upper(), 'RETRACTED'] and str(newstatus).upper() == str(HubmapConst.DATASET_STATUS_REOPENED).upper():
+#            self.reopen_dataset(driver, headers, uuid, formdata, group_uuid)
+#        elif str(oldstatus).upper() == str(HubmapConst.DATASET_STATUS_QA).upper() and str(newstatus).upper() in [str(HubmapConst.DATASET_STATUS_PUBLISHED).upper(), 'RETRACTED']:
+#            self.publishing_process(driver, headers, uuid, group_uuid, HubmapConst.DATASET_STATUS_PUBLISHED)
+#        elif str(oldstatus).upper() in [str(HubmapConst.DATASET_STATUS_PUBLISHED).upper(), 'RETRACTED'] and str(newstatus).upper() == str(HubmapConst.DATASET_STATUS_UNPUBLISHED).upper():
+#            self.publishing_process(driver, headers, uuid, group_uuid, HubmapConst.DATASET_STATUS_UNPUBLISHED)
+#        else:
+#            self.modify_dataset(driver, headers, uuid, formdata, group_uuid)
 
     #Does the string represent a "true" value, or an int that is 1
     @classmethod
@@ -410,34 +410,34 @@ def copy_directory(oldpath, newpath):
     return ret_path
 
 
-def convert_dataset_status(raw_status):
-    new_status = ''
-    # I need to convert the status to what is found in the HubmapConst file
-    if str(raw_status).upper() == str(HubmapConst.DATASET_STATUS_NEW).upper():
-        new_status = HubmapConst.DATASET_STATUS_NEW
-    elif str(raw_status).upper() == str(HubmapConst.DATASET_STATUS_INVALID).upper():
-        new_status = HubmapConst.DATASET_STATUS_INVALID
-    elif str(raw_status).upper() == str(HubmapConst.DATASET_STATUS_VALID).upper():
-        new_status = HubmapConst.DATASET_STATUS_VALID
-    elif str(raw_status).upper() in [str(HubmapConst.DATASET_STATUS_PUBLISHED).upper(), 'RETRACTED']:
-        new_status = HubmapConst.DATASET_STATUS_PUBLISHED
-    elif str(raw_status).upper() == str(HubmapConst.DATASET_STATUS_REOPENED).upper():
-        new_status = HubmapConst.DATASET_STATUS_REOPENED
-    elif str(raw_status).upper() == str(HubmapConst.DATASET_STATUS_LOCKED).upper():
-        new_status = HubmapConst.DATASET_STATUS_LOCKED
-    elif str(raw_status).upper() == str(HubmapConst.DATASET_STATUS_NEW).upper():
-        new_status = HubmapConst.DATASET_STATUS_NEW
-    elif str(raw_status).upper() == str(HubmapConst.DATASET_STATUS_UNPUBLISHED).upper():
-        new_status = HubmapConst.DATASET_STATUS_UNPUBLISHED
-    elif str(raw_status).upper() == str(HubmapConst.DATASET_STATUS_QA).upper():
-        new_status = HubmapConst.DATASET_STATUS_QA
-    elif str(raw_status).upper() == str(HubmapConst.DATASET_STATUS_ERROR).upper():
-        new_status = HubmapConst.DATASET_STATUS_ERROR
-    elif str(raw_status).upper() == str(HubmapConst.DATASET_STATUS_PROCESSING).upper():
-        new_status = HubmapConst.DATASET_STATUS_PROCESSING
-    elif str(raw_status).upper() == str(HubmapConst.DATASET_STATUS_HOLD).upper():
-        new_status = HubmapConst.DATASET_STATUS_HOLD
-    return new_status
+#def convert_dataset_status(raw_status):
+#    new_status = ''
+#    # I need to convert the status to what is found in the HubmapConst file
+#    if str(raw_status).upper() == str(HubmapConst.DATASET_STATUS_NEW).upper():
+#        new_status = HubmapConst.DATASET_STATUS_NEW
+#    elif str(raw_status).upper() == str(HubmapConst.DATASET_STATUS_INVALID).upper():
+#        new_status = HubmapConst.DATASET_STATUS_INVALID
+#    elif str(raw_status).upper() == str(HubmapConst.DATASET_STATUS_VALID).upper():
+#        new_status = HubmapConst.DATASET_STATUS_VALID
+#    elif str(raw_status).upper() in [str(HubmapConst.DATASET_STATUS_PUBLISHED).upper(), 'RETRACTED']:
+#        new_status = HubmapConst.DATASET_STATUS_PUBLISHED
+#    elif str(raw_status).upper() == str(HubmapConst.DATASET_STATUS_REOPENED).upper():
+#        new_status = HubmapConst.DATASET_STATUS_REOPENED
+#    elif str(raw_status).upper() == str(HubmapConst.DATASET_STATUS_LOCKED).upper():
+#        new_status = HubmapConst.DATASET_STATUS_LOCKED
+#    elif str(raw_status).upper() == str(HubmapConst.DATASET_STATUS_NEW).upper():
+#        new_status = HubmapConst.DATASET_STATUS_NEW
+#    elif str(raw_status).upper() == str(HubmapConst.DATASET_STATUS_UNPUBLISHED).upper():
+#        new_status = HubmapConst.DATASET_STATUS_UNPUBLISHED
+#    elif str(raw_status).upper() == str(HubmapConst.DATASET_STATUS_QA).upper():
+#        new_status = HubmapConst.DATASET_STATUS_QA
+#    elif str(raw_status).upper() == str(HubmapConst.DATASET_STATUS_ERROR).upper():
+#        new_status = HubmapConst.DATASET_STATUS_ERROR
+#    elif str(raw_status).upper() == str(HubmapConst.DATASET_STATUS_PROCESSING).upper():
+#        new_status = HubmapConst.DATASET_STATUS_PROCESSING
+#    elif str(raw_status).upper() == str(HubmapConst.DATASET_STATUS_HOLD).upper():
+#        new_status = HubmapConst.DATASET_STATUS_HOLD
+#    return new_status
 
 if __name__ == "__main__":
     NEO4J_SERVER = 'bolt://localhost:7687'
