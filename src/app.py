@@ -10,7 +10,10 @@ import re
 import json
 import pandas
 import shutil
-from uuid import UUID
+import mysql.connector
+from uuid import UUID, uuid1
+from atlas_consortia_jobq import JobQueue
+from bulk_register import register_entity_queued
 import csv
 import time
 from operator import xor
@@ -165,6 +168,47 @@ except Exception:
     # Log the full stack trace, prepend a line with our message
     logger.exception(msg)
 
+####################################################################################################
+## JobQueue initialization
+####################################################################################################
+
+if app.config['JOB_QUEUE_MODE'] == True:
+    try:
+        bulk_queue = JobQueue(
+            redis_host=app.config['REDIS_HOST'],
+            redis_port=app.config['REDIS_PORT'],
+            redis_db=app.config['REDIS_DB'],
+            redis_password=app.config['REDIS_PASSWORD']
+        )
+    except Exception as e:
+        msg = f"Error: Failed to establish connection to redis with host {app.config['REDIS_HOST']}, port {app.config['REDIS_PORT']}, and db {app.config['REDIS_DB']}. Message: {e}"
+        logging.error(msg)
+        internal_server_error(msg)
+
+####################################################################################################
+## MySQL connection for bulk registration batch tracking
+####################################################################################################
+
+_mysql_connection = None
+
+def get_mysql_connection():
+    global _mysql_connection
+    if _mysql_connection is not None:
+        try:
+            _mysql_connection.ping(reconnect=True, attempts=3, delay=1)
+            return _mysql_connection
+        except mysql.connector.Error:
+            pass
+    _mysql_connection = mysql.connector.connect(
+        host=app.config['MYSQL_HOST'],
+        port=int(app.config['MYSQL_PORT']),
+        user=app.config['MYSQL_USER'],
+        password=app.config['MYSQL_PASSWORD'],
+        database=app.config['MYSQL_DATABASE'],
+        charset='utf8mb4',
+        autocommit=False,
+    )
+    return _mysql_connection
 
 ####################################################################################################
 ## Neo4j connection initialization
@@ -2940,6 +2984,7 @@ def create_donors_from_bulk():
         return Response(json.dumps(response_body, sort_keys=True), 400, mimetype='application/json')
     entity_response = {}
     row_num = 1
+    job_queue_mode = app.config['JOB_QUEUE_MODE']
     if validfile == True:
         entity_created = False
         entity_failed_to_create = False
@@ -2952,27 +2997,32 @@ def create_donors_from_bulk():
             del item['selection_protocol']
             if group_uuid is not None:
                 item['group_uuid'] = group_uuid
-            r = requests.post(
-                commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/donor',
-                headers=header, json=item)
-            entity_response[row_num] = r.json()
-            row_num = row_num + 1
-            status_code = r.status_code
-            if r.status_code > 399:
-                entity_failed_to_create = True
-            else:
-                entity_created = True
-        if entity_created and not entity_failed_to_create:
-            response_status = "Success - All Entities Created Successfully"
-            status_code = 201
-        elif entity_failed_to_create and not entity_created:
-            response_status = "Failure - None of the Entities Created Successfully"
-            status_code = 500
-        elif entity_created and entity_failed_to_create:
-            response_status = "Partial Success - Some Entities Created Successfully"
-            status_code = 207
-        response = {"status": response_status, "data": entity_response}
-        return Response(json.dumps(response, sort_keys=True), status_code, mimetype='application/json')
+        if job_queue_mode:
+            batch_id = enqueue_bulk_registration(records, token, "donor", temp_id)
+            return jsonify({'Bulk upload request submitted successfully': f'batch_id = {batch_id}'}), 202
+        else:
+            for item in records:
+                r = requests.post(
+                    commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/donor',
+                    headers=header, json=item)
+                entity_response[row_num] = r.json()
+                row_num = row_num + 1
+                status_code = r.status_code
+                if r.status_code > 399:
+                    entity_failed_to_create = True
+                else:
+                    entity_created = True
+            if entity_created and not entity_failed_to_create:
+                response_status = "Success - All Entities Created Successfully"
+                status_code = 201
+            elif entity_failed_to_create and not entity_created:
+                response_status = "Failure - None of the Entities Created Successfully"
+                status_code = 500
+            elif entity_created and entity_failed_to_create:
+                response_status = "Partial Success - Some Entities Created Successfully"
+                status_code = 207
+            response = {"status": response_status, "data": entity_response}
+            return Response(json.dumps(response, sort_keys=True), status_code, mimetype='application/json')
 
 
 @app.route('/samples/bulk-upload', methods=['POST'])
@@ -3119,6 +3169,120 @@ def create_samples_from_bulk():
         response = {"status": response_status, "data": entity_response}
         return Response(json.dumps(response, sort_keys=True), status_code, mimetype='application/json')
 
+@app.route('/batches/<batch_id>', methods=['GET'])
+def get_batch_status(batch_id):
+    
+    batch_id = batch_id.strip().lower()
+    if len(batch_id) != 32 or not all(c in '0123456789abcdef' for c in batch_id):
+        bad_request_error("Invalid batch_id. Expected a 32-character hexadecimal identifier.")
+
+    try:
+        conn = get_mysql_connection()
+        batch_cursor = conn.cursor(dictionary=True)
+        try:
+            batch_cursor.execute(
+                """
+                SELECT batch_id, temp_id, total_jobs, success_count,
+                       failed_count, status, created_at, completed_at
+                  FROM batches
+                 WHERE batch_id = %s
+                """,
+                (batch_id,),
+            )
+            batch_row = batch_cursor.fetchone()
+        finally:
+            batch_cursor.close()
+
+        if batch_row is None:
+            not_found_error(f"No batch found with batch_id {batch_id}")
+
+        jobs_cursor = conn.cursor(dictionary=True)
+        try:
+            jobs_cursor.execute(
+                """
+                SELECT internal_id, entity_uuid, status, error_detail
+                  FROM jobs
+                 WHERE batch_id = %s
+                 ORDER BY id
+                """,
+                (batch_id,),
+            )
+            job_rows = jobs_cursor.fetchall()
+        finally:
+            jobs_cursor.close()
+    except (mysql.connector.Error) as e:
+        logger.exception(f"MySQL error while fetching batch {batch_id}")
+        internal_server_error("Failed to retrieve batch status. Please try again or contact support.")
+
+    response_body = {
+        "batch_id": batch_row["batch_id"],
+        "temp_id": batch_row["temp_id"],
+        "status": batch_row["status"],
+        "total_jobs": batch_row["total_jobs"],
+        "success_count": batch_row["success_count"],
+        "failed_count": batch_row["failed_count"],
+        "created_at": batch_row["created_at"].isoformat() if batch_row["created_at"] else None,
+        "completed_at": batch_row["completed_at"].isoformat() if batch_row["completed_at"] else None,
+        "jobs": [
+            {
+                "internal_id": job["internal_id"],
+                "entity_uuid": job["entity_uuid"],
+                "status": job["status"],
+                "error_detail": job["error_detail"],
+            }
+            for job in job_rows
+        ],
+    }
+    return jsonify(response_body), 200
+
+def enqueue_bulk_registration(records, token, entity_type, temp_id):
+    batch_id = str(uuid1()).replace('-', '')
+    conn = get_mysql_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            """
+            INSERT INTO batches (batch_id, temp_id, total_jobs, status)
+            VALUES (%s, %s, %s, 'running')
+            """,
+            (batch_id, temp_id, len(records)),
+        )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        logger.exception(f"Failed to insert batch row for batch_id {batch_id}")
+        internal_server_error("Failed to create batch record")
+    finally:
+        cursor.close()
+    jobs = []
+    for record in records:
+        entity_id = None
+        if record.get("lab_donor_id"):
+            entity_id = record["lab_donor_id"]
+        if record.get("lab_tissue_sample_id"):
+            entity_id = record["lab_tissue_sample_id"]
+        if not entity_id:
+            # Validation has already passed so this shouldn't be able to happen
+            bad_request_error("Missing identifier (lab_donor_id, lab_tissue_sample_id, etc) on one or more records")
+        jobs.append({
+            "entity_id": entity_id,
+            "args": [entity_id, token],
+            "kwargs": {"batch_id": batch_id, "record": record, "entity_type": entity_type, "temp_id": temp_id},
+            "metadata": {}
+        })
+    try:
+        job_reference_id = bulk_queue.bulk_enqueue(
+            task_func = register_entity_queued,
+            jobs=jobs,
+            priority=2
+        )
+    except (redis.RedisError, ValueError):
+        logger.exception(f"Failed to enqueue {len(jobs)} entity creation jobs")
+        internal_server_error("Failed to queue entity creation")
+    except Exception:
+        logger.exception(f"Unexpected error enqueuing {len(jobs)} entity creation jobs")
+        internal_server_error("An unexpected error occurred")
+    return batch_id    
 
 def open_tsv(path):
     try:
