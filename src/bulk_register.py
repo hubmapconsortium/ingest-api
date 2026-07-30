@@ -54,18 +54,19 @@ def _create_entity(entity_id: str, token: str, record: Optional[Dict[str, Any]],
         raise Exception(
             f"entity-api returned {response.status_code} for internal_id={entity_id}: {response.text}"
         )
-    return response.json()["uuid"]
+    body = response.json()
+    return body["uuid"], body.get("hubmap_id")
  
-def _record_success(cursor, batch_id: str, internal_id: str, entity_uuid: str) -> None:
+def _record_success(cursor, batch_id: str, internal_id: str, entity_uuid: str, hubmap_id: str) -> None:
     """
     Insert a successful job row.
     """
     cursor.execute(
         """
-        INSERT INTO jobs (batch_id, internal_id, entity_uuid, status)
-        VALUES (%s, %s, %s, 'success')
+        INSERT INTO jobs (batch_id, internal_id, entity_uuid, hubmap_id, status)
+        VALUES (%s, %s, %s, %s, 'success')
         """,
-        (batch_id, internal_id, entity_uuid),
+        (batch_id, internal_id, entity_uuid, hubmap_id),
     ) 
  
 def _record_failure(cursor, batch_id: str, internal_id: str, error_detail: str) -> None:
@@ -132,12 +133,7 @@ def register_entity_queued(
     temp_id: Optional[str] = None,
 ) -> None:
     """
-    Worker task: create one entity in entity-api and record the result.
- 
-    Called by jobq workers for each job. entity_id is the vendor/lab identifier
-    from the source TSV and serves as the per-batch internal_id. batch_id ties
-    the job to its batch. record carries the fields needed to build the
-    entity-api request.
+    This is the entrypoint for the jobq workers
     """
     if batch_id is None:
         raise ValueError(
@@ -147,9 +143,10 @@ def register_entity_queued(
     internal_id = entity_id
  
     entity_uuid = None
+    hubmap_id = None
     error_detail = None
     try:
-        entity_uuid = _create_entity(entity_id, token, record, entity_type)
+        entity_uuid, hubmap_id = _create_entity(entity_id, token, record, entity_type)
         succeeded = True
     except Exception as e:
         succeeded = False
@@ -163,7 +160,7 @@ def register_entity_queued(
     cursor = conn.cursor()
     try:
         if succeeded:
-            _record_success(cursor, batch_id, internal_id, entity_uuid)
+            _record_success(cursor, batch_id, internal_id, entity_uuid, hubmap_id)
         else:
             _record_failure(cursor, batch_id, internal_id, error_detail)
  

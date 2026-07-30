@@ -2916,7 +2916,8 @@ def bulk_donors_upload_and_validate():
             records.append(data_row)
             if first:
                 first = False
-    if len(records) > 40:
+    job_queue_mode = app.config['JOB_QUEUE_MODE']
+    if len(records) > 40 and not job_queue_mode:
         bad_request_error("Bulk upload TSV files must contain no more than 40 rows. If more than 40 are needed, please split TSV file for multiple submissions.")
     validfile = validate_donors(headers, records)
     if validfile == True:
@@ -2941,38 +2942,10 @@ def create_donors_from_bulk():
     group_uuid = None
     if "group_uuid" in request_data:
         group_uuid = request_data['group_uuid']
-    temp_dir = app.config['FILE_UPLOAD_TEMP_DIR']
-    tsv_directory = commons_file_helper.ensureTrailingSlash(temp_dir) + temp_id + os.sep
-    if not os.path.exists(tsv_directory):
-        return_body = {"status": "fail", "message": f"Temporary file with id {temp_id} does not have a temp directory"}
-        return Response(json.dumps(return_body, sort_keys=True), 400, mimetype='application/json')
-    fcount = 0
-    temp_file_name = None
-    for tfile in os.listdir(tsv_directory):
-        fcount = fcount + 1
-        temp_file_name = tfile
-    if fcount == 0:
-        return Response(json.dumps({"status": "fail", "message": f"File not found in temporary directory /{temp_id}"},
-                                   sort_keys=True), 400, mimetype='application/json')
-    if fcount > 1:
-        return Response(
-            json.dumps({"status": "fail", "message": f"Multiple files found in temporary file path /{temp_id}"},
-                       sort_keys=True), 400, mimetype='application/json')
-    tsvfile_name = tsv_directory + temp_file_name
-    records = []
-    headers = []
-    with open(tsvfile_name, newline='') as tsvfile:
-        reader = csv.DictReader(tsvfile, delimiter='\t')
-        first = True
-        for row in reader:
-            data_row = {}
-            for key in row.keys():
-                if first:
-                    headers.append(key)
-                data_row[key] = row[key]
-            records.append(data_row)
-            if first:
-                first = False
+    result = read_bulk_tsv(temp_id)
+    if isinstance(result, Response):
+        return result
+    headers, records = result
     validfile = validate_donors(headers, records)
     if type(validfile) == list:
         return_validfile = {}
@@ -2988,17 +2961,9 @@ def create_donors_from_bulk():
     if validfile == True:
         entity_created = False
         entity_failed_to_create = False
-        for item in records:
-            item['lab_donor_id'] = item['lab_id']
-            del item['lab_id']
-            item['label'] = item['lab_name']
-            del item['lab_name']
-            item['protocol_url'] = item['selection_protocol']
-            del item['selection_protocol']
-            if group_uuid is not None:
-                item['group_uuid'] = group_uuid
+        rename_donor_records(records, group_uuid)
         if job_queue_mode:
-            batch_id = enqueue_bulk_registration(records, token, "donor", temp_id)
+            batch_id = enqueue_bulk_registration(records, token, "donor", temp_id, group_uuid=group_uuid)
             return jsonify({'Bulk upload request submitted successfully': f'batch_id = {batch_id}'}), 202
         else:
             for item in records:
@@ -3024,6 +2989,73 @@ def create_donors_from_bulk():
             response = {"status": response_status, "data": entity_response}
             return Response(json.dumps(response, sort_keys=True), status_code, mimetype='application/json')
 
+def read_bulk_tsv(temp_id):
+    temp_dir = app.config['FILE_UPLOAD_TEMP_DIR']
+    tsv_directory = commons_file_helper.ensureTrailingSlash(temp_dir) + temp_id + os.sep
+    if not os.path.exists(tsv_directory):
+        return_body = {"status": "fail", "message": f"Temporary file with id {temp_id} does not have a temp directory"}
+        return Response(json.dumps(return_body, sort_keys=True), 400, mimetype='application/json')
+    fcount = 0
+    temp_file_name = None
+    for tfile in os.listdir(tsv_directory):
+        fcount = fcount + 1
+        temp_file_name = tfile
+    if fcount == 0:
+        return Response(json.dumps({"status": "fail", "message": f"File not found in temporary directory /{temp_id}"},
+                                   sort_keys=True), 400, mimetype='application/json')
+    if fcount > 1:
+        return Response(
+            json.dumps({"status": "fail", "message": f"Multiple files found in temporary file path /{temp_id}"},
+                       sort_keys=True), 400, mimetype='application/json')
+    tsvfile_name = tsv_directory + temp_file_name
+    records = []
+    headers = []
+    tsvfile = open_tsv(tsvfile_name)
+    with tsvfile:
+        reader = csv.DictReader(tsvfile, delimiter='\t')
+        first = True
+        for row in reader:
+            data_row = {}
+            for key in row.keys():
+                if first:
+                    headers.append(key)
+                data_row[key] = row[key]
+            records.append(data_row)
+            if first:
+                first = False
+    return headers, records
+
+def rename_donor_records(records, group_uuid=None):
+    for item in records:
+        item['lab_donor_id'] = item['lab_id']
+        del item['lab_id']
+        item['label'] = item['lab_name']
+        del item['lab_name']
+        item['protocol_url'] = item['selection_protocol']
+        del item['selection_protocol']
+        if group_uuid is not None:
+            item['group_uuid'] = group_uuid
+    return records
+
+def rename_sample_records(records, group_uuid=None):
+    for item in records:
+        item['direct_ancestor_uuid'] = item['source_id']
+        del item['source_id']
+        item['lab_tissue_sample_id'] = item['lab_id']
+        del item['lab_id']
+        item['organ'] = item['organ_type']
+        del item['organ_type']
+        item['protocol_url'] = item['sample_protocol']
+        del item['sample_protocol']
+        if item['organ'] == '':
+            del item['organ']
+        if item['rui_location'] == '':
+            del item['rui_location']
+        else:
+            item['rui_location'] = json.loads(item['rui_location'])
+        if group_uuid is not None:
+            item['group_uuid'] = group_uuid
+    return records
 
 @app.route('/samples/bulk-upload', methods=['POST'])
 def bulk_samples_upload_and_validate():
@@ -3058,7 +3090,8 @@ def bulk_samples_upload_and_validate():
             records.append(data_row)
             if first:
                 first = False
-    if len(records) > 40:
+    job_queue_mode = app.config['JOB_QUEUE_MODE']
+    if len(records) > 40 and not job_queue_mode:
         bad_request_error("Bulk upload TSV files must contain no more than 40 rows. If more than 40 are needed, please split TSV file for multiple submissions.")
     validfile = validate_samples(headers, records, header)
     if validfile == True:
@@ -3082,39 +3115,10 @@ def create_samples_from_bulk():
     group_uuid = None
     if "group_uuid" in request_data:
         group_uuid = request_data['group_uuid']
-    temp_dir = app.config['FILE_UPLOAD_TEMP_DIR']
-    tsv_directory = commons_file_helper.ensureTrailingSlash(temp_dir) + temp_id + os.sep
-    if not os.path.exists(tsv_directory):
-        return_body = {"status": "fail", "message": f"Temporary file with id {temp_id} does not have a temp directory"}
-        return Response(json.dumps(return_body, sort_keys=True), 400, mimetype='application/json')
-    fcount = 0
-    temp_file_name = None
-    for tfile in os.listdir(tsv_directory):
-        fcount = fcount + 1
-        temp_file_name = tfile
-    if fcount == 0:
-        return Response(json.dumps({"status": "fail", "message": f"File not found in temporary directory /{temp_id}"},
-                                   sort_keys=True), 400, mimetype='application/json')
-    if fcount > 1:
-        return Response(
-            json.dumps({"status": "fail", "message": f"Multiple files found in temporary file path /{temp_id}"},
-                       sort_keys=True), 400, mimetype='application/json')
-    tsvfile_name = tsv_directory + temp_file_name
-    records = []
-    headers = []
-    tsvfile = open_tsv(tsvfile_name)
-    with tsvfile:
-        reader = csv.DictReader(tsvfile, delimiter='\t')
-        first = True
-        for row in reader:
-            data_row = {}
-            for key in row.keys():
-                if first:
-                    headers.append(key)
-                data_row[key] = row[key]
-            records.append(data_row)
-            if first:
-                first = False
+    result = read_bulk_tsv(temp_id)
+    if isinstance(result, Response):
+        return result
+    headers, records = result
     validfile = validate_samples(headers, records, header)
     if type(validfile) == list:
         return_validfile = {}
@@ -3126,52 +3130,39 @@ def create_samples_from_bulk():
         return Response(json.dumps(response_body, sort_keys=True), 400, mimetype='application/json')
     entity_response = {}
     row_num = 1
+    job_queue_mode = app.config['JOB_QUEUE_MODE']
     if validfile == True:
         entity_created = False
         entity_failed_to_create = False
-        for item in records:
-            item['direct_ancestor_uuid'] = item['source_id']
-            del item['source_id']
-            item['lab_tissue_sample_id'] = item['lab_id']
-            del item['lab_id']
-            
-            item['organ'] = item['organ_type']
-            del item['organ_type']
-            item['protocol_url'] = item['sample_protocol']
-            del item['sample_protocol']
-            if item['organ'] == '':
-                del item['organ']
-            if item['rui_location'] == '':
-                del item['rui_location']
-            else:
-                rui_location_json = json.loads(item['rui_location'])
-                item['rui_location'] = rui_location_json
-            if group_uuid is not None:
-                item['group_uuid'] = group_uuid
-            r = requests.post(
-                commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/sample',
-                headers=header, json=item)
-            entity_response[row_num] = r.json()
-            row_num = row_num + 1
-            if r.status_code > 399:
-                entity_failed_to_create = True
-            else:
-                entity_created = True
-        if entity_created and not entity_failed_to_create:
-            response_status = "Success - All Entities Created Successfully"
-            status_code = 201
-        elif entity_failed_to_create and not entity_created:
-            response_status = "Failure - None of the Entities Created Successfully"
-            status_code = 500
-        elif entity_created and entity_failed_to_create:
-            response_status = "Partial Success - Some Entities Created Successfully"
-            status_code = 207
-        response = {"status": response_status, "data": entity_response}
-        return Response(json.dumps(response, sort_keys=True), status_code, mimetype='application/json')
+        rename_sample_records(records, group_uuid)
+        if job_queue_mode:
+            batch_id = enqueue_bulk_registration(records, token, "sample", temp_id, group_uuid=group_uuid)
+            return jsonify({'Bulk upload request submitted successfully': f'batch_id = {batch_id}'}), 202
+        else:
+            for item in records:
+                r = requests.post(
+                    commons_file_helper.ensureTrailingSlashURL(app.config['ENTITY_WEBSERVICE_URL']) + 'entities/sample',
+                    headers=header, json=item)
+                entity_response[row_num] = r.json()
+                row_num = row_num + 1
+                if r.status_code > 399:
+                    entity_failed_to_create = True
+                else:
+                    entity_created = True
+            if entity_created and not entity_failed_to_create:
+                response_status = "Success - All Entities Created Successfully"
+                status_code = 201
+            elif entity_failed_to_create and not entity_created:
+                response_status = "Failure - None of the Entities Created Successfully"
+                status_code = 500
+            elif entity_created and entity_failed_to_create:
+                response_status = "Partial Success - Some Entities Created Successfully"
+                status_code = 207
+            response = {"status": response_status, "data": entity_response}
+            return Response(json.dumps(response, sort_keys=True), status_code, mimetype='application/json')
 
 @app.route('/batches/<batch_id>', methods=['GET'])
 def get_batch_status(batch_id):
-    
     batch_id = batch_id.strip().lower()
     if len(batch_id) != 32 or not all(c in '0123456789abcdef' for c in batch_id):
         bad_request_error("Invalid batch_id. Expected a 32-character hexadecimal identifier.")
@@ -3200,7 +3191,7 @@ def get_batch_status(batch_id):
         try:
             jobs_cursor.execute(
                 """
-                SELECT internal_id, entity_uuid, status, error_detail
+                SELECT internal_id, entity_uuid, hubmap_id, status, error_detail
                   FROM jobs
                  WHERE batch_id = %s
                  ORDER BY id
@@ -3227,25 +3218,117 @@ def get_batch_status(batch_id):
             {
                 "internal_id": job["internal_id"],
                 "entity_uuid": job["entity_uuid"],
+                "hubmap_id": job["hubmap_id"],
                 "status": job["status"],
                 "error_detail": job["error_detail"],
             }
             for job in job_rows
         ],
     }
-    return jsonify(response_body), 200
+    
+    batch_status = batch_row["status"]
+    if batch_status == "partial":
+        http_status = 207
+        response_body["message"] = (
+            f"Some records failed to register. Retry the failed records with a "
+            f"POST to /bulk/retry/{batch_id}"
+        )
+    elif batch_status == "failed":
+        http_status = 500
+        response_body["message"] = (
+            f"All records failed to register. Retry with a "
+            f"POST to /bulk/retry/{batch_id}"
+        )
+    else:
+        http_status = 200
 
-def enqueue_bulk_registration(records, token, entity_type, temp_id):
+    return jsonify(response_body), http_status
+
+@app.route('/bulk/retry/<batch_id>', methods=['POST'])
+def retry_bulk_registration(batch_id):
+    token = auth_helper_instance.getAuthorizationTokens(request.headers)
+    header = {'Authorization': 'Bearer ' + token}
+    batch_id = batch_id.strip().lower()
+    if len(batch_id) != 32 or not all(c in '0123456789abcdef' for c in batch_id):
+        bad_request_error("Invalid batch_id. Expected a 32-character hexadecimal identifier.")
+    try:
+        conn = get_mysql_connection()
+        batch_cursor = conn.cursor(dictionary=True)
+        try:
+            batch_cursor.execute(
+                """
+                SELECT temp_id, group_uuid, entity_type
+                  FROM batches
+                 WHERE batch_id = %s
+                """,
+                (batch_id,),
+            )
+            batch_row = batch_cursor.fetchone()
+        finally:
+            batch_cursor.close()
+        if batch_row is None:
+            not_found_error(f"No batch found with batch_id {batch_id}")
+        # internal_ids that already succeeded; these get dropped from the retry.
+        jobs_cursor = conn.cursor(dictionary=True)
+        try:
+            jobs_cursor.execute(
+                """
+                SELECT internal_id
+                  FROM jobs
+                 WHERE batch_id = %s AND status = 'success'
+                """,
+                (batch_id,),
+            )
+            successful_internal_ids = {row["internal_id"] for row in jobs_cursor.fetchall()}
+        finally:
+            jobs_cursor.close()
+    except mysql.connector.Error:
+        logger.exception(f"MySQL error while preparing retry for batch {batch_id}")
+        internal_server_error("Failed to retrieve batch for retry. Please try again or contact support.")
+    temp_id = batch_row["temp_id"]
+    group_uuid = batch_row["group_uuid"]
+    entity_type = batch_row["entity_type"]
+    result = read_bulk_tsv(temp_id)
+    if isinstance(result, Response):
+        return result
+    headers, records = result
+    survivors = [row for row in records if row.get('lab_id') not in successful_internal_ids]
+    if len(survivors) == 0:
+        return jsonify({"message": f"Nothing to retry; all records in batch {batch_id} already succeeded."}), 200
+    if entity_type == "donor":
+        rename_donor_records(survivors, group_uuid)
+    elif entity_type == "sample":
+        # Samples must be re-validated on retry: validate_samples resolves each
+        # raw source_id to its canonical hm_uuid (a side effect of the existence
+        # check against uuid-api), and that normalization is lost when we skip
+        # validation. Not necessary for donors
+        validfile = validate_samples(headers, survivors, header)
+        if type(validfile) == list:
+            return_validfile = {}
+            error_num = 0
+            for item in validfile:
+                return_validfile[str(error_num)] = str(item)
+                error_num = error_num + 1
+            response_body = {"status": "fail", "data": return_validfile}
+            return Response(json.dumps(response_body, sort_keys=True), 400, mimetype='application/json')
+        rename_sample_records(survivors, group_uuid)
+    else:
+        internal_server_error(f"Batch {batch_id} has an unrecognized entity_type '{entity_type}'; cannot retry.")
+    new_batch_id = enqueue_bulk_registration(survivors, token, entity_type, temp_id,
+                                             group_uuid=group_uuid, parent_batch_id=batch_id)
+    return jsonify({'Retry request submitted successfully': f'batch_id = {new_batch_id}'}), 202
+
+def enqueue_bulk_registration(records, token, entity_type, temp_id, group_uuid=None, parent_batch_id=None):
     batch_id = str(uuid1()).replace('-', '')
     conn = get_mysql_connection()
     cursor = conn.cursor()
     try:
         cursor.execute(
             """
-            INSERT INTO batches (batch_id, temp_id, total_jobs, status)
-            VALUES (%s, %s, %s, 'running')
+            INSERT INTO batches (batch_id, temp_id, total_jobs, status, group_uuid, parent_batch_id, entity_type)
+            VALUES (%s, %s, %s, 'running', %s, %s, %s)
             """,
-            (batch_id, temp_id, len(records)),
+            (batch_id, temp_id, len(records), group_uuid, parent_batch_id, entity_type),
         )
         conn.commit()
     except Exception:
