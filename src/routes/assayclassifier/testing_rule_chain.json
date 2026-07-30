@@ -513,7 +513,7 @@
     },
     {
         "type": "match",
-        "match": "is_dcwg and is_primary and dataset_type == 'RNAseq (with probes)' and oligo_probe_panel in ['10x Genomics; Visium Human Transcriptome Probe Kit v2 - Small; PN 1000466', '10x Genomics; Visium Human Transcriptome Probe Kit-Small; PN 1000363', '10x Genomics; Visium Human Transcriptome Probe Kit-Large; PN 1000364', '10x Genomics; Visium Mouse Transcriptome Probe Kit - Small; PN 1000365', '10x Genomics; Visium Mouse Transcriptome Probes v2 - small; PN 1000667'] and assay_input_entity == 'spot' and barcode_read =~~ 'Read 1' and barcode_size == 16 and barcode_offset == 0 and umi_read =~~ 'Read 1' and umi_size == 12 and umi_offset == 16",
+        "match": "is_dcwg and is_primary and dataset_type == 'RNAseq (with probes)' and oligo_probe_panel in ['10x Genomics; Visium Human Transcriptome Probe Kit v2 - Small; PN 1000466', '10x Genomics; Visium Human Transcriptome Probe Kit-Small; PN 1000363', '10x Genomics; Visium Human Transcriptome Probe Kit-Large; PN 1000364', '10x Genomics; Visium Mouse Transcriptome Probe Kit - Small; PN 1000365', '10x Genomics; Visium Mouse Transcriptome Probe Kit v2.0 - Small; PN 1000667'] and assay_input_entity == 'spot' and barcode_read =~~ 'Read 1' and barcode_size == 16 and barcode_offset == 0 and umi_read =~~ 'Read 1' and umi_size == 12 and umi_offset == 16",
         "value": "{'ubkg_code': 'C200820', 'assaytype': 'scRNAseq-visium-with-probes', 'vitessce-hints': [], 'dir-schema': 'rnaseq-with-probes-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'RNAseq (with probes)', 'description': 'Visium RNAseq (with probes)'}",
         "rule_description": "DCWG scRNAseq-visium-with-probes"
     },
@@ -930,7 +930,13 @@
         "match": "is_dcwg and is_primary and dataset_type == 'Histology'  and stain_name  in ['Trichrome', 'Fluorophores', 'H-DAB', 'LFB', 'SBB']",
         "value": "{'ubkg_code': 'C202340', 'assaytype': 'gen_histology', 'vitessce-hints': [], 'dir-schema': 'histology-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'Histology', 'description': 'Histology'}",
         "rule_description": "DCWG General Histology"
-    }
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and is_primary and dataset_type == 'Paired-Tag'",
+        "value": "{'ubkg_code': 'C202350', 'assaytype': 'paired-tag', 'vitessce-hints': [], 'dir-schema': 'paired-tag-v2', 'description': 'Paired-Tag', 'contains-pii': true, 'primary': true, 'dataset-type': 'Paired-Tag', 'must-contain': ['RNAseq','ATACseq'], 'is-multi-assay': true}",
+        "rule_description": "DCWG 10x-multiome"
+    },
   ],
 "pre":
   [
