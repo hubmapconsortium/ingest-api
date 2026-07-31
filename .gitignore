@@ -10,6 +10,9 @@ ingest-venv
 #Ignore OS X DS Store
 .DS_Store
 
+# Ignore docker .env
+docker/.env
+
 # Ignore docker copied stuff
 docker/ingest-api/src
 docker/ingest-api/VERSION
