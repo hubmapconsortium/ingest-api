@@ -2932,7 +2932,21 @@ def bulk_donors_upload_and_validate():
         return Response(json.dumps(response_body, sort_keys=True), 400,
                         mimetype='application/json')  # The exact format of the return to be determined
 
+"""
+Create donors from a previously uploaded TSV file identified by temp_id.
 
+Input
+--------
+POST request body data is a JSON object containing the following fields:
+    temp_id : str
+        Temporary identifier for the uploaded TSV file. Required.
+
+Returns
+--------
+dict
+    When running in legacy mode, (job_queue_mode = False), returns a JSON object containing the newly created entities and a 201.
+    When job queue mode is enabled, returns a JSON containing a batch_id to look up the enqueued jobs and a 202.    
+"""
 @app.route('/donors/bulk', methods=['POST'])
 def create_donors_from_bulk():
     request_data = request.get_json()
@@ -3105,7 +3119,21 @@ def bulk_samples_upload_and_validate():
         response_body = {"status": "fail", "data": return_validfile}
         return Response(json.dumps(response_body, sort_keys=True), 400, mimetype='application/json')
 
+"""
+Create samples from a previously uploaded TSV file identified by a temporary ID.
 
+Input
+--------
+POST request body data is a JSON object containing the following fields:
+    temp_id : str
+        Temporary identifier for the uploaded TSV file. Required.
+
+Returns
+--------
+dict
+    When running in legacy mode, (job_queue_mode = False), returns a JSON object containing the newly created entities and a 201.
+    When job queue mode is enabled, returns a JSON containing a batch_id to look up the enqueued jobs and a 202.    
+"""
 @app.route('/samples/bulk', methods=['POST'])
 def create_samples_from_bulk():
     request_data = request.get_json()
@@ -3161,6 +3189,22 @@ def create_samples_from_bulk():
             response = {"status": response_status, "data": entity_response}
             return Response(json.dumps(response, sort_keys=True), status_code, mimetype='application/json')
 
+"""
+Retrieve the results of a batch entity creation request.
+
+Input
+--------
+GET request path parameter:
+    batch_id : str
+        Identifier of the batch to retrieve the entity creation report for. Required.
+
+Returns
+--------
+dict
+    JSON object containing the results of the batch entity creation request, including
+    successfully created entities with their UUID, HuBMAP ID, and provider lab ID, as well
+    as any error messages for entities that failed to be created.
+"""
 @app.route('/batches/<batch_id>', methods=['GET'])
 def get_batch_status(batch_id):
     batch_id = batch_id.strip().lower()
@@ -3244,6 +3288,21 @@ def get_batch_status(batch_id):
 
     return jsonify(response_body), http_status
 
+"""
+Retry failed entity creation requests from a previous batch.
+
+Input
+--------
+POST request path parameter:
+    batch_id : str
+        Identifier of the batch containing failed entity creation requests to retry. Required.
+
+Returns
+--------
+dict
+    JSON object indicating the retry request was successfully accepted for background
+    processing, including the identifier of the newly created retry batch and a 202.
+"""
 @app.route('/bulk/retry/<batch_id>', methods=['POST'])
 def retry_bulk_registration(batch_id):
     token = auth_helper_instance.getAuthorizationTokens(request.headers)
