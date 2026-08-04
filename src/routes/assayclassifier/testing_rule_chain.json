@@ -935,7 +935,13 @@
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'Paired-Tag'",
         "value": "{'ubkg_code': 'C202350', 'assaytype': 'paired-tag', 'vitessce-hints': [], 'dir-schema': 'paired-tag-v2', 'description': 'Paired-Tag', 'contains-pii': true, 'primary': true, 'dataset-type': 'Paired-Tag', 'must-contain': ['RNAseq','ATACseq'], 'is-multi-assay': true}",
-        "rule_description": "DCWG 10x-multiome"
+        "rule_description": "DCWG paired-tag"
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and is_primary and dataset_type == 'MACSima'",
+        "value": "{'ubkg_code': 'C202360', 'assaytype': 'macsima', 'vitessce-hints': [], 'dir-schema': 'macsima-v2', 'description': 'MACSima', 'contains-pii': false, 'primary': true, 'dataset-type': 'MACSima'}",
+        "rule_description": "DCWG MACSima"
     },
   ],
 "pre":
