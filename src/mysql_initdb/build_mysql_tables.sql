@@ -11,8 +11,8 @@ CREATE TABLE IF NOT EXISTS batches (
     `total_jobs`       int(11)      NOT NULL,
     `success_count`    int(11)      NOT NULL DEFAULT 0,
     `failed_count`     int(11)      NOT NULL DEFAULT 0,
-    `status`           enum('pending','running','completed','failed','partial')
-                                    NOT NULL DEFAULT 'pending',
+    `status`           enum('running','success','failed','partial')
+                                    NOT NULL,
     `created_at`       timestamp    NOT NULL DEFAULT current_timestamp(),
     `completed_at`     timestamp             DEFAULT NULL,
     `group_uuid`       varchar(64)           DEFAULT NULL,

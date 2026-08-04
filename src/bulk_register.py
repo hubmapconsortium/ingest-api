@@ -41,6 +41,28 @@ def _get_connection():
             pass
     _connection = mysql.connector.connect(**DB_CONFIG)
     return _connection
+
+def _get_connection():
+    global _connection
+    if _connection is not None:
+        try:
+            _connection.ping(reconnect=True, attempts=3, delay=1)
+            return _connection
+        except mysql.connector.Error as e:
+            logger.warning(f"MySQL ping/reconnect failed, opening a new connection: {e}")
+    try:
+        _connection = mysql.connector.connect(**DB_CONFIG)
+        logger.info(
+            f"MySQL connection established successfully to "
+            f"{DB_CONFIG['host']}:{DB_CONFIG['port']}/{DB_CONFIG['database']}"
+        )
+    except mysql.connector.Error as e:
+        logger.error(
+            f"Failed to establish MySQL connection to "
+            f"{DB_CONFIG['host']}:{DB_CONFIG['port']}/{DB_CONFIG['database']}: {e}"
+        )
+        raise
+    return _connection
  
 def _create_entity(entity_id: str, token: str, record: Optional[Dict[str, Any]], entity_type: str) -> str:
     """
@@ -112,7 +134,7 @@ def _advance_batch(cursor, batch_id: str, succeeded: bool) -> None:
         UPDATE batches
            SET completed_at = NOW(),
                status = CASE
-                            WHEN failed_count = 0 THEN 'completed'
+                            WHEN failed_count = 0 THEN 'success'
                             WHEN success_count = 0 THEN 'failed'
                             ELSE 'partial'
                         END
