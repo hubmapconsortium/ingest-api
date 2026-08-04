@@ -11,7 +11,8 @@ if __name__ == '__main__':
     queue = JobQueue(
         redis_host=app.config.get('REDIS_HOST', 'localhost'),
         redis_port=int(app.config.get('REDIS_PORT', 6379)),
-        redis_db=int(app.config.get('REDIS_DB', 0))
+        redis_db=int(app.config.get('REDIS_DB', 0)),
+        redis_password=app.config['REDIS_PASSWORD'] 
     )
     queue_workers = int(app.config.get('QUEUE_WORKERS', 4))
     queue.start_workers(num_workers=queue_workers)
