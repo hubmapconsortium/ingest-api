@@ -300,11 +300,28 @@ def status():
         redis_ping_status = redis_conn.ping()
     except Exception as e:
         redis_ping_status = str(e)
-
+    try:
+        bulk_register_redis_conn = redis.Redis(
+            host=app.config['REDIS_HOST'],
+            port=int(app.config['REDIS_PORT']),
+            db=int(app.config['REDIS_DB']),
+            password=app.config['REDIS_PASSWORD'],
+        )
+        bulk_register_redis_status = bulk_register_redis_conn.ping()
+    except Exception as e:
+        bulk_register_redis_status = str(e)
+    try:
+        mysql_conn = get_mysql_connection()
+        mysql_conn.ping(reconnect=True, attempts=1, delay=0)
+        mysql_status = True
+    except Exception as e:
+        mysql_status = str(e)
     response_data = {
         # Use strip() to remove leading and trailing spaces, newlines, and tabs
         'version': (Path(__file__).absolute().parent.parent / 'VERSION').read_text().strip(),
         'redis': redis_ping_status,
+        'bulk_register_redis': bulk_register_redis_status,
+        'mysql': mysql_status,
         'build': file_build_content
     }
 
