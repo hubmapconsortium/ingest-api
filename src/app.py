@@ -2994,7 +2994,7 @@ def create_donors_from_bulk():
         entity_failed_to_create = False
         rename_donor_records(records, group_uuid)
         if job_queue_mode:
-            batch_id = enqueue_bulk_registration(records, token, "donor", temp_id, group_uuid=group_uuid)
+            batch_id = enqueue_bulk_registration(records, token, "donor", temp_id, request, group_uuid=group_uuid)
             return jsonify({'Bulk upload request submitted successfully': f'batch_id = {batch_id}'}), 202
         else:
             for item in records:
@@ -3181,7 +3181,7 @@ def create_samples_from_bulk():
         entity_failed_to_create = False
         rename_sample_records(records, group_uuid)
         if job_queue_mode:
-            batch_id = enqueue_bulk_registration(records, token, "sample", temp_id, group_uuid=group_uuid)
+            batch_id = enqueue_bulk_registration(records, token, "sample", temp_id, request, group_uuid=group_uuid)
             return jsonify({'Bulk upload request submitted successfully': f'batch_id = {batch_id}'}), 202
         else:
             for item in records:
@@ -3230,6 +3230,7 @@ def get_batch_status(batch_id):
 
     try:
         conn = get_mysql_connection()
+        conn.rollback()
         batch_cursor = conn.cursor(dictionary=True)
         try:
             batch_cursor.execute(
@@ -3390,21 +3391,84 @@ def retry_bulk_registration(batch_id):
         rename_sample_records(survivors, group_uuid)
     else:
         internal_server_error(f"Batch {batch_id} has an unrecognized entity_type '{entity_type}'; cannot retry.")
-    new_batch_id = enqueue_bulk_registration(survivors, token, entity_type, temp_id,
+    new_batch_id = enqueue_bulk_registration(survivors, token, entity_type, temp_id, request,
                                              group_uuid=group_uuid, parent_batch_id=batch_id)
     return jsonify({'Retry request submitted successfully': f'batch_id = {new_batch_id}'}), 202
 
-def enqueue_bulk_registration(records, token, entity_type, temp_id, group_uuid=None, parent_batch_id=None):
+"""
+Get batches associated with the requesting user
+
+Input
+-------
+GET request header:
+    Authorization : str
+    Bearer token used to identify the requesting user. Required.
+
+Returns
+--------
+
+list
+    List of dictionaries containing the batch identifier and entity type for each
+    batch associated with the requesting user.
+"""
+@app.route('/batches', methods=['GET'])
+def get_batch_by_user():
+    # Valid token is required by the gateway
+    user_info = auth_helper_instance.getUserInfoUsingRequest(request, True)
+    if user_info.get('sub') is None:
+        internal_server_error("User sub not found in globus user info")
+    globus_id = user_info.get('sub')
+    try:
+        conn = get_mysql_connection()
+        conn.rollback()
+        cursor = conn.cursor(dictionary=True)
+        try:
+            cursor.execute(
+                """
+                SELECT batch_id, entity_type
+                  FROM batches
+                 WHERE globus_id = %s
+                 ORDER BY created_at
+                """,
+                (globus_id,),
+            )
+            rows = cursor.fetchall()
+        finally:
+            cursor.close()
+    except mysql.connector.Error:
+        logger.exception(f"MySQL error while fetching batches for globus_id {globus_id}")
+        internal_server_error("Failed to retrieve batches. Please try again or contact support.")
+    batches = [
+        {"batch_id": row["batch_id"], "entity_type": row["entity_type"]}
+        for row in rows
+    ]
+    return jsonify({"batches": batches}), 200
+
+def enqueue_bulk_registration(records, token, entity_type, temp_id, request, group_uuid=None, parent_batch_id=None):
+    user_info = auth_helper_instance.getUserInfoUsingRequest(request, True)
+    if user_info.get('sub') is None:
+        internal_server_error("User sub not found in globus user info")
+    globus_id = user_info.get('sub')
+    name = user_info.get('name')
+    email = user_info.get('email')
     batch_id = str(uuid1()).replace('-', '')
     conn = get_mysql_connection()
     cursor = conn.cursor()
     try:
         cursor.execute(
             """
-            INSERT INTO batches (batch_id, temp_id, total_jobs, status, group_uuid, parent_batch_id, entity_type)
-            VALUES (%s, %s, %s, 'running', %s, %s, %s)
+            INSERT INTO users (globus_id, name, email)
+            VALUES (%s, %s, %s)
+            ON DUPLICATE KEY UPDATE name = VALUES(name), email = VALUES(email)
             """,
-            (batch_id, temp_id, len(records), group_uuid, parent_batch_id, entity_type),
+            (globus_id, name, email),
+        )
+        cursor.execute(
+            """
+            INSERT INTO batches (batch_id, temp_id, total_jobs, status, group_uuid, parent_batch_id, entity_type, globus_id)
+            VALUES (%s, %s, %s, 'running', %s, %s, %s, %s)
+            """,
+            (batch_id, temp_id, len(records), group_uuid, parent_batch_id, entity_type, globus_id),
         )
         conn.commit()
     except Exception:
