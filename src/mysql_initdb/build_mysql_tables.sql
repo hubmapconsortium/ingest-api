@@ -4,6 +4,13 @@ CREATE DATABASE IF NOT EXISTS bulk_register_db
     DEFAULT COLLATE utf8mb4_0900_ai_ci;
  
 USE bulk_register_db;
+CREATE TABLE IF NOT EXISTS users (
+    `globus_id`        varchar(64)  NOT NULL,
+    `name`             varchar(255)          DEFAULT NULL,
+    `email`            varchar(255)          DEFAULT NULL,
+    `created_at`       timestamp    NOT NULL DEFAULT current_timestamp(),
+    PRIMARY KEY (`globus_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
  
 CREATE TABLE IF NOT EXISTS batches (
     `batch_id`         varchar(64)  NOT NULL,
@@ -18,7 +25,9 @@ CREATE TABLE IF NOT EXISTS batches (
     `group_uuid`       varchar(64)           DEFAULT NULL,
     `parent_batch_id`  varchar(32)           DEFAULT NULL,
     `entity_type`      varchar(16)           DEFAULT NULL,
-    PRIMARY KEY (`batch_id`)
+    `globus_id`        varchar(64)           DEFAULT NULL,
+    PRIMARY KEY (`batch_id`),
+    CONSTRAINT `fk_batches_user` FOREIGN KEY (`globus_id`) REFERENCES `users` (`globus_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
  
 CREATE TABLE IF NOT EXISTS jobs (
