@@ -29,18 +29,7 @@ DB_CONFIG = {
  
  
 _connection = None
- 
- 
-def _get_connection():
-    global _connection
-    if _connection is not None:
-        try:
-            _connection.ping(reconnect=True, attempts=3, delay=1)
-            return _connection
-        except mysql.connector.Error:
-            pass
-    _connection = mysql.connector.connect(**DB_CONFIG)
-    return _connection
+
 
 def _get_connection():
     global _connection
@@ -161,9 +150,9 @@ def register_entity_queued(
         raise ValueError(
             f"register_entity_queued called without batch_id for entity_id={entity_id}"
         )
- 
+
     internal_id = entity_id
- 
+
     entity_uuid = None
     hubmap_id = None
     error_detail = None
@@ -177,19 +166,42 @@ def register_entity_queued(
             "Entity creation failed for batch_id=%s internal_id=%s: %s",
             batch_id, internal_id, error_detail,
         )
- 
+
     conn = _get_connection()
-    cursor = conn.cursor()
-    try:
-        if succeeded:
-            _record_success(cursor, batch_id, internal_id, entity_uuid, hubmap_id)
-        else:
-            _record_failure(cursor, batch_id, internal_id, error_detail)
- 
-        _advance_batch(cursor, batch_id, succeeded)
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        cursor.close()
+    max_attempts = 5
+    for attempt in range(1, max_attempts + 1):
+        cursor = conn.cursor()
+        try:
+            if succeeded:
+                _record_success(cursor, batch_id, internal_id, entity_uuid, hubmap_id)
+            else:
+                _record_failure(cursor, batch_id, internal_id, error_detail)
+
+            _advance_batch(cursor, batch_id, succeeded)
+            conn.commit()
+            break
+        except mysql.connector.Error as e:
+            conn.rollback()
+            if e.errno in (1213, 1205) and attempt < max_attempts:
+                logger.warning(
+                    "Deadlock/lock-timeout on DB write for batch_id=%s internal_id=%s "
+                    "(attempt %d/%d), retrying: %s",
+                    batch_id, internal_id, attempt, max_attempts, e,
+                )
+                cursor.close()
+                time.sleep(0.1 * attempt)
+                continue
+            logger.exception(
+                "DB write failed for batch_id=%s internal_id=%s operation=%s",
+                batch_id, internal_id, "record+advance",
+            )
+            raise
+        except Exception:
+            conn.rollback()
+            logger.exception(
+                "Unexpected DB write failure for batch_id=%s internal_id=%s",
+                batch_id, internal_id,
+            )
+            raise
+        finally:
+            cursor.close()
