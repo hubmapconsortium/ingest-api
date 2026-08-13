@@ -189,17 +189,8 @@ if app.config['JOB_QUEUE_MODE'] == True:
 ## MySQL connection for bulk registration batch tracking
 ####################################################################################################
 
-_mysql_connection = None
-
 def get_mysql_connection():
-    global _mysql_connection
-    if _mysql_connection is not None:
-        try:
-            _mysql_connection.ping(reconnect=True, attempts=3, delay=1)
-            return _mysql_connection
-        except mysql.connector.Error:
-            pass
-    _mysql_connection = mysql.connector.connect(
+    return mysql.connector.connect(
         host=app.config['MYSQL_HOST'],
         port=int(app.config['MYSQL_PORT']),
         user=app.config['MYSQL_USER'],
@@ -208,7 +199,6 @@ def get_mysql_connection():
         charset='utf8mb4',
         autocommit=False,
     )
-    return _mysql_connection
 
 ####################################################################################################
 ## Neo4j connection initialization
@@ -312,8 +302,9 @@ def status():
         bulk_register_redis_status = str(e)
     try:
         mysql_conn = get_mysql_connection()
-        mysql_conn.ping(reconnect=True, attempts=1, delay=0)
+        mysql_conn.ping(reconnect=False, attempts=1, delay=0)
         mysql_status = True
+        mysql_conn.close()
     except Exception as e:
         mysql_status = str(e)
     response_data = {
@@ -3228,9 +3219,9 @@ def get_batch_status(batch_id):
     if len(batch_id) != 32 or not all(c in '0123456789abcdef' for c in batch_id):
         bad_request_error("Invalid batch_id. Expected a 32-character hexadecimal identifier.")
 
+    conn = None
     try:
         conn = get_mysql_connection()
-        conn.rollback()
         batch_cursor = conn.cursor(dictionary=True)
         try:
             batch_cursor.execute(
@@ -3266,6 +3257,9 @@ def get_batch_status(batch_id):
     except (mysql.connector.Error) as e:
         logger.exception(f"MySQL error while fetching batch {batch_id}")
         internal_server_error("Failed to retrieve batch status. Please try again or contact support.")
+    finally:
+        if conn is not None:
+            conn.close()
 
     response_body = {
         "batch_id": batch_row["batch_id"],
@@ -3287,7 +3281,7 @@ def get_batch_status(batch_id):
             for job in job_rows
         ],
     }
-    
+
     batch_status = batch_row["status"]
     if batch_status == "partial":
         http_status = 207
@@ -3415,12 +3409,14 @@ list
 def get_batch_by_user():
     # Valid token is required by the gateway
     user_info = auth_helper_instance.getUserInfoUsingRequest(request, True)
+    if isinstance(user_info, Response):
+        unauthorized_error(f"Missing or Invalid token provided")
     if user_info.get('sub') is None:
         internal_server_error("User sub not found in globus user info")
     globus_id = user_info.get('sub')
+    conn = None
     try:
         conn = get_mysql_connection()
-        conn.rollback()
         cursor = conn.cursor(dictionary=True)
         try:
             cursor.execute(
@@ -3438,6 +3434,9 @@ def get_batch_by_user():
     except mysql.connector.Error:
         logger.exception(f"MySQL error while fetching batches for globus_id {globus_id}")
         internal_server_error("Failed to retrieve batches. Please try again or contact support.")
+    finally:
+        if conn is not None:
+            conn.close()
     batches = [
         {"batch_id": row["batch_id"], "entity_type": row["entity_type"]}
         for row in rows
@@ -3446,6 +3445,8 @@ def get_batch_by_user():
 
 def enqueue_bulk_registration(records, token, entity_type, temp_id, request, group_uuid=None, parent_batch_id=None):
     user_info = auth_helper_instance.getUserInfoUsingRequest(request, True)
+    if isinstance(user_info, Response):
+        unauthorized_error(f"Missing or Invalid token provided")
     if user_info.get('sub') is None:
         internal_server_error("User sub not found in globus user info")
     globus_id = user_info.get('sub')
@@ -3477,6 +3478,7 @@ def enqueue_bulk_registration(records, token, entity_type, temp_id, request, gro
         internal_server_error("Failed to create batch record")
     finally:
         cursor.close()
+        conn.close()
     jobs = []
     for record in records:
         entity_id = None
