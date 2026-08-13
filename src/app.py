@@ -3406,6 +3406,42 @@ list
     batch associated with the requesting user.
 """
 @app.route('/batches', methods=['GET'])
+def get_batch_by_user():
+    # Valid token is required by the gateway
+    user_info = auth_helper_instance.getUserInfoUsingRequest(request, True)
+    if isinstance(user_info, Response):
+        unauthorized_error(f"Missing or Invalid token provided")
+    if user_info.get('sub') is None:
+        internal_server_error("User sub not found in globus user info")
+    globus_id = user_info.get('sub')
+    conn = None
+    try:
+        conn = get_mysql_connection()
+        cursor = conn.cursor(dictionary=True)
+        try:
+            cursor.execute(
+                """
+                SELECT batch_id, entity_type
+                  FROM batches
+                 WHERE globus_id = %s
+                 ORDER BY created_at
+                """,
+                (globus_id,),
+            )
+            rows = cursor.fetchall()
+        finally:
+            cursor.close()
+    except mysql.connector.Error:
+        logger.exception(f"MySQL error while fetching batches for globus_id {globus_id}")
+        internal_server_error("Failed to retrieve batches. Please try again or contact support.")
+    finally:
+        if conn is not None:
+            conn.close()
+    batches = [
+        {"batch_id": row["batch_id"], "entity_type": row["entity_type"]}
+        for row in rows
+    ]
+    return jsonify({"batches": batches}), 200
 
 def enqueue_bulk_registration(records, token, entity_type, temp_id, request, group_uuid=None, parent_batch_id=None):
     user_info = auth_helper_instance.getUserInfoUsingRequest(request, True)
