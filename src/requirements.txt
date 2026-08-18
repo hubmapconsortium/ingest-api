@@ -22,7 +22,7 @@ requests==2.33.0
 hubmap-commons==2.1.23
 
 # For /datasets/data-status and /uploads/data-status cache
-redis==4.3.4
+redis>=4.3.4
 
 # For assay type rules
 rule_engine==5.0.0
@@ -33,3 +33,7 @@ nose2==0.11.0
 APScheduler==3.10.4
 
 pandas==2.3.1
+
+atlas-consortia-jobq>=0.1.8
+
+mysql-connector-python>=9.7.0
