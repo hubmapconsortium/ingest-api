@@ -478,7 +478,7 @@
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'GeoMx (NGS)'",
-        "value": "{'ubkg_code': 'C200760', 'assaytype': 'geomx_ngs?', 'vitessce-hints': [], 'dir-schema': 'geomx-ngs-v2', 'description': 'GeoMx (NGS)', 'contains-pii': true, 'primary': true, 'dataset-type': 'GeoMx (NGS)', 'must-contain': ['RNAseq (with probes)'], 'is-multi-assay': true}",
+        "value": "{'ubkg_code': 'C200760', 'assaytype': 'geomx_ngs?', 'vitessce-hints': [], 'dir-schema': 'geomx-ngs-v2', 'description': 'GeoMx (NGS)', 'contains-pii': false, 'primary': true, 'dataset-type': 'GeoMx (NGS)', 'must-contain': ['RNAseq (with probes)'], 'is-multi-assay': true}",
         "rule_description": "DCWG geomx_ngs?"
     },
     {
