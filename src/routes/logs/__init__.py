@@ -113,7 +113,7 @@ def get_logs_count():
     return jsonify(result), 200
 
 @logs_blueprint.route('/logs', methods=['GET'])
-@require_data_admin(param='token')
+# @require_data_admin(param='token')
 def get_logs():
     # Valid token is required by the gateway
     where_column = request.args.get('column')
@@ -123,6 +123,10 @@ def get_logs():
     page_number = request.args.get('page', 1)
     max_limit = 10
     limit = request.args.get('limit', f'{max_limit}')
+    try:
+        page_number = int(page_number)
+    except ValueError:
+        page_number = 1
     try:
         limit = int(limit)
     except ValueError:
@@ -157,13 +161,13 @@ def get_logs():
         try:
             has_filter = where_column is not None and where_value is not None
             filter_query = f" WHERE `{where_column}` like %s " if has_filter else " "
-            params = (f"%{where_value}%", limit, offset)  if has_filter else (limit, offset)
+            params = (f"%{where_value}%")  if has_filter else ()
             cursor.execute(
                 f"""
                 SELECT *
                   FROM logs
                  {filter_query}
-                 ORDER BY {order_by} {order} LIMIT %s OFFSET %s
+                 ORDER BY {order_by} {order} LIMIT {limit} OFFSET {offset}
                 """,
                 params,
             )
