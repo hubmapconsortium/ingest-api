@@ -83,6 +83,11 @@ def get_logs_count():
     if where_column is not None:
         if where_column not in valid_column_names:
             abort_bad_req(f'Not a valid column name "{where_column}".')
+        try:
+            if where_column == 'id':
+                where_value = int(where_value)
+        except ValueError:
+            abort_bad_req(f'Not a valid column id {where_value}.')
 
     conn = None
     rows = []
