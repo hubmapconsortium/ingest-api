@@ -78,6 +78,12 @@ def get_logs_count():
     where_column = request.args.get('column')
     where_value = request.args.get('value')
 
+    valid_column_names = get_valid_column_names()
+
+    if where_column is not None:
+        if where_column not in valid_column_names:
+            abort_bad_req(f'Not a valid column name "{where_column}".')
+
     conn = None
     rows = []
     try:
@@ -113,7 +119,7 @@ def get_logs_count():
     return jsonify(result), 200
 
 @logs_blueprint.route('/logs', methods=['GET'])
-# @require_data_admin(param='token')
+@require_data_admin(param='token')
 def get_logs():
     # Valid token is required by the gateway
     where_column = request.args.get('column')
@@ -143,7 +149,7 @@ def get_logs():
         if lowercase(order) not in ['desc', 'asc']:
             abort_bad_req(f'Not a valid order direction "{order}".')
 
-    valid_column_names = ['app_name', 'message', 'log_level', 'id', 'page_path', 'browser_info', 'timestamp']
+    valid_column_names = get_valid_column_names()
 
     if order_by is not None:
         if order_by not in valid_column_names:
@@ -182,6 +188,9 @@ def get_logs():
             conn.close()
 
     return jsonify(rows), 200
+
+def get_valid_column_names():
+    return ['app_name', 'message', 'log_level', 'id', 'page_path', 'browser_info', 'timestamp']
 
 def get_mysql_connection():
     return mysql.connector.connect(
