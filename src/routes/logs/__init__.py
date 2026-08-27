@@ -26,6 +26,8 @@ def create_log(log: dict):
     error_details = log.get('error_details')
     browser_info = log.get('browser_info')
 
+    if len(message) <= 0:
+        abort_bad_req('Must include a message to be logged')
 
     if error_details is not None and isinstance(error_details, dict):  # can be dict so cast to string
         error_details = json.dumps(error_details)
@@ -107,8 +109,8 @@ def get_logs_count():
     finally:
         if conn is not None:
             conn.close()
-
-    return jsonify(rows), 200
+    result = rows[0] if len(rows) > 0 else {}
+    return jsonify(result), 200
 
 @logs_blueprint.route('/logs', methods=['GET'])
 @require_data_admin(param='token')
@@ -125,8 +127,19 @@ def get_logs():
         limit = int(limit)
     except ValueError:
         limit = max_limit
+    try:
+        if where_column == 'id':
+            where_value = int(where_value)
+    except ValueError:
+        abort_bad_req(f'Not a valid column id {where_value}.')
 
     offset = (page_number - 1) * limit
+
+    valid_column_names = ['app_name', 'message', 'log_level', 'id', 'page_path', 'browser_info']
+
+    if where_column is not None:
+        if where_column not in valid_column_names:
+            abort_bad_req(f'Not a valid column name {where_column}.')
 
     conn = None
     rows = []
@@ -135,8 +148,8 @@ def get_logs():
         cursor = conn.cursor(dictionary=True)
         try:
             has_filter = where_column is not None and where_value is not None
-            filter_query = " WHERE %s = %s " if has_filter else " "
-            params = (where_column, where_value, order_by, order, limit, offset)  if has_filter else (order_by, order, limit, offset)
+            filter_query = f" WHERE `{where_column}` like %s " if has_filter else " "
+            params = (f"%{where_value}%", order_by, order, limit, offset)  if has_filter else (order_by, order, limit, offset)
             cursor.execute(
                 f"""
                 SELECT *
