@@ -70,6 +70,7 @@ def create_log(log: dict):
 
 
 @logs_blueprint.route('/logs/meta', methods=['GET'])
+@require_valid_token(param='token')
 def get_logs_count():
     # Valid token is required by the gateway
     where_column = request.args.get('column')
