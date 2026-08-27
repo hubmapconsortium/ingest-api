@@ -86,12 +86,12 @@ def get_logs_count():
         try:
             if where_column is not None and where_value is not None:
                 cursor.execute(
-                    """
+                    f"""
                     SELECT count(*) as total_logs
                       FROM logs
-                     WHERE $s = %s
+                     WHERE `{where_column}` like %s
                     """,
-                    (where_column, where_value),
+                    (f"%{where_value}%"),
                 )
             else:
                 cursor.execute(
@@ -137,17 +137,17 @@ def get_logs():
 
     if order is not None:
         if lowercase(order) not in ['desc', 'asc']:
-            abort_bad_req(f'Not a valid order direction {order}.')
+            abort_bad_req(f'Not a valid order direction "{order}".')
 
     valid_column_names = ['app_name', 'message', 'log_level', 'id', 'page_path', 'browser_info', 'timestamp']
 
     if order_by is not None:
         if order_by not in valid_column_names:
-            abort_bad_req(f'Not a valid column name {order_by}.')
+            abort_bad_req(f'Not a valid column name "{order_by}".')
 
     if where_column is not None:
         if where_column not in valid_column_names:
-            abort_bad_req(f'Not a valid column name {where_column}.')
+            abort_bad_req(f'Not a valid column name "{where_column}".')
 
     conn = None
     rows = []
@@ -157,13 +157,13 @@ def get_logs():
         try:
             has_filter = where_column is not None and where_value is not None
             filter_query = f" WHERE `{where_column}` like %s " if has_filter else " "
-            params = (f"%{where_value}%", order_by, order, limit, offset)  if has_filter else (order_by, order, limit, offset)
+            params = (f"%{where_value}%", limit, offset)  if has_filter else (limit, offset)
             cursor.execute(
                 f"""
                 SELECT *
                   FROM logs
                  {filter_query}
-                 ORDER BY %s %s LIMIT %s OFFSET %s
+                 ORDER BY {order_by} {order} LIMIT %s OFFSET %s
                 """,
                 params,
             )
