@@ -1,7 +1,7 @@
 import logging
 import json
 from flask import Blueprint, request, current_app, jsonify
-
+from stringcase import lowercase
 
 from app_utils.error import internal_server_error
 from utils.rest import abort_bad_req
@@ -135,7 +135,15 @@ def get_logs():
 
     offset = (page_number - 1) * limit
 
-    valid_column_names = ['app_name', 'message', 'log_level', 'id', 'page_path', 'browser_info']
+    if order is not None:
+        if lowercase(order) not in ['desc', 'asc']:
+            abort_bad_req(f'Not a valid order direction {order}.')
+
+    valid_column_names = ['app_name', 'message', 'log_level', 'id', 'page_path', 'browser_info', 'timestamp']
+
+    if order_by is not None:
+        if order_by not in valid_column_names:
+            abort_bad_req(f'Not a valid column name {order_by}.')
 
     if where_column is not None:
         if where_column not in valid_column_names:
