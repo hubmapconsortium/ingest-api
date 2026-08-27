@@ -4,8 +4,8 @@ from flask import Blueprint, request, current_app, jsonify
 
 
 from app_utils.error import internal_server_error
-from utils.rest import abort_bad_req, abort_not_found, abort_internal_err
-from lib.decorators import require_data_admin, require_json
+from utils.rest import abort_bad_req
+from lib.decorators import require_data_admin, require_json, require_valid_token
 import mysql.connector
 
 logs_blueprint = Blueprint('logs', __name__)
@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 @logs_blueprint.route('/logs', methods=['POST'])
+@require_valid_token(param='token')
 @require_json(param='log')
 def create_log(log: dict):
     if not isinstance(log, dict):
@@ -68,7 +69,7 @@ def create_log(log: dict):
     return jsonify({'message': 'Logged successfully.'}), 200
 
 
-@logs_blueprint.route('/logs/count', methods=['GET'])
+@logs_blueprint.route('/logs/meta', methods=['GET'])
 def get_logs_count():
     # Valid token is required by the gateway
     where_column = request.args.get('column')
