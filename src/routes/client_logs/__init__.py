@@ -131,22 +131,26 @@ def get_client_logs():
     where_value = request.args.get('value')
     order_by = request.args.get('order_by', 'id')
     order = request.args.get('order', 'desc')
-    page_number = request.args.get('page', 1)
-    max_limit = 10
-    limit = request.args.get('limit', f'{max_limit}')
+    min_page_number = 1
+    page_number = request.args.get('page', min_page_number)
+    default_limit = 10
+    limit = request.args.get('limit', f'{default_limit}')
     try:
         page_number = int(page_number)
     except ValueError:
-        page_number = 1
+        page_number = min_page_number
     try:
         limit = int(limit)
     except ValueError:
-        limit = max_limit
+        limit = default_limit
     try:
         if where_column == 'id':
             where_value = int(where_value)
     except ValueError:
         abort_bad_req(f'Not a valid column id {where_value}.')
+
+    if page_number < min_page_number:
+        page_number = min_page_number
 
     offset = (page_number - 1) * limit
 
@@ -172,7 +176,7 @@ def get_client_logs():
         try:
             has_filter = where_column is not None and where_value is not None
             filter_query = f" WHERE `{where_column}` like %s " if has_filter else " "
-            params = (f"%{where_value}%")  if has_filter else ()
+            params = f"%{where_value}%" if has_filter else ()
             cursor.execute(
                 f"""
                 SELECT *
