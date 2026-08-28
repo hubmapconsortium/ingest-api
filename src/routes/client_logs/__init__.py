@@ -8,14 +8,14 @@ from utils.rest import abort_bad_req
 from lib.decorators import require_data_admin, require_json, require_valid_token
 import mysql.connector
 
-logs_blueprint = Blueprint('logs', __name__)
+client_logs_blueprint = Blueprint('client_logs', __name__)
 logger = logging.getLogger(__name__)
 
 
-@logs_blueprint.route('/logs', methods=['POST'])
+@client_logs_blueprint.route('/client-logs', methods=['POST'])
 @require_valid_token(param='token')
 @require_json(param='log')
-def create_log(log: dict):
+def create_client_log(log: dict):
     if not isinstance(log, dict):
         abort_bad_req('Must supply the log to be ingested.')
 
@@ -71,9 +71,9 @@ def create_log(log: dict):
     return jsonify({'message': 'Logged successfully.'}), 200
 
 
-@logs_blueprint.route('/logs/meta', methods=['GET'])
+@client_logs_blueprint.route('/client-logs/meta', methods=['GET'])
 @require_valid_token(param='token')
-def get_logs_count():
+def get_client_logs_meta():
     # Valid token is required by the gateway
     where_column = request.args.get('column')
     where_value = request.args.get('value')
@@ -123,9 +123,9 @@ def get_logs_count():
     result = rows[0] if len(rows) > 0 else {}
     return jsonify(result), 200
 
-@logs_blueprint.route('/logs', methods=['GET'])
+@client_logs_blueprint.route('/client-logs', methods=['GET'])
 @require_data_admin(param='token')
-def get_logs():
+def get_client_logs():
     # Valid token is required by the gateway
     where_column = request.args.get('column')
     where_value = request.args.get('value')
@@ -203,7 +203,7 @@ def get_mysql_connection():
         port=int(current_app.config['MYSQL_PORT']),
         user=current_app.config['MYSQL_USER'],
         password=current_app.config['MYSQL_PASSWORD'],
-        database=current_app.config['MYSQL_DATABASE'],
+        database=current_app.config['MYSQL_CLIENT_LOGS_DATABASE'],
         charset='utf8mb4',
         autocommit=False,
     )
