@@ -154,14 +154,14 @@ def get_client_logs():
 
     offset = (page_number - 1) * limit
 
-    if order is not None:
-        if lowercase(order) not in ['desc', 'asc']:
+    valid_order_directions = ['desc', 'asc']
+
+    if order is not None and lowercase(order) not in valid_order_directions:
             abort_bad_req(f'Not a valid order direction "{order}".')
 
     valid_column_names = get_valid_column_names()
 
-    if order_by is not None:
-        if order_by not in valid_column_names:
+    if order_by is not None and order_by not in valid_column_names:
             abort_bad_req(f'Not a valid column name "{order_by}".')
 
     if where_column is not None:
