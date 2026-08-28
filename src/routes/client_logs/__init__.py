@@ -176,13 +176,13 @@ def get_client_logs():
         try:
             has_filter = where_column is not None and where_value is not None
             filter_query = f" WHERE `{where_column}` like %s " if has_filter else " "
-            params = f"%{where_value}%" if has_filter else ()
+            params = (f"%{where_value}%", limit, offset) if has_filter else (limit, offset)
             cursor.execute(
                 f"""
                 SELECT *
                   FROM logs
                  {filter_query}
-                 ORDER BY {order_by} {order} LIMIT {limit} OFFSET {offset}
+                 ORDER BY {order_by} {order} LIMIT %s OFFSET %s
                 """,
                 params,
             )
