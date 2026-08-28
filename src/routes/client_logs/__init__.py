@@ -182,7 +182,7 @@ def get_client_logs():
                 SELECT *
                   FROM logs
                  {filter_query}
-                 ORDER BY {order_by} {order} LIMIT %s OFFSET %s
+                 ORDER BY `{order_by}` {order} LIMIT %s OFFSET %s
                 """,
                 params,
             )
