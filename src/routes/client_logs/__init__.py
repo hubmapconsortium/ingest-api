@@ -134,7 +134,7 @@ def get_client_logs():
     min_page_number = 1
     page_number = request.args.get('page', min_page_number)
     default_limit = 10
-    limit = request.args.get('limit', f'{default_limit}')
+    limit = request.args.get('limit', default_limit)
     try:
         page_number = int(page_number)
     except ValueError:
