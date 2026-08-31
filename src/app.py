@@ -49,6 +49,7 @@ from hubmap_commons import file_helper as commons_file_helper
 # Should be deprecated/refactored but still in use
 from hubmap_commons.hubmap_const import HubmapConst
 
+from routes.client_logs import client_logs_blueprint
 # Local modules
 from sample_helper import SampleHelper
 from ingest_file_helper import IngestFileHelper
@@ -70,6 +71,7 @@ from routes.assayclassifier import bp as assayclassifier_blueprint
 from routes.validation import validation_blueprint
 from routes.datasets_bulk_submit import datasets_bulk_submit_blueprint, DatasetHelper as ds_helper
 from routes.privs import privs_blueprint
+from routes.client_logs import client_logs_blueprint
 from ingest_validation_tools import schema_loader
 from ingest_validation_tools.local_validation import table_validator
 from ingest_validation_tools import validation_utils as iv_utils
@@ -95,6 +97,7 @@ app.register_blueprint(assayclassifier_blueprint)
 app.register_blueprint(validation_blueprint)
 app.register_blueprint(datasets_bulk_submit_blueprint)
 app.register_blueprint(privs_blueprint)
+app.register_blueprint(client_logs_blueprint)
 
 # Suppress InsecureRequestWarning warning when requesting status on https with ssl cert verify disabled
 requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
@@ -195,7 +198,7 @@ def get_mysql_connection():
         port=int(app.config['MYSQL_PORT']),
         user=app.config['MYSQL_USER'],
         password=app.config['MYSQL_PASSWORD'],
-        database=app.config['MYSQL_DATABASE'],
+        database=app.config['MYSQL_BULK_REGISTER_DATABASE'],
         charset='utf8mb4',
         autocommit=False,
     )
