@@ -1,3 +1,9 @@
+CREATE DATABASE IF NOT EXISTS client_logs
+    DEFAULT CHARACTER SET utf8mb4
+    DEFAULT COLLATE utf8mb4_0900_ai_ci;
+ 
+USE client_logs;
+
 CREATE TABLE IF NOT EXISTS logs (
     `id`                bigint(20)                          NOT NULL AUTO_INCREMENT,
     `app_name`          varchar(255)                        NOT NULL,
