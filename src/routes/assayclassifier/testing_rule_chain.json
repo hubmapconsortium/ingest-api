@@ -478,7 +478,7 @@
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'GeoMx (NGS)'",
-        "value": "{'ubkg_code': 'C200760', 'assaytype': 'geomx_ngs?', 'vitessce-hints': [], 'dir-schema': 'geomx-ngs-v2', 'description': 'GeoMx (NGS)', 'contains-pii': true, 'primary': true, 'dataset-type': 'GeoMx (NGS)', 'must-contain': ['RNAseq (with probes)'], 'is-multi-assay': true}",
+        "value": "{'ubkg_code': 'C200760', 'assaytype': 'geomx_ngs?', 'vitessce-hints': [], 'dir-schema': 'geomx-ngs-v2', 'description': 'GeoMx (NGS)', 'contains-pii': false, 'primary': true, 'dataset-type': 'GeoMx (NGS)', 'must-contain': ['RNAseq (with probes)'], 'is-multi-assay': true}",
         "rule_description": "DCWG geomx_ngs?"
     },
     {
@@ -742,7 +742,7 @@
     {
         "type": "match",
         "match": "is_dcwg and is_primary and dataset_type == 'RNAseq (with probes)' and oligo_probe_panel in ['NanoString Technologies; GeoMx Human Whole Transcriptome Atlas, 4 slides; PN GMX-RNA-NGS-HuWTA-4', 'NanoString Technologies; GeoMx Mouse Whole Transcriptome Atlas, 4 slides; PN GMX-RNA-NGS-MsWTA-4', 'NanoString Technologies; GeoMx Human IO Proteome Atlas, 4 slides; PN 121300160'] and assay_input_entity == 'area of interest'",
-        "value": "{'ubkg_code': 'C202030', 'assaytype': 'geomx-rnaseq-with-probes', 'vitessce-hints': [], 'dir-schema': 'rnaseq-with-probes-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'RNAseq (with probes)', 'description': 'GeoMx RNAseq (with probes)'}",
+        "value": "{'ubkg_code': 'C202030', 'assaytype': 'geomx-rnaseq-with-probes', 'vitessce-hints': [], 'dir-schema': 'rnaseq-with-probes-v2', 'contains-pii': false, 'primary': true, 'dataset-type': 'RNAseq (with probes)', 'description': 'GeoMx RNAseq (with probes)'}",
         "rule_description": "DCWG RNAseq-geomx-with-probes"
     },
     {
@@ -954,6 +954,12 @@
         "match": "is_dcwg and is_primary and dataset_type == 'RNAseq'  and assay_input_entity == 'single nucleus' and barcode_read =~~ 'Read 2' and barcode_size == '8,8,8' and barcode_offset == '10,48,78' and umi_read =~~ 'Read 2' and umi_size == 10 and umi_offset == 0",
         "value": "{'ubkg_code': 'C202370', 'assaytype': 'snRNAseq-Parse-Evercode', 'vitessce-hints': [], 'dir-schema': 'rnaseq-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'RNAseq', 'description': 'snRNAseq (Parse Evercode)'}",
         "rule_description": "DCWG RNAseq (Parse Evercode)"
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and is_primary and dataset_type == 'snm3C-seq'",
+        "value": "{'ubkg_code': 'C202380', 'assaytype': 'snm3C-seq', 'vitessce-hints': [], 'dir-schema': 'snm3C-seq-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'snm3C-seq', 'description': 'snm3C-seq'}",
+        "rule_description": "DCWG snm3C-seq"
     }
   ],
 "pre":
