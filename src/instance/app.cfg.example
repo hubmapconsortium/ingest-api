@@ -178,7 +178,11 @@ REDIS_DB = 0
 REDIS_PASSWORD = None
 
 MYSQL_HOST = ''
-MYSQL_PORT = ''
+MYSQL_PORT = 3306
 MYSQL_USER = ''
 MYSQL_PASSWORD = ''
-MYSQL_DATABASE = ''
+
+# Share the same MySQL server and same user account
+# Just two databases to separate the concerns
+MYSQL_BULK_REGISTER_DATABASE = ''
+MYSQL_CLIENT_LOGS_DATABASE = ''

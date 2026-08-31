@@ -579,6 +579,103 @@ paths:
                     type: boolean
         "401":
           description: User's token is not valid or not specified
+  /logs:
+    post:
+      summary: "Creates a log"
+      requestBody:
+        description: Log to be created
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Log'
+      responses:
+        '200':
+          description: The log was successfully created
+        '400':
+          description: Missing input
+    get:
+      summary: Get logs
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          description: How many logs to return
+          schema:
+            type: integer
+            default: 10
+        - name: page
+          in: query
+          required: false
+          description: Current page number to calculate offset
+          schema:
+            type: integer
+            default: 1
+        - name: order
+          in: query
+          required: false
+          description: Sort direction desc|asc
+          schema:
+            type: string
+            default: desc
+        - name: order_by
+          in: query
+          required: false
+          description: Column name to order by
+          schema:
+            type: string
+            default: id
+        - name: column
+          in: query
+          required: false
+          description: Column name to to filter on
+          schema:
+            type: string
+        - name: value
+          in: query
+          required: false
+          description: Column value to to filter on
+          schema:
+            type: string
+      responses:
+        "200":
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Log'
+        "401":
+            description: User's token is not valid or not specified
+  /logs/meta:
+    get:
+      summary: Get log meta information
+      parameters:
+        - name: column
+          in: query
+          required: false
+          description: Column name to to filter on
+          schema:
+            type: string
+        - name: value
+          in: query
+          required: false
+          description: Column value to to filter on
+          schema:
+            type: string
+      responses:
+        "200":
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_logs:
+                    type: number
+      "401":
+        description: User's token is not valid or not specified
 
 servers:
   - url: "https://uuid.hubmapconsortium.org/dataingest"
@@ -710,3 +807,27 @@ components:
           type: string
         tsv_row:
           type: string
+    Log:
+      type: object
+      required:
+        - message
+      properties:
+        app_name:
+          type: string
+        log_level:
+          type: string
+        page_path:
+          type: string
+        message:
+          type: string
+        error_details:
+          type: string
+        browser_info:
+          type: object
+          properties:
+            name:
+              type: string
+            version:
+              type: string
+            meta:
+              type: string
