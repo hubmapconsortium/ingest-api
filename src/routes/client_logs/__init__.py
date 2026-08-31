@@ -203,10 +203,10 @@ def get_valid_column_names():
 
 def get_mysql_connection():
     return mysql.connector.connect(
-        host=current_app.config['MYSQL_CLIENT_LOGS_HOST'],
-        port=int(current_app.config['MYSQL_CLIENT_LOGS_PORT']),
-        user=current_app.config['MYSQL_CLIENT_LOGS_USER'],
-        password=current_app.config['MYSQL_CLIENT_LOGS_PASSWORD'],
+        host=current_app.config['MYSQL_HOST'],
+        port=int(current_app.config['MYSQL_PORT']),
+        user=current_app.config['MYSQL_USER'],
+        password=current_app.config['MYSQL_PASSWORD'],
         database=current_app.config['MYSQL_CLIENT_LOGS_DATABASE'],
         charset='utf8mb4',
         autocommit=False,
