@@ -23,7 +23,7 @@ DB_CONFIG = {
     "port": int(app.config["MYSQL_PORT"]),
     "user": app.config["MYSQL_USER"],
     "password": app.config["MYSQL_PASSWORD"],
-    "database": app.config["MYSQL_DATABASE"],
+    "database": app.config["MYSQL_BULK_REGISTER_DATABASE"],
     "charset": "utf8mb4",
     "autocommit": False,
 }
