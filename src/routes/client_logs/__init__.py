@@ -42,12 +42,10 @@ def create_client_log(log: dict):
         abort_bad_req(f'Unsupported log level {log_level}.')
 
 
-    x_forwarded_for = request.headers.get('X-Forwarded-For')
-    if x_forwarded_for:
-        client_ip = x_forwarded_for.split(',')[0].strip()
-    else:
-        client_ip = request.remote_addr
-
+    client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+    # If there are multiple IPs in a chain, grab the first one
+    if client_ip and ',' in client_ip:
+        client_ip = client_ip.split(',')[0].strip()
 
     conn = get_mysql_connection()
     cursor = conn.cursor()

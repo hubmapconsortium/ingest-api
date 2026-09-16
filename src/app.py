@@ -75,6 +75,7 @@ from routes.client_logs import client_logs_blueprint
 from ingest_validation_tools import schema_loader
 from ingest_validation_tools.local_validation import table_validator
 from ingest_validation_tools import validation_utils as iv_utils
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 # Set logging format and level (default is warning)
 # All the API logging is forwarded to the uWSGI server and gets written into the log file `uwsgi-ingest-api.log`
@@ -90,6 +91,7 @@ app = Flask(__name__,
             instance_path=os.path.join(os.path.abspath(os.path.dirname(__file__)), 'instance'),
             instance_relative_config=True)
 app.config.from_pyfile('app.cfg')
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
 app.register_blueprint(auth_blueprint)
 app.register_blueprint(file_blueprint)
