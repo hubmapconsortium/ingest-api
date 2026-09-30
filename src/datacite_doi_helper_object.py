@@ -203,9 +203,14 @@ class DataCiteDoiHelper:
     """
     def create_draft_doi(self, entity: dict, ignore_publication_status = False) -> object:
         missing_fields = []
-        if not self.__contains_string_field('uuid', entity) or not self.__contains_string_field('hubmap_id', entity):
-            raise Exception(f"Cannot create a draft DOI for an unknown entity.  Entity uuid and/or hubmap_id are missing.")
-        required_string_fields = ['title', 'description', 'entity_type']
+        if not self.__contains_string_field('uuid', entity) or 
+           not self.__contains_string_field('hubmap_id', entity) or 
+           not self.__contains_string_field('entity_type', entity):
+            raise Exception(f"Cannot create a draft DOI for an unknown entity without one or more of the required fields: uuid, hubmap_id, entity_type")
+        required_string_fields = ['title']
+        # The description field is required for Collection DOI, not used for Dataset DOI
+        if entity['entity_type'] in ['Collection', 'Epicollection']:
+            required_string_fields.append('description')
         required_list_fields = ['contacts', 'contributors']
         for field in required_string_fields:
             if not self.__contains_string_field(field, entity):
@@ -221,7 +226,7 @@ class DataCiteDoiHelper:
             else:
                 field_desc = "fields"
                 field_verb = "are"
-            raise HTTPException(f"Error cannot create a DOI for {entity['entity_type']} {entity['uuid']} because the {field_desc} \"{''.join(missing_fields)}\" {field_verb} blank.", 400)
+            raise HTTPException(f"Error: cannot create a DOI for {entity['entity_type']} {entity['uuid']} because the {field_desc} \"{''.join(missing_fields)}\" {field_verb} blank.", 400)
         
         if not entity['entity_type'] in ['Dataset', 'Collection', 'Epicollection']:
             raise HTTPException(f"Error: cannot create a DOI for entity type {entity['entity_type']} {entity['uuid']} because it is not of required type Dataset, Collection or Epicollection", 400)
@@ -233,20 +238,26 @@ class DataCiteDoiHelper:
 
         # Get publication_year, default to the current year
         publication_year = int(datetime.now().year)
-        ent_type = entity['entity_type']
-        if ent_type == 'Epicollection':
-            ent_type = 'Collection'
+        # Use Dataset without description as default
+        ent_type = 'Dataset'
+        description = None
+
         if 'published_timestamp' in entity:
             # The timestamp stored with using neo4j's TIMESTAMP() function contains milliseconds
             publication_year = int(datetime.fromtimestamp(entity['published_timestamp']/1000).year)
 
+        if entity['entity_type'] in ['Collection', 'Epicollection']:
+            ent_type = 'Collection'
+            description = entity['description']
+
         try:
-            response = datacite_api.create_new_draft_doi(entity['hubmap_id'], 
-                                                entity['uuid'],
-                                                self.build_doi_contributors(entity), 
-                                                entity['title'],
-                                                publication_year,
-                                                self.build_doi_creators(entity),
+            response = datacite_api.create_new_draft_doi(hubmap_id = entity['hubmap_id'], 
+                                                uuid = entity['uuid'],
+                                                contributors = self.build_doi_contributors(entity), 
+                                                title = entity['title'],
+                                                description = description,
+                                                publication_year = publication_year,
+                                                creators = self.build_doi_creators(entity),
                                                 entity_type = ent_type)
         except requests.exceptions.RequestException as e:
             raise DataciteApiException(error_code=500, message="Failed to connect to DataCite")
