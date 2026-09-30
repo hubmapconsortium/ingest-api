@@ -203,8 +203,8 @@ class DataCiteDoiHelper:
     """
     def create_draft_doi(self, entity: dict, ignore_publication_status = False) -> object:
         missing_fields = []
-        if not self.__contains_string_field('uuid', entity) or 
-           not self.__contains_string_field('hubmap_id', entity) or 
+        if not self.__contains_string_field('uuid', entity) or \
+           not self.__contains_string_field('hubmap_id', entity) or \
            not self.__contains_string_field('entity_type', entity):
             raise Exception(f"Cannot create a draft DOI for an unknown entity without one or more of the required fields: uuid, hubmap_id, entity_type")
         required_string_fields = ['title']
