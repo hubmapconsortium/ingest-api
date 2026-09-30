@@ -42,11 +42,11 @@ class DataCiteApi:
                     uuid: str,
                     contributors: list, 
                     title: str,
+                    description: str | None,
                     publication_year: int,
                     creators: list,
                     entity_type='Dataset') -> object:
         publisher = 'HuBMAP Consortium'
-
         # Draft DOI doesn't specify the 'event' attribute
         json = {
             'data': {
@@ -94,6 +94,12 @@ class DataCiteApi:
                 }
             }
         }
+
+        # The description field is required for Collection DOI, not used for Dataset DOI
+        if description is not None:
+            json["data"]["attributes"]["descriptions"] = [
+                {"lang": "en-US", "description": description, "descriptionType": "Abstract"}
+            ]
 
         # <Orchid_ID, first, lastname, name, institution_affiliation> from Dataset.contributors is mapped here (see reference above)
         if contributors is not None:
