@@ -251,13 +251,13 @@ class DataCiteDoiHelper:
             description = entity['description']
 
         try:
-            response = datacite_api.create_new_draft_doi(entity['hubmap_id'], 
-                                                entity['uuid'],
-                                                self.build_doi_contributors(entity), 
-                                                entity['title'],
-                                                description,
-                                                publication_year,
-                                                self.build_doi_creators(entity),
+            response = datacite_api.create_new_draft_doi(hubmap_id = entity['hubmap_id'], 
+                                                uuid = entity['uuid'],
+                                                contributors = self.build_doi_contributors(entity), 
+                                                title = entity['title'],
+                                                description = description,
+                                                publication_year = publication_year,
+                                                creators = self.build_doi_creators(entity),
                                                 entity_type = ent_type)
         except requests.exceptions.RequestException as e:
             raise DataciteApiException(error_code=500, message="Failed to connect to DataCite")
