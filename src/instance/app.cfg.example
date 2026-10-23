@@ -186,3 +186,6 @@ MYSQL_PASSWORD = ''
 # Just two databases to separate the concerns
 MYSQL_BULK_REGISTER_DATABASE = ''
 MYSQL_CLIENT_LOGS_DATABASE = ''
+
+# Usage analytics DuckDB database (read-only, queried by /usage-analytics/query)
+USAGE_ANALYTICS_DUCKDB_PATH = '/hive/hubmap-dev/pitt-analytics/duckdb-data/usage-analytics.duckdb'
