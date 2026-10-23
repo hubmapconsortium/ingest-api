@@ -960,6 +960,12 @@
         "match": "is_dcwg and is_primary and dataset_type == 'snm3C-seq'",
         "value": "{'ubkg_code': 'C202380', 'assaytype': 'snm3C-seq', 'vitessce-hints': [], 'dir-schema': 'snm3C-seq-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'snm3C-seq', 'description': 'snm3C-seq'}",
         "rule_description": "DCWG snm3C-seq"
+    },
+    {
+        "type": "match",
+        "match": "is_dcwg and is_primary and dataset_type == 'Whole Exome Sequencing (WES)'",
+        "value": "{'ubkg_code': 'C202390', 'assaytype': 'wes', 'vitessce-hints': [], 'dir-schema': 'wes-v2', 'contains-pii': true, 'primary': true, 'dataset-type': 'Whole Exome Sequencing (WES)', 'description': 'Whole Exome Sequencing (WES)'}",
+        "rule_description": "DCWG Whole Exome Sequencing (WES)"
     }
   ],
 "pre":
