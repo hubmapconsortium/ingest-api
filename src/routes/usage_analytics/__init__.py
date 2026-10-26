@@ -21,21 +21,19 @@ logger = logging.getLogger(__name__)
 # Using the zone name (not a fixed offset) keeps the window correct across daylight saving changes.
 EASTERN = ZoneInfo('America/New_York')
 
-# Defaults for the optional settings. Any of these can be overridden in instance/app.cfg.
-# The only required setting is USAGE_ANALYTICS_DUCKDB_PATH, the absolute path of the DuckDB file.
-DEFAULTS = {
-    'USAGE_ANALYTICS_TIMEOUT_SECONDS': 60,
-    'USAGE_ANALYTICS_MAX_ROWS': 100000,
-    'USAGE_ANALYTICS_MEMORY_LIMIT': '4GB',
-    'USAGE_ANALYTICS_THREADS': 4,
-    # Per uWSGI worker process. uWSGI runs 16 processes, so the ceiling for the container is 16 times this.
-    'USAGE_ANALYTICS_MAX_CONCURRENT_QUERIES': 2,
-    'USAGE_ANALYTICS_MAX_QUERY_CHARS': 20000,
-    # Same-day window in Eastern time, 24 hour HH:MM. A window that crosses midnight is not supported.
-    # Set to same value to have no blackout/maintenance window.
-    'USAGE_ANALYTICS_BLACKOUT_START': '02:15',
-    'USAGE_ANALYTICS_BLACKOUT_END': '02:15',
-}
+# Every setting below must be defined in instance/app.cfg; this module has no defaults. See app.cfg.example for
+# what each one means and for typical values. If any is missing, the endpoint answers 503 and logs which ones.
+REQUIRED_SETTINGS = (
+    'USAGE_ANALYTICS_DUCKDB_PATH',
+    'USAGE_ANALYTICS_TIMEOUT_SECONDS',
+    'USAGE_ANALYTICS_MAX_ROWS',
+    'USAGE_ANALYTICS_MEMORY_LIMIT',
+    'USAGE_ANALYTICS_THREADS',
+    'USAGE_ANALYTICS_MAX_QUERY_CHARS',
+    'USAGE_ANALYTICS_MAX_CONCURRENT_QUERIES',
+    'USAGE_ANALYTICS_BLACKOUT_START',
+    'USAGE_ANALYTICS_BLACKOUT_END',
+)
 
 # Created on first use, once per uWSGI worker process (see _get_semaphore).
 _semaphore = None
@@ -43,7 +41,11 @@ _semaphore_lock = threading.Lock()
 
 
 def _cfg(name):
-    return current_app.config.get(name, DEFAULTS.get(name))
+    return current_app.config[name]
+
+
+def _missing_settings():
+    return [name for name in REQUIRED_SETTINGS if current_app.config.get(name) in (None, '')]
 
 
 def _get_semaphore():
@@ -102,7 +104,8 @@ def _parse_hhmm(value):
 def _seconds_until_blackout_ends(now=None):
     """
     Return the number of seconds until the nightly blackout window ends if the current Eastern time
-    is inside the window, otherwise None.
+    is inside the window, otherwise None. When the start and end times are equal the window is empty, so
+    this always returns None.
 
     Parameters
     ----------
@@ -256,8 +259,8 @@ Returns
 401/403 missing or invalid token, or no HuBMAP-read membership
 408 the query ran longer than the time limit and was cancelled
 429 too many queries are already running in this worker (Retry-After header)
-503 the database is not configured, a loader is writing to it, or the nightly blackout window
-    (about 2:15 to 3:30 AM Eastern) is in effect (Retry-After header)
+503 a USAGE_ANALYTICS_* setting is missing from app.cfg, a loader is writing to the database, or the
+    nightly blackout window is in effect (Retry-After header for the last two)
 
 All timestamps in the database are UTC. NaN and infinite floating point values are returned as the
 strings "NaN", "Infinity" and "-Infinity", because JSON has no way to represent them.
@@ -265,9 +268,11 @@ strings "NaN", "Infinity" and "-Infinity", because JSON has no way to represent 
 @usage_analytics_blueprint.route('/usage-analytics/query', methods=['POST'])
 @secured(groups="HuBMAP-read")
 def usage_analytics_query():
+    missing = _missing_settings()
+    if missing:
+        logger.error(f"Usage analytics is not configured; missing from app.cfg: {', '.join(missing)}")
+        return _json_error(503, 'The usage analytics endpoint is not configured on this server.')
     db_path = _cfg('USAGE_ANALYTICS_DUCKDB_PATH')
-    if not db_path:
-        return _json_error(503, 'The usage analytics database is not configured on this server.')
 
     retry_after = _seconds_until_blackout_ends()
     if retry_after is not None:

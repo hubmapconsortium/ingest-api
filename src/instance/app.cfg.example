@@ -187,5 +187,20 @@ MYSQL_PASSWORD = ''
 MYSQL_BULK_REGISTER_DATABASE = ''
 MYSQL_CLIENT_LOGS_DATABASE = ''
 
+# All USAGE_ANALYTICS_* settings are required; the
+# endpoint returns 503 "not configured" if any is missing.
+#
 # Usage analytics DuckDB database (read-only, queried by /usage-analytics/query)
 USAGE_ANALYTICS_DUCKDB_PATH = '/hive/hubmap-dev/pitt-analytics/duckdb-data/usage-analytics.duckdb'
+# Limits for each query
+USAGE_ANALYTICS_TIMEOUT_SECONDS = 60
+USAGE_ANALYTICS_MAX_ROWS = 100000
+USAGE_ANALYTICS_MEMORY_LIMIT = '4GB'
+USAGE_ANALYTICS_THREADS = 4
+USAGE_ANALYTICS_MAX_QUERY_CHARS = 20000
+# Concurrent queries allowed per uWSGI worker process (uWSGI runs 16 processes)
+USAGE_ANALYTICS_MAX_CONCURRENT_QUERIES = 2
+# Window (24-hour HH:MM, America/New_York, same-day only) when queries are refused so the nightly DuckDB
+# loaders can take the write lock. Set both to the same time to disable the window.
+USAGE_ANALYTICS_BLACKOUT_START = '02:15'
+USAGE_ANALYTICS_BLACKOUT_END = '02:15'

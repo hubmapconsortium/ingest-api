@@ -39,4 +39,4 @@ atlas-consortia-jobq>=0.1.8
 mysql-connector-python>=9.7.0
 
 # Duck DB supporting usage-analytics queries
-duckdb==1.4.5
+duckdb>=1.4.5
