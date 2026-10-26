@@ -217,7 +217,8 @@ def _run_query(sql, db_path, user):
     except duckdb.Error as e:
         # Syntax errors, unknown tables or columns, out of memory, blocked operations, and so on.
         outcome = 'query_error'
-        return _json_error(400, str(e))
+        logger.warning(f"Usage analytics query rejected due to DuckDB error: {e}")
+        return _json_error(400, 'Invalid query or unsupported operation.')
     except Exception:
         outcome = 'server_error'
         logger.exception('Unexpected error while running a usage analytics query')
