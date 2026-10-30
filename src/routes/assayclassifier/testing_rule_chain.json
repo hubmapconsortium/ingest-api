@@ -972,7 +972,7 @@
         "match": "is_dcwg and is_central_processed and dataset_type == 'Whole Exome Sequencing (WES) [Salmon]'",
         "value": "{'ubkg_code': 'C202400', 'assaytype': 'salmon_wes', 'vitessce-hints': [], 'dir-schema': 'wes-v2', 'contains-pii': false, 'primary': false, 'dataset-type': 'Whole Exome Sequencing (WES) [Salmon]', 'description': 'Whole Exome Sequencing (WES) [Salmon]', 'pipeline-shorthand': 'Salmon'}",
         "rule_description": "derived Whole Exome Sequencing (WES)"
-
+    }
   ],
 "pre":
   [
