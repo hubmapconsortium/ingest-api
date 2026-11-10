@@ -1,6 +1,7 @@
 import json
 import logging
 import math
+import os
 import threading
 import time
 from datetime import date, datetime, timedelta, time as dt_time
@@ -31,6 +32,7 @@ REQUIRED_SETTINGS = (
     'USAGE_ANALYTICS_THREADS',
     'USAGE_ANALYTICS_MAX_QUERY_CHARS',
     'USAGE_ANALYTICS_MAX_CONCURRENT_QUERIES',
+    'USAGE_ANALYTICS_SLOT_WAIT_SECONDS',
     'USAGE_ANALYTICS_BLACKOUT_START',
     'USAGE_ANALYTICS_BLACKOUT_END',
 )
@@ -39,6 +41,11 @@ REQUIRED_SETTINGS = (
 _semaphore = None
 _semaphore_lock = threading.Lock()
 
+# The queries running in this worker process right now: thread id -> time.monotonic() when the query took its slot.
+# Only used to explain a 429 in the log (how many are running and for how long).
+_active_queries = {}
+_active_lock = threading.Lock()
+
 
 def _cfg(name):
     return current_app.config[name]
@@ -46,6 +53,18 @@ def _cfg(name):
 
 def _missing_settings():
     return [name for name in REQUIRED_SETTINGS if current_app.config.get(name) in (None, '')]
+
+
+@usage_analytics_blueprint.record_once
+def _log_settings_at_startup(state):
+    # Runs once, when the blueprint is registered (before uWSGI forks its workers), so the log shows the values this
+    # process started with. Missing settings are reported here as well, not only when the first request arrives.
+    config = state.app.config
+    shown = ", ".join(f"{name.replace('USAGE_ANALYTICS_', '').lower()}={config.get(name)}" for name in REQUIRED_SETTINGS)
+    logger.info(f"usage-analytics settings at startup: {shown}")
+    missing = [name for name in REQUIRED_SETTINGS if config.get(name) in (None, '')]
+    if missing:
+        logger.error(f"Usage analytics is not configured; missing from app.cfg: {', '.join(missing)}")
 
 
 def _get_semaphore():
@@ -150,6 +169,25 @@ def _requesting_user():
     return 'unknown'
 
 
+def _lock_configuration(con):
+    """
+    Stop the submitted SQL from changing the limits or turning external access back on.
+
+    DuckDB shares one database instance between the connections opened in the same process, and the
+    configuration lock belongs to that instance. When another request in this worker is already running, the
+    instance is already locked and the SET below fails with "the configuration has been locked". That is the
+    state wanted here, so the error is accepted, but only after checking that the instance really is locked
+    and still has external access disabled. Any other outcome is raised.
+    """
+    try:
+        con.execute('SET lock_configuration = true')
+    except duckdb.Error:
+        settings = dict(con.execute("SELECT name, value FROM duckdb_settings() "
+                                    "WHERE name IN ('lock_configuration', 'enable_external_access')").fetchall())
+        if settings.get('lock_configuration') != 'true' or settings.get('enable_external_access') != 'false':
+            raise
+
+
 def _run_query(sql, db_path, user):
     max_rows = int(_cfg('USAGE_ANALYTICS_MAX_ROWS'))
     timeout_seconds = float(_cfg('USAGE_ANALYTICS_TIMEOUT_SECONDS'))
@@ -167,8 +205,7 @@ def _run_query(sql, db_path, user):
                 'memory_limit': str(_cfg('USAGE_ANALYTICS_MEMORY_LIMIT')),
                 'enable_external_access': False,
             })
-            # Stops the submitted SQL from changing the limits or turning external access back on.
-            con.execute('SET lock_configuration = true')
+            _lock_configuration(con)
         except duckdb.IOException as e:
             # Typically "Could not set lock on file ... Conflicting lock is held in ..." while a loader is writing.
             outcome = 'database_unavailable'
@@ -258,7 +295,7 @@ Returns
 400 invalid body, SQL that cannot be parsed or run, or a statement that is not a single SELECT
 401/403 missing or invalid token, or no HuBMAP-read membership
 408 the query ran longer than the time limit and was cancelled
-429 too many queries are already running in this worker (Retry-After header)
+429 no query slot in this worker became free within USAGE_ANALYTICS_SLOT_WAIT_SECONDS (Retry-After header)
 503 a USAGE_ANALYTICS_* setting is missing from app.cfg, a loader is writing to the database, or the
     nightly blackout window is in effect (Retry-After header for the last two)
 
@@ -294,10 +331,22 @@ def usage_analytics_query():
     _validate_single_select(sql)
 
     semaphore = _get_semaphore()
-    if not semaphore.acquire(timeout=5):
+    slot_wait_seconds = float(_cfg('USAGE_ANALYTICS_SLOT_WAIT_SECONDS'))
+    if not semaphore.acquire(timeout=slot_wait_seconds):
+        with _active_lock:
+            running_since = list(_active_queries.values())
+        longest = int(time.monotonic() - min(running_since)) if running_since else 0
+        # A busy worker shows queries that started recently; a stuck one shows a query running past the time limit.
+        logger.warning(f"usage-analytics refused with 429: pid={os.getpid()} "
+                       f"running_in_this_worker={len(running_since)} of {_cfg('USAGE_ANALYTICS_MAX_CONCURRENT_QUERIES')} "
+                       f"longest_running_s={longest} waited_s={slot_wait_seconds:g}")
         return _json_error(429, 'Too many usage analytics queries are running on this server. Retry shortly.',
                            retry_after=5)
+    with _active_lock:
+        _active_queries[threading.get_ident()] = time.monotonic()
     try:
         return _run_query(sql, db_path, _requesting_user())
     finally:
+        with _active_lock:
+            _active_queries.pop(threading.get_ident(), None)
         semaphore.release()
