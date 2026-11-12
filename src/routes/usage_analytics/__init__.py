@@ -169,25 +169,6 @@ def _requesting_user():
     return 'unknown'
 
 
-def _lock_configuration(con):
-    """
-    Stop the submitted SQL from changing the limits or turning external access back on.
-
-    DuckDB shares one database instance between the connections opened in the same process, and the
-    configuration lock belongs to that instance. When another request in this worker is already running, the
-    instance is already locked and the SET below fails with "the configuration has been locked". That is the
-    state wanted here, so the error is accepted, but only after checking that the instance really is locked
-    and still has external access disabled. Any other outcome is raised.
-    """
-    try:
-        con.execute('SET lock_configuration = true')
-    except duckdb.Error:
-        settings = dict(con.execute("SELECT name, value FROM duckdb_settings() "
-                                    "WHERE name IN ('lock_configuration', 'enable_external_access')").fetchall())
-        if settings.get('lock_configuration') != 'true' or settings.get('enable_external_access') != 'false':
-            raise
-
-
 def _run_query(sql, db_path, user):
     max_rows = int(_cfg('USAGE_ANALYTICS_MAX_ROWS'))
     timeout_seconds = float(_cfg('USAGE_ANALYTICS_TIMEOUT_SECONDS'))
@@ -200,12 +181,16 @@ def _run_query(sql, db_path, user):
         # A new read-only connection for every request, closed in the finally block below. Nothing holds the
         # file open between requests, so the nightly loaders (which open it read-write) are not blocked.
         try:
+            # The limits and the switch that disables file access are set at connect. The configuration is not locked:
+            # DuckDB shares one database instance between the connections of a process, so a per-request
+            # SET lock_configuration fails when another request in the same worker has already locked the instance.
+            # enable_external_access cannot be turned back on by SQL. The SELECT-only check in _validate_single_select
+            # is what keeps submitted SQL from changing the other settings (memory_limit, threads).
             con = duckdb.connect(db_path, read_only=True, config={
                 'threads': int(_cfg('USAGE_ANALYTICS_THREADS')),
                 'memory_limit': str(_cfg('USAGE_ANALYTICS_MEMORY_LIMIT')),
                 'enable_external_access': False,
             })
-            _lock_configuration(con)
         except duckdb.IOException as e:
             # Typically "Could not set lock on file ... Conflicting lock is held in ..." while a loader is writing.
             outcome = 'database_unavailable'
