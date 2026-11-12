@@ -200,6 +200,8 @@ USAGE_ANALYTICS_THREADS = 4
 USAGE_ANALYTICS_MAX_QUERY_CHARS = 20000
 # Concurrent queries allowed per uWSGI worker process (uWSGI runs 16 processes)
 USAGE_ANALYTICS_MAX_CONCURRENT_QUERIES = 2
+# Seconds a request waits for a free query slot before it is refused with a 429
+USAGE_ANALYTICS_SLOT_WAIT_SECONDS = 25
 # Window (24-hour HH:MM, America/New_York, same-day only) when queries are refused so the nightly DuckDB
 # loaders can take the write lock. Set both to the same time to disable the window.
 USAGE_ANALYTICS_BLACKOUT_START = '02:15'
